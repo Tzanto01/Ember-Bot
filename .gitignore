@@ -39,6 +39,10 @@ ScaffoldingReadMe.txt
 # dotenv environment variables file
 .env
 
+# App secrets
+appsettings.Development.json
+src/**/appsettings.json
+
 # Others
 ~$*
 *~
