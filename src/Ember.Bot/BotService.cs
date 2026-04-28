@@ -57,9 +57,19 @@ public class BotService : IHostedService
 
     private async Task OnReadyAsync()
     {
-        _logger.LogInformation("Bot is ready. Registering slash commands globally...");
-        await _interactions.RegisterCommandsGloballyAsync();
-        _logger.LogInformation("Slash commands registered.");
+        var devGuildIdStr = _config["DevGuildId"];
+        if (ulong.TryParse(devGuildIdStr, out var devGuildId))
+        {
+            _logger.LogInformation("Bot is ready. Registering slash commands to dev guild {GuildId}...", devGuildId);
+            await _interactions.RegisterCommandsToGuildAsync(devGuildId);
+            _logger.LogInformation("Slash commands registered to dev guild.");
+        }
+        else
+        {
+            _logger.LogInformation("Bot is ready. Registering slash commands globally...");
+            await _interactions.RegisterCommandsGloballyAsync();
+            _logger.LogInformation("Slash commands registered globally.");
+        }
     }
 
     private async Task OnInteractionAsync(SocketInteraction interaction)
