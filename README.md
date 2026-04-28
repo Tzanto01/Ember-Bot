@@ -8,36 +8,65 @@ A low-pressure, neurodivergent-friendly Discord habit tracker bot.
 
 ## Commands
 
+All commands use interactive menus and buttons — no parameters to remember.
+
 ### Habits
 
 | Command | Description |
 |---|---|
-| `/habit add <name>` | Start tracking a new habit. Offers to set a daily reminder. |
-| `/habit list` | See all your habits, 7-day progress, and reminder times. |
-| `/habit checkin [habit] [completed]` | Log today's check-in (autocomplete, defaults to ✅ done). |
-| `/habit streak` | See full stats: 7-day, 30-day, best streak, total check-ins. |
-| `/habit edit [habit] [name] [clear_reminder]` | Rename a habit or change/remove its reminder. |
-| `/habit delete [habit]` | Stop tracking a habit. |
+| `/habit add` | Start tracking a new habit via a modal. Offers to set a reminder after. |
+| `/habit template` | Pick from a set of pre-built habit templates. |
+| `/habit checkin` | Select a habit and log today's check-in. |
+| `/habit list` | See all your habits, recent progress, and reminder times. |
+| `/habit streak` | See full stats: streak, 7-day, 30-day, best, total check-ins. |
+| `/habit edit` | Rename a habit or change/remove its reminder. |
+| `/habit delete` | Stop tracking a habit. |
+| `/habit pause` | Pause a habit temporarily — reminders stop and streak is protected. |
+| `/habit frequency` | Switch a habit between daily and weekly (1×–6×/week). |
+| `/habit grace` | Set how many flex days per week you get before a streak breaks (0–3). |
+| `/habit share` | Post a public streak card in the current channel. |
 
 ### Timezone
 
 | Command | Description |
 |---|---|
-| `/timezone set <timezone>` | Set your local timezone (autocomplete — just start typing your city). |
+| `/timezone set` | Set your local timezone (autocomplete — just start typing your city). |
 | `/timezone show` | Show your current timezone. |
 
 > Set your timezone before adding reminders so they fire at the right local time.
+
+### Leaderboard & Privacy
+
+| Command | Description |
+|---|---|
+| `/leaderboard` | See this week's top check-ins in the server. |
+| `/privacy optout` | Remove yourself from all leaderboards. |
+| `/privacy optin` | Re-join leaderboards. |
+
+### Other
+
+| Command | Description |
+|---|---|
+| `/help` | See all commands in one place. |
+| `/export` | Export your habit data. |
 
 ---
 
 ## Features
 
+- **Zero-parameter commands** — everything is driven by menus and buttons
 - **Flexible streaks** — "X out of last 7 days", not just consecutive days
-- **Daily DM reminders** with ✅ / ❌ buttons — one tap to check in
+- **Grace days** — configurable missed-day forgiveness before a streak breaks
+- **Habit templates** — pre-built habits to get started instantly
+- **Pause** — take a break without losing your streak
+- **Daily or weekly habits** — track every day, or set a weekly target
+- **DM reminders** with ✅ / ❌ / ⏰ buttons — one tap to check in or snooze
 - **Adaptive reminder tone** — softer language when you've had a quiet week
-- **Weekly summary DM** — every Sunday at 09:00 UTC with a 7-day recap
-- **Autocomplete** on all habit and timezone inputs
-- **Privacy by default** — all data is private to you
+- **Missed day reflection** — gentle DM if you've missed a habit, not a guilt trip
+- **Weekly summary DM** — every Sunday with a 7-day recap
+- **Leaderboard** — optional server-wide check-in board with privacy opt-out
+- **Streak sharing** — post a visual streak card publicly
+- **Privacy by default** — all data is private to you; leaderboard is opt-out
 
 ---
 
@@ -96,7 +125,7 @@ dotnet build
 dotnet test
 ```
 
-Tests cover streak logic, timezone helpers, and cron expression generation.
+Tests cover streak logic, weekly progress, timezone helpers, cron expression generation, habit templates, and interaction custom ID routing contracts.
 
 ---
 
@@ -109,3 +138,10 @@ Tests cover streak logic, timezone helpers, and cron expression generation.
 | Scheduler | Quartz.NET |
 | Database | PostgreSQL via Npgsql EF Core |
 | Hosting | systemd on Linux |
+
+---
+
+## License
+
+Custom non-commercial license — see [LICENSE](LICENSE).
+Copyright (c) 2026 Tzanto01. Non-commercial use only. Credit required.

@@ -1,4 +1,6 @@
+using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using Ember.Bot.Models;
 using Ember.Bot.Services;
 
@@ -33,8 +35,11 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
             return;
         }
 
-        await RespondAsync(
-            $"**{habit.Name}** set to **{target}× per week** — check in any days you choose.",
-            ephemeral: true);
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content    = $"**{habit.Name}** set to **{target}× per week** — check in any days you choose.";
+                m.Components = new ComponentBuilder().Build();
+            });
     }
 }
