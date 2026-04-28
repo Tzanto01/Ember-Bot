@@ -154,12 +154,13 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var components = new ComponentBuilder()
-            .WithButton("Daily",      $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary)
-            .WithButton("2× / week",  $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary)
-            .WithButton("3× / week",  $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary)
-            .WithButton("4× / week",  $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary)
-            .WithButton("5× / week",  $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary)
-            .WithButton("6× / week",  $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary)
+            .WithButton("Daily",      $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary,    row: 0)
+            .WithButton("1× / week",  $"freq:weekly:{habitId}:1",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("2× / week",  $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("3× / week",  $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("4× / week",  $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("5× / week",  $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary,  row: 1)
+            .WithButton("6× / week",  $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary,  row: 1)
             .Build();
 
         await ((SocketMessageComponent)Context.Interaction)

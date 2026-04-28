@@ -263,10 +263,11 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
 
     // ── habitaction:freq:{habitId}:daily ─────────────────────────────────────
 
-    [ComponentInteraction("habitaction:freq:*:daily")]
-    public async Task OnFreqDailyAsync(string habitIdStr)
+    [ComponentInteraction("habitaction:freq:*:*")]
+    public async Task OnFreqDailyAsync(string habitIdStr, string freqType)
     {
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
+        if (freqType != "daily") { await BadIdAsync(); return; }
 
         var habit = await _habits.SetFrequencyAsync(Context.User.Id, habitId, FrequencyType.Daily, null);
 
