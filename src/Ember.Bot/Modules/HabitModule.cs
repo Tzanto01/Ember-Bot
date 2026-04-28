@@ -14,12 +14,20 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         _habits = habits;
     }
 
+    private async Task<string> FormatReminderAsync(TimeOnly? utcTime)
+    {
+        if (!utcTime.HasValue) return "None set";
+        var tz    = await _habits.GetUserTzAsync(Context.User.Id);
+        var local = TimezoneHelper.ToLocal(utcTime.Value, tz);
+        return $"{local:HH:mm} ({tz.Id})";
+    }
+
     // ── /habit add ────────────────────────────────────────────────────────────
 
     [SlashCommand("add", "Add a new habit to track")]
     public async Task AddAsync(
         [Summary("name", "What habit do you want to track?")] string name,
-        [Summary("reminder", "Daily reminder time in HH:mm UTC (optional)")] string? reminder = null)
+        [Summary("reminder", "Daily reminder time in HH:mm in your local timezone (optional)")] string? reminder = null)
     {
         TimeOnly? reminderTime = null;
         if (reminder is not null)
@@ -38,7 +46,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             .WithColor(0xF4845F)
             .WithTitle("Habit added!")
             .WithDescription($"**{habit.Name}** is now being tracked.")
-            .AddField("Reminder", reminderTime.HasValue ? $"{reminderTime:HH:mm} UTC" : "None set", inline: true)
+            .AddField("Reminder", await FormatReminderAsync(habit.ReminderTime), inline: true)
             .WithFooter("You've got this. One day at a time.")
             .Build();
 
@@ -68,10 +76,11 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             var best = HabitService.BestStreak(h);
             var checkedToday = h.Logs.Any(l => l.Date == DateOnly.FromDateTime(DateTime.UtcNow) && l.Completed);
             var todayMark = checkedToday ? "✅" : "⬜";
+            var reminderStr = await FormatReminderAsync(h.ReminderTime);
 
             embed.AddField(
-                $"{todayMark} {h.Name}",
-                $"Last 7 days: **{flexible}/7** · Best streak: **{best}**",
+                $"{todayMark} {h.Name} (ID: {h.Id})",
+                $"Last 7 days: **{flexible}/7** · Best streak: **{best}**\nReminder: {reminderStr}",
                 inline: false);
         }
 
@@ -184,7 +193,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             .WithColor(0xF4845F)
             .WithTitle("Habit updated!")
             .AddField("Name", habit.Name, inline: true)
-            .AddField("Reminder", habit.ReminderTime.HasValue ? $"{habit.ReminderTime:HH:mm} UTC" : "None", inline: true)
+            .AddField("Reminder", await FormatReminderAsync(habit.ReminderTime), inline: true)
             .Build();
 
         await RespondAsync(embed: embed, ephemeral: true);

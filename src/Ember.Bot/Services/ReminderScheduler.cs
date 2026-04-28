@@ -13,24 +13,29 @@ public class ReminderScheduler
         _scheduler = scheduler;
     }
 
-    public async Task ScheduleAsync(Habit habit)
+    /// <summary>
+    /// Schedules (or reschedules) a daily reminder for a habit.
+    /// <paramref name="userTz"/> is the user's local timezone; the reminder time is
+    /// stored in local time and converted to UTC for the cron trigger.
+    /// </summary>
+    public async Task ScheduleAsync(Habit habit, TimeZoneInfo? userTz = null)
     {
         if (!habit.ReminderTime.HasValue) return;
 
-        var key     = TriggerKeyFor(habit.Id);
+        var tz      = userTz ?? TimeZoneInfo.Utc;
+        var utcTime = TimezoneHelper.ToUtc(habit.ReminderTime.Value, tz);
         var jobKey  = JobKeyFor(habit.Id);
-        var time    = habit.ReminderTime.Value;
 
         var job = JobBuilder.Create<ReminderJob>()
             .WithIdentity(jobKey)
-            .UsingJobData(ReminderJob.HabitIdKey,   habit.Id)
-            .UsingJobData(ReminderJob.UserIdKey,     habit.UserId)
-            .UsingJobData(ReminderJob.HabitNameKey,  habit.Name)
+            .UsingJobData(ReminderJob.HabitIdKey,  habit.Id)
+            .UsingJobData(ReminderJob.UserIdKey,    habit.UserId)
+            .UsingJobData(ReminderJob.HabitNameKey, habit.Name)
             .Build();
 
         var trigger = TriggerBuilder.Create()
-            .WithIdentity(key)
-            .WithCronSchedule($"0 {time.Minute} {time.Hour} * * ?")
+            .WithIdentity(TriggerKeyFor(habit.Id))
+            .WithCronSchedule($"0 {utcTime.Minute} {utcTime.Hour} * * ?")
             .Build();
 
         if (await _scheduler.CheckExists(jobKey))
