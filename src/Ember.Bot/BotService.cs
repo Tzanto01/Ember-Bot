@@ -1,7 +1,9 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Ember.Bot.Data;
 using Ember.Bot.Modules;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,6 +19,7 @@ public class BotService : IHostedService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _config;
     private readonly ILogger<BotService> _logger;
+    private Timer? _statusTimer;
 
     public BotService(
         DiscordSocketClient client,
@@ -52,6 +55,7 @@ public class BotService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        _statusTimer?.Dispose();
         await _client.StopAsync();
     }
 
@@ -71,6 +75,35 @@ public class BotService : IHostedService
             _logger.LogInformation("Bot is ready. Registering slash commands globally...");
             await _interactions.RegisterCommandsGloballyAsync();
             _logger.LogInformation("Slash commands registered globally.");
+        }
+
+        // Set status immediately, then rotate every 30 minutes
+        await UpdateStatusAsync();
+        _statusTimer = new Timer(_ => _ = UpdateStatusAsync(), null,
+            TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
+    }
+
+    private async Task UpdateStatusAsync()
+    {
+        try
+        {
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
+            var habitCount = await db.Habits.CountAsync();
+
+            var (activity, status) = habitCount switch
+            {
+                0 => ("habits take shape 🌱", UserStatus.Online),
+                1 => ("1 habit tracked 🔥", UserStatus.Online),
+                _ => ($"{habitCount} habits tracked 🔥", UserStatus.Online),
+            };
+
+            await _client.SetStatusAsync(status);
+            await _client.SetActivityAsync(new Game(activity, ActivityType.Watching));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update bot status.");
         }
     }
 
