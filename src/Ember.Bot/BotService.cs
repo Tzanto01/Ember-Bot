@@ -93,7 +93,7 @@ public class BotService : IHostedService
 
             var (activity, status) = habitCount switch
             {
-                0 => ("habits take shape 🌱", UserStatus.Online),
+                0 => ("habits take shape 🌿", UserStatus.Online),
                 1 => ("1 habit tracked 🔥", UserStatus.Online),
                 _ => ($"{habitCount} habits tracked 🔥", UserStatus.Online),
             };
