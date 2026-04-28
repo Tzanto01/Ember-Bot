@@ -51,9 +51,9 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
             await _scheduler.ScheduleAsync(habit, tz);
 
         await RespondAsync(
-            $"Timezone set to **{tz.Id}** (UTC{tz.BaseUtcOffset:hhmm}).\n" +
+            $"Timezone set to **{tz.Id}**." +
             (habitsWithReminders.Count > 0
-                ? $"Rescheduled {habitsWithReminders.Count} reminder(s) to match."
+                ? $"\nRescheduled {habitsWithReminders.Count} reminder(s) to match."
                 : ""),
             ephemeral: true);
     }
@@ -66,7 +66,7 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
         var tz   = TimezoneHelper.Find(tzId) ?? TimeZoneInfo.Utc;
 
         await RespondAsync(
-            $"Your timezone is currently **{tz.Id}** (UTC{tz.BaseUtcOffset:hhmm}).",
+            $"Your timezone is currently **{tz.Id}**.",
             ephemeral: true);
     }
 }

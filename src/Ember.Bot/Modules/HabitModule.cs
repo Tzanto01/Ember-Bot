@@ -19,7 +19,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         if (!utcTime.HasValue) return "None set";
         var tz    = await _habits.GetUserTzAsync(Context.User.Id);
         var local = TimezoneHelper.ToLocal(utcTime.Value, tz);
-        return $"{local:HH:mm} ({tz.Id})";
+
+        // Build a Unix timestamp for today at this local time so Discord renders it in the user's timezone
+        var today   = DateOnly.FromDateTime(DateTime.UtcNow);
+        var utcDt   = DateTime.SpecifyKind(today.ToDateTime(utcTime.Value), DateTimeKind.Utc);
+        var unix    = new DateTimeOffset(utcDt).ToUnixTimeSeconds();
+        return $"<t:{unix}:t>";
     }
 
     // ── /habit add ────────────────────────────────────────────────────────────
