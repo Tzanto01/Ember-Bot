@@ -1,5 +1,4 @@
 using Discord;
-using Discord.WebSocket;
 using Ember.Bot.Data;
 using Ember.Bot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -24,10 +23,10 @@ public class ReminderJob : IJob
     public const string HabitNameKey = "habitName";
 
     private readonly IServiceProvider _services;
-    private readonly DiscordSocketClient _discord;
+    private readonly IDiscordDmSender _discord;
     private readonly ILogger<ReminderJob> _logger;
 
-    public ReminderJob(IServiceProvider services, DiscordSocketClient discord, ILogger<ReminderJob> logger)
+    public ReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<ReminderJob> logger)
     {
         _services = services;
         _discord  = discord;
@@ -54,35 +53,30 @@ public class ReminderJob : IJob
             return;
         }
 
+        // Count how many of the last 7 days (excluding today) had a completed check-in
+        var weekAgo = today.AddDays(-7);
+        var recentCount = await db.HabitLogs
+            .CountAsync(l => l.HabitId == habitId && l.Date > weekAgo && l.Date < today && l.Completed);
+
+        string message = recentCount >= 4
+            ? $"Hey! Just a gentle nudge — time for **{habitName}**. You've been doing great 🔥"
+            : recentCount >= 1
+                ? $"Hey! Reminder for **{habitName}**. No pressure — just showing up counts 💙"
+                : $"Hey 👋 Checking in on **{habitName}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.";
+
+        var components = new ComponentBuilder()
+            .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
+            .WithButton("Skip ❌", $"checkin:skip:{habitId}", ButtonStyle.Secondary)
+            .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}", ButtonStyle.Secondary)
+            .Build();
+
         try
         {
-            var user = await _discord.GetUserAsync(userId);
-            if (user is null)
+            var sent = await _discord.SendMessageAsync(userId, message, components: components);
+            if (!sent)
             {
                 _logger.LogWarning("Could not find Discord user {UserId} for reminder.", userId);
-                return;
             }
-
-            var dm = await user.CreateDMChannelAsync();
-
-            // Count how many of the last 7 days (excluding today) had a completed check-in
-            var weekAgo = today.AddDays(-7);
-            var recentCount = await db.HabitLogs
-                .CountAsync(l => l.HabitId == habitId && l.Date > weekAgo && l.Date < today && l.Completed);
-
-            string message = recentCount >= 4
-                ? $"Hey! Just a gentle nudge — time for **{habitName}**. You've been doing great 🔥"
-                : recentCount >= 1
-                    ? $"Hey! Reminder for **{habitName}**. No pressure — just showing up counts 💙"
-                    : $"Hey 👋 Checking in on **{habitName}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.";
-
-            var components = new ComponentBuilder()
-                .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
-                .WithButton("Skip ❌", $"checkin:skip:{habitId}", ButtonStyle.Secondary)
-                .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}", ButtonStyle.Secondary)
-                .Build();
-
-            await dm.SendMessageAsync(message, components: components);
         }
         catch (Exception ex)
         {
