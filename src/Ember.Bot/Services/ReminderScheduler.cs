@@ -44,6 +44,26 @@ public class ReminderScheduler
         await _scheduler.ScheduleJob(job, trigger);
     }
 
+    /// <summary>Schedules a one-shot snooze reminder for the given habit, firing after <paramref name="delayMinutes"/> minutes.</summary>
+    public async Task SnoozeAsync(int habitId, long userId, string habitName, int delayMinutes = 60)
+    {
+        var jobKey = new JobKey($"snooze-{habitId}-{userId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}", "snoozes");
+
+        var job = JobBuilder.Create<SnoozeReminderJob>()
+            .WithIdentity(jobKey)
+            .UsingJobData(SnoozeReminderJob.HabitIdKey,   habitId)
+            .UsingJobData(SnoozeReminderJob.UserIdKey,    userId)
+            .UsingJobData(SnoozeReminderJob.HabitNameKey, habitName)
+            .Build();
+
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity($"snooze-trigger-{jobKey.Name}", "snoozes")
+            .StartAt(DateTimeOffset.UtcNow.AddMinutes(delayMinutes))
+            .Build();
+
+        await _scheduler.ScheduleJob(job, trigger);
+    }
+
     /// <summary>Builds a daily cron expression for the given UTC time.</summary>
     internal static string BuildCron(TimeOnly utcTime) =>
         $"0 {utcTime.Minute} {utcTime.Hour} * * ?";
@@ -58,3 +78,4 @@ public class ReminderScheduler
     private static JobKey     JobKeyFor(int habitId)     => new($"habit-{habitId}", "reminders");
     private static TriggerKey TriggerKeyFor(int habitId) => new($"habit-{habitId}-trigger", "reminders");
 }
+

@@ -21,9 +21,31 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
         _scheduler = scheduler;
     }
 
-    [SlashCommand("set", "Set your local timezone (IANA format, e.g. Europe/Amsterdam)")]
+    // ── Autocomplete handler for timezone ────────────────────────────────────
+
+    public class TimezoneAutocompleteHandler : AutocompleteHandler
+    {
+        public override Task<AutocompletionResult> GenerateSuggestionsAsync(
+            IInteractionContext context,
+            IAutocompleteInteraction autocompleteInteraction,
+            IParameterInfo parameter,
+            IServiceProvider services)
+        {
+            var typed = autocompleteInteraction.Data.Current.Value?.ToString() ?? "";
+
+            var matches = TimeZoneInfo.GetSystemTimeZones()
+                .Where(tz => tz.Id.Contains(typed, StringComparison.OrdinalIgnoreCase)
+                          || tz.DisplayName.Contains(typed, StringComparison.OrdinalIgnoreCase))
+                .Take(25)
+                .Select(tz => new AutocompleteResult(tz.Id, tz.Id));
+
+            return Task.FromResult(AutocompletionResult.FromSuccess(matches));
+        }
+    }
+
+    [SlashCommand("set", "Set your local timezone")]
     public async Task SetAsync(
-        [Summary("timezone", "Your IANA timezone, e.g. America/New_York, Europe/London")] string tzId)
+        [Summary("timezone", "Start typing your city or region"), Autocomplete(typeof(TimezoneAutocompleteHandler))] string tzId)
     {
         var tz = TimezoneHelper.Find(tzId);
         if (tz is null)

@@ -4,8 +4,7 @@ using Discord.WebSocket;
 using Ember.Bot;
 using Ember.Bot.Data;
 using Ember.Bot.Jobs;
-using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Bot.Services;using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +28,21 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddQuartz(q =>
         {
             q.AddJob<ReminderJob>(opts => opts.WithIdentity(ReminderJob.Key).StoreDurably());
+            q.AddJob<SnoozeReminderJob>(opts => opts.WithIdentity(new Quartz.JobKey("snooze-template", "snoozes")).StoreDurably());
+
+            // Weekly summary: every Sunday at 09:00 UTC
+            q.AddJob<WeeklySummaryJob>(opts => opts.WithIdentity(WeeklySummaryJob.Key).StoreDurably());
+            q.AddTrigger(opts => opts
+                .ForJob(WeeklySummaryJob.Key)
+                .WithIdentity("weekly-summary-trigger", "summaries")
+                .WithCronSchedule("0 0 9 ? * SUN"));
+
+            // Missed day reflection: every day at 10:00 UTC
+            q.AddJob<MissedDayReflectionJob>(opts => opts.WithIdentity(MissedDayReflectionJob.Key).StoreDurably());
+            q.AddTrigger(opts => opts
+                .ForJob(MissedDayReflectionJob.Key)
+                .WithIdentity("missed-day-reflection-trigger", "reflections")
+                .WithCronSchedule("0 0 10 * * ?"));
         });
         services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
         services.AddSingleton<ReminderScheduler>(sp =>

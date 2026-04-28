@@ -65,14 +65,24 @@ public class ReminderJob : IJob
 
             var dm = await user.CreateDMChannelAsync();
 
+            // Count how many of the last 7 days (excluding today) had a completed check-in
+            var weekAgo = today.AddDays(-7);
+            var recentCount = await db.HabitLogs
+                .CountAsync(l => l.HabitId == habitId && l.Date > weekAgo && l.Date < today && l.Completed);
+
+            string message = recentCount >= 4
+                ? $"Hey! Just a gentle nudge — time for **{habitName}**. You've been doing great 🔥"
+                : recentCount >= 1
+                    ? $"Hey! Reminder for **{habitName}**. No pressure — just showing up counts 💙"
+                    : $"Hey 👋 Checking in on **{habitName}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.";
+
             var components = new ComponentBuilder()
                 .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
                 .WithButton("Skip ❌", $"checkin:skip:{habitId}", ButtonStyle.Secondary)
+                .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}", ButtonStyle.Secondary)
                 .Build();
 
-            await dm.SendMessageAsync(
-                $"Hey! Just a gentle nudge — time for **{habitName}**. How's it going?",
-                components: components);
+            await dm.SendMessageAsync(message, components: components);
         }
         catch (Exception ex)
         {

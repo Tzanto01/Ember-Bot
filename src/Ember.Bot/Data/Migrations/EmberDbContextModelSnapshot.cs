@@ -33,16 +33,25 @@ namespace Ember.Bot.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("FrequencyType")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateOnly?>("PausedUntil")
+                        .HasColumnType("date");
 
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("time without time zone");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
+
+                    b.Property<int?>("WeeklyTarget")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -65,6 +74,9 @@ namespace Ember.Bot.Data.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<long?>("GuildId")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("HabitId")
                         .HasColumnType("integer");
 
@@ -83,6 +95,12 @@ namespace Ember.Bot.Data.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DiscordUserId"));
+
+                    b.Property<int>("GraceDaysPerWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("LeaderboardOptOut")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
