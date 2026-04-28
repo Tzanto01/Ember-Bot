@@ -19,15 +19,23 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:set:*")]
     public async Task OnSetReminderAsync(string habitIdStr)
     {
+        // Embed the source message ID in the modal custom ID so the modal
+        // handler can update the original button message after confirming.
+        var sourceMessageId = ((SocketMessageComponent)Context.Interaction).Message.Id;
+
         var modal = new ModalBuilder()
             .WithTitle("Set a daily reminder")
-            .WithCustomId($"reminder:modal:{habitIdStr}")
+            .WithCustomId($"reminder:modal:{habitIdStr}:{sourceMessageId}")
             .AddTextInput("What time? (HH:mm, your local time)", "reminder_time",
                 placeholder: "e.g. 09:00 or 21:30",
                 minLength: 4, maxLength: 5, required: true)
             .Build();
 
         await RespondWithModalAsync(modal);
+
+        // Strip the buttons from the original message so it can't be clicked again.
+        // DeleteOriginalResponseAsync works after RespondWithModalAsync for component interactions.
+        try { await DeleteOriginalResponseAsync(); } catch { /* ignore */ }
     }
 
     // ── "Not now" button ──────────────────────────────────────────────────────
@@ -44,10 +52,50 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             });
     }
 
+    // ── "Remove reminder" button (from /habit edit) ───────────────────────────
+
+    [ComponentInteraction("reminder:clear:*")]
+    public async Task OnClearReminderAsync(string habitIdStr)
+    {
+        if (!int.TryParse(habitIdStr, out var habitId))
+        {
+            await RespondAsync("Something went wrong. Please try again.", ephemeral: true);
+            return;
+        }
+
+        var habit = await _habits.EditHabitAsync(Context.User.Id, habitId, newName: null, newReminderTime: null, clearReminder: true);
+
+        if (habit is null)
+        {
+            await RespondAsync("Couldn't find that habit. It may have been deleted.", ephemeral: true);
+            return;
+        }
+
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content = $"Reminder removed from **{habit.Name}**. 💙";
+                m.Components = new ComponentBuilder().Build();
+            });
+    }
+
+    // ── "Cancel" button (from /habit edit) ───────────────────────────────────
+
+    [ComponentInteraction("reminder:cancel:*")]
+    public async Task OnCancelEditAsync(string habitIdStr)
+    {
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content = "No changes made.";
+                m.Components = new ComponentBuilder().Build();
+            });
+    }
+
     // ── Modal submit ──────────────────────────────────────────────────────────
 
-    [ModalInteraction("reminder:modal:*")]
-    public async Task OnReminderModalAsync(string habitIdStr, ReminderModal modal)
+    [ModalInteraction("reminder:modal:*:*")]
+    public async Task OnReminderModalAsync(string habitIdStr, string sourceMessageIdStr, ReminderModal modal)
     {
         if (!int.TryParse(habitIdStr, out var habitId))
         {

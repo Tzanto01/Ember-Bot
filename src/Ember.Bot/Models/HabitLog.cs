@@ -10,5 +10,8 @@ public class HabitLog
 
     public bool Completed { get; set; }
 
+    /// <summary>Guild in which the check-in was performed. Null if done via DM.</summary>
+    public long? GuildId { get; set; }
+
     public Habit Habit { get; set; } = null!;
 }
