@@ -82,54 +82,9 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 
 ## Self-Hosting
 
-### Requirements
+Ember is hosted publicly — you don't need to run your own instance.
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- PostgreSQL
-- A Discord bot application — [create one here](https://discord.com/developers/applications)
-
-### 1. Configure
-
-Create `src/Ember.Bot/appsettings.json`:
-
-```json
-{
-  "BotToken": "your-discord-bot-token",
-  "DevGuildId": "",
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=ember;Username=postgres;Password=yourpassword"
-  }
-}
-```
-
-| Key | Description |
-|---|---|
-| `BotToken` | Your bot token from the Discord Developer Portal |
-| `DevGuildId` | Server ID for instant command registration during dev; leave empty for production |
-| `DefaultConnection` | Your PostgreSQL connection string |
-
-### 2. Run locally
-
-```bash
-cd src/Ember.Bot
-dotnet run
-```
-
-### 3. Deploy to Linux
-
-Edit `deploy.ps1` with your server details, then:
-
-```powershell
-./deploy.ps1
-```
-
-Publishes for `linux-x64`, copies to your server via SCP, and restarts the `ember` systemd service.
-
-To make the bot survive server reboots:
-
-```bash
-sudo systemctl enable ember
-```
+If the bot ever goes offline permanently, the source code is here so you can self-host as a fallback. You'll need .NET 10, PostgreSQL, and a Discord bot application. See `deploy.ps1` and `src/Ember.Bot/appsettings.json` as a starting point.
 
 ---
 
