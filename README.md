@@ -1,11 +1,16 @@
+<div align="center">
+
 # 🔥 Ember
 
-> A low-pressure, neurodivergent-friendly Discord habit tracker.
-> No punishment. No guilt. Just progress.
+**A low-pressure, neurodivergent-friendly Discord habit tracker.**
+
+*No punishment. No guilt. Just progress.*
 
 [![License](https://img.shields.io/badge/license-Non--Commercial-orange)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com)
 [![Discord.Net](https://img.shields.io/badge/Discord.Net-3.19.1-5865F2)](https://github.com/discord-net/Discord.Net)
+
+</div>
 
 ---
 
