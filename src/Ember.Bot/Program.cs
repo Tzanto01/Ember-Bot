@@ -53,14 +53,19 @@ using (var scope = host.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
     await db.Database.MigrateAsync();
 
-    // Restore reminder schedules for all habits that have a ReminderTime set
+    // Restore reminder schedules for all habits that have a ReminderTime set,
+    // grouped by user so we only look up each user's timezone once.
     var scheduler = host.Services.GetRequiredService<ReminderScheduler>();
     var habits = await db.Habits
         .Where(h => h.ReminderTime != null)
+        .Include(h => h.User)
         .ToListAsync();
 
     foreach (var habit in habits)
-        await scheduler.ScheduleAsync(habit);
+    {
+        var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
+        await scheduler.ScheduleAsync(habit, tz);
+    }
 }
 
 await host.RunAsync();
