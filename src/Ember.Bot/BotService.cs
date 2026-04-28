@@ -60,6 +60,8 @@ public class BotService : IHostedService
         var devGuildIdStr = _config["DevGuildId"];
         if (ulong.TryParse(devGuildIdStr, out var devGuildId))
         {
+            // Clear any lingering global commands so they don't appear alongside guild commands
+            await _client.BulkOverwriteGlobalApplicationCommandsAsync([]);
             _logger.LogInformation("Bot is ready. Registering slash commands to dev guild {GuildId}...", devGuildId);
             await _interactions.RegisterCommandsToGuildAsync(devGuildId);
             _logger.LogInformation("Slash commands registered to dev guild.");
