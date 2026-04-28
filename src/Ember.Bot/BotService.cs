@@ -39,6 +39,7 @@ public class BotService : IHostedService
     {
         _client.Log += LogAsync;
         _interactions.Log += LogAsync;
+        _interactions.SlashCommandExecuted += OnSlashCommandExecuted;
 
         // Register interaction modules from this assembly
         await _interactions.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
@@ -109,8 +110,37 @@ public class BotService : IHostedService
 
     private async Task OnInteractionAsync(SocketInteraction interaction)
     {
-        var ctx = new SocketInteractionContext(_client, interaction);
-        await _interactions.ExecuteCommandAsync(ctx, _services);
+        try
+        {
+            var ctx = new SocketInteractionContext(_client, interaction);
+            await _interactions.ExecuteCommandAsync(ctx, _services);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled exception in interaction handler.");
+            if (interaction.Type == InteractionType.ApplicationCommand)
+                await interaction.RespondAsync("Something went wrong. Please try again.", ephemeral: true);
+        }
+    }
+
+    private async Task OnSlashCommandExecuted(SlashCommandInfo cmd, IInteractionContext ctx, IResult result)
+    {
+        if (result.IsSuccess) return;
+
+        _logger.LogError("Slash command /{Command} failed: {Error} — {Reason}",
+            cmd.Name, result.Error, result.ErrorReason);
+
+        var msg = result.Error switch
+        {
+            InteractionCommandError.UnmetPrecondition => result.ErrorReason,
+            InteractionCommandError.Exception         => "Something went wrong. Please try again.",
+            _                                         => "Something went wrong. Please try again.",
+        };
+
+        if (ctx.Interaction.HasResponded)
+            await ctx.Interaction.FollowupAsync(msg, ephemeral: true);
+        else
+            await ctx.Interaction.RespondAsync(msg, ephemeral: true);
     }
 
     private Task LogAsync(LogMessage msg)
