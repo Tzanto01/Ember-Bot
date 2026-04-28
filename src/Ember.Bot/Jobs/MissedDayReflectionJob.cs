@@ -1,5 +1,4 @@
 using Discord;
-using Discord.WebSocket;
 using Ember.Bot.Data;
 using Ember.Bot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -29,10 +28,10 @@ public class MissedDayReflectionJob : IJob
     public static readonly JobKey Key = new("missed-day-reflection", "reflections");
 
     private readonly IServiceProvider _services;
-    private readonly DiscordSocketClient _discord;
+    private readonly IDiscordDmSender _discord;
     private readonly ILogger<MissedDayReflectionJob> _logger;
 
-    public MissedDayReflectionJob(IServiceProvider services, DiscordSocketClient discord, ILogger<MissedDayReflectionJob> logger)
+    public MissedDayReflectionJob(IServiceProvider services, IDiscordDmSender discord, ILogger<MissedDayReflectionJob> logger)
     {
         _services = services;
         _discord  = discord;
@@ -134,10 +133,6 @@ public class MissedDayReflectionJob : IJob
             .WithButton("That's ok, move on", $"reflect:dismiss:{user.DiscordUserId}", ButtonStyle.Secondary)
             .Build();
 
-        var discordUser = await _discord.GetUserAsync((ulong)user.DiscordUserId);
-        if (discordUser is null) return;
-
-        var dm = await discordUser.CreateDMChannelAsync();
-        await dm.SendMessageAsync(embed: embed, components: components);
+        await _discord.SendMessageAsync((ulong)user.DiscordUserId, embed: embed, components: components);
     }
 }

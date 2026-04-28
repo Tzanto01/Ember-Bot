@@ -6,11 +6,11 @@ namespace Ember.Bot.Services;
 
 public class ReminderScheduler
 {
-    private readonly IScheduler _scheduler;
+    private readonly ISchedulerFactory _schedulerFactory;
 
-    public ReminderScheduler(IScheduler scheduler)
+    public ReminderScheduler(ISchedulerFactory schedulerFactory)
     {
-        _scheduler = scheduler;
+        _schedulerFactory = schedulerFactory;
     }
 
     /// <summary>
@@ -21,6 +21,8 @@ public class ReminderScheduler
     public async Task ScheduleAsync(Habit habit, TimeZoneInfo? userTz = null)
     {
         if (!habit.ReminderTime.HasValue) return;
+
+        var scheduler = await _schedulerFactory.GetScheduler();
 
         var tz      = userTz ?? TimeZoneInfo.Utc;
         var utcTime = TimezoneHelper.ToUtc(habit.ReminderTime.Value, tz);
@@ -38,15 +40,16 @@ public class ReminderScheduler
             .WithCronSchedule(BuildCron(utcTime))
             .Build();
 
-        if (await _scheduler.CheckExists(jobKey))
-            await _scheduler.DeleteJob(jobKey);
+        if (await scheduler.CheckExists(jobKey))
+            await scheduler.DeleteJob(jobKey);
 
-        await _scheduler.ScheduleJob(job, trigger);
+        await scheduler.ScheduleJob(job, trigger);
     }
 
     /// <summary>Schedules a one-shot snooze reminder for the given habit, firing after <paramref name="delayMinutes"/> minutes.</summary>
     public async Task SnoozeAsync(int habitId, long userId, string habitName, int delayMinutes = 60)
     {
+        var scheduler = await _schedulerFactory.GetScheduler();
         var jobKey = new JobKey($"snooze-{habitId}-{userId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}", "snoozes");
 
         var job = JobBuilder.Create<SnoozeReminderJob>()
@@ -61,7 +64,7 @@ public class ReminderScheduler
             .StartAt(DateTimeOffset.UtcNow.AddMinutes(delayMinutes))
             .Build();
 
-        await _scheduler.ScheduleJob(job, trigger);
+        await scheduler.ScheduleJob(job, trigger);
     }
 
     /// <summary>Builds a daily cron expression for the given UTC time.</summary>
@@ -70,12 +73,12 @@ public class ReminderScheduler
 
     public async Task UnscheduleAsync(int habitId)
     {
+        var scheduler = await _schedulerFactory.GetScheduler();
         var jobKey = JobKeyFor(habitId);
-        if (await _scheduler.CheckExists(jobKey))
-            await _scheduler.DeleteJob(jobKey);
+        if (await scheduler.CheckExists(jobKey))
+            await scheduler.DeleteJob(jobKey);
     }
 
     private static JobKey     JobKeyFor(int habitId)     => new($"habit-{habitId}", "reminders");
     private static TriggerKey TriggerKeyFor(int habitId) => new($"habit-{habitId}-trigger", "reminders");
 }
-

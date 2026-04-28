@@ -1,5 +1,4 @@
 using Discord;
-using Discord.WebSocket;
 using Ember.Bot.Data;
 using Ember.Bot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -19,10 +18,10 @@ public class WeeklySummaryJob : IJob
     public static readonly JobKey Key = new("weekly-summary", "summaries");
 
     private readonly IServiceProvider _services;
-    private readonly DiscordSocketClient _discord;
+    private readonly IDiscordDmSender _discord;
     private readonly ILogger<WeeklySummaryJob> _logger;
 
-    public WeeklySummaryJob(IServiceProvider services, DiscordSocketClient discord, ILogger<WeeklySummaryJob> logger)
+    public WeeklySummaryJob(IServiceProvider services, IDiscordDmSender discord, ILogger<WeeklySummaryJob> logger)
     {
         _services = services;
         _discord  = discord;
@@ -58,9 +57,6 @@ public class WeeklySummaryJob : IJob
 
     private async Task SendSummaryAsync(ulong discordUserId, List<Models.Habit> habits)
     {
-        var discordUser = await _discord.GetUserAsync(discordUserId);
-        if (discordUser is null) return;
-
         var today  = DateOnly.FromDateTime(DateTime.UtcNow);
         var cutoff = today.AddDays(-6); // last 7 days including today
 
@@ -109,9 +105,7 @@ public class WeeklySummaryJob : IJob
         }
 
         embed.WithFooter(footer);
-
-        var dm = await discordUser.CreateDMChannelAsync();
-        await dm.SendMessageAsync(embed: embed.Build());
+        await _discord.SendMessageAsync(discordUserId, embed: embed.Build());
     }
 
     /// <summary>

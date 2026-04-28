@@ -1,5 +1,4 @@
 using Discord;
-using Discord.WebSocket;
 using Ember.Bot.Data;
 using Ember.Bot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -21,10 +20,10 @@ public class SnoozeReminderJob : IJob
     public const string HabitNameKey = "habitName";
 
     private readonly IServiceProvider _services;
-    private readonly Discord.WebSocket.DiscordSocketClient _discord;
+    private readonly IDiscordDmSender _discord;
     private readonly ILogger<SnoozeReminderJob> _logger;
 
-    public SnoozeReminderJob(IServiceProvider services, Discord.WebSocket.DiscordSocketClient discord, ILogger<SnoozeReminderJob> logger)
+    public SnoozeReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<SnoozeReminderJob> logger)
     {
         _services = services;
         _discord  = discord;
@@ -49,18 +48,14 @@ public class SnoozeReminderJob : IJob
 
         try
         {
-            var user = await _discord.GetUserAsync(userId);
-            if (user is null) return;
-
-            var dm = await user.CreateDMChannelAsync();
-
             var components = new ComponentBuilder()
                 .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
                 .WithButton("Skip ❌", $"checkin:skip:{habitId}", ButtonStyle.Secondary)
                 .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}", ButtonStyle.Secondary)
                 .Build();
 
-            await dm.SendMessageAsync(
+            await _discord.SendMessageAsync(
+                userId,
                 $"⏰ Snoozed reminder: **{habitName}**. Ready when you are!",
                 components: components);
         }
