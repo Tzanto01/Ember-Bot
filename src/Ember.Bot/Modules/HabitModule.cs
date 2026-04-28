@@ -31,31 +31,40 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
     [SlashCommand("add", "Add a new habit to track")]
     public async Task AddAsync(
-        [Summary("name", "What habit do you want to track?")] string name,
-        [Summary("reminder", "Daily reminder time in HH:mm in your local timezone (optional)")] string? reminder = null)
+        [Summary("name", "What habit do you want to track?")] string name)
     {
-        TimeOnly? reminderTime = null;
-        if (reminder is not null)
-        {
-            if (!TimeOnly.TryParseExact(reminder, "HH:mm", out var parsed))
-            {
-                await RespondAsync("Couldn't parse that time. Use HH:mm format, e.g. `09:00`.", ephemeral: true);
-                return;
-            }
-            reminderTime = parsed;
-        }
-
-        var habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime);
+        var habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime: null);
 
         var embed = new EmbedBuilder()
-            .WithColor(0xF4845F)
-            .WithTitle("Habit added!")
+            .WithColor(0xE8873A)
+            .WithTitle("🔥 Habit added!")
             .WithDescription($"**{habit.Name}** is now being tracked.")
-            .AddField("Reminder", await FormatReminderAsync(habit.ReminderTime), inline: true)
             .WithFooter("You've got this. One day at a time.")
             .Build();
 
-        await RespondAsync(embed: embed, ephemeral: true);
+        var components = new ComponentBuilder()
+            .WithButton("Set a reminder", $"reminder:set:{habit.Id}", ButtonStyle.Primary, new Emoji("⏰"))
+            .WithButton("Not now", $"reminder:skip:{habit.Id}", ButtonStyle.Secondary)
+            .Build();
+
+        await RespondAsync(embed: embed, components: components, ephemeral: true);
+
+        // Send a DM confirmation
+        try
+        {
+            var dm = await Context.User.CreateDMChannelAsync();
+            var dmEmbed = new EmbedBuilder()
+                .WithColor(0xE8873A)
+                .WithTitle("🔥 New habit started!")
+                .WithDescription($"You're now tracking **{habit.Name}**.")
+                .WithFooter("Check in daily with /habit checkin. Progress over perfection.")
+                .Build();
+            await dm.SendMessageAsync(embed: dmEmbed);
+        }
+        catch
+        {
+            // User has DMs disabled — silently ignore
+        }
     }
 
     // ── /habit list ───────────────────────────────────────────────────────────
