@@ -43,6 +43,18 @@ ScaffoldingReadMe.txt
 appsettings.Development.json
 src/**/appsettings.json
 
+# Deploy output
+publish/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Tool/agent directories
+.wolf/
+.claude/
+
 # Others
 ~$*
 *~
