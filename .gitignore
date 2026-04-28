@@ -43,6 +43,9 @@ ScaffoldingReadMe.txt
 appsettings.Development.json
 src/**/appsettings.json
 
+# Deploy script (contains personal server details)
+deploy.ps1
+
 # Deploy output
 publish/
 
