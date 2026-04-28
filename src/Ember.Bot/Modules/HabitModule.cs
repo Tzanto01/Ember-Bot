@@ -134,4 +134,59 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         embed.WithFooter("Every check-in counts, no matter the gap.");
         await RespondAsync(embed: embed.Build(), ephemeral: true);
     }
+
+    // ── /habit delete ─────────────────────────────────────────────────────────
+
+    [SlashCommand("delete", "Remove a habit and stop tracking it")]
+    public async Task DeleteAsync(
+        [Summary("habit_id", "The ID of the habit to delete (from /habit list)")] int habitId)
+    {
+        var deleted = await _habits.DeleteHabitAsync(Context.User.Id, habitId);
+
+        if (!deleted)
+        {
+            await RespondAsync("Couldn't find that habit. Use `/habit list` to see your habit IDs.", ephemeral: true);
+            return;
+        }
+
+        await RespondAsync("Habit removed. No judgement — you can always start fresh with `/habit add`. 💙", ephemeral: true);
+    }
+
+    // ── /habit edit ───────────────────────────────────────────────────────────
+
+    [SlashCommand("edit", "Edit a habit's name or reminder time")]
+    public async Task EditAsync(
+        [Summary("habit_id", "The ID of the habit to edit")] int habitId,
+        [Summary("name", "New name for the habit")] string? name = null,
+        [Summary("reminder", "New reminder time in HH:mm UTC")] string? reminder = null,
+        [Summary("clear_reminder", "Remove the reminder entirely")] bool clearReminder = false)
+    {
+        TimeOnly? reminderTime = null;
+        if (reminder is not null)
+        {
+            if (!TimeOnly.TryParseExact(reminder, "HH:mm", out var parsed))
+            {
+                await RespondAsync("Couldn't parse that time. Use HH:mm format, e.g. `09:00`.", ephemeral: true);
+                return;
+            }
+            reminderTime = parsed;
+        }
+
+        var habit = await _habits.EditHabitAsync(Context.User.Id, habitId, name, reminderTime, clearReminder);
+
+        if (habit is null)
+        {
+            await RespondAsync("Couldn't find that habit. Use `/habit list` to see your habit IDs.", ephemeral: true);
+            return;
+        }
+
+        var embed = new EmbedBuilder()
+            .WithColor(0xF4845F)
+            .WithTitle("Habit updated!")
+            .AddField("Name", habit.Name, inline: true)
+            .AddField("Reminder", habit.ReminderTime.HasValue ? $"{habit.ReminderTime:HH:mm} UTC" : "None", inline: true)
+            .Build();
+
+        await RespondAsync(embed: embed, ephemeral: true);
+    }
 }

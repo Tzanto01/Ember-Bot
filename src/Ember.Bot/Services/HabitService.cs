@@ -7,10 +7,12 @@ namespace Ember.Bot.Services;
 public class HabitService
 {
     private readonly EmberDbContext _db;
+    private readonly ReminderScheduler _scheduler;
 
-    public HabitService(EmberDbContext db)
+    public HabitService(EmberDbContext db, ReminderScheduler scheduler)
     {
-        _db = db;
+        _db        = db;
+        _scheduler = scheduler;
     }
 
     // Ensure a User row exists for this Discord user
@@ -36,6 +38,9 @@ public class HabitService
         };
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
+
+        await _scheduler.ScheduleAsync(habit);
+
         return habit;
     }
 
@@ -100,5 +105,42 @@ public class HabitService
             prev = d;
         }
         return best;
+    }
+
+    public async Task<bool> DeleteHabitAsync(ulong discordUserId, int habitId)
+    {
+        var habit = await _db.Habits
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+
+        if (habit is null) return false;
+
+        _db.Habits.Remove(habit);
+        await _db.SaveChangesAsync();
+        await _scheduler.UnscheduleAsync(habitId);
+        return true;
+    }
+
+    public async Task<Habit?> EditHabitAsync(ulong discordUserId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder)
+    {
+        var habit = await _db.Habits
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+
+        if (habit is null) return null;
+
+        if (newName is not null) habit.Name = newName;
+
+        if (clearReminder)
+        {
+            habit.ReminderTime = null;
+            await _scheduler.UnscheduleAsync(habitId);
+        }
+        else if (newReminderTime.HasValue)
+        {
+            habit.ReminderTime = newReminderTime;
+            await _scheduler.ScheduleAsync(habit);
+        }
+
+        await _db.SaveChangesAsync();
+        return habit;
     }
 }
