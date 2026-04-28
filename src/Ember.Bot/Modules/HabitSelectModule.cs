@@ -55,15 +55,16 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var embed = BuildShareEmbed(habit, grace, Context.User.Username);
+        var component = (SocketMessageComponent)Context.Interaction;
 
-        // Post the card publicly, then update the ephemeral picker to confirm
-        await FollowupAsync(embed: embed);
-        await ((SocketMessageComponent)Context.Interaction)
-            .UpdateAsync(m =>
-            {
-                m.Content    = "Streak card posted! 🔥";
-                m.Components = new ComponentBuilder().Build();
-            });
+        // Acknowledge the component interaction first, then post publicly.
+        await component.UpdateAsync(m =>
+        {
+            m.Content    = "Streak card posted! 🔥";
+            m.Components = new ComponentBuilder().Build();
+        });
+
+        await Context.Channel.SendMessageAsync(embed: embed);
     }
 
     // ── habit:select:delete ───────────────────────────────────────────────────

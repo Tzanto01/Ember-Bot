@@ -72,6 +72,8 @@ public class MissedDayReflectionJob : IJob
 
         foreach (var habit in user.Habits)
         {
+            if (!HabitService.IsActiveOn(habit, yesterday)) continue;
+
             // Skip paused habits
             if (habit.PausedUntil.HasValue && habit.PausedUntil >= yesterday) continue;
 

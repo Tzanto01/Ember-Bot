@@ -206,6 +206,13 @@ public class HabitService
         return (done, target);
     }
 
+    /// <summary>
+    /// Returns whether the habit should be counted as active on the given date.
+    /// Habits added after that date should not be treated as missed.
+    /// </summary>
+    public static bool IsActiveOn(Habit habit, DateOnly date)
+        => DateOnly.FromDateTime(habit.CreatedAt) <= date;
+
     public async Task<Habit?> SetFrequencyAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget)
     {
         var habit = await _db.Habits

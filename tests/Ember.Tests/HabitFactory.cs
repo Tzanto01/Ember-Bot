@@ -20,6 +20,14 @@ internal static class HabitFactory
         FrequencyType frequency,
         int? weeklyTarget,
         params (int daysAgo, bool completed)[] entries)
+        => Make(createdAtDaysAgo: 90, pausedUntilDaysAgo, frequency, weeklyTarget, entries);
+
+    public static Habit Make(
+        int createdAtDaysAgo,
+        int? pausedUntilDaysAgo,
+        FrequencyType frequency,
+        int? weeklyTarget,
+        params (int daysAgo, bool completed)[] entries)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var habit = new Habit
@@ -28,7 +36,7 @@ internal static class HabitFactory
             Name          = "Test",
             FrequencyType = frequency,
             WeeklyTarget  = weeklyTarget,
-            CreatedAt     = DateTime.UtcNow.AddDays(-90),
+            CreatedAt     = DateTime.UtcNow.AddDays(-createdAtDaysAgo),
         };
 
         if (pausedUntilDaysAgo.HasValue)

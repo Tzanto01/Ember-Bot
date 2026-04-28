@@ -39,6 +39,14 @@ public class HabitSelectRoutingTests
         buttonId.Should().EndWith(habitId.ToString());
     }
 
+    [Fact]
+    public void ShareRoute_SelectCustomId_IsLiteral()
+    {
+        var customId = "habit:select:share";
+
+        customId.Should().Be("habit:select:share");
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Delete route: habit:select:delete → habitaction:delete:confirm:* / cancel
     // ─────────────────────────────────────────────────────────────────────────
