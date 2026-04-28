@@ -35,7 +35,7 @@ public class ReminderScheduler
 
         var trigger = TriggerBuilder.Create()
             .WithIdentity(TriggerKeyFor(habit.Id))
-            .WithCronSchedule($"0 {utcTime.Minute} {utcTime.Hour} * * ?")
+            .WithCronSchedule(BuildCron(utcTime))
             .Build();
 
         if (await _scheduler.CheckExists(jobKey))
@@ -43,6 +43,10 @@ public class ReminderScheduler
 
         await _scheduler.ScheduleJob(job, trigger);
     }
+
+    /// <summary>Builds a daily cron expression for the given UTC time.</summary>
+    internal static string BuildCron(TimeOnly utcTime) =>
+        $"0 {utcTime.Minute} {utcTime.Hour} * * ?";
 
     public async Task UnscheduleAsync(int habitId)
     {
