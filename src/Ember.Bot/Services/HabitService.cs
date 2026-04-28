@@ -39,7 +39,7 @@ public class HabitService
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
 
-        await _scheduler.ScheduleAsync(habit);
+        await _scheduler.ScheduleAsync(habit, await GetUserTzAsync(discordUserId));
 
         return habit;
     }
@@ -137,10 +137,16 @@ public class HabitService
         else if (newReminderTime.HasValue)
         {
             habit.ReminderTime = newReminderTime;
-            await _scheduler.ScheduleAsync(habit);
+            await _scheduler.ScheduleAsync(habit, await GetUserTzAsync(discordUserId));
         }
 
         await _db.SaveChangesAsync();
         return habit;
+    }
+
+    public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        return TimezoneHelper.Find(user?.Timezone ?? "UTC") ?? TimeZoneInfo.Utc;
     }
 }
