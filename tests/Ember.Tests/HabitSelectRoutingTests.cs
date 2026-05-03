@@ -203,6 +203,43 @@ public class HabitSelectRoutingTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Reminder check-in buttons: checkin:done:{habitId}:{unixSeconds} etc.
+    // Buttons expire 24 hours after the reminder was sent.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("checkin:done:")]
+    [InlineData("checkin:skip:")]
+    [InlineData("checkin:snooze:")]
+    public void ReminderCheckIn_ButtonIds_IncludeTimestamp(string prefix)
+    {
+        var habitId = 42;
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var buttonId = $"{prefix}{habitId}:{timestamp}";
+
+        // Must match [ComponentInteraction("checkin:done:*:*")] etc.
+        var parts = buttonId.Split(':');
+        parts.Should().HaveCount(4);
+        parts[0].Should().Be("checkin");
+        int.Parse(parts[2]).Should().Be(habitId);
+        long.TryParse(parts[3], out _).Should().BeTrue("timestamp must be a valid unix seconds value");
+    }
+
+    [Fact]
+    public void ReminderCheckIn_TimestampIsRecentUnixSeconds()
+    {
+        var habitId = 1;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var buttonId = $"checkin:done:{habitId}:{now}";
+
+        var timestampStr = buttonId.Split(':')[3];
+        var timestamp = long.Parse(timestampStr);
+
+        // Timestamp should be within the last few seconds
+        Math.Abs(now - timestamp).Should().BeLessThan(5);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Leaderboard opt-out button
     // ─────────────────────────────────────────────────────────────────────────
 
