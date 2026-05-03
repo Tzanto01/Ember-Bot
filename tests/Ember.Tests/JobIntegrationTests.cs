@@ -41,6 +41,30 @@ public class JobIntegrationTests
         host.Discord.Messages.Should().ContainSingle();
         host.Discord.Messages[0].UserId.Should().Be(10);
         host.Discord.Messages[0].Text.Should().Contain("Stretch");
+        host.Discord.Messages[0].Text.Should().Contain("Did you follow this habit today?");
+        host.Discord.Messages[0].Components.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SnoozeReminderJob_TriggeredForScheduledHabit_ReasksWhetherHabitWasFollowedToday()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync();
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            var habit = await service.AddHabitAsync(20, "Journal", new TimeOnly(8, 0));
+
+            var scheduler = sp.GetRequiredService<ReminderScheduler>();
+            await scheduler.SnoozeAsync(habit.Id, (long)habit.UserId, habit.Name, delayMinutes: 0);
+        });
+
+        await host.WaitForDmCountAsync(1);
+
+        host.Discord.Messages.Should().ContainSingle();
+        host.Discord.Messages[0].UserId.Should().Be(20);
+        host.Discord.Messages[0].Text.Should().Contain("Journal");
+        host.Discord.Messages[0].Text.Should().Contain("Did you follow this habit today?");
         host.Discord.Messages[0].Components.Should().NotBeNull();
     }
 

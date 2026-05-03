@@ -56,7 +56,7 @@ public class SnoozeReminderJob : IJob
 
             await _discord.SendMessageAsync(
                 userId,
-                $"⏰ Snoozed reminder: **{habitName}**. Ready when you are!",
+                $"⏰ Snoozed reminder: **{habitName}**. Ready when you are!\n\nDid you follow this habit today?",
                 components: components);
         }
         catch (Exception ex)
