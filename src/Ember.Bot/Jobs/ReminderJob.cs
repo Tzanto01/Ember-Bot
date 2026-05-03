@@ -40,6 +40,9 @@ public class ReminderJob : IJob
         var userId    = (ulong)data.GetLong(UserIdKey);
         var habitName = data.GetString(HabitNameKey) ?? "your habit";
 
+        _logger.LogInformation("ReminderJob firing for habit {HabitId} ({HabitName}), user {UserId}, scheduled fire time {FireTimeUtc}",
+            habitId, habitName, userId, context.ScheduledFireTimeUtc);
+
         // Skip if already checked in today
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
