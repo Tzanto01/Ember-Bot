@@ -1,5 +1,6 @@
 using Ember.Bot.Jobs;
 using Ember.Bot.Models;
+using Microsoft.Extensions.Logging;
 using Quartz;
 
 namespace Ember.Bot.Services;
@@ -7,10 +8,12 @@ namespace Ember.Bot.Services;
 public class ReminderScheduler
 {
     private readonly ISchedulerFactory _schedulerFactory;
+    private readonly ILogger<ReminderScheduler> _logger;
 
-    public ReminderScheduler(ISchedulerFactory schedulerFactory)
+    public ReminderScheduler(ISchedulerFactory schedulerFactory, ILogger<ReminderScheduler> logger)
     {
         _schedulerFactory = schedulerFactory;
+        _logger = logger;
     }
 
     /// <summary>
@@ -28,6 +31,10 @@ public class ReminderScheduler
         var utcTime = TimezoneHelper.ToUtc(habit.ReminderTime.Value, tz);
         var jobKey  = JobKeyFor(habit.Id);
 
+        _logger.LogInformation(
+            "Scheduling reminder for habit {HabitId} ({HabitName}): local={LocalTime} tz={TzId} utc={UtcTime} cron={Cron}",
+            habit.Id, habit.Name, habit.ReminderTime.Value, tz.Id, utcTime, BuildCron(utcTime));
+
         var job = JobBuilder.Create<ReminderJob>()
             .WithIdentity(jobKey)
             .UsingJobData(ReminderJob.HabitIdKey,  habit.Id)
@@ -37,7 +44,7 @@ public class ReminderScheduler
 
         var trigger = TriggerBuilder.Create()
             .WithIdentity(TriggerKeyFor(habit.Id))
-            .WithCronSchedule(BuildCron(utcTime))
+            .WithCronSchedule(BuildCron(utcTime), x => x.InTimeZone(TimeZoneInfo.Utc))
             .Build();
 
         if (await scheduler.CheckExists(jobKey))

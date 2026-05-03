@@ -56,13 +56,13 @@ public static class AppHost
                     q.AddTrigger(opts => opts
                         .ForJob(WeeklySummaryJob.Key)
                         .WithIdentity("weekly-summary-trigger", "summaries")
-                        .WithCronSchedule("0 0 9 ? * SUN"));
+                        .WithCronSchedule("0 0 9 ? * SUN", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
                     q.AddJob<MissedDayReflectionJob>(opts => opts.WithIdentity(MissedDayReflectionJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts
                         .ForJob(MissedDayReflectionJob.Key)
                         .WithIdentity("missed-day-reflection-trigger", "reflections")
-                        .WithCronSchedule("0 0 10 * * ?"));
+                        .WithCronSchedule("0 0 10 * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
                 });
                 services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
                 services.AddSingleton<ReminderScheduler>();
