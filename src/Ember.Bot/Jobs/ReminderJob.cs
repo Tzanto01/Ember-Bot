@@ -58,11 +58,13 @@ public class ReminderJob : IJob
         var recentCount = await db.HabitLogs
             .CountAsync(l => l.HabitId == habitId && l.Date > weekAgo && l.Date < today && l.Completed);
 
-        string message = recentCount >= 4
-            ? $"Hey! Just a gentle nudge — time for **{habitName}**. You've been doing great 🔥"
+        string intro = recentCount >= 4
+            ? $"Hey! Just a gentle nudge for **{habitName}**. You've been doing great 🔥"
             : recentCount >= 1
                 ? $"Hey! Reminder for **{habitName}**. No pressure — just showing up counts 💙"
                 : $"Hey 👋 Checking in on **{habitName}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.";
+
+        var message = $"{intro}\n\nDid you follow this habit today?";
 
         var components = new ComponentBuilder()
             .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
