@@ -69,10 +69,11 @@ public class ReminderJob : IJob
 
         var message = $"{intro}\n\nDid you follow this habit today?";
 
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var components = new ComponentBuilder()
-            .WithButton("Done ✅", $"checkin:done:{habitId}", ButtonStyle.Success)
-            .WithButton("Skip ❌", $"checkin:skip:{habitId}", ButtonStyle.Secondary)
-            .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}", ButtonStyle.Secondary)
+            .WithButton("Done ✅", $"checkin:done:{habitId}:{now}", ButtonStyle.Success)
+            .WithButton("Skip ❌", $"checkin:skip:{habitId}:{now}", ButtonStyle.Secondary)
+            .WithButton("Snooze 1h ⏰", $"checkin:snooze:{habitId}:{now}", ButtonStyle.Secondary)
             .Build();
 
         try

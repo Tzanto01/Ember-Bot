@@ -7,10 +7,12 @@ namespace Ember.Bot.Modules;
 
 /// <summary>
 /// Handles the ✅/❌/⏰ button interactions sent in DM reminders.
-/// Custom ID format: "checkin:done:{habitId}", "checkin:skip:{habitId}", "checkin:snooze:{habitId}"
+/// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
+/// Buttons expire 24 hours after the reminder was sent.
 /// </summary>
 public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContext>
 {
+    private const int ExpiryHours = 24;
     private readonly HabitService _habits;
     private readonly ReminderScheduler _scheduler;
 
@@ -20,9 +22,34 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         _scheduler = scheduler;
     }
 
-    [ComponentInteraction("checkin:done:*")]
-    public async Task OnDoneAsync(string habitIdStr)
+    /// <summary>
+    /// Checks whether the reminder button has expired (more than 24 hours since sent).
+    /// If expired, updates the message to show the expiry notice and returns true.
+    /// </summary>
+    private async Task<bool> IsExpiredAsync(string timestampStr)
     {
+        if (!long.TryParse(timestampStr, out var sentUnix))
+            return false; // malformed timestamp — let the action proceed
+
+        var sentTime = DateTimeOffset.FromUnixTimeSeconds(sentUnix);
+        if (DateTimeOffset.UtcNow - sentTime <= TimeSpan.FromHours(ExpiryHours))
+            return false;
+
+        // Expired — update the message to remove buttons and show expiry notice
+        var component = (SocketMessageComponent)Context.Interaction;
+        await component.UpdateAsync(msg =>
+        {
+            msg.Content    = $"⏰ This reminder has expired — check-ins are only available for {ExpiryHours} hours after the reminder.";
+            msg.Components = new ComponentBuilder().Build();
+        });
+        return true;
+    }
+
+    [ComponentInteraction("checkin:done:*:*")]
+    public async Task OnDoneAsync(string habitIdStr, string timestampStr)
+    {
+        if (await IsExpiredAsync(timestampStr)) return;
+
         if (!int.TryParse(habitIdStr, out var habitId))
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
@@ -45,9 +72,11 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         });
     }
 
-    [ComponentInteraction("checkin:skip:*")]
-    public async Task OnSkipAsync(string habitIdStr)
+    [ComponentInteraction("checkin:skip:*:*")]
+    public async Task OnSkipAsync(string habitIdStr, string timestampStr)
     {
+        if (await IsExpiredAsync(timestampStr)) return;
+
         if (!int.TryParse(habitIdStr, out var habitId))
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
@@ -70,9 +99,11 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         });
     }
 
-    [ComponentInteraction("checkin:snooze:*")]
-    public async Task OnSnoozeAsync(string habitIdStr)
+    [ComponentInteraction("checkin:snooze:*:*")]
+    public async Task OnSnoozeAsync(string habitIdStr, string timestampStr)
     {
+        if (await IsExpiredAsync(timestampStr)) return;
+
         if (!int.TryParse(habitIdStr, out var habitId))
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
