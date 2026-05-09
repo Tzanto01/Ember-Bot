@@ -1,0 +1,7 @@
+tests/
+.git/
+.wolf/
+.github/
+publish/
+*.md
+*.slnx

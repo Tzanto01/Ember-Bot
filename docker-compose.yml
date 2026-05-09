@@ -1,0 +1,16 @@
+services:
+  ember:
+    build:
+      context: .
+      dockerfile: docker/bot.Dockerfile
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=emberdb;Username=${DB_USER};Password=${DB_PASSWORD}
+      BotToken: ${BOT_TOKEN}
+      DevGuildId: ${DEV_GUILD_ID:-}
+    networks:
+      - homeserver-net
+
+networks:
+  homeserver-net:
+    external: true
