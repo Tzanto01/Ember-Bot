@@ -28,7 +28,7 @@ public static class AppHost
         return Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration(config =>
             {
-                config.AddJsonFile("appsettings.json", optional: !options.IncludeDiscordGateway)
+                config.AddJsonFile("appsettings.json", optional: true)
                     .AddJsonFile("appsettings.Development.json", optional: true)
                     .AddEnvironmentVariables();
             })

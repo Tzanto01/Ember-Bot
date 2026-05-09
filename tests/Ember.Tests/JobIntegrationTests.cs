@@ -69,7 +69,7 @@ public class JobIntegrationTests
     }
 
     [Fact]
-    public async Task ReminderJob_DoesNotSendWhenHabitAlreadyCompletedToday()
+    public async Task ReminderJob_SendsEvenWhenHabitAlreadyCompletedToday()
     {
         await using var host = await IntegrationTestHost.CreateAsync();
 
@@ -83,9 +83,9 @@ public class JobIntegrationTests
 
         var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
         await scheduler.TriggerJob(new JobKey($"habit-{habitId}", "reminders"));
-        await Task.Delay(250);
+        await host.WaitForDmCountAsync(1);
 
-        host.Discord.Messages.Should().BeEmpty();
+        host.Discord.Messages.Should().ContainSingle(m => m.UserId == 10);
     }
 
     [Fact]
