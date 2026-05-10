@@ -21,10 +21,27 @@ public class MissedDayReflectionTests
     }
 
     [Fact]
-    public void IsActiveOn_HabitCreatedYesterday_IsTrueForYesterday()
+    public void IsActiveOn_HabitCreatedYesterday_IsFalseForYesterday()
     {
+        // A habit created on the evaluated day should never count as "missed" —
+        // the user had no full day to complete it.
         var habit = HabitFactory.Make(
             createdAtDaysAgo: 1,
+            pausedUntilDaysAgo: null,
+            frequency: FrequencyType.Daily,
+            weeklyTarget: null);
+
+        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+
+        HabitService.IsActiveOn(habit, yesterday).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsActiveOn_HabitCreatedTwoDaysAgo_IsTrueForYesterday()
+    {
+        // A habit created strictly before the evaluated day IS active on that day.
+        var habit = HabitFactory.Make(
+            createdAtDaysAgo: 2,
             pausedUntilDaysAgo: null,
             frequency: FrequencyType.Daily,
             weeklyTarget: null);
