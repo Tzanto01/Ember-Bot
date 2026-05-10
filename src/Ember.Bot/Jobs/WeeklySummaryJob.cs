@@ -57,14 +57,14 @@ public class WeeklySummaryJob : IJob
 
     private async Task SendSummaryAsync(ulong discordUserId, List<Models.Habit> habits)
     {
-        var today  = DateOnly.FromDateTime(DateTime.UtcNow);
-        var cutoff = today.AddDays(-6); // last 7 days including today
+        var weekEnd = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1); // yesterday — last complete day
+        var cutoff  = weekEnd.AddDays(-6);                                 // 7-day window ending yesterday
 
         // Tally up
         int totalHabits = habits.Count;
         int totalPossible = totalHabits * 7;
-        int totalDone = habits.Sum(h => h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= today));
-        int perfectHabits = habits.Count(h => h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= today) == 7);
+        int totalDone = habits.Sum(h => h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= weekEnd));
+        int perfectHabits = habits.Count(h => h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= weekEnd) == 7);
 
         string headline;
         string footer;
@@ -95,9 +95,9 @@ public class WeeklySummaryJob : IJob
 
         foreach (var h in habits)
         {
-            var doneThisWeek = h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= today);
+            var doneThisWeek = h.Logs.Count(l => l.Completed && l.Date >= cutoff && l.Date <= weekEnd);
             var best = HabitService.BestStreak(h);
-            var dots = BuildDotString(h, cutoff, today);
+            var dots = BuildDotString(h, cutoff, weekEnd);
             embed.AddField(
                 $"{h.Name}",
                 $"{dots} **{doneThisWeek}/7** · Best streak: **{best}**",
