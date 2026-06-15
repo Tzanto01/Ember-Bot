@@ -1,19 +1,49 @@
+# Ember Docker Deploy Script
+# Copy this file to deploy.ps1 and fill in your server details below.
+# deploy.ps1 is gitignored — your server details stay local.
+# Usage: .\deploy.ps1 [-SkipTests]
+
+param(
+    [switch]$SkipTests = $false
+)
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+$ServerUser = "user"
+$ServerHost = "your-server-ip"
+$ServerRoot = "/home/user/ember"
+$RepoRoot   = $PSScriptRoot
+$SshTarget  = "$ServerUser@$ServerHost"
+# ────────────────────────────────────────────────────────────────────────────────
+
 $ErrorActionPreference = "Stop"
 
-# Copy this file to deploy.ps1, fill in your details, and run it.
-# deploy.ps1 is gitignored — your server details stay local.
+# 1. Run tests (abort on failure)
+if (-not $SkipTests) {
+    Push-Location $RepoRoot
+    dotnet test tests/Ember.Tests/Ember.Tests.csproj -v q
+    if ($LASTEXITCODE -ne 0) { Write-Host "Tests FAILED. Aborting." -ForegroundColor Red; Pop-Location; exit 1 }
+    Pop-Location
+}
 
-$server = "user@your-server-ip"
-$remotePath = "/path/to/ember"
-$publishPath = "./publish"
+# 2. Package committed source (git archive omits bin/, obj/, .wolf/, etc.)
+$TmpArchive = Join-Path $env:TEMP "ember-deploy.tar.gz"
+Push-Location $RepoRoot
+git archive --format=tar.gz HEAD -o $TmpArchive
+if ($LASTEXITCODE -ne 0) { Write-Host "git archive FAILED — commit changes first." -ForegroundColor Red; Pop-Location; exit 1 }
+Pop-Location
 
-Write-Host "Publishing bot..." -ForegroundColor Cyan
-dotnet publish src/Ember.Bot/Ember.Bot.csproj -c Release -r linux-x64 --self-contained false -o $publishPath
+# 3. Upload
+ssh $SshTarget "mkdir -p $ServerRoot"
+scp $TmpArchive "${SshTarget}:${ServerRoot}/src.tar.gz"
+Remove-Item $TmpArchive
 
-Write-Host "Copying files to server..." -ForegroundColor Cyan
-scp -r "$publishPath/*" "${server}:${remotePath}"
+# 4. Extract + restart on server.
+#    rm -rf src tests docker FIRST: git archive omits deleted files, but `tar -xzf` only overwrites
+#    and never removes files deleted since the last deploy. Without this a deleted module lingers on
+#    disk, gets recompiled, and AddModulesAsync (reflection) re-registers it. .env / data live
+#    elsewhere and are untouched; tar restores these dirs fresh from the archive.
+$RemoteCmd = "cd $ServerRoot && rm -rf src tests docker && tar -xzf src.tar.gz && rm src.tar.gz && docker compose up -d --build"
+ssh $SshTarget $RemoteCmd
+if ($LASTEXITCODE -ne 0) { Write-Host "Docker Compose deploy FAILED." -ForegroundColor Red; exit 1 }
 
-Write-Host "Restarting service..." -ForegroundColor Cyan
-ssh $server "sudo systemctl restart ember"
-
-Write-Host "Done! Bot restarted successfully." -ForegroundColor Green
+Write-Host "Deploy complete." -ForegroundColor Green
