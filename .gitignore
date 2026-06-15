@@ -74,3 +74,11 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# OpenWolf — runtime & generated files (do not commit)
+.wolf/daemon.log
+.wolf/cron-state.json
+.wolf/designqc-report.json
+.wolf/suggestions.json
+.wolf/backups/
+.wolf/hooks/
