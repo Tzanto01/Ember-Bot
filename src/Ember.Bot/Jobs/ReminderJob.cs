@@ -43,18 +43,9 @@ public class ReminderJob : IJob
         _logger.LogInformation("ReminderJob firing for habit {HabitId} ({HabitName}), user {UserId}, scheduled fire time {FireTimeUtc}",
             habitId, habitName, userId, context.ScheduledFireTimeUtc);
 
-        // Skip if already checked in today
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var alreadyDone = await db.HabitLogs
-            .AnyAsync(l => l.HabitId == habitId && l.Date == today && l.Completed);
-
-        if (alreadyDone)
-        {
-            _logger.LogDebug("Skipping reminder for habit {HabitId} — already checked in today.", habitId);
-            return;
-        }
 
         // Count how many of the last 7 days (excluding today) had a completed check-in
         var weekAgo = today.AddDays(-7);
