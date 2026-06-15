@@ -1,49 +1,13 @@
-# Ember Docker Deploy Script
-# Copy this file to deploy.ps1 and fill in your server details below.
-# deploy.ps1 is gitignored — your server details stay local.
-# Usage: .\deploy.ps1 [-SkipTests]
-
-param(
-    [switch]$SkipTests = $false
-)
-
-# ── Configuration ──────────────────────────────────────────────────────────────
-$ServerUser = "user"
-$ServerHost = "your-server-ip"
-$ServerRoot = "/home/user/ember"
-$RepoRoot   = $PSScriptRoot
-$SshTarget  = "$ServerUser@$ServerHost"
-# ────────────────────────────────────────────────────────────────────────────────
-
-$ErrorActionPreference = "Stop"
-
-# 1. Run tests (abort on failure)
-if (-not $SkipTests) {
-    Push-Location $RepoRoot
-    dotnet test tests/Ember.Tests/Ember.Tests.csproj -v q
-    if ($LASTEXITCODE -ne 0) { Write-Host "Tests FAILED. Aborting." -ForegroundColor Red; Pop-Location; exit 1 }
-    Pop-Location
+# Ember deploy — copy to deploy.ps1 (gitignored) and fill in your server details.
+# Thin shim over the shared homeserver-deploy engine. Usage: .\deploy.ps1 [-DryRun] [-SkipTests]
+$DeployTool = "D:\Programming\Published Projects\homeserver-deploy\Deploy.ps1"  # adjust if your layout differs
+$config = @{
+    Name       = "ember"
+    ServerHost = "your-server-ip"
+    ServerUser = "user"
+    RemotePath = "/path/to/ember"
+    RepoRoot   = $PSScriptRoot
+    Tests      = @({ dotnet test tests/Ember.Tests/Ember.Tests.csproj -v q })
+    PruneDirs  = @("src", "tests", "docker")
 }
-
-# 2. Package committed source (git archive omits bin/, obj/, .wolf/, etc.)
-$TmpArchive = Join-Path $env:TEMP "ember-deploy.tar.gz"
-Push-Location $RepoRoot
-git archive --format=tar.gz HEAD -o $TmpArchive
-if ($LASTEXITCODE -ne 0) { Write-Host "git archive FAILED — commit changes first." -ForegroundColor Red; Pop-Location; exit 1 }
-Pop-Location
-
-# 3. Upload
-ssh $SshTarget "mkdir -p $ServerRoot"
-scp $TmpArchive "${SshTarget}:${ServerRoot}/src.tar.gz"
-Remove-Item $TmpArchive
-
-# 4. Extract + restart on server.
-#    rm -rf src tests docker FIRST: git archive omits deleted files, but `tar -xzf` only overwrites
-#    and never removes files deleted since the last deploy. Without this a deleted module lingers on
-#    disk, gets recompiled, and AddModulesAsync (reflection) re-registers it. .env / data live
-#    elsewhere and are untouched; tar restores these dirs fresh from the archive.
-$RemoteCmd = "cd $ServerRoot && rm -rf src tests docker && tar -xzf src.tar.gz && rm src.tar.gz && docker compose up -d --build"
-ssh $SshTarget $RemoteCmd
-if ($LASTEXITCODE -ne 0) { Write-Host "Docker Compose deploy FAILED." -ForegroundColor Red; exit 1 }
-
-Write-Host "Deploy complete." -ForegroundColor Green
+& $DeployTool @config @args
