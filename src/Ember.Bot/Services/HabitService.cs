@@ -129,12 +129,12 @@ public class HabitService
 
         // Start from today (or yesterday if today isn't checked in and isn't paused).
         var day = today;
-        if (!completed.Contains(today) && !IsPaused(habit, today))
+        if (!completed.Contains(today) && !IsPausedOn(habit, today))
             day = today.AddDays(-1);
 
         while (day >= floor)
         {
-            if (IsPaused(habit, day))
+            if (IsPausedOn(habit, day))
             {
                 // Paused — skip without grace, but guard against underflow
                 if (day == floor) break;
@@ -163,7 +163,8 @@ public class HabitService
         return (streak, graceUsed);
     }
 
-    private static bool IsPaused(Habit habit, DateOnly date)
+    /// <summary>Returns whether the habit is paused on the given date.</summary>
+    public static bool IsPausedOn(Habit habit, DateOnly date)
         => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value;
 
     /// <summary>Returns the longest consecutive completed-day streak (no grace).</summary>

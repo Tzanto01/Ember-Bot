@@ -35,6 +35,12 @@ public class AppHostIntegrationTests
 
         weeklyTrigger.Should().NotBeNull();
         reflectionTrigger.Should().NotBeNull();
+
+        // The weekly summary must fire Sundays 09:00 UTC — pinned to UTC explicitly,
+        // because Quartz otherwise interprets cron expressions in server-local time.
+        var weeklyCron = weeklyTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
+        weeklyCron.CronExpressionString.Should().Be("0 0 9 ? * SUN");
+        weeklyCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
     }
 
     [Fact]
