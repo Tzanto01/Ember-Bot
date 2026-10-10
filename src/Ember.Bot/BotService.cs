@@ -50,8 +50,20 @@ public class BotService : IHostedService
         var token = _config["BotToken"]
             ?? throw new InvalidOperationException("BotToken is not configured.");
 
-        await _client.LoginAsync(TokenType.Bot, token);
-        await _client.StartAsync();
+        await StartClientAsync(
+            _client.SetStatusAsync,
+            () => _client.LoginAsync(TokenType.Bot, token),
+            _client.StartAsync);
+    }
+
+    internal static async Task StartClientAsync(
+        Func<UserStatus, Task> setStatusAsync,
+        Func<Task> loginAsync,
+        Func<Task> startAsync)
+    {
+        await setStatusAsync(UserStatus.Online);
+        await loginAsync();
+        await startAsync();
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
