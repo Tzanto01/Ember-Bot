@@ -52,7 +52,7 @@ Escalate to Nico only for these, or for a genuinely new product, security or mon
 
 Goal: one clean `main` that equals production plus the reviewed weekly-summary work, with CI on every branch.
 
-1. Merge `agent/discord-initial-presence` (production `faf442b`) into `main`.
+1. Merge `v2/plan` into `main`. It contains production `faf442b` from `agent/discord-initial-presence` plus this plan.
 2. Merge `trial/T4-claude` (`f853056`) on top. Run the full suite; it must stay green.
 3. Leave `trial/T4-codex`, `opencode/mighty-wolf` and `copilot/*` untouched. List them for Nico as candidates for deletion; deleting them needs his approval.
 4. `.github/workflows/ci.yml`: run on push to every branch and on PRs. Add a vulnerable-package check (`dotnet list package --vulnerable`) and fix NU1903 (`SQLitePCLRaw.lib.e_sqlite3`, test project only).
