@@ -13,6 +13,8 @@ namespace Ember.Bot.Jobs;
 /// then advances it to the next local occurrence of the habit's ReminderTime.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
 /// without sending, as are habits paused or already completed on the user's local day.
+/// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
+/// reminders pause (still advanced, not sent) until they confirm Ember can reach them again.
 /// </summary>
 [DisallowConcurrentExecution]
 public class ReminderDispatchJob : IJob
@@ -20,6 +22,9 @@ public class ReminderDispatchJob : IJob
     public static readonly JobKey Key = new("reminder-dispatch", "reminders");
 
     public static readonly TimeSpan StaleAfter = TimeSpan.FromHours(2);
+
+    /// <summary>Undeliverable reminders in a row after which a user's DM reminders pause.</summary>
+    public const int MaxConsecutiveDmFailures = 3;
 
     private readonly IServiceProvider _services;
     private readonly IReminderChannel _channel;
@@ -72,7 +77,9 @@ public class ReminderDispatchJob : IJob
         var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
 
+        var user = habit.User;
         var send = now - dueAt <= StaleAfter
+            && user.DmRemindersPausedAt is null
             && !HabitService.IsPausedOn(habit, today)
             && !await db.HabitLogs.AnyAsync(l => l.HabitId == habit.Id && l.Date == today && l.Completed, cancellationToken);
 
@@ -84,7 +91,17 @@ public class ReminderDispatchJob : IJob
             var snoozed = habit.ReminderTime is not { } time
                 || TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dueAt, DateTimeKind.Utc), tz)) != time;
 
-            await SendAsync(new Reminder((ulong)habit.UserId, habit.Id, habit.Name, recent, snoozed), cancellationToken);
+            var outcome = await SendAsync(new Reminder((ulong)habit.UserId, habit.Id, habit.Name, recent, snoozed), cancellationToken);
+            if (outcome == DeliveryOutcome.Delivered)
+            {
+                user.DmFailureCount = 0;
+            }
+            else if (outcome is not null && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
+            {
+                user.DmRemindersPausedAt = now;
+                _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
+                    user.DiscordUserId, user.DmFailureCount);
+            }
         }
 
         habit.NextReminderUtc = habit.ReminderTime is { } reminderTime

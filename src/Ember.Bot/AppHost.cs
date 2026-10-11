@@ -115,16 +115,19 @@ public static class AppHost
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (host.Services.GetService<InteractionService>() is { } interactions)
+            interactions.InteractionExecuted += ActivatorUtilities.CreateInstance<DmPauseNotifier>(host.Services).OnInteractionExecutedAsync;
     }
 
     private sealed class NullDiscordDmSender : IDiscordDmSender
     {
-        public Task<bool> SendMessageAsync(
+        public Task<DeliveryOutcome> SendMessageAsync(
             ulong userId,
             string? text = null,
             Embed? embed = null,
             MessageComponent? components = null,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
+            => Task.FromResult(DeliveryOutcome.UserNotFound);
     }
 }

@@ -327,6 +327,37 @@ public class HabitService
         return habits.Count;
     }
 
+    /// <summary>
+    /// Marks the "your DM reminders are paused" notice as shown. Returns true only for the one
+    /// call that should show it: the user's DM reminders are paused and they haven't been told yet.
+    /// </summary>
+    public async Task<bool> ClaimDmPauseNoticeAsync(ulong discordUserId)
+    {
+        var now = _time.GetUtcNow().UtcDateTime;
+        return await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId && u.DmRemindersPausedAt != null && u.DmPauseNoticeSentAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
+    }
+
+    /// <summary>Undoes <see cref="ClaimDmPauseNoticeAsync"/> when the notice couldn't be shown, so the next interaction shows it.</summary>
+    public async Task ReleaseDmPauseNoticeAsync(ulong discordUserId)
+    {
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, (DateTime?)null));
+    }
+
+    /// <summary>Turns DM reminders back on after Ember could reach the user again.</summary>
+    public async Task ResumeDmRemindersAsync(ulong discordUserId)
+    {
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.DmFailureCount, 0)
+                .SetProperty(u => u.DmRemindersPausedAt, (DateTime?)null)
+                .SetProperty(u => u.DmPauseNoticeSentAt, (DateTime?)null));
+    }
+
     private DateTime? NextReminderUtc(Habit habit, TimeZoneInfo tz)
         => habit.ReminderTime is { } time
             ? TimezoneHelper.NextOccurrenceUtc(time, tz, _time.GetUtcNow().UtcDateTime)

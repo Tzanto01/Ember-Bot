@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Net;
 using Discord.WebSocket;
 
 namespace Ember.Bot.Services;
@@ -12,7 +13,7 @@ public class DiscordDmSender : IDiscordDmSender
         _client = client;
     }
 
-    public async Task<bool> SendMessageAsync(
+    public async Task<DeliveryOutcome> SendMessageAsync(
         ulong userId,
         string? text = null,
         Embed? embed = null,
@@ -21,10 +22,17 @@ public class DiscordDmSender : IDiscordDmSender
     {
         var user = await _client.GetUserAsync(userId);
         if (user is null)
-            return false;
+            return DeliveryOutcome.UserNotFound;
 
-        var dm = await user.CreateDMChannelAsync();
-        await dm.SendMessageAsync(text, embed: embed, components: components);
-        return true;
+        try
+        {
+            var dm = await user.CreateDMChannelAsync();
+            await dm.SendMessageAsync(text, embed: embed, components: components);
+            return DeliveryOutcome.Delivered;
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
+        {
+            return DeliveryOutcome.Undeliverable;
+        }
     }
 }
