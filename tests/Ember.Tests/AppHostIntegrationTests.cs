@@ -42,6 +42,10 @@ public class AppHostIntegrationTests
         var weeklyCron = weeklyTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
         weeklyCron.CronExpressionString.Should().Be("0 0 * * * ?");
         weeklyCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
+
+        var reflectionCron = reflectionTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
+        reflectionCron.CronExpressionString.Should().Be("0 0 * * * ?");
+        reflectionCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
     }
 
     [Fact]

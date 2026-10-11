@@ -9,33 +9,34 @@ using Quartz;
 namespace Ember.Bot.Jobs;
 
 /// <summary>
-/// Fires once per day at 10:00 in each user's local time.
+/// Fires once per day at <see cref="LocalSendHour"/>:00 in each user's local time.
 /// Checks whether the user missed any daily habits yesterday (or weekly
 /// habits that are below target for the week) and sends a low-pressure
 /// reflection DM with a dismiss button.
 ///
-/// Scheduling: one Quartz trigger per user per reminder timezone bucket is not
-/// practical at scale. Instead we run a single daily sweep at 10:00 UTC and
-/// skip users whose local time is not yet 10:00 or already past 11:00. This is
-/// a deliberate simplification — perfect per-user local-time delivery would
-/// require per-user jobs (expensive). The ±1-hour UTC window covers most users
-/// in a given timezone cluster. For now this is good enough; we can refine to
-/// per-user jobs if the user base grows significantly.
+/// Scheduling: a single hourly sweep picks the users whose local hour is
+/// <see cref="LocalSendHour"/>; yesterday and the week start are computed in
+/// each user's own timezone.
 /// </summary>
 [DisallowConcurrentExecution]
 public class MissedDayReflectionJob : IJob
 {
     public static readonly JobKey Key = new("missed-day-reflection", "reflections");
 
+    /// <summary>Local hour at which each user receives the reflection.</summary>
+    public const int LocalSendHour = 10;
+
     private readonly IServiceProvider _services;
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<MissedDayReflectionJob> _logger;
+    private readonly TimeProvider _time;
 
-    public MissedDayReflectionJob(IServiceProvider services, IDiscordDmSender discord, ILogger<MissedDayReflectionJob> logger)
+    public MissedDayReflectionJob(IServiceProvider services, IDiscordDmSender discord, ILogger<MissedDayReflectionJob> logger, TimeProvider time)
     {
         _services = services;
         _discord  = discord;
         _logger   = logger;
+        _time     = time;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -43,20 +44,30 @@ public class MissedDayReflectionJob : IJob
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
 
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
-        var weekStart = yesterday.AddDays(-(int)yesterday.DayOfWeek == 0 ? 6 : (int)yesterday.DayOfWeek - 1); // Monday
+        var candidates = await db.Users
+            .Where(u => u.Habits.Any())
+            .Select(u => new { u.DiscordUserId, u.Timezone })
+            .ToListAsync(context.CancellationToken);
 
-        // Load all users with at least one active (non-paused) habit
+        var dueIds = candidates
+            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time).Hour == LocalSendHour)
+            .Select(u => u.DiscordUserId)
+            .ToList();
+
+        if (dueIds.Count == 0) return;
+
         var users = await db.Users
             .Include(u => u.Habits)
                 .ThenInclude(h => h.Logs)
+            .Where(u => dueIds.Contains(u.DiscordUserId))
             .ToListAsync(context.CancellationToken);
 
         foreach (var user in users)
         {
             try
             {
-                await ProcessUserAsync(user, yesterday, weekStart);
+                var yesterday = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
+                await ProcessUserAsync(user, yesterday, HabitService.WeekStart(yesterday));
             }
             catch (Exception ex)
             {
@@ -68,10 +79,11 @@ public class MissedDayReflectionJob : IJob
     private async Task ProcessUserAsync(Ember.Bot.Models.User user, DateOnly yesterday, DateOnly weekStart)
     {
         var missed = new List<string>();
+        var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
 
         foreach (var habit in user.Habits)
         {
-            if (!HabitService.IsActiveOn(habit, yesterday)) continue;
+            if (!HabitService.IsActiveOn(habit, yesterday, tz)) continue;
 
             // Skip paused habits
             if (habit.PausedUntil.HasValue && habit.PausedUntil >= yesterday) continue;
