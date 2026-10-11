@@ -37,8 +37,6 @@ public class LeaderboardModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await DeferAsync(ephemeral: false);
-
         var rows = await _habits.GetLeaderboardAsync(Context.Guild.Id, top: 10);
 
         var components = new ComponentBuilder()
@@ -48,13 +46,15 @@ public class LeaderboardModule : InteractionModuleBase<SocketInteractionContext>
 
         if (rows.Count == 0)
         {
-            await FollowupAsync(
+            await RespondAsync(
                 "Nobody on the leaderboard has checked in here in the last 7 days. " +
                 "It's opt-in, so join if you'd like to show up.",
                 components: components,
                 ephemeral: true);
             return;
         }
+
+        await DeferAsync(ephemeral: false);
 
         var medals = new[] { "🥇", "🥈", "🥉" };
         var lines  = new List<string>();
@@ -83,7 +83,7 @@ public class LeaderboardModule : InteractionModuleBase<SocketInteractionContext>
             var member = await ((IGuild)Context.Guild).GetUserAsync(userId);
             return member is null ? NameFallback : Format.Sanitize(member.DisplayName);
         }
-        catch (Discord.Net.HttpException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return NameFallback;
         }

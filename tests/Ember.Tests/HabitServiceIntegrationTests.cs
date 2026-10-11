@@ -3,6 +3,7 @@ using Ember.Bot.Models;
 using Ember.Bot.Services;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Quartz;
 
 namespace Ember.Tests;
@@ -123,12 +124,13 @@ public class HabitServiceIntegrationTests
     [Fact]
     public async Task GetLeaderboardAsync_IncludesOnlyOptedInUsersOfThatGuild()
     {
-        await using var host = await IntegrationTestHost.CreateAsync();
+        var now = new DateTimeOffset(2026, 1, 14, 12, 0, 0, TimeSpan.Zero);
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(now));
 
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = DateOnly.FromDateTime(now.UtcDateTime);
 
             db.Users.AddRange(
                 new User { DiscordUserId = 1, Timezone = "UTC" },
@@ -136,9 +138,9 @@ public class HabitServiceIntegrationTests
                 new User { DiscordUserId = 3, Timezone = "UTC" });
 
             db.Habits.AddRange(
-                new Habit { Id = 10, UserId = 1, Name = "Hydrate", CreatedAt = DateTime.UtcNow.AddDays(-10) },
-                new Habit { Id = 20, UserId = 2, Name = "Walk", CreatedAt = DateTime.UtcNow.AddDays(-10) },
-                new Habit { Id = 30, UserId = 3, Name = "Study", CreatedAt = DateTime.UtcNow.AddDays(-10) });
+                new Habit { Id = 10, UserId = 1, Name = "Hydrate", CreatedAt = now.UtcDateTime.AddDays(-10) },
+                new Habit { Id = 20, UserId = 2, Name = "Walk", CreatedAt = now.UtcDateTime.AddDays(-10) },
+                new Habit { Id = 30, UserId = 3, Name = "Study", CreatedAt = now.UtcDateTime.AddDays(-10) });
 
             db.HabitLogs.AddRange(
                 new HabitLog { HabitId = 10, Date = today, Completed = true, GuildId = 999 },
