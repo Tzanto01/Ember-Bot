@@ -326,42 +326,32 @@ public class HabitService
         await _db.SaveChangesAsync();
     }
 
-    public async Task SetLeaderboardOptOutAsync(ulong discordUserId, bool optOut)
+    public async Task SetLeaderboardOptInAsync(ulong discordUserId, bool optIn)
     {
         await EnsureUserAsync(discordUserId);
         var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)discordUserId);
-        user.LeaderboardOptOut = optOut;
+        user.LeaderboardOptIn = optIn;
         await _db.SaveChangesAsync();
     }
 
     /// <summary>
-    /// Returns the top N users in a guild by total completed check-ins this week.
-    /// Excludes opted-out users.
+    /// Returns the top N opted-in users in a guild by completed check-ins over the
+    /// rolling last 7 days. Users who have not opted in are never included.
     /// </summary>
-    public async Task<List<(ulong UserId, string DisplayName, int CheckIns, int BestStreak)>> GetLeaderboardAsync(
-        ulong guildId, int top = 10)
+    public async Task<List<(ulong UserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
     {
         var weekAgo = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-6);
         var guildIdLong = (long)guildId;
 
         var rows = await _db.HabitLogs
-            .Where(l => l.GuildId == guildIdLong && l.Completed && l.Date >= weekAgo)
-            .Include(l => l.Habit)
-                .ThenInclude(h => h.User)
-            .ToListAsync();
-
-        return rows
-            .Where(l => !l.Habit.User.LeaderboardOptOut)
+            .Where(l => l.GuildId == guildIdLong && l.Completed && l.Date >= weekAgo && l.Habit.User.LeaderboardOptIn)
             .GroupBy(l => l.Habit.UserId)
-            .Select(g => (
-                UserId: (ulong)g.Key,
-                DisplayName: $"<@{g.Key}>",
-                CheckIns: g.Count(),
-                BestStreak: 0 // filled by caller who has Discord context
-            ))
+            .Select(g => new { UserId = g.Key, CheckIns = g.Count() })
             .OrderByDescending(x => x.CheckIns)
             .Take(top)
-            .ToList();
+            .ToListAsync();
+
+        return rows.Select(r => ((ulong)r.UserId, r.CheckIns)).ToList();
     }
 
     public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)

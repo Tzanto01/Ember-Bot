@@ -51,11 +51,13 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 
 ### 🏆 Leaderboard
 
+The leaderboard is opt-in: nobody appears on it until they join. It shows display names (never mentions) and check-ins in that server over the last 7 days.
+
 | Command | What it does |
 |---|---|
-| `/leaderboard` | This week's top check-ins in the server |
-| `/privacy optout` | Remove yourself from all leaderboards |
-| `/privacy optin` | Rejoin leaderboards |
+| `/leaderboard` | Top check-ins of opted-in members in the server over the last 7 days |
+| `/privacy optin` | Join leaderboards |
+| `/privacy optout` | Leave all leaderboards |
 
 ### 📋 Other
 
@@ -79,9 +81,9 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | 🔔 **DM reminders** | ✅ / ❌ / ⏰ buttons — one tap to check in or snooze |
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
 | 🤔 **Missed day reflection** | A gentle nudge, not a guilt trip |
-| 📊 **Weekly summary** | Every Sunday — a 7-day recap in your DMs |
-| 🏆 **Leaderboard** | Server-wide check-in board with full privacy opt-out |
-| 🔒 **Privacy by default** | All data is private; leaderboard is opt-out |
+| 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
+| 🏆 **Leaderboard** | Opt-in server check-in board; you only appear if you join |
+| 🔒 **Privacy by default** | All data is private; the leaderboard is opt-in |
 
 ---
 

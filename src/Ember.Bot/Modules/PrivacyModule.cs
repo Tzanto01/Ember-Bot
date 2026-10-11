@@ -13,22 +13,17 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
         _habits = habits;
     }
 
-    [SlashCommand("optout", "Remove yourself from all leaderboards")]
+    [SlashCommand("optout", "Leave all leaderboards")]
     public async Task OptOutAsync()
     {
-        await _habits.SetLeaderboardOptOutAsync(Context.User.Id, true);
-        await RespondAsync(
-            "You're now opted out — your name won't appear on any leaderboard.\n" +
-            "Your check-ins still count for your own stats.",
-            ephemeral: true);
+        await _habits.SetLeaderboardOptInAsync(Context.User.Id, false);
+        await RespondAsync(LeaderboardModule.OptedOutText, ephemeral: true);
     }
 
-    [SlashCommand("optin", "Re-join leaderboards")]
+    [SlashCommand("optin", "Join leaderboards (you're off them by default)")]
     public async Task OptInAsync()
     {
-        await _habits.SetLeaderboardOptOutAsync(Context.User.Id, false);
-        await RespondAsync(
-            "Welcome back! You'll show up on leaderboards from your next check-in.",
-            ephemeral: true);
+        await _habits.SetLeaderboardOptInAsync(Context.User.Id, true);
+        await RespondAsync(LeaderboardModule.OptedInText, ephemeral: true);
     }
 }

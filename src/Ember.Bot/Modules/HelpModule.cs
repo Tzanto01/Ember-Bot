@@ -31,11 +31,11 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 inline: false)
             .AddField("Share & compete",
                 "`/habit share` — post a streak card in this channel\n" +
-                "`/leaderboard` — this week's top check-ins in the server",
+                "`/leaderboard` — top check-ins of opted-in members over the last 7 days",
                 inline: false)
             .AddField("Privacy",
-                "`/privacy optout` — remove yourself from leaderboards\n" +
-                "`/privacy optin` — come back to leaderboards",
+                "`/privacy optin` — join leaderboards (you're off them by default)\n" +
+                "`/privacy optout` — leave leaderboards",
                 inline: false)
             .WithFooter("Progress over perfection. Every check-in counts.")
             .Build();

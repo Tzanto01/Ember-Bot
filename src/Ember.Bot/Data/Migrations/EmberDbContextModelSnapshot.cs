@@ -99,7 +99,7 @@ namespace Ember.Bot.Data.Migrations
                     b.Property<int>("GraceDaysPerWeek")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("LeaderboardOptOut")
+                    b.Property<bool>("LeaderboardOptIn")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Timezone")
