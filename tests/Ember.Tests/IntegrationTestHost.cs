@@ -135,9 +135,9 @@ public sealed class TestDiscordDmSender : IDiscordDmSender
     }
 
     /// <summary>Decides each send's result per recipient; throw from it to simulate a transport error. Every attempt is recorded.</summary>
-    public Func<ulong, bool> Deliver { get; set; } = _ => true;
+    public Func<ulong, DeliveryOutcome> Deliver { get; set; } = _ => DeliveryOutcome.Delivered;
 
-    public Task<bool> SendMessageAsync(
+    public Task<DeliveryOutcome> SendMessageAsync(
         ulong userId,
         string? text = null,
         Embed? embed = null,

@@ -101,6 +101,15 @@ namespace Ember.Bot.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DiscordUserId"));
 
+                    b.Property<int>("DmFailureCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DmPauseNoticeSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DmRemindersPausedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("GraceDaysPerWeek")
                         .HasColumnType("integer");
 

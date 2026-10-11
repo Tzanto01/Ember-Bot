@@ -134,13 +134,68 @@ public class ReminderDispatchTests
     public async Task FailingHabit_DoesNotBlockOthers_AndIsStillAdvanced()
     {
         await using var host = await CreateHostAsync(new FakeTimeProvider(Now), DueHabit(1, 10), DueHabit(2, 20));
-        host.Discord.Deliver = userId => userId == 10 ? throw new HttpRequestException("boom") : true;
+        host.Discord.Deliver = userId => userId == 10 ? throw new HttpRequestException("boom") : DeliveryOutcome.Delivered;
 
         await RunJobAsync(host);
 
         host.Discord.Messages.Select(m => m.UserId).Should().BeEquivalentTo([10UL, 20UL]);
         (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
         (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
+    }
+
+    private static Task<User> UserAsync(IntegrationTestHost host, long userId)
+        => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.SingleAsync(u => u.DiscordUserId == userId));
+
+    [Fact]
+    public async Task ThreeUndeliverableReminders_PauseDmReminders_UntilTheUserIsReachableAgain()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, DueHabit(1, 10));
+        host.Discord.Deliver = _ => DeliveryOutcome.Undeliverable;
+
+        for (var day = 0; day < 4; day++)
+        {
+            await RunJobAsync(host);
+            time.Advance(TimeSpan.FromDays(1));
+        }
+
+        host.Discord.Messages.Should().HaveCount(3);
+        (await UserAsync(host, 10)).DmRemindersPausedAt.Should().NotBeNull();
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin.AddDays(3));
+
+        var notices = new List<bool>();
+        for (var i = 0; i < 2; i++)
+            notices.Add(await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().ClaimDmPauseNoticeAsync(10)));
+        notices.Should().Equal(true, false);
+
+        host.Discord.Deliver = _ => DeliveryOutcome.Delivered;
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().ResumeDmRemindersAsync(10));
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().HaveCount(4);
+        (await UserAsync(host, 10)).DmRemindersPausedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeliveredReminder_ResetsTheConsecutiveFailureCount()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, DueHabit(1, 10));
+        var outcomes = new Queue<DeliveryOutcome>([
+            DeliveryOutcome.Undeliverable, DeliveryOutcome.Undeliverable, DeliveryOutcome.Delivered,
+            DeliveryOutcome.Undeliverable, DeliveryOutcome.Undeliverable]);
+        host.Discord.Deliver = _ => outcomes.Dequeue();
+
+        for (var day = 0; day < 5; day++)
+        {
+            await RunJobAsync(host);
+            time.Advance(TimeSpan.FromDays(1));
+        }
+
+        host.Discord.Messages.Should().HaveCount(5);
+        var user = await UserAsync(host, 10);
+        user.DmFailureCount.Should().Be(2);
+        user.DmRemindersPausedAt.Should().BeNull();
     }
 
     [Fact]

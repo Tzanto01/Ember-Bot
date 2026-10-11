@@ -34,7 +34,6 @@ public class DiscordDmReminderChannel : IReminderChannel
             .WithButton("Snooze 1h ⏰", $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .Build();
 
-        var sent = await _discord.SendMessageAsync(reminder.UserId, message, components: components, cancellationToken: cancellationToken);
-        return sent ? DeliveryOutcome.Delivered : DeliveryOutcome.UserNotFound;
+        return await _discord.SendMessageAsync(reminder.UserId, message, components: components, cancellationToken: cancellationToken);
     }
 }
