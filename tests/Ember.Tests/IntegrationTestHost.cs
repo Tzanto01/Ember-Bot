@@ -28,7 +28,11 @@ public sealed class IntegrationTestHost : IAsyncDisposable
     public IHost Host { get; }
     public TestDiscordDmSender Discord { get; }
 
-    public static async Task<IntegrationTestHost> CreateAsync(bool initialize = true, bool start = true, TimeProvider? time = null)
+    public static async Task<IntegrationTestHost> CreateAsync(
+        bool initialize = true,
+        bool start = true,
+        TimeProvider? time = null,
+        Action<DbContextOptionsBuilder>? configureDb = null)
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -37,7 +41,11 @@ public sealed class IntegrationTestHost : IAsyncDisposable
         var host = AppHost.CreateHostBuilder([], new EmberHostOptions
         {
             IncludeDiscordGateway = false,
-            ConfigureDbContext = (options, _) => options.UseSqlite(connection),
+            ConfigureDbContext = (options, _) =>
+            {
+                options.UseSqlite(connection);
+                configureDb?.Invoke(options);
+            },
             ConfigureServices = (services, _) =>
             {
                 services.AddSingleton(discord);

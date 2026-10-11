@@ -17,14 +17,25 @@ public class HabitService
         _time      = time;
     }
 
-    // Ensure a User row exists for this Discord user
+    /// <summary>
+    /// Ensures a User row exists for this Discord user. Safe against concurrent calls:
+    /// losing the insert race to another request is not an error.
+    /// </summary>
     public async Task EnsureUserAsync(ulong discordUserId)
     {
         var id = (long)discordUserId;
-        if (!await _db.Users.AnyAsync(u => u.DiscordUserId == id))
+        if (await _db.Users.AnyAsync(u => u.DiscordUserId == id)) return;
+
+        var user = new User { DiscordUserId = id };
+        _db.Users.Add(user);
+        try
         {
-            _db.Users.Add(new User { DiscordUserId = id });
             await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(user).State = EntityState.Detached;
+            if (!await _db.Users.AnyAsync(u => u.DiscordUserId == id)) throw;
         }
     }
 
@@ -77,24 +88,34 @@ public class HabitService
         var existing = await _db.HabitLogs
             .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == today);
 
-        if (existing is not null)
+        if (existing is null)
         {
-            existing.Completed = completed;
-            if (guildId.HasValue) existing.GuildId = (long)guildId.Value;
-            await _db.SaveChangesAsync();
-            return existing;
+            var log = new HabitLog
+            {
+                HabitId = habitId,
+                Date = today,
+                Completed = completed,
+                GuildId = guildId.HasValue ? (long)guildId.Value : null
+            };
+            _db.HabitLogs.Add(log);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return log;
+            }
+            catch (DbUpdateException)
+            {
+                _db.Entry(log).State = EntityState.Detached;
+                existing = await _db.HabitLogs
+                    .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == today);
+                if (existing is null) throw;
+            }
         }
 
-        var log = new HabitLog
-        {
-            HabitId = habitId,
-            Date = today,
-            Completed = completed,
-            GuildId = guildId.HasValue ? (long)guildId.Value : null
-        };
-        _db.HabitLogs.Add(log);
+        existing.Completed = completed;
+        if (guildId.HasValue) existing.GuildId = (long)guildId.Value;
         await _db.SaveChangesAsync();
-        return log;
+        return existing;
     }
 
     /// <summary>
