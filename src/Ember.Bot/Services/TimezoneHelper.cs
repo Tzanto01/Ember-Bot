@@ -17,7 +17,7 @@ public static class TimezoneHelper
     /// were dated in UTC, so a user far from UTC can see one artificial gap around it;
     /// a gap on this date is treated as covered (like a paused day) so no streak breaks.
     /// </summary>
-    public static readonly DateOnly SwitchoverDate = new(2026, 10, 20);
+    public static readonly DateOnly SwitchoverDate = new(2026, 10, 11);
 
     /// <summary>
     /// The current time in the user's timezone (IANA or Windows id).
