@@ -85,6 +85,26 @@ public class HabitServiceIntegrationTests
     }
 
     [Fact]
+    public async Task AddHabitAsync_BeyondThePerUserLimit_IsRefusedAndNothingIsAdded()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync();
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            var db = sp.GetRequiredService<EmberDbContext>();
+
+            for (var i = 1; i <= HabitService.MaxHabitsPerUser; i++)
+                await service.AddHabitAsync(789, $"Habit {i}", reminderTime: null);
+
+            var add51st = () => service.AddHabitAsync(789, "One more", reminderTime: null, FrequencyType.Weekly, 2);
+
+            await add51st.Should().ThrowAsync<HabitLimitReachedException>();
+            db.Habits.Count(h => h.UserId == 789).Should().Be(HabitService.MaxHabitsPerUser);
+        });
+    }
+
+    [Fact]
     public async Task GetLeaderboardAsync_ExcludesOptOutAndOtherGuilds()
     {
         await using var host = await IntegrationTestHost.CreateAsync();

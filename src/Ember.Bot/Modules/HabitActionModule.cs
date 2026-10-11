@@ -42,7 +42,16 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime: null);
+        Habit habit;
+        try
+        {
+            habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime: null);
+        }
+        catch (HabitLimitReachedException ex)
+        {
+            await RespondAsync(ex.Message, ephemeral: true);
+            return;
+        }
         var hasTimezone = await _habits.HasTimezoneSetAsync(Context.User.Id);
 
         var embed = new EmbedBuilder()
