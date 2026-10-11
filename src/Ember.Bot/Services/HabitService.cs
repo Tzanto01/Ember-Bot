@@ -9,15 +9,16 @@ public class HabitService
     /// <summary>Most habits a single user can track.</summary>
     public const int MaxHabitsPerUser = 25;
 
+    /// <summary>How long the Snooze button delays a reminder.</summary>
+    public static readonly TimeSpan SnoozeDelay = TimeSpan.FromMinutes(60);
+
     private readonly EmberDbContext _db;
-    private readonly ReminderScheduler _scheduler;
     private readonly TimeProvider _time;
 
-    public HabitService(EmberDbContext db, ReminderScheduler scheduler, TimeProvider time)
+    public HabitService(EmberDbContext db, TimeProvider time)
     {
-        _db        = db;
-        _scheduler = scheduler;
-        _time      = time;
+        _db   = db;
+        _time = time;
     }
 
     /// <summary>
@@ -59,10 +60,9 @@ public class HabitService
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
+        habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(discordUserId));
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
-
-        await _scheduler.ScheduleAsync(habit, await GetUserTzAsync(discordUserId));
 
         return habit;
     }
@@ -272,7 +272,6 @@ public class HabitService
 
         _db.Habits.Remove(habit);
         await _db.SaveChangesAsync();
-        await _scheduler.UnscheduleAsync(habitId);
         return true;
     }
 
@@ -288,17 +287,50 @@ public class HabitService
         if (clearReminder)
         {
             habit.ReminderTime = null;
-            await _scheduler.UnscheduleAsync(habitId);
+            habit.NextReminderUtc = null;
         }
         else if (newReminderTime.HasValue)
         {
             habit.ReminderTime = newReminderTime;
-            await _scheduler.ScheduleAsync(habit, await GetUserTzAsync(discordUserId));
+            habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(discordUserId));
         }
 
         await _db.SaveChangesAsync();
         return habit;
     }
+
+    /// <summary>Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's.</summary>
+    public async Task<bool> SnoozeReminderAsync(ulong discordUserId, int habitId)
+    {
+        var habit = await _db.Habits
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+
+        if (habit is null) return false;
+
+        habit.NextReminderUtc = _time.GetUtcNow().UtcDateTime + SnoozeDelay;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Recomputes every reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
+    public async Task<int> RescheduleRemindersAsync(ulong discordUserId)
+    {
+        var tz = await GetUserTzAsync(discordUserId);
+        var habits = await _db.Habits
+            .Where(h => h.UserId == (long)discordUserId && h.ReminderTime != null)
+            .ToListAsync();
+
+        foreach (var habit in habits)
+            habit.NextReminderUtc = NextReminderUtc(habit, tz);
+
+        await _db.SaveChangesAsync();
+        return habits.Count;
+    }
+
+    private DateTime? NextReminderUtc(Habit habit, TimeZoneInfo tz)
+        => habit.ReminderTime is { } time
+            ? TimezoneHelper.NextOccurrenceUtc(time, tz, _time.GetUtcNow().UtcDateTime)
+            : null;
 
     public async Task<Habit?> PauseHabitAsync(ulong discordUserId, int habitId, DateOnly? pausedUntil)
     {

@@ -23,6 +23,7 @@ public class EmberDbContext : DbContext
         {
             entity.HasKey(h => h.Id);
             entity.Property(h => h.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(h => h.NextReminderUtc);
             entity.HasOne(h => h.User)
                   .WithMany(u => u.Habits)
                   .HasForeignKey(h => h.UserId)

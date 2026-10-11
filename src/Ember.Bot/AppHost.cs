@@ -50,8 +50,11 @@ public static class AppHost
 
                 services.AddQuartz(q =>
                 {
-                    q.AddJob<ReminderJob>(opts => opts.WithIdentity(ReminderJob.Key).StoreDurably());
-                    q.AddJob<SnoozeReminderJob>(opts => opts.WithIdentity(new JobKey("snooze-template", "snoozes")).StoreDurably());
+                    q.AddJob<ReminderDispatchJob>(opts => opts.WithIdentity(ReminderDispatchJob.Key).StoreDurably());
+                    q.AddTrigger(opts => opts
+                        .ForJob(ReminderDispatchJob.Key)
+                        .WithIdentity("reminder-dispatch-trigger", "reminders")
+                        .WithCronSchedule("0 * * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
                     q.AddJob<WeeklySummaryJob>(opts => opts.WithIdentity(WeeklySummaryJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts
@@ -66,7 +69,7 @@ public static class AppHost
                         .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
                 });
                 services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
-                services.AddSingleton<ReminderScheduler>();
+                services.AddSingleton<IReminderChannel, DiscordDmReminderChannel>();
 
                 if (options.IncludeDiscordGateway)
                 {
@@ -99,17 +102,19 @@ public static class AppHost
         else
             await db.Database.MigrateAsync(cancellationToken);
 
-        var scheduler = host.Services.GetRequiredService<ReminderScheduler>();
+        var now = host.Services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         var habits = await db.Habits
-            .Where(h => h.ReminderTime != null)
+            .Where(h => h.ReminderTime != null && h.NextReminderUtc == null)
             .Include(h => h.User)
             .ToListAsync(cancellationToken);
 
         foreach (var habit in habits)
         {
             var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
-            await scheduler.ScheduleAsync(habit, tz);
+            habit.NextReminderUtc = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTime!.Value, tz, now);
         }
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private sealed class NullDiscordDmSender : IDiscordDmSender

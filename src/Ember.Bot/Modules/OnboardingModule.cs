@@ -225,6 +225,7 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
         var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)Context.User.Id);
         user.Timezone = tz.Id;
         await _db.SaveChangesAsync();
+        await _habits.RescheduleRemindersAsync(Context.User.Id);
 
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)

@@ -12,13 +12,11 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly EmberDbContext _db;
     private readonly HabitService _habits;
-    private readonly ReminderScheduler _scheduler;
 
-    public TimezoneModule(EmberDbContext db, HabitService habits, ReminderScheduler scheduler)
+    public TimezoneModule(EmberDbContext db, HabitService habits)
     {
-        _db        = db;
-        _habits    = habits;
-        _scheduler = scheduler;
+        _db     = db;
+        _habits = habits;
     }
 
     // ── Autocomplete handler for timezone ────────────────────────────────────
@@ -64,18 +62,12 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
         user.Timezone = tz.Id;
         await _db.SaveChangesAsync();
 
-        // Reschedule any existing reminders so they fire at the correct UTC time
-        var habitsWithReminders = await _db.Habits
-            .Where(h => h.UserId == (long)Context.User.Id && h.ReminderTime != null)
-            .ToListAsync();
-
-        foreach (var habit in habitsWithReminders)
-            await _scheduler.ScheduleAsync(habit, tz);
+        var rescheduled = await _habits.RescheduleRemindersAsync(Context.User.Id);
 
         await RespondAsync(
             $"Timezone set to **{tz.Id}**." +
-            (habitsWithReminders.Count > 0
-                ? $"\nRescheduled {habitsWithReminders.Count} reminder(s) to match."
+            (rescheduled > 0
+                ? $"\nRescheduled {rescheduled} reminder(s) to match."
                 : ""),
             ephemeral: true);
     }

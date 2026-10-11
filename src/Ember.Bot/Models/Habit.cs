@@ -11,6 +11,9 @@ public class Habit
     /// <summary>Time of day to send the DM reminder, stored in the user's local time. Null means no reminder.</summary>
     public TimeOnly? ReminderTime { get; set; }
 
+    /// <summary>UTC instant of the next reminder (the next local ReminderTime, or a snooze). Null means nothing is due.</summary>
+    public DateTime? NextReminderUtc { get; set; }
+
     /// <summary>When set, reminders are suppressed and paused days are excluded from streak calculations.</summary>
     public DateOnly? PausedUntil { get; set; }
 

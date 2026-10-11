@@ -33,10 +33,8 @@ public class HabitServiceIntegrationTests
             habit.Should().NotBeNull();
             habit!.Name.Should().Be("Drink Water");
             habit.ReminderTime.Should().Be(new TimeOnly(9, 0));
+            habit.NextReminderUtc.Should().NotBeNull();
         });
-
-        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
-        (await scheduler.CheckExists(new JobKey($"habit-{habitId}", "reminders"))).Should().BeTrue();
     }
 
     [Fact]

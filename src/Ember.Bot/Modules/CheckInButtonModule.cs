@@ -14,12 +14,10 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 {
     private const int ExpiryHours = 24;
     private readonly HabitService _habits;
-    private readonly ReminderScheduler _scheduler;
 
-    public CheckInButtonModule(HabitService habits, ReminderScheduler scheduler)
+    public CheckInButtonModule(HabitService habits)
     {
-        _habits    = habits;
-        _scheduler = scheduler;
+        _habits = habits;
     }
 
     /// <summary>
@@ -110,14 +108,11 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
-        var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null)
+        if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId))
         {
             await RespondAsync("Couldn't find that habit.", ephemeral: true);
             return;
         }
-
-        await _scheduler.SnoozeAsync(habitId, habit.UserId, habit.Name, delayMinutes: 60);
 
         var component = (SocketMessageComponent)Context.Interaction;
         await component.UpdateAsync(msg =>
