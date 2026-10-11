@@ -57,7 +57,7 @@ public class HabitService
             ReminderTime = reminderTime,
             FrequencyType = frequency,
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = _time.GetUtcNow().UtcDateTime
         };
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
@@ -340,7 +340,7 @@ public class HabitService
     /// </summary>
     public async Task<List<(ulong UserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
     {
-        var weekAgo = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-6);
+        var weekAgo = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-6);
         var guildIdLong = (long)guildId;
 
         var rows = await _db.HabitLogs

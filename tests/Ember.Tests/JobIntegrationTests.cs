@@ -325,4 +325,62 @@ public class JobIntegrationTests
         host.Discord.Messages.Should().ContainSingle()
             .Which.Embed!.Description.Should().Contain("1/3 this week");
     }
+
+    [Fact]
+    public async Task MissedDayReflectionJob_OnLocalMonday_DoesNotNudgeAboutTheFinishedWeek()
+    {
+        // 00:00 UTC Mon Jan 19 = 10:00 Monday in Brisbane (UTC+10); yesterday closed last week.
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 19, 0, 0, 0, TimeSpan.Zero));
+        await using var host = await IntegrationTestHost.CreateAsync(time: time);
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var weeklyUser = new User { DiscordUserId = 1301, Timezone = "Australia/Brisbane" };
+            var weekly = new Habit { Name = "Swim", FrequencyType = FrequencyType.Weekly, WeeklyTarget = 3, CreatedAt = created };
+            weekly.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 15), Completed = true });
+            weeklyUser.Habits.Add(weekly);
+
+            // Processed after the weekly user, so its DM proves the run reached the end.
+            var dailyUser = new User { DiscordUserId = 1302, Timezone = "Australia/Brisbane" };
+            dailyUser.Habits.Add(new Habit { Name = "Stretch", CreatedAt = created });
+
+            db.Users.AddRange(weeklyUser, dailyUser);
+            await db.SaveChangesAsync();
+        });
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(MissedDayReflectionJob.Key);
+        await host.WaitForDmCountAsync(1);
+
+        host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(1302);
+    }
+
+    [Fact]
+    public async Task MissedDayReflectionJob_UsesTheUsersLocalYesterday_NotTheUtcOne()
+    {
+        // 21:00 UTC Jan 13 = 10:00 Jan 14 in Auckland (UTC+13): local yesterday is Jan 13,
+        // UTC yesterday would be Jan 12. Only Jan 12 was checked in, so Jan 13 was missed.
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 13, 21, 0, 0, TimeSpan.Zero));
+        await using var host = await IntegrationTestHost.CreateAsync(time: time);
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var user = new User { DiscordUserId = 1401, Timezone = "Pacific/Auckland" };
+            var habit = new Habit { Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+            habit.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 12), Completed = true });
+            user.Habits.Add(habit);
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        });
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(MissedDayReflectionJob.Key);
+        await host.WaitForDmCountAsync(1);
+
+        host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(1401);
+    }
 }

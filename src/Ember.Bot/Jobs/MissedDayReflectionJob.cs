@@ -104,8 +104,8 @@ public class MissedDayReflectionJob : IJob
                 var target    = habit.WeeklyTarget ?? 3;
                 var needed    = target - doneCount;
 
-                // Only nudge if they need to catch up and have ≤2 days remaining
-                if (needed > 0 && daysLeft <= 2)
+                // Only nudge if they need to catch up and have 1–2 days remaining
+                if (needed > 0 && daysLeft is > 0 and <= 2)
                     missed.Add($"{habit.Name} ({doneCount}/{target} this week)");
             }
         }
