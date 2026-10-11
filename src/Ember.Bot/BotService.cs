@@ -19,6 +19,7 @@ public class BotService : IHostedService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _config;
     private readonly ILogger<BotService> _logger;
+    private readonly OncePerProcess _commandRegistration;
     private Timer? _statusTimer;
 
     public BotService(
@@ -33,13 +34,16 @@ public class BotService : IHostedService
         _services = services;
         _config = config;
         _logger = logger;
+        _commandRegistration = new OncePerProcess(RegisterCommandsAsync);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _client.Log += LogAsync;
         _interactions.Log += LogAsync;
-        _interactions.SlashCommandExecuted += OnSlashCommandExecuted;
+        _interactions.SlashCommandExecuted += OnCommandExecuted;
+        _interactions.ComponentCommandExecuted += OnCommandExecuted;
+        _interactions.ModalCommandExecuted += OnCommandExecuted;
 
         // Register interaction modules from this assembly
         await _interactions.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
@@ -74,6 +78,22 @@ public class BotService : IHostedService
 
     private async Task OnReadyAsync()
     {
+        try
+        {
+            await _commandRegistration.RunAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register slash commands; will retry on the next Ready.");
+        }
+
+        await UpdateStatusAsync();
+        _statusTimer ??= new Timer(_ => _ = UpdateStatusAsync(), null,
+            TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
+    }
+
+    private async Task RegisterCommandsAsync()
+    {
         var devGuildIdStr = _config["DevGuildId"];
         if (ulong.TryParse(devGuildIdStr, out var devGuildId))
         {
@@ -92,11 +112,6 @@ public class BotService : IHostedService
             await _interactions.RegisterCommandsGloballyAsync();
             _logger.LogInformation("Slash commands registered globally.");
         }
-
-        // Set status immediately, then rotate every 30 minutes
-        await UpdateStatusAsync();
-        _statusTimer = new Timer(_ => _ = UpdateStatusAsync(), null,
-            TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
     }
 
     private async Task UpdateStatusAsync()
@@ -133,29 +148,63 @@ public class BotService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception in interaction handler.");
-            if (interaction.Type == InteractionType.ApplicationCommand)
-                await interaction.RespondAsync("Something went wrong. Please try again.", ephemeral: true);
+            await ReplyWithErrorAsync(interaction, GenericErrorMessage, _logger);
         }
     }
 
-    private async Task OnSlashCommandExecuted(SlashCommandInfo cmd, IInteractionContext ctx, IResult result)
+    private async Task OnCommandExecuted(ICommandInfo? cmd, IInteractionContext ctx, IResult result)
     {
         if (result.IsSuccess) return;
 
-        _logger.LogError("Slash command /{Command} failed: {Error} — {Reason}",
-            cmd.Name, result.Error, result.ErrorReason);
+        _logger.LogError("Interaction {Command} failed: {Error} — {Reason}",
+            cmd?.Name ?? "(unknown)", result.Error, result.ErrorReason);
 
-        var msg = result.Error switch
+        var msg = result.Error == InteractionCommandError.UnmetPrecondition
+            ? result.ErrorReason
+            : GenericErrorMessage;
+
+        await ReplyWithErrorAsync(ctx.Interaction, msg, _logger);
+    }
+
+    private const string GenericErrorMessage = "Something went wrong on my side. Please try again in a moment. 🌿";
+
+    /// <summary>
+    /// Tells the user about a failed interaction: a follow-up if the interaction was already
+    /// acknowledged, otherwise a response, both ephemeral. Never throws; a failed reply is only logged.
+    /// </summary>
+    internal static async Task ReplyWithErrorAsync(IDiscordInteraction interaction, string message, ILogger logger)
+    {
+        try
         {
-            InteractionCommandError.UnmetPrecondition => result.ErrorReason,
-            InteractionCommandError.Exception         => "Something went wrong. Please try again.",
-            _                                         => "Something went wrong. Please try again.",
-        };
+            if (interaction.HasResponded)
+                await interaction.FollowupAsync(message, ephemeral: true);
+            else
+                await interaction.RespondAsync(message, ephemeral: true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not send the error reply for interaction {InteractionId}.", interaction.Id);
+        }
+    }
 
-        if (ctx.Interaction.HasResponded)
-            await ctx.Interaction.FollowupAsync(msg, ephemeral: true);
-        else
-            await ctx.Interaction.RespondAsync(msg, ephemeral: true);
+    /// <summary>Runs an action at most once per process; a failed attempt can be retried by the next call.</summary>
+    internal sealed class OncePerProcess(Func<Task> action)
+    {
+        private int _state;
+
+        public async Task RunAsync()
+        {
+            if (Interlocked.CompareExchange(ref _state, 1, 0) != 0) return;
+            try
+            {
+                await action();
+            }
+            catch
+            {
+                Volatile.Write(ref _state, 0);
+                throw;
+            }
+        }
     }
 
     private Task LogAsync(LogMessage msg)
