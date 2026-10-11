@@ -35,15 +35,12 @@ public static class TimezoneHelper
 
     /// <summary>
     /// Converts a local TimeOnly (in the user's timezone) to a UTC TimeOnly
-    /// using today's date as context for DST accuracy.
+    /// using <paramref name="onDate"/> (default: today in UTC) as context for DST accuracy.
     /// </summary>
-    public static TimeOnly ToUtc(TimeOnly localTime, TimeZoneInfo tz)
+    public static TimeOnly ToUtc(TimeOnly localTime, TimeZoneInfo tz, DateOnly? onDate = null)
     {
-        var today = DateTime.UtcNow.Date;
-        var localDt = today.Add(localTime.ToTimeSpan());
-        var utcDt = TimeZoneInfo.ConvertTimeToUtc(
-            DateTime.SpecifyKind(localDt, DateTimeKind.Unspecified), tz);
-        return TimeOnly.FromDateTime(utcDt);
+        var date = onDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        return TimeOnly.FromDateTime(LocalToUtc(date.ToDateTime(localTime), tz));
     }
 
     /// <summary>

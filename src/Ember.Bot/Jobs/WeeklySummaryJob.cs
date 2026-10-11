@@ -71,6 +71,9 @@ public class WeeklySummaryJob : IJob
         {
             try
             {
+                if (!await db.Users.AnyAsync(u => u.DiscordUserId == user.DiscordUserId, context.CancellationToken))
+                    continue;
+
                 var weekEnd = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
                 await SendSummaryAsync(user, weekEnd);
             }

@@ -78,6 +78,19 @@ public class ExportBuilderTests
     }
 
     [Fact]
+    public void Csv_NeutralizesFormulasHiddenBehindLeadingWhitespace()
+    {
+        var user = SampleUser();
+        user.Habits.First().Name = " =HYPERLINK(\"x\")";
+        user.Habits.Last().Name = "\t\n+SUM(1)";
+
+        var csv = ExportBuilder.BuildCsv(user);
+
+        csv.Should().Contain(",\"' =HYPERLINK(\"\"x\"\")\",");
+        csv.Should().Contain(",\"'\t\n+SUM(1)\",");
+    }
+
+    [Fact]
     public void Json_RoundTripsWithAllRecords()
     {
         var json = ExportBuilder.BuildJson(SampleUser());

@@ -143,7 +143,12 @@ public class BotService : IHostedService
         try
         {
             var ctx = new SocketInteractionContext(_client, interaction);
-            await _interactions.ExecuteCommandAsync(ctx, _services);
+            var result = await _interactions.ExecuteCommandAsync(ctx, _services);
+            if (result.Error == InteractionCommandError.UnknownCommand && interaction is not SocketAutocompleteInteraction)
+            {
+                _logger.LogWarning("No handler for interaction {InteractionId} ({Type}).", interaction.Id, interaction.Type);
+                await ReplyWithErrorAsync(interaction, GenericErrorMessage, _logger);
+            }
         }
         catch (Exception ex)
         {
@@ -154,7 +159,7 @@ public class BotService : IHostedService
 
     private async Task OnCommandExecuted(ICommandInfo? cmd, IInteractionContext ctx, IResult result)
     {
-        if (result.IsSuccess) return;
+        if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand) return;
 
         _logger.LogError("Interaction {Command} failed: {Error} — {Reason}",
             cmd?.Name ?? "(unknown)", result.Error, result.ErrorReason);

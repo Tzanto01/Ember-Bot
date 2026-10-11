@@ -75,6 +75,13 @@ public class TimezoneHelperTests
         utcTime.Should().Be(expected);
     }
 
+    [Fact]
+    public void ToUtc_TimeInSpringForwardGap_UsesFirstValidTimeInsteadOfThrowing()
+    {
+        TimezoneHelper.ToUtc(new TimeOnly(2, 30), Berlin, new DateOnly(2027, 3, 28))
+            .Should().Be(new TimeOnly(1, 0));
+    }
+
     // ── NextOccurrenceUtc ─────────────────────────────────────────────────────
 
     private static readonly TimeZoneInfo Berlin =

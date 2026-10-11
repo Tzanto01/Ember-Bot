@@ -38,6 +38,36 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         try { await DeleteOriginalResponseAsync(); } catch { /* ignore */ }
     }
 
+    // ── "Remind me at HH:mm" button (from /habit template) ────────────────────
+
+    [ComponentInteraction("reminder:preset:*:*:*")]
+    public async Task OnPresetReminderAsync(string habitIdStr, string hour, string minute)
+    {
+        var habit = await SetPresetReminderAsync(_habits, Context.User.Id, habitIdStr, $"{hour}:{minute}");
+        if (habit is null)
+        {
+            await RespondAsync("Couldn't find that habit. It may have been deleted.", ephemeral: true);
+            return;
+        }
+
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** every day at **{habit.ReminderTime:HH\\:mm}** your time. You've got this.";
+                m.Embed = null;
+                m.Components = new ComponentBuilder().Build();
+            });
+    }
+
+    /// <summary>Sets a preset reminder time on one of the clicking user's own habits; null if the habit isn't theirs or the input is malformed.</summary>
+    internal static async Task<Models.Habit?> SetPresetReminderAsync(HabitService habits, ulong userId, string habitIdStr, string time)
+    {
+        if (!int.TryParse(habitIdStr, out var habitId) || !TimeOnly.TryParseExact(time, "HH:mm", out var reminderTime))
+            return null;
+
+        return await habits.EditHabitAsync(userId, habitId, newName: null, reminderTime, clearReminder: false);
+    }
+
     // ── "Not now" button ──────────────────────────────────────────────────────
 
     [ComponentInteraction("reminder:skip:*")]

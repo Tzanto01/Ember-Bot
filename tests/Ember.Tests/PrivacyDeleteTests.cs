@@ -1,10 +1,13 @@
 using Ember.Bot.Data;
+using Ember.Bot.Jobs;
 using Ember.Bot.Models;
 using Ember.Bot.Modules;
 using Ember.Bot.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
+using Quartz;
 
 namespace Ember.Tests;
 
@@ -58,6 +61,53 @@ public class PrivacyDeleteTests
         (await CountsForAsync(host, 2)).Should().Be((1, 2, 4));
         var orphanLogs = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().HabitLogs.CountAsync());
         orphanLogs.Should().Be(4);
+    }
+
+    [Theory]
+    [InlineData("weekly")]
+    [InlineData("reflection")]
+    public async Task UserDeletedWhileAJobIsSendingDms_GetsNoMessage(string job)
+    {
+        var (now, key, created, withLogs) = job == "weekly"
+            ? (new DateTimeOffset(2026, 1, 18, 9, 0, 0, TimeSpan.Zero), WeeklySummaryJob.Key, -8, true)
+            : (new DateTimeOffset(2026, 1, 14, 10, 0, 0, TimeSpan.Zero), MissedDayReflectionJob.Key, -5, false);
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(now));
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            foreach (var userId in new long[] { 1, 2 })
+            {
+                var habit = new Habit { Name = $"Habit {userId}", CreatedAt = now.UtcDateTime.AddDays(created) };
+                if (withLogs)
+                    habit.Logs.Add(new HabitLog { Date = DateOnly.FromDateTime(now.UtcDateTime).AddDays(-1), Completed = true });
+                var user = new User { DiscordUserId = userId, Timezone = "UTC" };
+                user.Habits.Add(habit);
+                db.Users.Add(user);
+            }
+            await db.SaveChangesAsync();
+        });
+
+        var first = true;
+        host.Discord.Deliver = recipient =>
+        {
+            if (first)
+            {
+                first = false;
+                host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users
+                    .Where(u => u.DiscordUserId != (long)recipient).ExecuteDeleteAsync()).GetAwaiter().GetResult();
+            }
+            return DeliveryOutcome.Delivered;
+        };
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(key);
+        await host.WaitForDmCountAsync(1);
+        var deadline = Environment.TickCount64 + 3000;
+        while ((await scheduler.GetCurrentlyExecutingJobs()).Any(j => j.JobDetail.Key.Equals(key)) && Environment.TickCount64 < deadline)
+            await Task.Delay(20);
+
+        host.Discord.Messages.Should().ContainSingle();
     }
 
     [Fact]

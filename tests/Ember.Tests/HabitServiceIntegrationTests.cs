@@ -1,7 +1,9 @@
 using Ember.Bot.Data;
 using Ember.Bot.Models;
+using Ember.Bot.Modules;
 using Ember.Bot.Services;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Quartz;
@@ -38,7 +40,7 @@ public class HabitServiceIntegrationTests
     }
 
     [Fact]
-    public async Task EditHabitAsync_ClearingReminderUnschedulesJob()
+    public async Task EditHabitAsync_ClearingReminderClearsNextReminder()
     {
         await using var host = await IntegrationTestHost.CreateAsync();
 
@@ -56,10 +58,34 @@ public class HabitServiceIntegrationTests
             var habit = await db.Habits.FindAsync(habitId);
             habit.Should().NotBeNull();
             habit!.ReminderTime.Should().BeNull();
+            habit.NextReminderUtc.Should().BeNull();
         });
+    }
 
-        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
-        (await scheduler.CheckExists(new JobKey($"habit-{habitId}", "reminders"))).Should().BeFalse();
+    [Fact]
+    public async Task PresetReminder_SetsTheTimeOnlyForTheClickingUsersOwnHabit()
+    {
+        var now = new DateTimeOffset(2027, 1, 15, 6, 0, 0, TimeSpan.Zero);
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: new FakeTimeProvider(now));
+
+        var habitId = await host.WithScopeAsync(async sp =>
+            (await sp.GetRequiredService<HabitService>().AddHabitAsync(123, "Journal", null)).Id);
+
+        var byStranger = await host.WithScopeAsync(sp =>
+            ReminderSetupModule.SetPresetReminderAsync(sp.GetRequiredService<HabitService>(), 456, habitId.ToString(), "07:30"));
+        var malformed = await host.WithScopeAsync(sp =>
+            ReminderSetupModule.SetPresetReminderAsync(sp.GetRequiredService<HabitService>(), 123, habitId.ToString(), "7h30"));
+
+        byStranger.Should().BeNull();
+        malformed.Should().BeNull();
+        (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Habits.FindAsync(habitId).AsTask()))!
+            .ReminderTime.Should().BeNull();
+
+        var byOwner = await host.WithScopeAsync(sp =>
+            ReminderSetupModule.SetPresetReminderAsync(sp.GetRequiredService<HabitService>(), 123, habitId.ToString(), "07:30"));
+
+        byOwner!.ReminderTime.Should().Be(new TimeOnly(7, 30));
+        byOwner.NextReminderUtc.Should().Be(new DateTime(2027, 1, 15, 7, 30, 0, DateTimeKind.Utc));
     }
 
     [Fact]
@@ -162,5 +188,19 @@ public class HabitServiceIntegrationTests
         leaderboard.Should().ContainSingle();
         leaderboard[0].UserId.Should().Be(1);
         leaderboard[0].CheckIns.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task OptingOut_WithoutAnyEmberData_StoresNothing()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync(start: false);
+
+        var userCount = await host.WithScopeAsync(async sp =>
+        {
+            await sp.GetRequiredService<HabitService>().SetLeaderboardOptInAsync(777, false);
+            return await sp.GetRequiredService<EmberDbContext>().Users.CountAsync();
+        });
+
+        userCount.Should().Be(0);
     }
 }

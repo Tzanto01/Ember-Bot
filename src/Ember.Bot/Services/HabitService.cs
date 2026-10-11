@@ -397,8 +397,10 @@ public class HabitService
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>Sets leaderboard visibility. Opting out never creates a user row for someone Ember has no data on.</summary>
     public async Task SetLeaderboardOptInAsync(ulong discordUserId, bool optIn)
     {
+        if (!optIn && !await _db.Users.AnyAsync(u => u.DiscordUserId == (long)discordUserId)) return;
         await EnsureUserAsync(discordUserId);
         var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)discordUserId);
         user.LeaderboardOptIn = optIn;
