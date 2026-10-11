@@ -14,7 +14,8 @@ public static class ExportBuilder
     /// <summary>Column header of the CSV export. One row per record, discriminated by <c>record_type</c>.</summary>
     public const string CsvHeader =
         "record_type,timezone,grace_days_per_week,leaderboard_opt_in," +
-        "habit_id,name,frequency,weekly_target,reminder_time,paused_until,created_at," +
+        "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
+        "habit_id,name,frequency,weekly_target,reminder_time,paused_until,created_at,next_reminder_utc," +
         "date,completed,guild_id";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -23,13 +24,15 @@ public static class ExportBuilder
         WriteIndented = true,
     };
 
-    /// <summary>Settings of the exported user.</summary>
-    public sealed record SettingsRecord(string Timezone, int GraceDaysPerWeek, bool LeaderboardOptIn);
+    /// <summary>Settings and reminder delivery state of the exported user. Timestamps are UTC.</summary>
+    public sealed record SettingsRecord(
+        string Timezone, int GraceDaysPerWeek, bool LeaderboardOptIn,
+        int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt);
 
-    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> is UTC.</summary>
+    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC.</summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
-        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateTime CreatedAt);
+        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateTime CreatedAt, DateTime? NextReminderUtc);
 
     /// <summary>One check-in log. <c>GuildId</c> is a string because Discord snowflakes exceed JSON's safe integer range.</summary>
     public sealed record LogRecord(int HabitId, DateOnly Date, bool Completed, string? GuildId);
@@ -41,10 +44,12 @@ public static class ExportBuilder
     {
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
         return new ExportDocument(
-            new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.LeaderboardOptIn),
+            new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.LeaderboardOptIn,
+                user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt)),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
-                h.ReminderTime, h.PausedUntil, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc))).ToList(),
+                h.ReminderTime, h.PausedUntil, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
+                AsUtc(h.NextReminderUtc))).ToList(),
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture)))).ToList());
     }
@@ -64,19 +69,20 @@ public static class ExportBuilder
 
         var s = doc.Settings;
         AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn),
-            "", "", "", "", "", "", "", "", "", "");
+            Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
+            "", "", "", "", "", "", "", "", "", "", "");
 
         foreach (var h in doc.Habits)
-            AppendRow(csv, "habit", "", "", "",
+            AppendRow(csv, "habit", "", "", "", "", "", "",
                 Num(h.Id), h.Name, h.Frequency, h.WeeklyTarget is { } t ? Num(t) : "",
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
                 h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
-                h.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
+                Utc(h.CreatedAt), Utc(h.NextReminderUtc),
                 "", "", "");
 
         foreach (var l in doc.Logs)
-            AppendRow(csv, "log", "", "", "",
-                Num(l.HabitId), "", "", "", "", "", "",
+            AppendRow(csv, "log", "", "", "", "", "", "",
+                Num(l.HabitId), "", "", "", "", "", "", "",
                 l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "");
 
         return csv.ToString();
@@ -84,6 +90,8 @@ public static class ExportBuilder
 
     private static string Num(int value) => value.ToString(CultureInfo.InvariantCulture);
     private static string Bool(bool value) => value ? "true" : "false";
+    private static string Utc(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture) ?? "";
+    private static DateTime? AsUtc(DateTime? value) => value is { } v ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : null;
 
     private static void AppendRow(StringBuilder csv, params string[] cells)
     {
