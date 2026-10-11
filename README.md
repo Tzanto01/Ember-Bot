@@ -56,15 +56,21 @@ The leaderboard is opt-in: nobody appears on it until they join. It shows displa
 | Command | What it does |
 |---|---|
 | `/leaderboard` | Top check-ins of opted-in members in the server over the last 7 days |
-| `/privacy optin` | Join leaderboards |
+
+### 🔒 Privacy and your data
+
+| Command | What it does |
+|---|---|
+| `/privacy optin` | Join leaderboards (you're off them by default) |
 | `/privacy optout` | Leave all leaderboards |
+| `/export [format: csv\|json]` | Get all your data (settings, every habit, every check-in) as CSV (default) or JSON, sent to your DMs |
+| `/privacy delete` | Permanently delete everything Ember stores about you, after a confirmation button |
 
 ### 📋 Other
 
 | Command | What it does |
 |---|---|
 | `/help` | See all commands in one place |
-| `/export` | Export your habit data |
 
 ---
 
@@ -78,12 +84,12 @@ The leaderboard is opt-in: nobody appears on it until they join. It shows displa
 | 📋 **Habit templates** | Pre-built habits to get started in seconds |
 | ⏸️ **Pause** | Take a break without losing your streak |
 | 📅 **Daily or weekly habits** | Track every day, or set a weekly target (1×–6×) |
-| 🔔 **DM reminders** | ✅ / ❌ / ⏰ buttons — one tap to check in or snooze |
+| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with ✅ / ❌ / ⏰ buttons: one tap to check in or snooze. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
 | 🤔 **Missed day reflection** | A gentle nudge, not a guilt trip |
 | 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
 | 🏆 **Leaderboard** | Opt-in server check-in board; you only appear if you join |
-| 🔒 **Privacy by default** | All data is private; the leaderboard is opt-in |
+| 🔒 **Private by default** | Replies are visible only to you. Only `/habit share` and `/leaderboard` post in a channel, and the leaderboard lists only members who opted in |
 
 ---
 
@@ -91,7 +97,19 @@ The leaderboard is opt-in: nobody appears on it until they join. It shows displa
 
 Ember is hosted publicly — you don't need to run your own instance.
 
-If the bot ever goes offline permanently, the source code is here so you can self-host as a fallback. You'll need .NET 10, PostgreSQL, and a Discord bot application. See `deploy.ps1` and `src/Ember.Bot/appsettings.json` as a starting point.
+If the bot ever goes offline permanently, the source code is here so you can self-host as a fallback.
+
+The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml`). You need Docker with Compose, a Discord bot application, and a PostgreSQL server that the container reaches as host `postgres` on an existing external Docker network named `homeserver-net` (database `emberdb`). Put a `.env` file (gitignored) next to `docker-compose.yml`:
+
+| Variable | Purpose |
+|---|---|
+| `BOT_TOKEN` | Discord bot token |
+| `DB_USER`, `DB_PASSWORD` | PostgreSQL login |
+| `DEV_GUILD_ID` | Optional. Also registers the slash commands to this server, where changes show up instantly |
+
+Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
+
+**Deploying (maintainer).** Copy `deploy.ps1.example` to `deploy.ps1` (gitignored), fill in your server details and the path to the shared [homeserver-deploy](https://github.com/Tzanto01/homeserver-deploy) tool, then run `.\deploy.ps1` (`-DryRun` and `-SkipTests` are available). It runs the tests and ships only committed code; see the homeserver-deploy README for what happens on the server.
 
 ---
 
@@ -105,7 +123,7 @@ dotnet build
 dotnet test
 ```
 
-Tests cover streak logic, weekly progress, timezone helpers, cron expressions, habit templates, and interaction routing contracts.
+Tests cover streak logic, weekly progress, local-day and timezone handling, reminder dispatch, export, data deletion, habit templates, and interaction routing contracts. The PostgreSQL migration tests need Docker; without it they are skipped locally (set `CI=true` to force them).
 
 ---
 
@@ -117,7 +135,13 @@ Tests cover streak logic, weekly progress, timezone helpers, cron expressions, h
 | Discord library | Discord.Net 3.19.1 |
 | Scheduler | Quartz.NET |
 | Database | PostgreSQL via Npgsql EF Core |
-| Hosting | systemd on Linux |
+| Hosting | Docker Compose on Linux |
+
+---
+
+## Legal
+
+The privacy policy (Datenschutzerklärung), terms of use and imprint are in [`docs/legal/`](docs/legal/). They are drafts pending legal review and not published yet.
 
 ---
 
