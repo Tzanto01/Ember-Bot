@@ -105,7 +105,23 @@ public class HabitServiceIntegrationTests
     }
 
     [Fact]
-    public async Task GetLeaderboardAsync_ExcludesOptOutAndOtherGuilds()
+    public async Task GetLeaderboardAsync_UserWhoNeverOptedIn_NeverAppears()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync();
+
+        var leaderboard = await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            var habit = await service.AddHabitAsync(321, "Hydrate", reminderTime: null);
+            await service.CheckInAsync(321, habit.Id, completed: true, guildId: 999);
+            return await service.GetLeaderboardAsync(999, top: 10);
+        });
+
+        leaderboard.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetLeaderboardAsync_IncludesOnlyOptedInUsersOfThatGuild()
     {
         await using var host = await IntegrationTestHost.CreateAsync();
 
@@ -115,9 +131,9 @@ public class HabitServiceIntegrationTests
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
             db.Users.AddRange(
-                new User { DiscordUserId = 1, Timezone = "UTC", LeaderboardOptOut = false },
-                new User { DiscordUserId = 2, Timezone = "UTC", LeaderboardOptOut = true },
-                new User { DiscordUserId = 3, Timezone = "UTC", LeaderboardOptOut = false });
+                new User { DiscordUserId = 1, Timezone = "UTC" },
+                new User { DiscordUserId = 2, Timezone = "UTC" },
+                new User { DiscordUserId = 3, Timezone = "UTC" });
 
             db.Habits.AddRange(
                 new Habit { Id = 10, UserId = 1, Name = "Hydrate", CreatedAt = DateTime.UtcNow.AddDays(-10) },
@@ -136,6 +152,10 @@ public class HabitServiceIntegrationTests
         var leaderboard = await host.WithScopeAsync(async sp =>
         {
             var service = sp.GetRequiredService<HabitService>();
+            await service.SetLeaderboardOptInAsync(1, true);
+            await service.SetLeaderboardOptInAsync(3, true);
+            await service.SetLeaderboardOptInAsync(2, true);
+            await service.SetLeaderboardOptInAsync(2, false);
             return await service.GetLeaderboardAsync(999, top: 10);
         });
 

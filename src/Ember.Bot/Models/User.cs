@@ -11,8 +11,11 @@ public class User
     /// </summary>
     public int GraceDaysPerWeek { get; set; } = 1;
 
-    /// <summary>When true, this user is excluded from server leaderboards.</summary>
-    public bool LeaderboardOptOut { get; set; } = false;
+    /// <summary>
+    /// When true, this user appears on leaderboards. Off by default: only an explicit
+    /// opt-in (via /privacy optin or the leaderboard button) turns it on.
+    /// </summary>
+    public bool LeaderboardOptIn { get; set; }
 
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
 }

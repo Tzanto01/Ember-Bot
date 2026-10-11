@@ -3,6 +3,8 @@ using Ember.Bot.Data;
 using Ember.Bot.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Ember.Tests;
@@ -45,5 +47,24 @@ public class PostgresMigrationTests(PostgresFixture postgres)
             stored.ReminderTime.Should().Be(new TimeOnly(7, 30));
             stored.Logs.Should().ContainSingle(l => l.Completed && l.GuildId == 99);
         }
+    }
+
+    [DockerFact]
+    public async Task LeaderboardOptInMigration_LeavesEveryExistingUserNotOptedIn()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20260428021004_AddFrequencyPauseLeaderboard");
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"Users\" (\"DiscordUserId\", \"Timezone\", \"GraceDaysPerWeek\", \"LeaderboardOptOut\") " +
+            "VALUES (1, 'UTC', 1, FALSE), (2, 'UTC', 1, TRUE)");
+
+        await migrator.MigrateAsync();
+
+        var users = await db.Users.AsNoTracking().ToListAsync();
+        users.Should().HaveCount(2).And.OnlyContain(u => !u.LeaderboardOptIn);
     }
 }
