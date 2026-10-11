@@ -339,6 +339,14 @@ public class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
+    /// <summary>Permanently deletes the user; the database cascades to all their habits and logs (reminders live on the habits).</summary>
+    public async Task DeleteUserDataAsync(ulong discordUserId)
+    {
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteDeleteAsync();
+    }
+
     /// <summary>Undoes <see cref="ClaimDmPauseNoticeAsync"/> when the notice couldn't be shown, so the next interaction shows it.</summary>
     public async Task ReleaseDmPauseNoticeAsync(ulong discordUserId)
     {
