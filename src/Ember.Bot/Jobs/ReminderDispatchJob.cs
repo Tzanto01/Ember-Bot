@@ -55,9 +55,14 @@ public class ReminderDispatchJob : IJob
 
         foreach (var habitId in dueIds)
         {
+            if (cancellationToken.IsCancellationRequested) return;
             try
             {
                 await ProcessAsync(habitId, now, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
@@ -89,7 +94,7 @@ public class ReminderDispatchJob : IJob
             var recent = await db.HabitLogs
                 .CountAsync(l => l.HabitId == habit.Id && l.Date > weekAgo && l.Date < today && l.Completed, cancellationToken);
             var snoozed = habit.ReminderTime is not { } time
-                || TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dueAt, DateTimeKind.Utc), tz)) != time;
+                || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
 
             var outcome = await SendAsync(new Reminder((ulong)habit.UserId, habit.Id, habit.Name, recent, snoozed), cancellationToken);
             if (outcome == DeliveryOutcome.Delivered)
@@ -107,7 +112,7 @@ public class ReminderDispatchJob : IJob
         habit.NextReminderUtc = habit.ReminderTime is { } reminderTime
             ? TimezoneHelper.NextOccurrenceUtc(reminderTime, tz, now)
             : null;
-        await db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
     }
 
     private async Task DeferAsync(int habitId, DateTime until, CancellationToken cancellationToken)

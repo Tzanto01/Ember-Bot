@@ -101,7 +101,8 @@ public static class ExportBuilder
 
     private static string Cell(string value)
     {
-        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
+        var trimmed = value.TrimStart(' ', '\t', '\r', '\n');
+        if ((trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@') || (value.Length > 0 && value[0] is '\t' or '\r'))
             value = "'" + value;
 
         return value.IndexOfAny([',', '"', '\r', '\n']) >= 0

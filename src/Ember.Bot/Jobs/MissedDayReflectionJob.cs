@@ -66,6 +66,9 @@ public class MissedDayReflectionJob : IJob
         {
             try
             {
+                if (!await db.Users.AnyAsync(u => u.DiscordUserId == user.DiscordUserId, context.CancellationToken))
+                    continue;
+
                 var yesterday = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
                 await ProcessUserAsync(user, yesterday, HabitService.WeekStart(yesterday));
             }

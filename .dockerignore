@@ -5,3 +5,4 @@ tests/
 publish/
 *.md
 *.slnx
+**/appsettings*.json

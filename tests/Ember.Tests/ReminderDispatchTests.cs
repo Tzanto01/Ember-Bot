@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Discord;
 using Ember.Bot.Data;
 using Ember.Bot.Jobs;
@@ -5,6 +6,7 @@ using Ember.Bot.Models;
 using Ember.Bot.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
@@ -21,9 +23,13 @@ public class ReminderDispatchTests
     private static readonly DateTime TomorrowNineBerlin = new(2027, 1, 16, 8, 0, 0, DateTimeKind.Utc);
     private static readonly TimeOnly Nine = new(9, 0);
 
-    private static async Task<IntegrationTestHost> CreateHostAsync(FakeTimeProvider time, params Habit[] habits)
+    private static Task<IntegrationTestHost> CreateHostAsync(FakeTimeProvider time, params Habit[] habits)
+        => CreateHostAsync(time, null, habits);
+
+    private static async Task<IntegrationTestHost> CreateHostAsync(FakeTimeProvider time, IInterceptor? interceptor, params Habit[] habits)
     {
-        var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
+        var host = await IntegrationTestHost.CreateAsync(start: false, time: time,
+            configureDb: interceptor is null ? null : options => options.AddInterceptors(interceptor));
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
@@ -196,6 +202,64 @@ public class ReminderDispatchTests
         var user = await UserAsync(host, 10);
         user.DmFailureCount.Should().Be(2);
         user.DmRemindersPausedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ShutdownAfterASend_StillSavesTheAdvance_AndStopsBeforeTheNextHabit()
+    {
+        using var shutdown = new CancellationTokenSource();
+        await using var host = await CreateHostAsync(new FakeTimeProvider(Now), DueHabit(1, 10), DueHabit(2, 20));
+        host.Discord.Deliver = _ =>
+        {
+            shutdown.Cancel();
+            return DeliveryOutcome.Delivered;
+        };
+
+        await ActivatorUtilities.CreateInstance<ReminderDispatchJob>(host.Host.Services).RunAsync(shutdown.Token);
+
+        host.Discord.Messages.Should().ContainSingle();
+        var next = new[] { await NextReminderAsync(host, 1), await NextReminderAsync(host, 2) };
+        next.Should().BeEquivalentTo(new DateTime?[] { TomorrowNineBerlin, Now.UtcDateTime });
+    }
+
+    [Fact]
+    public async Task GapShiftedDailyReminder_UsesTheRegularCopy_NotTheSnoozedOne()
+    {
+        // 02:30 doesn't exist in Berlin on 2027-03-28; the reminder fires at 03:00 CEST (01:00 UTC).
+        var dueUtc = new DateTime(2027, 3, 28, 1, 0, 0, DateTimeKind.Utc);
+        var habit = DueHabit(1, 10, dueUtc);
+        habit.ReminderTime = new TimeOnly(2, 30);
+        await using var host = await CreateHostAsync(new FakeTimeProvider(new DateTimeOffset(dueUtc)), habit);
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle().Which.Text.Should().NotContain("Snoozed");
+    }
+
+    [Fact]
+    public async Task HabitThatFailsBeforeSending_IsDeferredByADay_AndOthersStillGo()
+    {
+        await using var host = await CreateHostAsync(new FakeTimeProvider(Now), new FailingLogQueryInterceptor(habitId: 1),
+            DueHabit(1, 10), DueHabit(2, 20));
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(20);
+        (await NextReminderAsync(host, 1)).Should().Be(Now.UtcDateTime.AddDays(1));
+        (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
+    }
+
+    private sealed class FailingLogQueryInterceptor(int habitId) : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("\"HabitLogs\"")
+                && command.Parameters.Cast<DbParameter>().Any(p => Equals(p.Value, habitId)))
+                throw new InvalidOperationException("Simulated database failure.");
+
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
     }
 
     [Fact]
