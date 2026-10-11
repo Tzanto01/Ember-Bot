@@ -33,16 +33,17 @@ public static class WeeklySummaryService
     public static UserSummary Build(User user, DateOnly weekEnd)
     {
         var from = weekEnd.AddDays(-(WindowDays - 1));
+        var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
 
         var habits = user.Habits
             .OrderBy(h => h.CreatedAt)
-            .Select(h => BuildHabit(h, user.GraceDaysPerWeek, from, weekEnd))
+            .Select(h => BuildHabit(h, user.GraceDaysPerWeek, from, weekEnd, tz))
             .ToList();
 
         return new UserSummary(habits, habits.Sum(h => h.Done), habits.Sum(h => h.Possible));
     }
 
-    private static HabitSummary BuildHabit(Habit habit, int graceDays, DateOnly from, DateOnly weekEnd)
+    private static HabitSummary BuildHabit(Habit habit, int graceDays, DateOnly from, DateOnly weekEnd, TimeZoneInfo tz)
     {
         var done = habit.Logs.Count(l => l.Completed && l.Date >= from && l.Date <= weekEnd);
 
@@ -51,7 +52,7 @@ public static class WeeklySummaryService
         var activeDays = 0;
         for (var d = from; d <= weekEnd; d = d.AddDays(1))
         {
-            if (HabitService.IsActiveOn(habit, d) && !HabitService.IsPausedOn(habit, d))
+            if (HabitService.IsActiveOn(habit, d, tz) && !HabitService.IsPausedOn(habit, d))
                 activeDays++;
         }
 
@@ -64,7 +65,7 @@ public static class WeeklySummaryService
         possible = Math.Max(possible, done);
 
         var (streak, graceUsed) = habit.FrequencyType == FrequencyType.Daily
-            ? HabitService.ConsecutiveStreak(habit, graceDays)
+            ? HabitService.ConsecutiveStreak(habit, weekEnd.AddDays(1), graceDays)
             : (0, 0);
 
         return new HabitSummary(habit, done, possible, streak, graceUsed, BuildDotString(habit, from, weekEnd));

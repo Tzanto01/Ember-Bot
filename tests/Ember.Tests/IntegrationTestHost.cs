@@ -28,7 +28,7 @@ public sealed class IntegrationTestHost : IAsyncDisposable
     public IHost Host { get; }
     public TestDiscordDmSender Discord { get; }
 
-    public static async Task<IntegrationTestHost> CreateAsync(bool initialize = true, bool start = true)
+    public static async Task<IntegrationTestHost> CreateAsync(bool initialize = true, bool start = true, TimeProvider? time = null)
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -42,6 +42,8 @@ public sealed class IntegrationTestHost : IAsyncDisposable
             {
                 services.AddSingleton(discord);
                 services.AddSingleton<IDiscordDmSender>(sp => sp.GetRequiredService<TestDiscordDmSender>());
+                if (time is not null)
+                    services.AddSingleton(time);
             }
         }).Build();
 

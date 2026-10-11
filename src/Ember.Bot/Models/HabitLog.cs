@@ -5,7 +5,10 @@ public class HabitLog
     public int Id { get; set; }
     public int HabitId { get; set; }
 
-    /// <summary>The calendar date (UTC) this log entry is for.</summary>
+    /// <summary>
+    /// The user's local calendar date (in <see cref="User.Timezone"/>) this log entry is for.
+    /// Logs written before <see cref="Services.TimezoneHelper.SwitchoverDate"/> carry the UTC date.
+    /// </summary>
     public DateOnly Date { get; set; }
 
     public bool Completed { get; set; }

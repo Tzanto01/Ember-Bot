@@ -5,6 +5,7 @@ using Ember.Bot.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Quartz;
 
 namespace Ember.Tests;
@@ -12,6 +13,8 @@ namespace Ember.Tests;
 [Collection("Integration")]
 public class JobIntegrationTests
 {
+    private static readonly DateTimeOffset SundayMorningUtc = new(2026, 1, 18, 9, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public async Task ReminderJob_TriggeredForScheduledHabit_SendsDm()
     {
@@ -91,15 +94,15 @@ public class JobIntegrationTests
     [Fact]
     public async Task WeeklySummaryJob_Triggered_SendsSummaryWithCountStreakAndToneLine()
     {
-        await using var host = await IntegrationTestHost.CreateAsync();
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(SundayMorningUtc));
 
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = DateOnly.FromDateTime(SundayMorningUtc.UtcDateTime);
 
             var user = new User { DiscordUserId = 55, Timezone = "UTC" };
-            var habit = new Habit { UserId = 55, Name = "Meditate", CreatedAt = DateTime.UtcNow.AddDays(-8) };
+            var habit = new Habit { UserId = 55, Name = "Meditate", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-8) };
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-1), Completed = true });
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-3), Completed = true });
             user.Habits.Add(habit);
@@ -141,7 +144,7 @@ public class JobIntegrationTests
         // Skipping is reserved for users with nothing to summarise at all: no habits,
         // or every habit created today / paused through the window — for them a 0/0
         // recap would be pure noise (and paused users asked for quiet).
-        await using var host = await IntegrationTestHost.CreateAsync();
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(SundayMorningUtc));
 
         await host.WithScopeAsync(async sp =>
         {
@@ -150,11 +153,11 @@ public class JobIntegrationTests
             // Seeded first so it is processed before the nudge user's DM arrives:
             // habit created today → zero countable days in the window → skipped.
             var brandNew = new User { DiscordUserId = 74, Timezone = "UTC" };
-            brandNew.Habits.Add(new Habit { UserId = 74, Name = "Stretch", CreatedAt = DateTime.UtcNow });
+            brandNew.Habits.Add(new Habit { UserId = 74, Name = "Stretch", CreatedAt = SundayMorningUtc.UtcDateTime });
 
             // Established habit, no check-ins at all → gentle nudge.
             var quietWeek = new User { DiscordUserId = 77, Timezone = "UTC" };
-            quietWeek.Habits.Add(new Habit { UserId = 77, Name = "Journal", CreatedAt = DateTime.UtcNow.AddDays(-10) });
+            quietWeek.Habits.Add(new Habit { UserId = 77, Name = "Journal", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10) });
 
             // No habits at all → nothing to summarise, never queried.
             var noHabits = new User { DiscordUserId = 78, Timezone = "UTC" };
@@ -180,7 +183,7 @@ public class JobIntegrationTests
         // Discord embeds cap at 25 fields; without the overflow guard, AddField throws
         // on the 26th habit and the per-user catch swallows it — the most-engaged users
         // would silently get no summary at all.
-        await using var host = await IntegrationTestHost.CreateAsync();
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(SundayMorningUtc));
 
         await host.WithScopeAsync(async sp =>
         {
@@ -193,7 +196,7 @@ public class JobIntegrationTests
                 {
                     UserId = 90,
                     Name = $"Habit {i:00}",
-                    CreatedAt = DateTime.UtcNow.AddDays(-10).AddMinutes(i)
+                    CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10).AddMinutes(i)
                 });
             }
 

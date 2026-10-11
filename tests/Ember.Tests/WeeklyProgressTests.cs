@@ -12,7 +12,7 @@ public class WeeklyProgressTests
 
     private static int DaysFromMonday()
     {
-        var dow = (int)DateTime.UtcNow.DayOfWeek; // 0=Sun
+        var dow = (int)HabitFactory.Today.DayOfWeek; // 0=Sun
         return dow == 0 ? 6 : dow - 1;            // days since Monday
     }
 
@@ -21,7 +21,7 @@ public class WeeklyProgressTests
     {
         var habit = HabitFactory.Make(
             null, FrequencyType.Weekly, weeklyTarget: 3);
-        var (done, target) = HabitService.WeeklyProgress(habit);
+        var (done, target) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         done.Should().Be(0);
         target.Should().Be(3);
     }
@@ -38,7 +38,7 @@ public class WeeklyProgressTests
         var habit = HabitFactory.Make(
             null, FrequencyType.Weekly, weeklyTarget: 5, entries);
 
-        var (done, target) = HabitService.WeeklyProgress(habit);
+        var (done, target) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         done.Should().Be(daysFromMonday + 1);
         target.Should().Be(5);
     }
@@ -54,7 +54,7 @@ public class WeeklyProgressTests
             null, FrequencyType.Weekly, weeklyTarget: 3,
             (lastSundayAgo, true)); // last week
 
-        var (done, _) = HabitService.WeeklyProgress(habit);
+        var (done, _) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         done.Should().Be(0);
     }
 
@@ -73,7 +73,7 @@ public class WeeklyProgressTests
             (0, true),           // today: done
             (1, false));         // yesterday: skipped
 
-        var (done, _) = HabitService.WeeklyProgress(habit);
+        var (done, _) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         done.Should().Be(1);
     }
 
@@ -82,7 +82,7 @@ public class WeeklyProgressTests
     {
         var habit = HabitFactory.Make(
             null, FrequencyType.Weekly, weeklyTarget: null);
-        var (_, target) = HabitService.WeeklyProgress(habit);
+        var (_, target) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         target.Should().Be(3);
     }
 
@@ -97,7 +97,7 @@ public class WeeklyProgressTests
             null, FrequencyType.Weekly, weeklyTarget: 3,
             (0, true), (1, true), (2, true));
 
-        var (done, target) = HabitService.WeeklyProgress(habit);
+        var (done, target) = HabitService.WeeklyProgress(habit, HabitFactory.Today);
         done.Should().Be(3);
         target.Should().Be(3);
     }

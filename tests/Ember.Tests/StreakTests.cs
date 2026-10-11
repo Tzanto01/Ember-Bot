@@ -12,7 +12,7 @@ public class StreakTests
     public void FlexibleStreak_NoLogs_ReturnsZero()
     {
         var habit = HabitFactory.Make();
-        HabitService.FlexibleStreak(habit).Should().Be(0);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today).Should().Be(0);
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public class StreakTests
     {
         var habit = HabitFactory.Make(
             (0, true), (1, true), (2, true), (3, true), (4, true), (5, true), (6, true));
-        HabitService.FlexibleStreak(habit, 7).Should().Be(7);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 7).Should().Be(7);
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class StreakTests
     {
         var habit = HabitFactory.Make(
             (0, true), (1, false), (2, true), (3, false), (4, true), (5, false), (6, false));
-        HabitService.FlexibleStreak(habit, 7).Should().Be(3);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 7).Should().Be(3);
     }
 
     [Fact]
@@ -36,14 +36,14 @@ public class StreakTests
     {
         var habit = HabitFactory.Make(
             (0, true), (8, true), (9, true)); // days 8 & 9 are outside the 7-day window
-        HabitService.FlexibleStreak(habit, 7).Should().Be(1);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 7).Should().Be(1);
     }
 
     [Fact]
     public void FlexibleStreak_OnlySkippedLogs_ReturnsZero()
     {
         var habit = HabitFactory.Make((0, false), (1, false), (2, false));
-        HabitService.FlexibleStreak(habit, 7).Should().Be(0);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 7).Should().Be(0);
     }
 
     [Fact]
@@ -52,8 +52,8 @@ public class StreakTests
         var habit = HabitFactory.Make(
             (0, true), (1, true), (2, true),
             (8, true), (9, true)); // 3 in last 7 days, 5 in last 30 days
-        HabitService.FlexibleStreak(habit, 7).Should().Be(3);
-        HabitService.FlexibleStreak(habit, 30).Should().Be(5);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 7).Should().Be(3);
+        HabitService.FlexibleStreak(habit, HabitFactory.Today, 30).Should().Be(5);
     }
 
     // ── BestStreak ────────────────────────────────────────────────────────────

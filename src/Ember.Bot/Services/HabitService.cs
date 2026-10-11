@@ -8,11 +8,13 @@ public class HabitService
 {
     private readonly EmberDbContext _db;
     private readonly ReminderScheduler _scheduler;
+    private readonly TimeProvider _time;
 
-    public HabitService(EmberDbContext db, ReminderScheduler scheduler)
+    public HabitService(EmberDbContext db, ReminderScheduler scheduler, TimeProvider time)
     {
         _db        = db;
         _scheduler = scheduler;
+        _time      = time;
     }
 
     // Ensure a User row exists for this Discord user
@@ -66,11 +68,12 @@ public class HabitService
     public async Task<HabitLog?> CheckInAsync(ulong discordUserId, int habitId, bool completed, ulong? guildId = null)
     {
         var habit = await _db.Habits
+            .Include(h => h.User)
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
 
         if (habit is null) return null;
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
         var existing = await _db.HabitLogs
             .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == today);
 
@@ -96,11 +99,11 @@ public class HabitService
 
     /// <summary>
     /// Returns how many of the last <paramref name="days"/> days were completed,
-    /// using a rolling window. Paused days are excluded from the window.
+    /// using a rolling window ending on the user's local <paramref name="today"/>.
     /// </summary>
-    public static int FlexibleStreak(Habit habit, int days = 7)
+    public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7)
     {
-        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-(days - 1));
+        var cutoff = today.AddDays(-(days - 1));
         return habit.Logs.Count(l => l.Completed && l.Date >= cutoff);
     }
 
@@ -108,11 +111,10 @@ public class HabitService
     /// Returns the longest consecutive completed-day run, with up to
     /// <paramref name="graceDays"/> forgiven gaps per 7-day window.
     /// Also returns how many grace days were used in the current active streak.
+    /// <paramref name="today"/> is the user's local day.
     /// </summary>
-    public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, int graceDays = 1)
+    public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
         var completed = habit.Logs
             .Where(l => l.Completed)
             .Select(l => l.Date)
@@ -129,12 +131,12 @@ public class HabitService
 
         // Start from today (or yesterday if today isn't checked in and isn't paused).
         var day = today;
-        if (!completed.Contains(today) && !IsPausedOn(habit, today))
+        if (!completed.Contains(today) && !IsCoveredOn(habit, today, completed))
             day = today.AddDays(-1);
 
         while (day >= floor)
         {
-            if (IsPausedOn(habit, day))
+            if (IsCoveredOn(habit, day, completed))
             {
                 // Paused — skip without grace, but guard against underflow
                 if (day == floor) break;
@@ -167,6 +169,9 @@ public class HabitService
     public static bool IsPausedOn(Habit habit, DateOnly date)
         => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value;
 
+    private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed)
+        => IsPausedOn(habit, date) || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
+
     /// <summary>Returns the longest consecutive completed-day streak (no grace).</summary>
     public static int BestStreak(Habit habit)
     {
@@ -192,11 +197,10 @@ public class HabitService
 
     /// <summary>
     /// For weekly habits: returns (checkedInThisWeek, target) where the week
-    /// is Monday–Sunday containing today.
+    /// is Monday–Sunday containing the user's local <paramref name="today"/>.
     /// </summary>
-    public static (int done, int target) WeeklyProgress(Habit habit)
+    public static (int done, int target) WeeklyProgress(Habit habit, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         // Find Monday of this week
         var dow = (int)today.DayOfWeek; // 0=Sun
         var monday = today.AddDays(dow == 0 ? -6 : -(dow - 1));
@@ -211,9 +215,10 @@ public class HabitService
     /// Returns whether the habit should be counted as active on the given date.
     /// A habit is only active on dates strictly after its creation date — the day
     /// it was created is excluded because the user had no full day to complete it.
+    /// Pass the user's <paramref name="tz"/> to compare against the local creation day.
     /// </summary>
-    public static bool IsActiveOn(Habit habit, DateOnly date)
-        => DateOnly.FromDateTime(habit.CreatedAt) < date;
+    public static bool IsActiveOn(Habit habit, DateOnly date, TimeZoneInfo? tz = null)
+        => DateOnly.FromDateTime(tz is null ? habit.CreatedAt : TimeZoneInfo.ConvertTimeFromUtc(habit.CreatedAt, tz)) < date;
 
     public async Task<Habit?> SetFrequencyAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget)
     {
@@ -333,6 +338,13 @@ public class HabitService
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
         return TimezoneHelper.Find(user?.Timezone ?? "UTC") ?? TimeZoneInfo.Utc;
+    }
+
+    /// <summary>The user's current local day (UTC when the user has no known timezone).</summary>
+    public async Task<DateOnly> GetLocalTodayAsync(ulong discordUserId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        return TimezoneHelper.LocalToday(user?.Timezone, _time);
     }
 
     public async Task<bool> HasTimezoneSetAsync(ulong discordUserId)

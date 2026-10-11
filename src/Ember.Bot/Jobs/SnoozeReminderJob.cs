@@ -22,12 +22,14 @@ public class SnoozeReminderJob : IJob
     private readonly IServiceProvider _services;
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<SnoozeReminderJob> _logger;
+    private readonly TimeProvider _time;
 
-    public SnoozeReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<SnoozeReminderJob> logger)
+    public SnoozeReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<SnoozeReminderJob> logger, TimeProvider time)
     {
         _services = services;
         _discord  = discord;
         _logger   = logger;
+        _time     = time;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -40,7 +42,11 @@ public class SnoozeReminderJob : IJob
         // Skip if already checked in
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var timezone = await db.Users
+            .Where(u => u.DiscordUserId == (long)userId)
+            .Select(u => u.Timezone)
+            .FirstOrDefaultAsync();
+        var today = TimezoneHelper.LocalToday(timezone, _time);
         var alreadyDone = await db.HabitLogs
             .AnyAsync(l => l.HabitId == habitId && l.Date == today && l.Completed);
 

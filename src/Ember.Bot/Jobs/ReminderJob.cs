@@ -25,12 +25,14 @@ public class ReminderJob : IJob
     private readonly IServiceProvider _services;
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<ReminderJob> _logger;
+    private readonly TimeProvider _time;
 
-    public ReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<ReminderJob> logger)
+    public ReminderJob(IServiceProvider services, IDiscordDmSender discord, ILogger<ReminderJob> logger, TimeProvider time)
     {
         _services = services;
         _discord  = discord;
         _logger   = logger;
+        _time     = time;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -45,7 +47,11 @@ public class ReminderJob : IJob
 
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var timezone = await db.Users
+            .Where(u => u.DiscordUserId == (long)userId)
+            .Select(u => u.Timezone)
+            .FirstOrDefaultAsync();
+        var today = TimezoneHelper.LocalToday(timezone, _time);
 
         // Count how many of the last 7 days (excluding today) had a completed check-in
         var weekAgo = today.AddDays(-7);

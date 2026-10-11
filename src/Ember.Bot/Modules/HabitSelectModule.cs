@@ -54,7 +54,8 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
 
         if (habit is null) { await NotFoundAsync(); return; }
 
-        var embed = BuildShareEmbed(habit, grace, Context.User.Username);
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today);
         var component = (SocketMessageComponent)Context.Interaction;
 
         // Acknowledge the component interaction first, then post publicly.
@@ -126,7 +127,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var isPaused = habit.PausedUntil.HasValue &&
-                       habit.PausedUntil >= DateOnly.FromDateTime(DateTime.UtcNow);
+                       habit.PausedUntil >= await _habits.GetLocalTodayAsync(Context.User.Id);
 
         var builder = new ComponentBuilder()
             .WithButton("Today only", $"habitaction:pause:{habitId}:today",    ButtonStyle.Secondary)
@@ -180,9 +181,8 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     private async Task NotFoundAsync() =>
         await RespondAsync("Couldn't find that habit.", ephemeral: true);
 
-    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username)
+    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var from  = today.AddDays(-29);
 
         var completed = habit.Logs
@@ -207,16 +207,16 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
 
         if (habit.FrequencyType == FrequencyType.Weekly)
         {
-            var (done, target) = HabitService.WeeklyProgress(habit);
+            var (done, target) = HabitService.WeeklyProgress(habit, today);
             var total = habit.Logs.Count(l => l.Completed);
             titleLine = $"**{done}/{target} this week**";
-            statsLine = $"Last 28 days: **{HabitService.FlexibleStreak(habit, 28)}/28** · Total: **{total}**";
+            statsLine = $"Last 28 days: **{HabitService.FlexibleStreak(habit, today, 28)}/28** · Total: **{total}**";
         }
         else
         {
-            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, grace);
+            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace);
             var best   = HabitService.BestStreak(habit);
-            var last30 = HabitService.FlexibleStreak(habit, 30);
+            var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
             var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
             var fireCount = Math.Min(streak / 7 + 1, 5);
@@ -232,6 +232,6 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             .WithTimestamp(DateTimeOffset.UtcNow);
     }
 
-    internal static Embed BuildShareEmbed(Habit habit, int grace, string username) =>
-        BuildShareEmbedBase(habit, grace, username).Build();
+    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today) =>
+        BuildShareEmbedBase(habit, grace, username, today).Build();
 }

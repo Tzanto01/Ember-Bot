@@ -15,7 +15,7 @@ public class MissedDayReflectionTests
             frequency: FrequencyType.Daily,
             weeklyTarget: null);
 
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        var yesterday = HabitFactory.Today.AddDays(-1);
 
         HabitService.IsActiveOn(habit, yesterday).Should().BeFalse();
     }
@@ -31,7 +31,7 @@ public class MissedDayReflectionTests
             frequency: FrequencyType.Daily,
             weeklyTarget: null);
 
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        var yesterday = HabitFactory.Today.AddDays(-1);
 
         HabitService.IsActiveOn(habit, yesterday).Should().BeFalse();
     }
@@ -46,7 +46,7 @@ public class MissedDayReflectionTests
             frequency: FrequencyType.Daily,
             weeklyTarget: null);
 
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        var yesterday = HabitFactory.Today.AddDays(-1);
 
         HabitService.IsActiveOn(habit, yesterday).Should().BeTrue();
     }
@@ -54,8 +54,8 @@ public class MissedDayReflectionTests
     [Fact]
     public void IsActiveOn_WeeklyHabitCreatedAfterWeekStart_IsFalseForEarlierDays()
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var createdAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var today = HabitFactory.Today;
+        var createdAt = HabitFactory.Today.AddDays(-1);
         var earlierDay = createdAt.AddDays(-1);
 
         var habit = HabitFactory.Make(
