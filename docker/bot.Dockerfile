@@ -12,4 +12,5 @@ RUN dotnet publish src/Ember.Bot/Ember.Bot.csproj \
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Ember.Bot.dll"]

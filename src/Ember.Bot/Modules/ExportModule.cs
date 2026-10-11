@@ -1,59 +1,61 @@
 using Discord;
 using Discord.Interactions;
+using Ember.Bot.Data;
 using Ember.Bot.Services;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 
 namespace Ember.Bot.Modules;
 
-[Group("export", "Export your data")]
 public class ExportModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly HabitService _habits;
-
-    public ExportModule(HabitService habits)
+    public enum ExportFormat
     {
-        _habits = habits;
+        [ChoiceDisplay("CSV (spreadsheet)")] Csv,
+        [ChoiceDisplay("JSON")] Json,
     }
 
-    [SlashCommand("habits", "Export all your habit logs as a CSV sent to your DMs")]
-    public async Task ExportAsync()
+    private readonly EmberDbContext _db;
+
+    public ExportModule(EmberDbContext db)
+    {
+        _db = db;
+    }
+
+    /// <summary>
+    /// <c>/export [format]</c>: sends the user's complete data (settings, every habit including those
+    /// without logs, every log with its guild id) to their DMs, or as an ephemeral file if DMs fail.
+    /// CSV (default) is a single file: one row per record with a <c>record_type</c> column
+    /// (<c>settings</c>, <c>habit</c>, <c>log</c>); see <see cref="ExportBuilder.BuildCsv"/>.
+    /// JSON is one document with <c>settings</c>, <c>habits</c> and <c>logs</c>.
+    /// </summary>
+    [SlashCommand("export", "Export all your Ember data (settings, habits, logs) to your DMs")]
+    public async Task ExportAsync(
+        [Summary("format", "File format (default CSV)")] ExportFormat format = ExportFormat.Csv)
     {
         await DeferAsync(ephemeral: true);
 
-        var habits = await _habits.GetHabitsAsync(Context.User.Id);
+        var userId = (long)Context.User.Id;
+        var user = await _db.Users
+            .AsNoTracking()
+            .Include(u => u.Habits).ThenInclude(h => h.Logs)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(u => u.DiscordUserId == userId);
 
-        if (habits.Count == 0)
+        if (user is null)
         {
-            await FollowupAsync("You don't have any habits to export yet.", ephemeral: true);
+            await FollowupAsync("There's nothing stored about you yet, so there's nothing to export. 🌿", ephemeral: true);
             return;
         }
 
-        // Build CSV in memory — no temp files
-        var csv = new StringBuilder();
-        csv.AppendLine("habit_id,habit_name,frequency,weekly_target,date,completed");
+        var (content, extension) = format == ExportFormat.Json
+            ? (ExportBuilder.BuildJson(user), "json")
+            : (ExportBuilder.BuildCsv(user), "csv");
 
-        foreach (var habit in habits)
-        {
-            var freq   = habit.FrequencyType.ToString().ToLower();
-            var target = habit.WeeklyTarget?.ToString() ?? "";
-
-            foreach (var log in habit.Logs.OrderBy(l => l.Date))
-            {
-                csv.AppendLine(
-                    $"{habit.Id}," +
-                    $"\"{habit.Name.Replace("\"", "\"\"")}\"," +
-                    $"{freq}," +
-                    $"{target}," +
-                    $"{log.Date:yyyy-MM-dd}," +
-                    $"{(log.Completed ? "true" : "false")}");
-            }
-        }
-
-        var bytes = Encoding.UTF8.GetBytes(csv.ToString());
-        using var stream = new MemoryStream(bytes);
-
-        var filename = $"ember-export-{DateTime.UtcNow:yyyy-MM-dd}.csv";
-        var attachment = new FileAttachment(stream, filename, "Your Ember habit data");
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var filename = $"ember-export-{DateTime.UtcNow:yyyy-MM-dd}.{extension}";
+        var attachment = new FileAttachment(stream, filename, "Your Ember data");
+        var habitCount = user.Habits.Count;
 
         try
         {
@@ -63,9 +65,9 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
                 .WithColor(0xF4845F)
                 .WithTitle("📊 Your Ember data")
                 .WithDescription(
-                    $"All your habit logs exported as CSV.\n\n" +
-                    $"**{habits.Count}** habit{(habits.Count != 1 ? "s" : "")} · " +
-                    $"**{habits.Sum(h => h.Logs.Count)}** total log entries")
+                    $"Your settings, habits and logs exported as {extension.ToUpperInvariant()}.\n\n" +
+                    $"**{habitCount}** habit{(habitCount != 1 ? "s" : "")} · " +
+                    $"**{user.Habits.Sum(h => h.Logs.Count)}** total log entries")
                 .WithFooter("This is your data — keep it, analyse it, do whatever you want with it.")
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 .Build();
@@ -75,7 +77,6 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
         }
         catch
         {
-            // DMs disabled — send ephemerally instead using the file overload
             stream.Position = 0;
             await FollowupWithFileAsync(
                 attachment,
