@@ -41,6 +41,9 @@ namespace Ember.Bot.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("NextReminderUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly?>("PausedUntil")
                         .HasColumnType("date");
 
@@ -54,6 +57,8 @@ namespace Ember.Bot.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NextReminderUtc");
 
                     b.HasIndex("UserId");
 

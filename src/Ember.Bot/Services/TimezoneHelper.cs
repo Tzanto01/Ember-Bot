@@ -47,13 +47,32 @@ public static class TimezoneHelper
     }
 
     /// <summary>
-    /// Converts a UTC TimeOnly to a local TimeOnly in the user's timezone.
+    /// The first UTC instant strictly after <paramref name="afterUtc"/> at which the wall clock
+    /// in <paramref name="tz"/> shows <paramref name="localTime"/>. A time inside a spring-forward
+    /// gap moves to the first valid local time after the gap; an ambiguous fall-back time uses
+    /// its first occurrence (the earlier UTC instant).
     /// </summary>
-    public static TimeOnly ToLocal(TimeOnly utcTime, TimeZoneInfo tz)
+    public static DateTime NextOccurrenceUtc(TimeOnly localTime, TimeZoneInfo tz, DateTime afterUtc)
     {
-        var today = DateTime.UtcNow.Date;
-        var utcDt = DateTime.SpecifyKind(today.Add(utcTime.ToTimeSpan()), DateTimeKind.Utc);
-        var localDt = TimeZoneInfo.ConvertTimeFromUtc(utcDt, tz);
-        return TimeOnly.FromDateTime(localDt);
+        afterUtc = DateTime.SpecifyKind(afterUtc, DateTimeKind.Utc);
+        var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(afterUtc, tz)).AddDays(-1);
+        while (true)
+        {
+            var candidate = LocalToUtc(day.ToDateTime(localTime), tz);
+            if (candidate > afterUtc) return candidate;
+            day = day.AddDays(1);
+        }
+    }
+
+    private static DateTime LocalToUtc(DateTime local, TimeZoneInfo tz)
+    {
+        local = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        while (tz.IsInvalidTime(local))
+            local = local.AddMinutes(1);
+
+        if (tz.IsAmbiguousTime(local))
+            return DateTime.SpecifyKind(local - tz.GetAmbiguousTimeOffsets(local).Max(), DateTimeKind.Utc);
+
+        return TimeZoneInfo.ConvertTimeToUtc(local, tz);
     }
 }
