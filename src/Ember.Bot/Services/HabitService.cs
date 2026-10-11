@@ -6,6 +6,9 @@ namespace Ember.Bot.Services;
 
 public class HabitService
 {
+    /// <summary>Most habits a single user can track.</summary>
+    public const int MaxHabitsPerUser = 50;
+
     private readonly EmberDbContext _db;
     private readonly ReminderScheduler _scheduler;
     private readonly TimeProvider _time;
@@ -39,10 +42,14 @@ public class HabitService
         }
     }
 
+    /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
     public async Task<Habit> AddHabitAsync(ulong discordUserId, string name, TimeOnly? reminderTime,
         FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null)
     {
         await EnsureUserAsync(discordUserId);
+        if (await _db.Habits.CountAsync(h => h.UserId == (long)discordUserId) >= MaxHabitsPerUser)
+            throw new HabitLimitReachedException();
+
         var habit = new Habit
         {
             UserId = (long)discordUserId,

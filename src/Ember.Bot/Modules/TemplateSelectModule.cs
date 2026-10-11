@@ -40,12 +40,21 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
             ? FrequencyType.Weekly
             : FrequencyType.Daily;
 
-        var habit = await _habits.AddHabitAsync(
-            Context.User.Id,
-            cleanName,
-            reminderTime: null,
-            frequency,
-            template.WeeklyTarget);
+        Habit habit;
+        try
+        {
+            habit = await _habits.AddHabitAsync(
+                Context.User.Id,
+                cleanName,
+                reminderTime: null,
+                frequency,
+                template.WeeklyTarget);
+        }
+        catch (HabitLimitReachedException ex)
+        {
+            await RespondAsync(ex.Message, ephemeral: true);
+            return;
+        }
 
         var hasTimezone = await _habits.HasTimezoneSetAsync(Context.User.Id);
 
