@@ -45,6 +45,7 @@ public static class AppHost
                     dbOptions.UseNpgsql(context.Configuration.GetConnectionString("DefaultConnection"));
                 });
 
+                services.AddSingleton(TimeProvider.System);
                 services.AddScoped<HabitService>();
 
                 services.AddQuartz(q =>
@@ -56,7 +57,7 @@ public static class AppHost
                     q.AddTrigger(opts => opts
                         .ForJob(WeeklySummaryJob.Key)
                         .WithIdentity("weekly-summary-trigger", "summaries")
-                        .WithCronSchedule("0 0 9 ? * SUN", x => x.InTimeZone(TimeZoneInfo.Utc)));
+                        .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
                     q.AddJob<MissedDayReflectionJob>(opts => opts.WithIdentity(MissedDayReflectionJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts

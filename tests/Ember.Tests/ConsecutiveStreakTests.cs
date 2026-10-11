@@ -12,7 +12,7 @@ public class ConsecutiveStreakTests
     public void NoLogs_ReturnsZero()
     {
         var habit = HabitFactory.Make();
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(0);
         graceUsed.Should().Be(0);
     }
@@ -23,7 +23,7 @@ public class ConsecutiveStreakTests
     public void AllDaysCompleted_ReturnsTrueCount()
     {
         var habit = HabitFactory.Make((0, true), (1, true), (2, true), (3, true), (4, true));
-        var (streak, _) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, _) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(5);
     }
 
@@ -32,7 +32,7 @@ public class ConsecutiveStreakTests
     {
         // Yesterday and the day before checked in; today not yet — streak should still be 2
         var habit = HabitFactory.Make((1, true), (2, true));
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(2);
         graceUsed.Should().Be(0);
     }
@@ -44,7 +44,7 @@ public class ConsecutiveStreakTests
     {
         // Checked in today and 2 days ago, missed yesterday
         var habit = HabitFactory.Make((0, true), (2, true), (3, true));
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 1);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 1);
         streak.Should().Be(3);
         graceUsed.Should().Be(1);
     }
@@ -55,7 +55,7 @@ public class ConsecutiveStreakTests
         // Checked in today; missed yesterday and day-before; 3 days ago checked in
         // Grace covers 1 miss, second miss breaks the streak → streak = 1 (just today) + 1 grace consumed
         var habit = HabitFactory.Make((0, true), (3, true), (4, true));
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 1);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 1);
         streak.Should().Be(1);
         graceUsed.Should().Be(1);
     }
@@ -64,7 +64,7 @@ public class ConsecutiveStreakTests
     public void TwoMissedDays_WithTwoGrace_StreakContinues()
     {
         var habit = HabitFactory.Make((0, true), (3, true), (4, true));
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 2);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 2);
         streak.Should().Be(3);
         graceUsed.Should().Be(2);
     }
@@ -73,7 +73,7 @@ public class ConsecutiveStreakTests
     public void ZeroGrace_SingleMissedDay_BreaksStreak()
     {
         var habit = HabitFactory.Make((0, true), (2, true), (3, true));
-        var (streak, _) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, _) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(1); // only today counts; gap at day 1 breaks it immediately
     }
 
@@ -81,8 +81,41 @@ public class ConsecutiveStreakTests
     public void GraceUsed_IsZeroWhenNoMissesInCurrentStreak()
     {
         var habit = HabitFactory.Make((0, true), (1, true), (2, true));
-        var (_, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 2);
+        var (_, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 2);
         graceUsed.Should().Be(0);
+    }
+
+    // ── Local-day switchover ───────────────────────────────────────────────────
+
+    private static Habit HabitWithLogsOn(params DateOnly[] dates)
+    {
+        var habit = new Habit { Name = "Test", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+        foreach (var d in dates)
+            habit.Logs.Add(new HabitLog { Date = d, Completed = true });
+        return habit;
+    }
+
+    [Fact]
+    public void GapOnSwitchoverDate_DoesNotBreakStreak()
+    {
+        var s = TimezoneHelper.SwitchoverDate;
+        var habit = HabitWithLogsOn(s.AddDays(1), s.AddDays(-1), s.AddDays(-2));
+
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, s.AddDays(1), graceDays: 0);
+
+        streak.Should().Be(3);
+        graceUsed.Should().Be(0);
+    }
+
+    [Fact]
+    public void GapOnAnotherDateAroundSwitchover_StillBreaksStreak()
+    {
+        var s = TimezoneHelper.SwitchoverDate;
+        var habit = HabitWithLogsOn(s.AddDays(2), s, s.AddDays(-1));
+
+        var (streak, _) = HabitService.ConsecutiveStreak(habit, s.AddDays(2), graceDays: 0);
+
+        streak.Should().Be(1);
     }
 
     // ── Paused days ────────────────────────────────────────────────────────────
@@ -114,7 +147,7 @@ public class ConsecutiveStreakTests
 
         // Walk: today=done(+1), yesterday=paused(skip), day2=paused(skip), day3=paused(skip)
         // Then we hit the habit.CreatedAt boundary → streak=1, graceUsed=0
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(1);
         graceUsed.Should().Be(0);
     }
@@ -137,7 +170,7 @@ public class ConsecutiveStreakTests
             weeklyTarget: null,
             (0, true));
 
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, graceDays: 0);
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(1);
         graceUsed.Should().Be(0);
     }

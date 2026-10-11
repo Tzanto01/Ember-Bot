@@ -13,6 +13,27 @@ public static class TimezoneHelper
     }
 
     /// <summary>
+    /// The day Ember switched from UTC days to each user's local day. Logs from before
+    /// were dated in UTC, so a user far from UTC can see one artificial gap around it;
+    /// a gap on this date is treated as covered (like a paused day) so no streak breaks.
+    /// </summary>
+    public static readonly DateOnly SwitchoverDate = new(2026, 10, 20);
+
+    /// <summary>
+    /// The current time in the user's timezone (IANA or Windows id).
+    /// Unknown or missing ids fall back to UTC.
+    /// </summary>
+    public static DateTimeOffset LocalNow(string? timezoneId, TimeProvider time)
+        => TimeZoneInfo.ConvertTime(time.GetUtcNow(), Find(timezoneId ?? "UTC") ?? TimeZoneInfo.Utc);
+
+    /// <summary>
+    /// The user's current local calendar day. Every "today", streak and weekly
+    /// calculation for a user is based on this, never on the UTC date.
+    /// </summary>
+    public static DateOnly LocalToday(string? timezoneId, TimeProvider time)
+        => DateOnly.FromDateTime(LocalNow(timezoneId, time).DateTime);
+
+    /// <summary>
     /// Converts a local TimeOnly (in the user's timezone) to a UTC TimeOnly
     /// using today's date as context for DST accuracy.
     /// </summary>

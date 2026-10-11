@@ -10,7 +10,7 @@ namespace Ember.Tests;
 /// </summary>
 public class WeeklySummaryServiceTests
 {
-    private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+    private static readonly DateOnly Today = HabitFactory.Today;
 
     // The job always summarises the window ending yesterday; tests use the same anchor.
     private static readonly DateOnly WeekEnd = Today.AddDays(-1);

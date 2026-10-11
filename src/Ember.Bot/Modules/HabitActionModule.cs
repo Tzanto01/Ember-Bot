@@ -234,7 +234,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
     {
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
         DateOnly? pausedUntil = duration switch
         {
             "today"  => (DateOnly?)today,

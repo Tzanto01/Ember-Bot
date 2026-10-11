@@ -10,8 +10,9 @@ using Quartz;
 namespace Ember.Bot.Jobs;
 
 /// <summary>
-/// Fires once per week (Sunday at 09:00 UTC) for every user who has at least one habit.
-/// Sends a DM recapping the 7-day window ending yesterday (the last complete day):
+/// Runs hourly and sends to every user with at least one habit whose local time is
+/// Sunday at <see cref="LocalSendHour"/>:00.
+/// Sends a DM recapping the 7-day window ending the user's local yesterday (the last complete day):
 /// per-habit check-in counts, current streaks, and a tone-appropriate line.
 ///
 /// Users with zero check-ins in the window still get a DM — a gentle nudge, not
@@ -28,12 +29,17 @@ public class WeeklySummaryJob : IJob
     private readonly IServiceProvider _services;
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<WeeklySummaryJob> _logger;
+    private readonly TimeProvider _time;
 
-    public WeeklySummaryJob(IServiceProvider services, IDiscordDmSender discord, ILogger<WeeklySummaryJob> logger)
+    /// <summary>Local hour on Sunday at which each user receives their summary.</summary>
+    public const int LocalSendHour = 9;
+
+    public WeeklySummaryJob(IServiceProvider services, IDiscordDmSender discord, ILogger<WeeklySummaryJob> logger, TimeProvider time)
     {
         _services = services;
         _discord  = discord;
         _logger   = logger;
+        _time     = time;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -41,14 +47,23 @@ public class WeeklySummaryJob : IJob
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
 
-        // Get all users who have at least one habit
+        var candidates = await db.Users
+            .Where(u => u.Habits.Any())
+            .Select(u => new { u.DiscordUserId, u.Timezone })
+            .ToListAsync(context.CancellationToken);
+
+        var dueIds = candidates
+            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { DayOfWeek: DayOfWeek.Sunday, Hour: LocalSendHour })
+            .Select(u => u.DiscordUserId)
+            .ToList();
+
+        if (dueIds.Count == 0) return;
+
         var users = await db.Users
             .Include(u => u.Habits)
                 .ThenInclude(h => h.Logs)
-            .Where(u => u.Habits.Any())
+            .Where(u => dueIds.Contains(u.DiscordUserId))
             .ToListAsync(context.CancellationToken);
-
-        var weekEnd = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1); // yesterday — last complete day
 
         _logger.LogInformation("WeeklySummaryJob: evaluating {Count} users.", users.Count);
 
@@ -56,6 +71,7 @@ public class WeeklySummaryJob : IJob
         {
             try
             {
+                var weekEnd = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
                 await SendSummaryAsync(user, weekEnd);
             }
             catch (Exception ex)

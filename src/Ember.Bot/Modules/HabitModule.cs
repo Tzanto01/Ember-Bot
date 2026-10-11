@@ -106,7 +106,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     {
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
-        var today  = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -136,14 +136,14 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 string progressStr;
                 if (h.FrequencyType == FrequencyType.Weekly)
                 {
-                    var (done, target) = HabitService.WeeklyProgress(h);
-                    progressStr = $"This week: **{done}/{target}** · Last 4 wks: **{HabitService.FlexibleStreak(h, 28)}/28**";
+                    var (done, target) = HabitService.WeeklyProgress(h, today);
+                    progressStr = $"This week: **{done}/{target}** · Last 4 wks: **{HabitService.FlexibleStreak(h, today, 28)}/28**";
                 }
                 else
                 {
-                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, grace);
+                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace);
                     var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, 7)}/7**";
+                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7)}/7**";
                 }
 
                 embed.AddField(
@@ -186,6 +186,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     {
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
+        var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -209,18 +210,18 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 string statsText;
                 if (h.FrequencyType == FrequencyType.Weekly)
                 {
-                    var (done, target) = HabitService.WeeklyProgress(h);
+                    var (done, target) = HabitService.WeeklyProgress(h, today);
                     var total  = h.Logs.Count(l => l.Completed);
-                    var last28 = HabitService.FlexibleStreak(h, 28);
+                    var last28 = HabitService.FlexibleStreak(h, today, 28);
                     statsText =
                         $"This week: **{done}/{target}**\n" +
                         $"Last 28 days: **{last28}/28** · Total: **{total}**";
                 }
                 else
                 {
-                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, grace);
-                    var last7  = HabitService.FlexibleStreak(h, 7);
-                    var last30 = HabitService.FlexibleStreak(h, 30);
+                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace);
+                    var last7  = HabitService.FlexibleStreak(h, today, 7);
+                    var last30 = HabitService.FlexibleStreak(h, today, 30);
                     var best   = HabitService.BestStreak(h);
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
