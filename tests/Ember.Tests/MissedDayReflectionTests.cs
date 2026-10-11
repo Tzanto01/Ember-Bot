@@ -6,6 +6,21 @@ namespace Ember.Tests;
 
 public class MissedDayReflectionTests
 {
+    [Theory]
+    [InlineData(2026, 1, 12)] // Monday
+    [InlineData(2026, 1, 13)]
+    [InlineData(2026, 1, 14)]
+    [InlineData(2026, 1, 15)]
+    [InlineData(2026, 1, 16)]
+    [InlineData(2026, 1, 17)]
+    [InlineData(2026, 1, 18)] // Sunday
+    public void WeekStart_IsTheMondayOfTheSameWeek_ForEveryWeekday(int year, int month, int day)
+    {
+        var date = new DateOnly(year, month, day);
+
+        HabitService.WeekStart(date).Should().Be(new DateOnly(2026, 1, 12));
+    }
+
     [Fact]
     public void IsActiveOn_HabitCreatedToday_IsFalseForYesterday()
     {

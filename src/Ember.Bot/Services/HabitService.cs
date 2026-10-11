@@ -222,15 +222,17 @@ public class HabitService
     /// </summary>
     public static (int done, int target) WeeklyProgress(Habit habit, DateOnly today)
     {
-        // Find Monday of this week
-        var dow = (int)today.DayOfWeek; // 0=Sun
-        var monday = today.AddDays(dow == 0 ? -6 : -(dow - 1));
+        var monday = WeekStart(today);
         var sunday = monday.AddDays(6);
 
         var done = habit.Logs.Count(l => l.Completed && l.Date >= monday && l.Date <= sunday);
         var target = habit.WeeklyTarget ?? 3;
         return (done, target);
     }
+
+    /// <summary>Returns the Monday of the Monday–Sunday week containing <paramref name="day"/>.</summary>
+    public static DateOnly WeekStart(DateOnly day)
+        => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
 
     /// <summary>
     /// Returns whether the habit should be counted as active on the given date.

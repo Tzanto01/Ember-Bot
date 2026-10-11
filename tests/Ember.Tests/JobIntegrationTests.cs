@@ -14,6 +14,7 @@ namespace Ember.Tests;
 public class JobIntegrationTests
 {
     private static readonly DateTimeOffset SundayMorningUtc = new(2026, 1, 18, 9, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset ReflectionHourUtc = new(2026, 1, 14, 10, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public async Task ReminderJob_TriggeredForScheduledHabit_SendsDm()
@@ -220,18 +221,18 @@ public class JobIntegrationTests
     [Fact]
     public async Task MissedDayReflectionJob_Triggered_SendsOnlyForEligibleMissedHabit()
     {
-        await using var host = await IntegrationTestHost.CreateAsync();
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(ReflectionHourUtc));
 
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+            var yesterday = DateOnly.FromDateTime(ReflectionHourUtc.UtcDateTime).AddDays(-1);
 
             var eligibleUser = new User { DiscordUserId = 1001, Timezone = "UTC" };
             eligibleUser.Habits.Add(new Habit
             {
                 Name = "Stretch",
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5),
                 Logs = []
             });
 
@@ -239,7 +240,7 @@ public class JobIntegrationTests
             pausedUser.Habits.Add(new Habit
             {
                 Name = "Walk",
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5),
                 PausedUntil = yesterday
             });
 
@@ -247,7 +248,7 @@ public class JobIntegrationTests
             newUser.Habits.Add(new Habit
             {
                 Name = "Journal",
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = ReflectionHourUtc.UtcDateTime,
             });
 
             db.Users.AddRange(eligibleUser, pausedUser, newUser);
@@ -262,5 +263,66 @@ public class JobIntegrationTests
         host.Discord.Messages[0].UserId.Should().Be(1001);
         host.Discord.Messages[0].Embed.Should().NotBeNull();
         host.Discord.Messages[0].Embed!.Title.Should().Be("💙 A gentle check-in");
+    }
+
+    [Fact]
+    public async Task MissedDayReflectionJob_MessagesOnlyUsersWhoseLocalHourIsTen()
+    {
+        // 01:00 UTC on Jan 14 is 10:00 in Tokyo and 01:00 in UTC.
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 14, 1, 0, 0, TimeSpan.Zero));
+        await using var host = await IntegrationTestHost.CreateAsync(time: time);
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var utcUser = new User { DiscordUserId = 1101, Timezone = "UTC" };
+            utcUser.Habits.Add(new Habit { Name = "Walk", CreatedAt = created });
+
+            var tokyoUser = new User { DiscordUserId = 1102, Timezone = "Asia/Tokyo" };
+            tokyoUser.Habits.Add(new Habit { Name = "Stretch", CreatedAt = created });
+
+            db.Users.AddRange(utcUser, tokyoUser);
+            await db.SaveChangesAsync();
+        });
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(MissedDayReflectionJob.Key);
+        await host.WaitForDmCountAsync(1);
+
+        host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(1102);
+    }
+
+    [Fact]
+    public async Task MissedDayReflectionJob_WeeklyHabitBehindTargetAtWeekEnd_GetsNudge()
+    {
+        // Sunday Jan 18, 10:00 UTC: yesterday was Saturday, one day left in the Mon–Sun week.
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 18, 10, 0, 0, TimeSpan.Zero));
+        await using var host = await IntegrationTestHost.CreateAsync(time: time);
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var user = new User { DiscordUserId = 1201, Timezone = "UTC" };
+            var habit = new Habit
+            {
+                Name = "Swim",
+                FrequencyType = FrequencyType.Weekly,
+                WeeklyTarget = 3,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            };
+            habit.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 15), Completed = true });
+            user.Habits.Add(habit);
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        });
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(MissedDayReflectionJob.Key);
+        await host.WaitForDmCountAsync(1);
+
+        host.Discord.Messages.Should().ContainSingle()
+            .Which.Embed!.Description.Should().Contain("1/3 this week");
     }
 }
