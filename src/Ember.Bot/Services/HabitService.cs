@@ -7,7 +7,7 @@ namespace Ember.Bot.Services;
 public class HabitService
 {
     /// <summary>Most habits a single user can track.</summary>
-    public const int MaxHabitsPerUser = 50;
+    public const int MaxHabitsPerUser = 25;
 
     private readonly EmberDbContext _db;
     private readonly ReminderScheduler _scheduler;
