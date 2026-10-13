@@ -72,6 +72,31 @@ public class PostgresMigrationTests(PostgresFixture postgres)
     }
 
     [DockerFact]
+    public async Task PausedFromMigration_StartsRunningPausesOnTheMigrationDate_AndLeavesOtherHabitsAlone()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20261013073035_AddDayMarks");
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"Users\" (\"DiscordUserId\", \"Timezone\", \"GraceDaysPerWeek\", \"LeaderboardOptIn\") VALUES (1, 'UTC', 1, FALSE);" +
+            "INSERT INTO \"Habits\" (\"UserId\", \"Name\", \"CreatedAt\", \"FrequencyType\", \"PausedUntil\") VALUES " +
+            "(1, 'Paused', now(), 0, CURRENT_DATE + 3), (1, 'Ended', now(), 0, CURRENT_DATE - 10), (1, 'Active', now(), 0, NULL)");
+
+        await migrator.MigrateAsync();
+
+        var migrationDate = (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
+        var habits = await db.Habits.AsNoTracking().OrderBy(h => h.Name)
+            .Select(h => new { h.Name, h.PausedFrom, h.PausedUntil }).ToListAsync();
+        habits.Should().BeEquivalentTo([
+            new { Name = "Active", PausedFrom = (DateOnly?)null, PausedUntil = (DateOnly?)null },
+            new { Name = "Ended", PausedFrom = (DateOnly?)null, PausedUntil = (DateOnly?)migrationDate.AddDays(-10) },
+            new { Name = "Paused", PausedFrom = (DateOnly?)migrationDate, PausedUntil = (DateOnly?)migrationDate.AddDays(3) }]);
+    }
+
+    [DockerFact]
     public async Task UpgradingAnExistingDatabase_FillsNextReminderForHabitsWithAReminder()
     {
         var connectionString = await postgres.CreateDatabaseAsync();

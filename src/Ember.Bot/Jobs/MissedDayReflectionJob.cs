@@ -93,7 +93,7 @@ public class MissedDayReflectionJob : IJob
             if (!HabitService.IsActiveOn(habit, yesterday, tz)) continue;
 
             // Skip paused habits
-            if (habit.PausedUntil.HasValue && habit.PausedUntil >= yesterday) continue;
+            if (HabitService.IsPausedOn(habit, yesterday)) continue;
 
             if (habit.FrequencyType == Ember.Bot.Models.FrequencyType.Daily)
             {
