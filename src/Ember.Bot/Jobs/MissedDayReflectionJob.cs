@@ -10,9 +10,10 @@ namespace Ember.Bot.Jobs;
 
 /// <summary>
 /// Fires once per day at <see cref="LocalSendHour"/>:00 in each user's local time.
-/// Checks whether the user missed any daily habits yesterday (or weekly
-/// habits that are below target for the week) and sends a low-pressure
-/// reflection DM with a dismiss button.
+/// Checks whether any daily habits are still unlogged for yesterday, which is
+/// still open (see <see cref="HabitService.OpenDays"/>), or weekly habits are
+/// below target for the week, and sends a low-pressure invitation DM with
+/// "Log yesterday", "It was a low day" and dismiss buttons.
 ///
 /// Scheduling: a single hourly sweep picks the users whose local hour is
 /// <see cref="LocalSendHour"/>; yesterday and the week start are computed in
@@ -85,24 +86,21 @@ public class MissedDayReflectionJob : IJob
     {
         if (user.DayMarks.Any(m => m.Kind == Ember.Bot.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
 
-        var missed = new List<string>();
+        var open = new List<string>();
+        var anyDaily = false;
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
 
         foreach (var habit in user.Habits)
         {
-            if (!HabitService.IsActiveOn(habit, yesterday, tz)) continue;
-
-            // Skip paused habits
-            if (HabitService.IsPausedOn(habit, yesterday)) continue;
-
             if (habit.FrequencyType == Ember.Bot.Models.FrequencyType.Daily)
             {
-                // Did they miss yesterday?
-                var didYesterday = habit.Logs.Any(l => l.Date == yesterday && l.Completed);
-                if (!didYesterday)
-                    missed.Add(habit.Name);
+                if (IsOpenDaily(habit, yesterday, tz))
+                {
+                    open.Add(habit.Name);
+                    anyDaily = true;
+                }
             }
-            else
+            else if (HabitService.IsActiveOn(habit, yesterday, tz) && !HabitService.IsPausedOn(habit, yesterday))
             {
                 // Weekly habit: are they behind target with 2 or fewer days left in the week?
                 var weekEnd   = weekStart.AddDays(6);
@@ -113,45 +111,48 @@ public class MissedDayReflectionJob : IJob
 
                 // Only nudge if they need to catch up and have 1–2 days remaining
                 if (needed > 0 && daysLeft is > 0 and <= 2)
-                    missed.Add($"{habit.Name} ({doneCount}/{target} this week)");
+                    open.Add($"{habit.Name} ({doneCount}/{target} this week)");
             }
         }
 
-        if (missed.Count == 0) return;
+        if (open.Count == 0) return;
 
-        // Build a low-pressure DM
-        var habitList = missed.Count == 1
-            ? $"**{missed[0]}**"
-            : string.Join("\n", missed.Select(m => $"• **{m}**"));
-
-        var opening = missed.Count == 1
-            ? $"You missed **{missed[0]}** yesterday."
-            : $"You missed a few habits yesterday:";
+        var opening = open.Count == 1
+            ? $"Yesterday is still open: want to log **{open[0]}**?"
+            : "Yesterday is still open: want to log any of these?\n" + string.Join("\n", open.Select(m => $"• **{m}**"));
 
         var closingLines = new[]
         {
-            "No pressure — missing days is normal. What got in the way?",
+            "No pressure, and no reply needed.",
             "Life happens. You're still here, and that matters.",
-            "Missing a day doesn't undo the work you've put in.",
+            "A quiet day doesn't undo the work you've put in.",
             "There's no streak worth burning yourself out for.",
-            "One missed day is just one day. Tomorrow is already a fresh start.",
+            "If it was a rough day, a low day keeps your streaks safe.",
         };
         var closing = closingLines[Math.Abs(user.DiscordUserId.GetHashCode()) % closingLines.Length];
 
         var embed = new EmbedBuilder()
             .WithColor(0x5865F2) // soft indigo — calm, not alarm
             .WithTitle("💙 A gentle check-in")
-            .WithDescription(
-                $"{opening}\n\n" +
-                (missed.Count > 1 ? $"{habitList}\n\n" : "") +
-                closing)
-            .WithFooter("Tap 'That's ok' to dismiss — no reply needed.")
+            .WithDescription($"{opening}\n\n{closing}")
+            .WithFooter("Log it, mark a low day, or just move on.")
             .Build();
 
-        var components = new ComponentBuilder()
-            .WithButton("That's ok, move on", $"reflect:dismiss:{user.DiscordUserId}", ButtonStyle.Secondary)
-            .Build();
+        var date = yesterday.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var components = new ComponentBuilder();
+        if (anyDaily)
+            components.WithButton("Log yesterday", $"reflect:log:{user.DiscordUserId}:{date}", ButtonStyle.Success, new Emoji("✅"));
+        components
+            .WithButton("It was a low day", $"reflect:low:{user.DiscordUserId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))
+            .WithButton("That's ok, move on", $"reflect:dismiss:{user.DiscordUserId}", ButtonStyle.Secondary);
 
-        await _discord.SendMessageAsync((ulong)user.DiscordUserId, embed: embed, components: components);
+        await _discord.SendMessageAsync((ulong)user.DiscordUserId, embed: embed, components: components.Build());
     }
+
+    /// <summary>Whether a daily habit is active and unpaused on <paramref name="date"/> but not logged as done yet.</summary>
+    internal static bool IsOpenDaily(Ember.Bot.Models.Habit habit, DateOnly date, TimeZoneInfo tz)
+        => habit.FrequencyType == Ember.Bot.Models.FrequencyType.Daily
+            && HabitService.IsActiveOn(habit, date, tz)
+            && !HabitService.IsPausedOn(habit, date)
+            && !habit.Logs.Any(l => l.Date == date && l.Completed);
 }

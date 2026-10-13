@@ -274,7 +274,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         string message = duration == "resume"
             ? $"**{habit.Name}** is back on. Welcome back! 🔥"
             : $"**{habit.Name}** is paused until **{pausedUntil:MMM d}**.\n" +
-              "Reminders are off and missed days won't count against your streak. Rest well. 💙";
+              "Reminders are off and paused days won't count against your streak. Rest well. 💙";
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -320,7 +320,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         var description = days switch
         {
             0 => "Strict mode — streaks require a check-in every single day.",
-            1 => "1 flex day per week — one missed day won't break your streak.",
+            1 => "1 flex day per week — one unlogged day won't break your streak.",
             2 => "2 flex days per week — life happens, your streak is safe.",
             3 => "3 flex days per week — maximum flexibility.",
             _ => ""

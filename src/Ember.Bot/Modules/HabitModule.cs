@@ -387,7 +387,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
         await RespondAsync(
             $"Your current setting: **{current} flex day{(current == 1 ? "" : "s")}/week**\n" +
-            "How many missed days per week before a streak breaks?",
+            "How many unlogged days per week can a streak carry before it resets?",
             components: components,
             ephemeral: true);
     }
