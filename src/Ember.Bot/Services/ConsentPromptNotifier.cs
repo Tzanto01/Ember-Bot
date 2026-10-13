@@ -50,6 +50,8 @@ public class ConsentPromptNotifier
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not show the consent prompt to user {UserId}.", context.User.Id);
+            try { await habits.ReleaseConsentPromptAsync(context.User.Id); }
+            catch (Exception releaseEx) { _logger.LogWarning(releaseEx, "Could not re-arm the consent prompt for user {UserId}.", context.User.Id); }
         }
     }
 }
