@@ -36,7 +36,9 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 inline: false)
             .AddField("Privacy",
                 "`/privacy optin` — join leaderboards (you're off them by default)\n" +
-                "`/privacy optout` — leave leaderboards",
+                "`/privacy optout` — leave leaderboards\n" +
+                "`/export` — get all your Ember data by DM\n" +
+                "`/privacy delete` — permanently delete all your Ember data",
                 inline: false)
             .WithFooter("Progress over perfection. Every check-in counts.")
             .Build();

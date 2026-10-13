@@ -32,7 +32,7 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
     internal static Embed PromptEmbed(IConfiguration config)
     {
         var description =
-            "Habit names and check-ins can say something about your health (think \"take my meds\" or \"sleep 8 hours\"). " +
+            "Habit names, check-ins and low days can say something about your health (think \"take my meds\" or \"sleep 8 hours\"). " +
             "Ember stores them only to run your habit tracker for you. They're never shared or sold.\n\n" +
             "Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.";
 
