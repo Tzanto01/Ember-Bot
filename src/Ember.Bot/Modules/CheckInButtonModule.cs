@@ -22,15 +22,20 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 
     /// <summary>
     /// Logs the habit for the user's local day at <paramref name="timestampStr"/> (the reminder's send time, unix seconds),
-    /// or for local today when the timestamp is malformed. Returns the edit result and the day it applied to.
+    /// or for local today when the timestamp is malformed. A "not done" never overwrites a day already logged as done
+    /// (<c>KeptDone</c>). Returns the edit result and the day it applied to.
     /// </summary>
-    internal static async Task<(DayEditResult Result, DateOnly Day)> LogReminderDayAsync(
+    internal static async Task<(DayEditResult Result, DateOnly Day, bool KeptDone)> LogReminderDayAsync(
         HabitService habits, ulong userId, int habitId, string timestampStr, bool completed, ulong? guildId)
     {
         var day = long.TryParse(timestampStr, out var sentUnix) && sentUnix is >= 0 and <= 253402300799
             ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(sentUnix), await habits.GetUserTzAsync(userId)).DateTime)
             : await habits.GetLocalTodayAsync(userId);
-        return (await habits.CheckInAsync(userId, habitId, day, completed, guildId), day);
+
+        if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) == true)
+            return (DayEditResult.Saved, day, true);
+
+        return (await habits.CheckInAsync(userId, habitId, day, completed, guildId), day, false);
     }
 
     private async Task LogAsync(string habitIdStr, string timestampStr, bool completed, string todayText, string earlierText)
@@ -41,7 +46,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
-        var (result, day) = await LogReminderDayAsync(_habits, Context.User.Id, habitId, timestampStr, completed, Context.Guild?.Id);
+        var (result, day, keptDone) = await LogReminderDayAsync(_habits, Context.User.Id, habitId, timestampStr, completed, Context.Guild?.Id);
         switch (result)
         {
             case DayEditResult.Saved:
@@ -57,9 +62,11 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
                 return;
         }
 
-        var text = day == await _habits.GetLocalTodayAsync(Context.User.Id)
-            ? todayText
-            : string.Format(earlierText, day.ToString("dddd d MMM", CultureInfo.InvariantCulture));
+        var text = keptDone
+            ? "You already logged that day as done, so I've left it that way. ✅"
+            : day == await _habits.GetLocalTodayAsync(Context.User.Id)
+                ? todayText
+                : string.Format(earlierText, day.ToString("dddd d MMM", CultureInfo.InvariantCulture));
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(msg =>
         {
             msg.Content    = text;
@@ -88,7 +95,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 
         if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId))
         {
-            await RespondAsync("Couldn't find that habit.", ephemeral: true);
+            await RespondAsync("This reminder isn't active anymore, so there's nothing to snooze. 💙", ephemeral: true);
             return;
         }
 

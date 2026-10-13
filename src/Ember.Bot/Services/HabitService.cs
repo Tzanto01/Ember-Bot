@@ -455,11 +455,11 @@ public class HabitService
         return habit;
     }
 
-    /// <summary>Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's.</summary>
+    /// <summary>Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's or has no reminder.</summary>
     public async Task<bool> SnoozeReminderAsync(ulong discordUserId, int habitId)
     {
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId && h.ReminderTime != null);
 
         if (habit is null) return false;
 
