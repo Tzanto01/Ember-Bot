@@ -21,8 +21,8 @@ The texts describe Ember **after Phase 2 lands**: `/export` (CSV or JSON, full d
 | `[E-MAIL]` | all three |
 | `[ZWEITER SCHNELLER KONTAKTWEG]` (optional) | Impressum |
 | `[DATUM]` (Stand) | Datenschutzerklärung, Nutzungsbedingungen |
-| `[LOG-AUFBEWAHRUNG IN TAGEN]` | Datenschutzerklärung (3.3 and 7) |
-| `[BACKUP-RHYTHMUS]`, `[BACKUP-AUFBEWAHRUNG IN TAGEN]` | Datenschutzerklärung (7) |
+| ~~`[LOG-AUFBEWAHRUNG IN TAGEN]`~~ set to 30 days (common default for operational logs) | Datenschutzerklärung (3.3 and 7) |
+| ~~`[BACKUP-RHYTHMUS]`, `[BACKUP-AUFBEWAHRUNG IN TAGEN]`~~ set to daily, 30 days | Datenschutzerklärung (7) |
 | `[NAME/ANSCHRIFT/WEBSITE DER AUFSICHTSBEHÖRDE]` (data protection authority of your Bundesland) | Datenschutzerklärung (9) |
 | `[MINDESTALTER]` | Datenschutzerklärung (10) |
 | `[VPS-ANBIETER, Sitz]`, `[LAND IN DER EU]` (the whole bracketed paragraph replaces the homeserver paragraph after the move) | Datenschutzerklärung (6.2) |
@@ -53,7 +53,7 @@ The drafts promise things the code on `main` does not do yet. Each one must be t
 | Promise in the text | Current code (`main` @ 464b2e8) |
 |---|---|
 | "Habit-Namen gehören nicht in die Protokolle" (3.3) | `ReminderJob.cs:45` and `ReminderScheduler.cs:34-36` log the habit name at Information level. Phase 2.5 removes this; old log lines must also be rotated out or deleted. |
-| Logs deleted after `[LOG-AUFBEWAHRUNG]` days | No log rotation configured. The container logs to stdout (`docker-compose.yml` has no `logging:` options), so Docker's default `json-file` driver keeps them until the container is removed. Add `max-size`/`max-file` or an equivalent. |
+| Logs deleted after 30 days | Homeserver: size-based rotation only (3 x 10 MB, `docker-compose.yml`), no hard time limit. Enforce 30 days with time-based retention on the VPS (Phase 8). |
 | `/export` gives CSV or JSON with settings, all habits and logs incl. server ID (9) | Today the command is `/export habits`, CSV only, no settings, no habits without logs, no `GuildId` (`ExportModule.cs:18-49`). Phase 2.2. |
 | `/privacy delete` deletes everything immediately (7, 9) | Not implemented yet (`PrivacyModule.cs` has only `optin`/`optout`). Phase 2.1. |
 | Consent before the first habit (4) | No consent step anywhere. Product change, see open question 1. |

@@ -54,7 +54,7 @@ Ember legt einen Eintrag für dich erst an, wenn du eine Funktion nutzt, die etw
 
 ### 3.3 Technische Protokolle (Logs)
 
-Der Bot schreibt beim Betrieb technische Protokolle, zum Beispiel wenn eine Erinnerung verschickt wird oder ein Fehler auftritt. Darin können deine Discord-Nutzer-ID, die interne Nummer eines Habits, Zeitpunkte und Fehlermeldungen stehen. Habit-Namen gehören nicht in die Protokolle. Die Protokolle dienen nur dazu, Fehler zu finden und den Betrieb sicher zu halten. Sie werden nach [LOG-AUFBEWAHRUNG IN TAGEN] Tagen gelöscht.
+Der Bot schreibt beim Betrieb technische Protokolle, zum Beispiel wenn eine Erinnerung verschickt wird oder ein Fehler auftritt. Darin können deine Discord-Nutzer-ID, die interne Nummer eines Habits, Zeitpunkte und Fehlermeldungen stehen. Habit-Namen gehören nicht in die Protokolle. Die Protokolle dienen nur dazu, Fehler zu finden und den Betrieb sicher zu halten. Sie werden nach 30 Tagen gelöscht.
 
 ### 3.4 Was Ember nicht verarbeitet
 
@@ -110,8 +110,8 @@ Wir geben deine Daten an niemanden sonst weiter, verkaufen sie nicht und nutzen 
 ## 7. Wie lange speichert Ember deine Daten?
 
 - **Deine Daten in Ember** bleiben gespeichert, bis du sie löschst. Mit `/habit delete` löschst du ein einzelnes Habit samt all seinen Check-ins. Mit `/privacy delete` löschst du sofort alles: deinen Eintrag, alle Habits, alle Check-ins, Erinnerungen und Einstellungen.
-- **Backups:** Zum Schutz vor Datenverlust gibt es Sicherungskopien der Datenbank. Sie werden [BACKUP-RHYTHMUS, zum Beispiel täglich] erstellt und nach [BACKUP-AUFBEWAHRUNG IN TAGEN] Tagen überschrieben. Gelöschte Daten können bis dahin noch in einem Backup stehen und verschwinden dann endgültig. Backups werden nur genutzt, um nach einem technischen Ausfall den Betrieb wiederherzustellen.
-- **Technische Protokolle:** [LOG-AUFBEWAHRUNG IN TAGEN] Tage (siehe Abschnitt 3.3).
+- **Backups:** Zum Schutz vor Datenverlust gibt es Sicherungskopien der Datenbank. Sie werden täglich erstellt und nach 30 Tagen überschrieben. Gelöschte Daten können bis dahin noch in einem Backup stehen und verschwinden dann endgültig. Backups werden nur genutzt, um nach einem technischen Ausfall den Betrieb wiederherzustellen.
+- **Technische Protokolle:** 30 Tage (siehe Abschnitt 3.3).
 - **Daten bei Discord:** Wie lange Discord Nachrichten speichert, richtet sich nach den Regeln von Discord.
 
 ## 8. Wie schützt Ember deine Daten?
