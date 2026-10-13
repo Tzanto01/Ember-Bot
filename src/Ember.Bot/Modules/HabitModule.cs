@@ -239,7 +239,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
                     var last7  = HabitService.FlexibleStreak(h, today, 7, lowDays);
                     var last30 = HabitService.FlexibleStreak(h, today, 30, lowDays);
-                    var best   = HabitService.BestStreak(h);
+                    var best   = HabitService.BestStreak(h, today, grace, lowDays);
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
                     statsText =

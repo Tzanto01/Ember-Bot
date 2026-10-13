@@ -16,7 +16,7 @@ public static class ExportBuilder
         "record_type,timezone,grace_days_per_week,leaderboard_opt_in," +
         "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
         "health_data_consent_at,consent_policy_version,consent_prompted_on," +
-        "habit_id,name,frequency,weekly_target,reminder_time,paused_until,created_at,next_reminder_utc," +
+        "habit_id,name,frequency,weekly_target,reminder_time,paused_until,paused_from,created_at,next_reminder_utc," +
         "date,completed,guild_id,kind";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -34,7 +34,7 @@ public static class ExportBuilder
     /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC.</summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
-        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateTime CreatedAt, DateTime? NextReminderUtc);
+        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc);
 
     /// <summary>One check-in log. <c>GuildId</c> is a string because Discord snowflakes exceed JSON's safe integer range.</summary>
     public sealed record LogRecord(int HabitId, DateOnly Date, bool Completed, string? GuildId);
@@ -54,7 +54,7 @@ public static class ExportBuilder
                 AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
-                h.ReminderTime, h.PausedUntil, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
+                h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
                 AsUtc(h.NextReminderUtc))).ToList(),
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture)))).ToList(),
@@ -79,24 +79,24 @@ public static class ExportBuilder
         AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn),
             Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
             Utc(s.HealthDataConsentAt), s.ConsentPolicyVersion ?? "", Date(s.ConsentPromptedOn),
-            "", "", "", "", "", "", "", "", "", "", "", "");
+            "", "", "", "", "", "", "", "", "", "", "", "", "");
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "",
                 Num(h.Id), h.Name, h.Frequency, h.WeeklyTarget is { } t ? Num(t) : "",
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
-                h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
+                h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "", Date(h.PausedFrom),
                 Utc(h.CreatedAt), Utc(h.NextReminderUtc),
                 "", "", "", "");
 
         foreach (var l in doc.Logs)
             AppendRow(csv, "log", "", "", "", "", "", "", "", "", "",
-                Num(l.HabitId), "", "", "", "", "", "", "",
+                Num(l.HabitId), "", "", "", "", "", "", "", "",
                 l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "");
 
         foreach (var m in doc.DayMarks)
             AppendRow(csv, "day_mark", "", "", "", "", "", "", "", "", "",
-                "", "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "", "",
                 Date(m.Date), "", "", m.Kind);
 
         return csv.ToString();

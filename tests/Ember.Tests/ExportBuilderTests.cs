@@ -33,6 +33,8 @@ public class ExportBuilderTests
         unlogged.Name = "Stretch";
         unlogged.ReminderTime = new TimeOnly(8, 30);
         unlogged.NextReminderUtc = new DateTime(2025, 6, 19, 6, 30, 0, DateTimeKind.Utc);
+        unlogged.PausedFrom = new DateOnly(2025, 6, 17);
+        unlogged.PausedUntil = new DateOnly(2025, 6, 20);
 
         user.Habits.Add(logged);
         user.Habits.Add(unlogged);
@@ -64,7 +66,8 @@ public class ExportBuilderTests
             && r["consent_prompted_on"] == "2025-06-01");
         rows.Where(r => r["record_type"] == "habit").Select(r => r["habit_id"]).Should().BeEquivalentTo(["10", "11"]);
         rows.Should().ContainSingle(r => r["record_type"] == "habit" && r["habit_id"] == "11"
-            && r["reminder_time"] == "08:30" && r["next_reminder_utc"] == "2025-06-19T06:30:00Z");
+            && r["reminder_time"] == "08:30" && r["next_reminder_utc"] == "2025-06-19T06:30:00Z"
+            && r["paused_from"] == "2025-06-17" && r["paused_until"] == "2025-06-20");
         rows.Where(r => r["record_type"] == "log").Should().HaveCount(2)
             .And.ContainSingle(r => r["guild_id"] == "123456789012345678");
         rows.Should().ContainSingle(r => r["record_type"] == "day_mark" && r["date"] == "2025-06-16" && r["kind"] == "low_day");

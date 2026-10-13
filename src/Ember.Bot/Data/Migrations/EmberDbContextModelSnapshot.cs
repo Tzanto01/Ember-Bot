@@ -69,6 +69,9 @@ namespace Ember.Bot.Data.Migrations
                     b.Property<DateTime?>("NextReminderUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("PausedFrom")
+                        .HasColumnType("date");
+
                     b.Property<DateOnly?>("PausedUntil")
                         .HasColumnType("date");
 

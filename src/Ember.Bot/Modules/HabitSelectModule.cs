@@ -215,7 +215,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         else
         {
             var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace, lowDays);
-            var best   = HabitService.BestStreak(habit);
+            var best   = HabitService.BestStreak(habit, today, grace, lowDays);
             var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
             var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";

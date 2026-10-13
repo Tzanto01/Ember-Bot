@@ -278,84 +278,61 @@ public class HabitService
     public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1,
         IReadOnlySet<DateOnly>? lowDays = null)
     {
-        var completed = habit.Logs
-            .Where(l => l.Completed)
-            .Select(l => l.Date)
-            .ToHashSet();
-
-        if (completed.Count == 0) return (0, 0);
-
-        // The earliest completed date — don't walk before it.
-        var floor = completed.Min();
-
-        int streak = 0;
-        int graceUsed = 0;
-        int graceRemaining = graceDays;
-
-        var day = today;
-        while (day >= floor)
-        {
-            if (IsCoveredOn(habit, day, completed, lowDays))
-            {
-                // Protected — skip without grace, but guard against underflow
-                if (day == floor) break;
-                day = day.AddDays(-1);
-                continue;
-            }
-
-            if (completed.Contains(day))
-            {
-                streak++;
-            }
-            else if (IsOpen(day, today))
-            {
-            }
-            else if (graceRemaining > 0)
-            {
-                graceRemaining--;
-                graceUsed++;
-            }
-            else
-            {
-                break;
-            }
-
-            if (day == floor) break;
-            day = day.AddDays(-1);
-        }
-
-        return (streak, graceUsed);
+        var completed = CompletedDays(habit);
+        return completed.Count == 0 ? (0, 0) : StreakEndingAt(habit, today, today, graceDays, lowDays, completed);
     }
 
-    /// <summary>Returns whether the habit is paused on the given date.</summary>
+    /// <summary>Returns whether the habit is paused on the given date: inside [<see cref="Habit.PausedFrom"/>, <see cref="Habit.PausedUntil"/>].</summary>
     public static bool IsPausedOn(Habit habit, DateOnly date)
-        => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value;
+        => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value
+            && (habit.PausedFrom is null || date >= habit.PausedFrom.Value);
 
     private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed, IReadOnlySet<DateOnly>? lowDays)
         => IsPausedOn(habit, date) || lowDays?.Contains(date) == true
             || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
 
-    /// <summary>Returns the longest consecutive completed-day streak (no grace).</summary>
-    public static int BestStreak(Habit habit)
+    /// <summary>
+    /// Returns the longest streak the habit ever had, by the same rules as <see cref="ConsecutiveStreak"/>:
+    /// grace days per rolling 7-day window, open days, low days, pauses and the switchover date. Never below the current streak.
+    /// </summary>
+    public static int BestStreak(Habit habit, DateOnly today, int graceDays = 1, IReadOnlySet<DateOnly>? lowDays = null)
     {
-        var dates = habit.Logs
-            .Where(l => l.Completed)
-            .Select(l => l.Date)
-            .OrderBy(d => d)
-            .ToList();
+        var completed = CompletedDays(habit);
+        return completed
+            .Where(d => d == today || (d < today && !completed.Contains(d.AddDays(1))))
+            .Select(end => StreakEndingAt(habit, end, today, graceDays, lowDays, completed).streak)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
 
-        int best = 0, current = 0;
-        DateOnly? prev = null;
-        foreach (var d in dates)
+    private static HashSet<DateOnly> CompletedDays(Habit habit)
+        => habit.Logs.Where(l => l.Completed).Select(l => l.Date).ToHashSet();
+
+    /// <summary>
+    /// Walks back from <paramref name="end"/> to the earliest completed day. A closed gap is forgiven only while no
+    /// 7-day window would hold more than <paramref name="graceDays"/> forgiven gaps; the first gap that can't be forgiven ends the streak.
+    /// </summary>
+    private static (int streak, int graceUsed) StreakEndingAt(Habit habit, DateOnly end, DateOnly today, int graceDays,
+        IReadOnlySet<DateOnly>? lowDays, HashSet<DateOnly> completed)
+    {
+        var floor = completed.Min();
+        var streak = 0;
+        var forgiven = new List<DateOnly>();
+
+        for (var day = end; day >= floor; day = day.AddDays(-1))
         {
-            if (prev.HasValue && d == prev.Value.AddDays(1))
-                current++;
+            if (IsCoveredOn(habit, day, completed, lowDays) || (IsOpen(day, today) && !completed.Contains(day)))
+                continue;
+
+            if (completed.Contains(day))
+                streak++;
+            else if (forgiven.Count(g => g.DayNumber - day.DayNumber < 7) < graceDays)
+                forgiven.Add(day);
             else
-                current = 1;
-            if (current > best) best = current;
-            prev = d;
+                break;
         }
-        return best;
+
+        return (streak, forgiven.Count);
     }
 
     /// <summary>
@@ -510,6 +487,11 @@ public class HabitService
             ? TimezoneHelper.NextOccurrenceUtc(time, tz, _time.GetUtcNow().UtcDateTime)
             : null;
 
+    /// <summary>
+    /// Pauses the habit through the local day <paramref name="pausedUntil"/>, or resumes it when null.
+    /// A new pause starts today; extending a running pause keeps its start. Resuming ends the pause yesterday,
+    /// so the days already paused stay protected; a pause that started today is removed entirely.
+    /// </summary>
     public async Task<Habit?> PauseHabitAsync(ulong discordUserId, int habitId, DateOnly? pausedUntil)
     {
         var habit = await _db.Habits
@@ -517,7 +499,22 @@ public class HabitService
 
         if (habit is null) return null;
 
-        habit.PausedUntil = pausedUntil;
+        var today = await GetLocalTodayAsync(discordUserId);
+        if (pausedUntil is not null)
+        {
+            if (!IsPausedOn(habit, today)) habit.PausedFrom = today;
+            habit.PausedUntil = pausedUntil;
+        }
+        else if (habit.PausedUntil is { } until && (habit.PausedFrom is null || habit.PausedFrom < today))
+        {
+            habit.PausedUntil = until < today ? until : today.AddDays(-1);
+        }
+        else
+        {
+            habit.PausedFrom = null;
+            habit.PausedUntil = null;
+        }
+
         await _db.SaveChangesAsync();
         return habit;
     }

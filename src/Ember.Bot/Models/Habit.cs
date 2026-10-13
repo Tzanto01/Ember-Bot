@@ -14,8 +14,14 @@ public class Habit
     /// <summary>UTC instant of the next reminder (the next local ReminderTime, or a snooze). Null means nothing is due.</summary>
     public DateTime? NextReminderUtc { get; set; }
 
-    /// <summary>When set, reminders are suppressed and paused days are excluded from streak calculations.</summary>
+    /// <summary>
+    /// Last local day of the pause. Days from <see cref="PausedFrom"/> through this day are paused: reminders are
+    /// suppressed and the days are excluded from streak calculations.
+    /// </summary>
     public DateOnly? PausedUntil { get; set; }
+
+    /// <summary>First local day of the pause. Null with a <see cref="PausedUntil"/> means every day up to it is paused (pauses from before this field existed).</summary>
+    public DateOnly? PausedFrom { get; set; }
 
     /// <summary>Daily = check in every day. Weekly = check in WeeklyTarget times per week.</summary>
     public FrequencyType FrequencyType { get; set; } = FrequencyType.Daily;
