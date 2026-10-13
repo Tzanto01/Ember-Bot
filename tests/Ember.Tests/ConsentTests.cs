@@ -107,6 +107,18 @@ public class ConsentTests
     }
 
     [Fact]
+    public async Task ReleasingTodaysClaim_AfterTheFollowUpFailed_LetsTheNextInteractionAskAgain()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: new FakeTimeProvider(Now));
+        await SeedExistingUserAsync(host, 1);
+
+        (await ClaimAsync(host, 1)).Should().BeTrue();
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().ReleaseConsentPromptAsync(1));
+
+        (await ClaimAsync(host, 1)).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task UserWithoutHabits_IsNotPromptedAfterInteractions()
     {
         await using var host = await IntegrationTestHost.CreateAsync(start: false, time: new FakeTimeProvider(Now));

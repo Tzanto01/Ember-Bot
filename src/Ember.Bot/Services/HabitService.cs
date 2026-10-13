@@ -80,6 +80,14 @@ public class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today)) == 1;
     }
 
+    /// <summary>Undoes <see cref="ClaimConsentPromptAsync"/> when the prompt couldn't be shown, so the next interaction asks again.</summary>
+    public async Task ReleaseConsentPromptAsync(ulong discordUserId)
+    {
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, (DateOnly?)null));
+    }
+
     /// <summary>Notes that the consent prompt was shown today. Never creates a user.</summary>
     public async Task MarkConsentPromptedAsync(ulong discordUserId)
     {
