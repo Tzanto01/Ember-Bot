@@ -282,14 +282,18 @@ public class HabitService
 
     /// <summary>
     /// Returns how many of the last <paramref name="days"/> days were kept, using a rolling window ending on the
-    /// user's local <paramref name="today"/>. A day is kept when it was completed or is one of the user's <paramref name="lowDays"/>.
+    /// user's local <paramref name="today"/>. A day is kept when it was completed or is one of the user's <paramref name="lowDays"/>;
+    /// low days only count from the habit's start day (by its UTC creation date) and outside its paused range.
     /// </summary>
     public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7, IReadOnlySet<DateOnly>? lowDays = null)
     {
         var cutoff = today.AddDays(-(days - 1));
         var kept = habit.Logs.Where(l => l.Completed && l.Date >= cutoff).Select(l => l.Date).ToHashSet();
         if (lowDays is not null)
-            kept.UnionWith(lowDays.Where(d => d >= cutoff && d <= today));
+        {
+            var from = StartDate(habit, TimeZoneInfo.Utc) > cutoff ? StartDate(habit, TimeZoneInfo.Utc) : cutoff;
+            kept.UnionWith(lowDays.Where(d => d >= from && d <= today && !IsPausedOn(habit, d)));
+        }
         return kept.Count;
     }
 
