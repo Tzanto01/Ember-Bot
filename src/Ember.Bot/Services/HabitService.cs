@@ -210,10 +210,21 @@ public class HabitService
     }
 
     /// <summary>
-    /// Returns the longest consecutive completed-day run, with up to
-    /// <paramref name="graceDays"/> forgiven gaps per 7-day window.
-    /// Also returns how many grace days were used in the current active streak.
-    /// <paramref name="today"/> is the user's local day.
+    /// How many local days stay open: today and yesterday. An open day that isn't done yet is pending,
+    /// never missed; a day only counts as a gap once it has closed.
+    /// </summary>
+    public const int OpenDays = 2;
+
+    /// <summary>Whether <paramref name="date"/> is still open (see <see cref="OpenDays"/>) on the user's local <paramref name="today"/>.</summary>
+    public static bool IsOpen(DateOnly date, DateOnly today)
+        => date <= today && date > today.AddDays(-OpenDays);
+
+    /// <summary>
+    /// Returns the current streak of completed days ending at the user's local <paramref name="today"/>,
+    /// with up to <paramref name="graceDays"/> forgiven gaps, and how many grace days that streak used.
+    /// Open days (<see cref="OpenDays"/>: today and yesterday) that aren't done yet are pending: they never
+    /// break the streak and use no grace. Streaks are computed from the logs, never stored, so backfilling
+    /// an older day heals the streak retroactively.
     /// </summary>
     public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1)
     {
@@ -231,11 +242,7 @@ public class HabitService
         int graceUsed = 0;
         int graceRemaining = graceDays;
 
-        // Start from today (or yesterday if today isn't checked in and isn't paused).
         var day = today;
-        if (!completed.Contains(today) && !IsCoveredOn(habit, today, completed))
-            day = today.AddDays(-1);
-
         while (day >= floor)
         {
             if (IsCoveredOn(habit, day, completed))
@@ -249,6 +256,9 @@ public class HabitService
             if (completed.Contains(day))
             {
                 streak++;
+            }
+            else if (IsOpen(day, today))
+            {
             }
             else if (graceRemaining > 0)
             {
