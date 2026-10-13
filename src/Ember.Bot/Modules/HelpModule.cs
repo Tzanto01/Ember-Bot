@@ -19,6 +19,7 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 inline: false)
             .AddField("Daily use",
                 "`/habit checkin` — log today's check-in\n" +
+                "`/habit history` — fill in past days and mark low days\n" +
                 "`/habit list` — see all habits + recent progress\n" +
                 "`/habit streak` — view your personal stats",
                 inline: false)
