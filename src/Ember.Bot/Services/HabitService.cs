@@ -131,24 +131,25 @@ public class HabitService
             .ToListAsync();
     }
 
-    public async Task<HabitLog?> CheckInAsync(ulong discordUserId, int habitId, bool completed, ulong? guildId = null)
+    /// <summary>
+    /// Logs the habit as done or not done on the user's local <paramref name="date"/>, replacing any earlier log of that day.
+    /// Any day from the habit's local start day (<see cref="StartDate"/>) to the user's local today can be logged,
+    /// so past days can be backfilled or corrected; future days are refused.
+    /// </summary>
+    public async Task<DayEditResult> CheckInAsync(ulong discordUserId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
     {
-        var habit = await _db.Habits
-            .Include(h => h.User)
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+        var (habit, result) = await FindEditableHabitAsync(discordUserId, habitId, date);
+        if (habit is null) return result;
 
-        if (habit is null) return null;
-
-        var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
         var existing = await _db.HabitLogs
-            .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == today);
+            .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == date);
 
         if (existing is null)
         {
             var log = new HabitLog
             {
                 HabitId = habitId,
-                Date = today,
+                Date = date,
                 Completed = completed,
                 GuildId = guildId.HasValue ? (long)guildId.Value : null
             };
@@ -156,13 +157,13 @@ public class HabitService
             try
             {
                 await _db.SaveChangesAsync();
-                return log;
+                return DayEditResult.Saved;
             }
             catch (DbUpdateException)
             {
                 _db.Entry(log).State = EntityState.Detached;
                 existing = await _db.HabitLogs
-                    .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == today);
+                    .FirstOrDefaultAsync(l => l.HabitId == habitId && l.Date == date);
                 if (existing is null) throw;
             }
         }
@@ -170,7 +171,32 @@ public class HabitService
         existing.Completed = completed;
         if (guildId.HasValue) existing.GuildId = (long)guildId.Value;
         await _db.SaveChangesAsync();
-        return existing;
+        return DayEditResult.Saved;
+    }
+
+    /// <summary>
+    /// Removes the habit's log for the user's local <paramref name="date"/>, so the day is unlogged again.
+    /// Same day range as <see cref="CheckInAsync"/>; clearing a day without a log is a no-op that still returns <see cref="DayEditResult.Saved"/>.
+    /// </summary>
+    public async Task<DayEditResult> ClearDayAsync(ulong discordUserId, int habitId, DateOnly date)
+    {
+        var (habit, result) = await FindEditableHabitAsync(discordUserId, habitId, date);
+        if (habit is null) return result;
+
+        await _db.HabitLogs.Where(l => l.HabitId == habitId && l.Date == date).ExecuteDeleteAsync();
+        return DayEditResult.Saved;
+    }
+
+    private async Task<(Habit? Habit, DayEditResult Result)> FindEditableHabitAsync(ulong discordUserId, int habitId, DateOnly date)
+    {
+        var habit = await _db.Habits
+            .Include(h => h.User)
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+
+        if (habit is null) return (null, DayEditResult.HabitNotFound);
+        if (date > TimezoneHelper.LocalToday(habit.User.Timezone, _time)) return (null, DayEditResult.InFuture);
+        if (date < StartDate(habit, TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc)) return (null, DayEditResult.BeforeHabitStart);
+        return (habit, DayEditResult.Saved);
     }
 
     /// <summary>
@@ -296,7 +322,11 @@ public class HabitService
     /// Pass the user's <paramref name="tz"/> to compare against the local creation day.
     /// </summary>
     public static bool IsActiveOn(Habit habit, DateOnly date, TimeZoneInfo? tz = null)
-        => DateOnly.FromDateTime(tz is null ? habit.CreatedAt : TimeZoneInfo.ConvertTimeFromUtc(habit.CreatedAt, tz)) < date;
+        => StartDate(habit, tz ?? TimeZoneInfo.Utc) < date;
+
+    /// <summary>The habit's creation day in <paramref name="tz"/> (the user's current timezone): the first day that can be logged.</summary>
+    public static DateOnly StartDate(Habit habit, TimeZoneInfo tz)
+        => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(habit.CreatedAt, DateTimeKind.Utc), tz));
 
     public async Task<Habit?> SetFrequencyAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget)
     {

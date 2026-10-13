@@ -135,9 +135,12 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: true, guildId);
-
-        if (log is null) { await NotFoundAsync(); return; }
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: true, guildId) != DayEditResult.Saved)
+        {
+            await NotFoundAsync();
+            return;
+        }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -155,9 +158,12 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: false, guildId);
-
-        if (log is null) { await NotFoundAsync(); return; }
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: false, guildId) != DayEditResult.Saved)
+        {
+            await NotFoundAsync();
+            return;
+        }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>

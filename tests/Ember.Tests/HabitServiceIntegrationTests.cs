@@ -105,8 +105,9 @@ public class HabitServiceIntegrationTests
 
             await service.GiveHealthDataConsentAsync(456);
             var habit = await service.AddHabitAsync(456, "Read", reminderTime: null);
-            await service.CheckInAsync(456, habit.Id, completed: true, guildId: 100);
-            await service.CheckInAsync(456, habit.Id, completed: false, guildId: 200);
+            var today = await service.GetLocalTodayAsync(456);
+            await service.CheckInAsync(456, habit.Id, today, completed: true, guildId: 100);
+            await service.CheckInAsync(456, habit.Id, today, completed: false, guildId: 200);
 
             var logs = db.HabitLogs.Where(l => l.HabitId == habit.Id).ToList();
             logs.Should().HaveCount(1);
@@ -146,7 +147,7 @@ public class HabitServiceIntegrationTests
             var service = sp.GetRequiredService<HabitService>();
             await service.GiveHealthDataConsentAsync(321);
             var habit = await service.AddHabitAsync(321, "Hydrate", reminderTime: null);
-            await service.CheckInAsync(321, habit.Id, completed: true, guildId: 999);
+            await service.CheckInAsync(321, habit.Id, await service.GetLocalTodayAsync(321), completed: true, guildId: 999);
             return await service.GetLeaderboardAsync(999, top: 10);
         });
 
