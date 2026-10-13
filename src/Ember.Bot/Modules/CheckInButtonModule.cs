@@ -55,8 +55,8 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: true, guildId);
-        if (log is null)
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: true, guildId) != DayEditResult.Saved)
         {
             await RespondAsync("Couldn't find that habit.", ephemeral: true);
             return;
@@ -82,8 +82,8 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: false, guildId);
-        if (log is null)
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: false, guildId) != DayEditResult.Saved)
         {
             await RespondAsync("Couldn't find that habit.", ephemeral: true);
             return;

@@ -34,8 +34,11 @@ public class LocalDayTests
         time.SetUtcNow(utcNow);
         return host.WithScopeAsync(async sp =>
         {
-            var log = await sp.GetRequiredService<HabitService>().CheckInAsync((ulong)userId, habitId, completed: true);
-            return log!.Date;
+            var service = sp.GetRequiredService<HabitService>();
+            var today = await service.GetLocalTodayAsync((ulong)userId);
+            (await service.CheckInAsync((ulong)userId, habitId, today, completed: true)).Should().Be(DayEditResult.Saved);
+            return await sp.GetRequiredService<EmberDbContext>().HabitLogs
+                .Where(l => l.HabitId == habitId).OrderByDescending(l => l.Id).Select(l => l.Date).FirstAsync();
         });
     }
 
