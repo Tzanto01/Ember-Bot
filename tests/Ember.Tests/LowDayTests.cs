@@ -49,6 +49,18 @@ public class LowDayTests
     }
 
     [Fact]
+    public void LowDays_BeforeTheHabitStartedOrWhilePaused_AreNotCountedAsKept()
+    {
+        var habit = HabitFactory.Make(createdAtDaysAgo: 2, pausedUntilDaysAgo: null, FrequencyType.Daily, weeklyTarget: null);
+        var paused = HabitFactory.Make((0, true));
+        paused.PausedFrom = Today.AddDays(-4);
+        paused.PausedUntil = Today.AddDays(-3);
+
+        HabitService.FlexibleStreak(habit, Today, 7, LowDays(2, 3, 4, 5)).Should().Be(1);
+        HabitService.FlexibleStreak(paused, Today, 7, LowDays(3, 4, 5)).Should().Be(2);
+    }
+
+    [Fact]
     public void WeeklySummary_DoesNotCountALowDayAgainstTheWeek()
     {
         var habit = HabitFactory.Make((1, true), (2, true), (3, true), (4, true), (5, true));
