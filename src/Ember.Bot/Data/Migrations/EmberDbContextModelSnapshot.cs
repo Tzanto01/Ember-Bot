@@ -101,6 +101,13 @@ namespace Ember.Bot.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DiscordUserId"));
 
+                    b.Property<string>("ConsentPolicyVersion")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly?>("ConsentPromptedOn")
+                        .HasColumnType("date");
+
                     b.Property<int>("DmFailureCount")
                         .HasColumnType("integer");
 
@@ -112,6 +119,9 @@ namespace Ember.Bot.Data.Migrations
 
                     b.Property<int>("GraceDaysPerWeek")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("HealthDataConsentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("LeaderboardOptIn")
                         .HasColumnType("boolean");

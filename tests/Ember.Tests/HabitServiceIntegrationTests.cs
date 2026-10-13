@@ -21,6 +21,7 @@ public class HabitServiceIntegrationTests
         var habitId = await host.WithScopeAsync(async sp =>
         {
             var service = sp.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(123);
             var habit = await service.AddHabitAsync(123, "Drink Water", new TimeOnly(9, 0));
             return habit.Id;
         });
@@ -47,6 +48,7 @@ public class HabitServiceIntegrationTests
         var habitId = await host.WithScopeAsync(async sp =>
         {
             var service = sp.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(123);
             var habit = await service.AddHabitAsync(123, "Journal", new TimeOnly(21, 30));
             await service.EditHabitAsync(123, habit.Id, null, null, clearReminder: true);
             return habit.Id;
@@ -69,7 +71,10 @@ public class HabitServiceIntegrationTests
         await using var host = await IntegrationTestHost.CreateAsync(start: false, time: new FakeTimeProvider(now));
 
         var habitId = await host.WithScopeAsync(async sp =>
-            (await sp.GetRequiredService<HabitService>().AddHabitAsync(123, "Journal", null)).Id);
+        {
+            await sp.GetRequiredService<HabitService>().GiveHealthDataConsentAsync(123);
+            return (await sp.GetRequiredService<HabitService>().AddHabitAsync(123, "Journal", null)).Id;
+        });
 
         var byStranger = await host.WithScopeAsync(sp =>
             ReminderSetupModule.SetPresetReminderAsync(sp.GetRequiredService<HabitService>(), 456, habitId.ToString(), "07:30"));
@@ -98,6 +103,7 @@ public class HabitServiceIntegrationTests
             var service = sp.GetRequiredService<HabitService>();
             var db = sp.GetRequiredService<EmberDbContext>();
 
+            await service.GiveHealthDataConsentAsync(456);
             var habit = await service.AddHabitAsync(456, "Read", reminderTime: null);
             await service.CheckInAsync(456, habit.Id, completed: true, guildId: 100);
             await service.CheckInAsync(456, habit.Id, completed: false, guildId: 200);
@@ -119,6 +125,7 @@ public class HabitServiceIntegrationTests
             var service = sp.GetRequiredService<HabitService>();
             var db = sp.GetRequiredService<EmberDbContext>();
 
+            await service.GiveHealthDataConsentAsync(789);
             for (var i = 1; i <= HabitService.MaxHabitsPerUser; i++)
                 await service.AddHabitAsync(789, $"Habit {i}", reminderTime: null);
 
@@ -137,6 +144,7 @@ public class HabitServiceIntegrationTests
         var leaderboard = await host.WithScopeAsync(async sp =>
         {
             var service = sp.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(321);
             var habit = await service.AddHabitAsync(321, "Hydrate", reminderTime: null);
             await service.CheckInAsync(321, habit.Id, completed: true, guildId: 999);
             return await service.GetLeaderboardAsync(999, top: 10);

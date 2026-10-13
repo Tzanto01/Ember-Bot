@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
@@ -9,10 +10,12 @@ namespace Ember.Bot.Modules;
 public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly HabitService _habits;
+    private readonly IConfiguration _config;
 
-    public HabitModule(HabitService habits)
+    public HabitModule(HabitService habits, IConfiguration config)
     {
         _habits = habits;
+        _config = config;
     }
 
     internal async Task<string> FormatReminderAsync(ulong userId, TimeOnly? localTime)
@@ -58,6 +61,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("add", "Add a new habit to track")]
     public async Task AddAsync()
     {
+        if (!await _habits.HasHealthDataConsentAsync(Context.User.Id))
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
+        }
+
         var modal = new ModalBuilder()
             .WithTitle("Add a new habit")
             .WithCustomId("habit:add:modal")
@@ -74,6 +83,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("template", "Start a habit from a pre-built template")]
     public async Task TemplateAsync()
     {
+        if (!await _habits.HasHealthDataConsentAsync(Context.User.Id))
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
+        }
+
         var menu = new SelectMenuBuilder()
             .WithCustomId("habit:template:select")
             .WithPlaceholder("Choose a template…")

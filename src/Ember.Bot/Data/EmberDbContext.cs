@@ -17,6 +17,7 @@ public class EmberDbContext : DbContext
         {
             entity.HasKey(u => u.DiscordUserId);
             entity.Property(u => u.Timezone).HasMaxLength(64).IsRequired();
+            entity.Property(u => u.ConsentPolicyVersion).HasMaxLength(16);
         });
 
         modelBuilder.Entity<Habit>(entity =>

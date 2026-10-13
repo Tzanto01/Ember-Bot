@@ -124,7 +124,10 @@ public static class AppHost
         await db.SaveChangesAsync(cancellationToken);
 
         if (host.Services.GetService<InteractionService>() is { } interactions)
+        {
             interactions.InteractionExecuted += ActivatorUtilities.CreateInstance<DmPauseNotifier>(host.Services).OnInteractionExecutedAsync;
+            interactions.InteractionExecuted += ActivatorUtilities.CreateInstance<ConsentPromptNotifier>(host.Services).OnInteractionExecutedAsync;
+        }
     }
 
     private sealed class NullDiscordDmSender : IDiscordDmSender

@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
@@ -12,10 +13,12 @@ namespace Ember.Bot.Modules;
 public class TemplateSelectModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly HabitService _habits;
+    private readonly IConfiguration _config;
 
-    public TemplateSelectModule(HabitService habits)
+    public TemplateSelectModule(HabitService habits, IConfiguration config)
     {
         _habits = habits;
+        _config = config;
     }
 
     [ComponentInteraction("habit:template:select")]
@@ -49,6 +52,11 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
                 reminderTime: null,
                 frequency,
                 template.WeeklyTarget);
+        }
+        catch (ConsentRequiredException)
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
         }
         catch (HabitLimitReachedException ex)
         {

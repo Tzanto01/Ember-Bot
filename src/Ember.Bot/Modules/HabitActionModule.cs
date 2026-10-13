@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
@@ -23,10 +24,12 @@ namespace Ember.Bot.Modules;
 public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly HabitService _habits;
+    private readonly IConfiguration _config;
 
-    public HabitActionModule(HabitService habits)
+    public HabitActionModule(HabitService habits, IConfiguration config)
     {
         _habits = habits;
+        _config = config;
     }
 
     // ── habit:add:modal ───────────────────────────────────────────────────────
@@ -46,6 +49,11 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         try
         {
             habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime: null);
+        }
+        catch (ConsentRequiredException)
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
         }
         catch (HabitLimitReachedException ex)
         {
