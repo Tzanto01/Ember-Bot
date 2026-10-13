@@ -15,6 +15,7 @@ public static class ExportBuilder
     public const string CsvHeader =
         "record_type,timezone,grace_days_per_week,leaderboard_opt_in," +
         "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
+        "health_data_consent_at,consent_policy_version,consent_prompted_on," +
         "habit_id,name,frequency,weekly_target,reminder_time,paused_until,created_at,next_reminder_utc," +
         "date,completed,guild_id";
 
@@ -24,10 +25,11 @@ public static class ExportBuilder
         WriteIndented = true,
     };
 
-    /// <summary>Settings and reminder delivery state of the exported user. Timestamps are UTC.</summary>
+    /// <summary>Settings, reminder delivery state and health-data consent of the exported user. Timestamps are UTC.</summary>
     public sealed record SettingsRecord(
         string Timezone, int GraceDaysPerWeek, bool LeaderboardOptIn,
-        int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt);
+        int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
+        DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn);
 
     /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC.</summary>
     public sealed record HabitRecord(
@@ -45,7 +47,8 @@ public static class ExportBuilder
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
         return new ExportDocument(
             new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.LeaderboardOptIn,
-                user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt)),
+                user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
+                AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
@@ -70,10 +73,11 @@ public static class ExportBuilder
         var s = doc.Settings;
         AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn),
             Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
+            Utc(s.HealthDataConsentAt), s.ConsentPolicyVersion ?? "", Date(s.ConsentPromptedOn),
             "", "", "", "", "", "", "", "", "", "", "");
 
         foreach (var h in doc.Habits)
-            AppendRow(csv, "habit", "", "", "", "", "", "",
+            AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "",
                 Num(h.Id), h.Name, h.Frequency, h.WeeklyTarget is { } t ? Num(t) : "",
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
                 h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
@@ -81,7 +85,7 @@ public static class ExportBuilder
                 "", "", "");
 
         foreach (var l in doc.Logs)
-            AppendRow(csv, "log", "", "", "", "", "", "",
+            AppendRow(csv, "log", "", "", "", "", "", "", "", "", "",
                 Num(l.HabitId), "", "", "", "", "", "", "",
                 l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "");
 
@@ -90,6 +94,7 @@ public static class ExportBuilder
 
     private static string Num(int value) => value.ToString(CultureInfo.InvariantCulture);
     private static string Bool(bool value) => value ? "true" : "false";
+    private static string Date(DateOnly? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
     private static string Utc(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture) ?? "";
     private static DateTime? AsUtc(DateTime? value) => value is { } v ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : null;
 

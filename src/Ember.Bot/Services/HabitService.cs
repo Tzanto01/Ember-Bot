@@ -12,6 +12,12 @@ public class HabitService
     /// <summary>How long the Snooze button delays a reminder.</summary>
     public static readonly TimeSpan SnoozeDelay = TimeSpan.FromMinutes(60);
 
+    /// <summary>
+    /// Version of the privacy policy the health-data consent refers to. Consent given for an
+    /// older version no longer counts, so changing this asks every user again.
+    /// </summary>
+    public const string CurrentConsentPolicyVersion = "2026-10";
+
     private readonly EmberDbContext _db;
     private readonly TimeProvider _time;
 
@@ -43,11 +49,53 @@ public class HabitService
         }
     }
 
+    /// <summary>Whether the user agreed to the current health-data consent (<see cref="CurrentConsentPolicyVersion"/>).</summary>
+    public async Task<bool> HasHealthDataConsentAsync(ulong discordUserId)
+        => await _db.Users.AnyAsync(u => u.DiscordUserId == (long)discordUserId
+            && u.HealthDataConsentAt != null && u.ConsentPolicyVersion == CurrentConsentPolicyVersion);
+
+    /// <summary>Records the user's explicit consent (now, for <see cref="CurrentConsentPolicyVersion"/>), creating the user if needed.</summary>
+    public async Task GiveHealthDataConsentAsync(ulong discordUserId)
+    {
+        await EnsureUserAsync(discordUserId);
+        var now = _time.GetUtcNow().UtcDateTime;
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.HealthDataConsentAt, now)
+                .SetProperty(u => u.ConsentPolicyVersion, CurrentConsentPolicyVersion));
+    }
+
+    /// <summary>
+    /// For a user who already has habits but no current consent: marks today's consent prompt as shown and
+    /// returns true, at most once per local day. Returns false for everyone else.
+    /// </summary>
+    public async Task<bool> ClaimConsentPromptAsync(ulong discordUserId)
+    {
+        var today = await GetLocalTodayAsync(discordUserId);
+        return await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId && u.Habits.Any()
+                && (u.HealthDataConsentAt == null || u.ConsentPolicyVersion != CurrentConsentPolicyVersion)
+                && (u.ConsentPromptedOn == null || u.ConsentPromptedOn != today))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today)) == 1;
+    }
+
+    /// <summary>Notes that the consent prompt was shown today. Never creates a user.</summary>
+    public async Task MarkConsentPromptedAsync(ulong discordUserId)
+    {
+        var today = await GetLocalTodayAsync(discordUserId);
+        await _db.Users
+            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today));
+    }
+
+    /// <exception cref="ConsentRequiredException">The user hasn't agreed to the current health-data consent.</exception>
     /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
     public async Task<Habit> AddHabitAsync(ulong discordUserId, string name, TimeOnly? reminderTime,
         FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null)
     {
-        await EnsureUserAsync(discordUserId);
+        if (!await HasHealthDataConsentAsync(discordUserId))
+            throw new ConsentRequiredException();
         if (await _db.Habits.CountAsync(h => h.UserId == (long)discordUserId) >= MaxHabitsPerUser)
             throw new HabitLimitReachedException();
 

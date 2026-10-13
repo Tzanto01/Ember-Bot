@@ -26,5 +26,14 @@ public class User
     /// <summary>When the user was told their DM reminders are paused, so the notice is shown only once.</summary>
     public DateTime? DmPauseNoticeSentAt { get; set; }
 
+    /// <summary>When (UTC) the user explicitly agreed that Ember may store habit names and check-ins (GDPR Art. 9(2)(a)); null until they agree.</summary>
+    public DateTime? HealthDataConsentAt { get; set; }
+
+    /// <summary>The privacy policy version the consent in <see cref="HealthDataConsentAt"/> was given for.</summary>
+    public string? ConsentPolicyVersion { get; set; }
+
+    /// <summary>The user's local day on which Ember last asked for consent, so it asks at most once per day.</summary>
+    public DateOnly? ConsentPromptedOn { get; set; }
+
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
 }

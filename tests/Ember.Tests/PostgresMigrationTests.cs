@@ -33,6 +33,7 @@ public class PostgresMigrationTests(PostgresFixture postgres)
             db.Database.HasPendingModelChanges().Should().BeFalse();
 
             var service = scope.ServiceProvider.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(4242);
             var habit = await service.AddHabitAsync(4242, "Stretch", new TimeOnly(7, 30));
             habitId = habit.Id;
             (await service.CheckInAsync(4242, habitId, completed: true, guildId: 99)).Should().NotBeNull();
