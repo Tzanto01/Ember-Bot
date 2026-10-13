@@ -195,6 +195,24 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         await RespondAsync("Which habit are you checking in?", components: components, ephemeral: true);
     }
 
+    // ── /habit history ────────────────────────────────────────────────────────
+
+    [SlashCommand("history", "See and fill in the last two weeks of a habit, and mark low days")]
+    public async Task HistoryAsync()
+    {
+        var habits = await _habits.GetHabitsAsync(Context.User.Id);
+
+        if (habits.Count == 0)
+        {
+            await RespondAsync("You don't have any habits yet. Use `/habit add` to get started!", ephemeral: true);
+            return;
+        }
+
+        var menu = BuildHabitSelectMenu(habits, "history", "Which habit do you want to look at?");
+        var components = new ComponentBuilder().WithSelectMenu(menu).Build();
+        await RespondAsync("Which habit's history do you want to see?", components: components, ephemeral: true);
+    }
+
     // ── /habit streak ─────────────────────────────────────────────────────────
 
     [SlashCommand("streak", "See your personal habit stats")]
