@@ -83,7 +83,7 @@ Wenn du zustimmst, speichert Ember den Zeitpunkt und die Version dieser Erkläru
 
 ### Tiefs sind privat
 
-Ob und wann du ein Tief markiert hast, siehst in Ember nur du. Ember zeigt Tiefs auf keiner Bestenliste. Eine Ausnahme machst du selbst: Auf einer Streak-Karte, die du mit `/habit share` in einem Kanal postest, erscheinen Tiefs der letzten 30 Tage als Mond (🌙) im Raster.
+Ob und wann du ein Tief markiert hast, siehst in Ember nur du. Ember zeigt Tiefs auf keiner Bestenliste. Auch auf einer Streak-Karte, die du mit `/habit share` in einem Kanal postest, erscheint ein Tief nur als normale Lücke.
 
 ### Widerruf
 
