@@ -17,7 +17,9 @@ namespace Ember.Bot.Data.Migrations
                 type: "date",
                 nullable: true);
 
-            migrationBuilder.Sql("UPDATE \"Habits\" SET \"PausedFrom\" = CURRENT_DATE WHERE \"PausedUntil\" >= CURRENT_DATE;");
+            migrationBuilder.Sql(
+                "UPDATE \"Habits\" SET \"PausedFrom\" = CASE WHEN \"PausedUntil\" >= CURRENT_DATE THEN CURRENT_DATE ELSE \"PausedUntil\" + 1 END " +
+                "WHERE \"PausedUntil\" IS NOT NULL;");
         }
 
         /// <inheritdoc />
