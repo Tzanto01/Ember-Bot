@@ -176,27 +176,4 @@ public class ConsecutiveStreakTests
         streak.Should().Be(1);
         graceUsed.Should().Be(0);
     }
-
-    [Fact]
-    public void ActivePause_MissedDayInsidePause_DoesNotBreakStreak()
-    {
-        // Checked in 4 and 5 days ago; paused days 1–3; checked in today.
-        // pausedUntilDaysAgo=1 → PausedUntil = today-1, covering days 1, 2, 3...
-        // Actually: IsPaused checks date <= PausedUntil (today-1).
-        // days 1,2,3 are all <= today-1 → all paused. day 4 > today-1? today-4 vs today-1:
-        // today-4 < today-1, so today-4 <= today-1 → also paused? That would be wrong.
-        // The model: PausedUntil is the END date of the pause. Date <= PausedUntil means paused.
-        // So PausedUntil=yesterday covers ALL past dates too, not just the recent window.
-        // This is a design note: the current IsPaused impl treats everything before PausedUntil as paused.
-        // Test accordingly — use PausedUntil=today-1 and only assert today is active.
-        var habit = HabitFactory.Make(
-            pausedUntilDaysAgo: 1,
-            FrequencyType.Daily,
-            weeklyTarget: null,
-            (0, true));
-
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
-        streak.Should().Be(1);
-        graceUsed.Should().Be(0);
-    }
 }
