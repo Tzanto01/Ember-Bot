@@ -198,7 +198,6 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             {
                 var d = from.AddDays(row * 10 + col);
                 dots.Append(completed.Contains(d) ? "🟩"
-                    : lowDays.Contains(d) ? "🌙"
                     : HabitService.IsOpen(d, today) ? "⬜"
                     : "⬛");
             }
@@ -219,7 +218,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         {
             var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace, lowDays);
             var best   = HabitService.BestStreak(habit, today, grace, lowDays);
-            var last30 = HabitService.FlexibleStreak(habit, today, 30, lowDays);
+            var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
             var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
             var fireCount = Math.Min(streak / 7 + 1, 5);
