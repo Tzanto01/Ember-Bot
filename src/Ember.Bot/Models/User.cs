@@ -36,4 +36,5 @@ public class User
     public DateOnly? ConsentPromptedOn { get; set; }
 
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
+    public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
 }

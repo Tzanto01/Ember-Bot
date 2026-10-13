@@ -36,6 +36,7 @@ public class ExportBuilderTests
 
         user.Habits.Add(logged);
         user.Habits.Add(unlogged);
+        user.DayMarks.Add(new DayMark { Date = new DateOnly(2025, 6, 16), Kind = DayMarkKind.LowDay });
         return user;
     }
 
@@ -66,6 +67,7 @@ public class ExportBuilderTests
             && r["reminder_time"] == "08:30" && r["next_reminder_utc"] == "2025-06-19T06:30:00Z");
         rows.Where(r => r["record_type"] == "log").Should().HaveCount(2)
             .And.ContainSingle(r => r["guild_id"] == "123456789012345678");
+        rows.Should().ContainSingle(r => r["record_type"] == "day_mark" && r["date"] == "2025-06-16" && r["kind"] == "low_day");
     }
 
     [Fact]
@@ -110,5 +112,6 @@ public class ExportBuilderTests
         doc.Habits.Should().HaveCount(2).And.Contain(h => h.Id == 11 && h.ReminderTime == new TimeOnly(8, 30)
             && h.NextReminderUtc == new DateTime(2025, 6, 19, 6, 30, 0, DateTimeKind.Utc));
         doc.Logs.Should().HaveCount(2).And.Contain(l => l.HabitId == 10 && l.GuildId == "123456789012345678");
+        doc.DayMarks.Should().Equal(new ExportBuilder.DayMarkRecord(new DateOnly(2025, 6, 16), "low_day"));
     }
 }
