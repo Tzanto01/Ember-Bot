@@ -59,6 +59,8 @@ public class MissedDayReflectionJob : IJob
         var users = await db.Users
             .Include(u => u.Habits)
                 .ThenInclude(h => h.Logs)
+            .Include(u => u.DayMarks)
+            .AsSplitQuery()
             .Where(u => dueIds.Contains(u.DiscordUserId))
             .ToListAsync(context.CancellationToken);
 
@@ -81,6 +83,8 @@ public class MissedDayReflectionJob : IJob
 
     private async Task ProcessUserAsync(Ember.Bot.Models.User user, DateOnly yesterday, DateOnly weekStart)
     {
+        if (user.DayMarks.Any(m => m.Kind == Ember.Bot.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
+
         var missed = new List<string>();
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
 

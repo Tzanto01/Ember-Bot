@@ -14,4 +14,7 @@ public enum DayEditResult
 
     /// <summary>The day lies after the user's local today.</summary>
     InFuture,
+
+    /// <summary>The user hasn't agreed to the current health-data consent.</summary>
+    ConsentRequired,
 }

@@ -175,7 +175,11 @@ public class JobIntegrationTests
                 CreatedAt = ReflectionHourUtc.UtcDateTime,
             });
 
-            db.Users.AddRange(eligibleUser, pausedUser, newUser);
+            var lowDayUser = new User { DiscordUserId = 1004, Timezone = "UTC" };
+            lowDayUser.Habits.Add(new Habit { Name = "Read", CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5) });
+            lowDayUser.DayMarks.Add(new DayMark { Date = yesterday, Kind = DayMarkKind.LowDay });
+
+            db.Users.AddRange(eligibleUser, pausedUser, newUser, lowDayUser);
             await db.SaveChangesAsync();
         });
 

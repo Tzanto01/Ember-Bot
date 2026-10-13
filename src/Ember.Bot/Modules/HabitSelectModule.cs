@@ -55,7 +55,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var today = await _habits.GetLocalTodayAsync(Context.User.Id);
-        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today);
+        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id));
         var component = (SocketMessageComponent)Context.Interaction;
 
         // Acknowledge the component interaction first, then post publicly.
@@ -181,7 +181,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     private async Task NotFoundAsync() =>
         await RespondAsync("Couldn't find that habit.", ephemeral: true);
 
-    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today)
+    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays)
     {
         var from  = today.AddDays(-29);
 
@@ -214,7 +214,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         }
         else
         {
-            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace);
+            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace, lowDays);
             var best   = HabitService.BestStreak(habit);
             var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
@@ -232,6 +232,6 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             .WithTimestamp(DateTimeOffset.UtcNow);
     }
 
-    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today) =>
-        BuildShareEmbedBase(habit, grace, username, today).Build();
+    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays) =>
+        BuildShareEmbedBase(habit, grace, username, today, lowDays).Build();
 }

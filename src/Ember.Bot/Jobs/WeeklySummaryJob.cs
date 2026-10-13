@@ -62,6 +62,8 @@ public class WeeklySummaryJob : IJob
         var users = await db.Users
             .Include(u => u.Habits)
                 .ThenInclude(h => h.Logs)
+            .Include(u => u.DayMarks)
+            .AsSplitQuery()
             .Where(u => dueIds.Contains(u.DiscordUserId))
             .ToListAsync(context.CancellationToken);
 

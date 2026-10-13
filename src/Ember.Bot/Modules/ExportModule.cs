@@ -39,6 +39,7 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
         var user = await _db.Users
             .AsNoTracking()
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
+            .Include(u => u.DayMarks)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.DiscordUserId == userId);
 

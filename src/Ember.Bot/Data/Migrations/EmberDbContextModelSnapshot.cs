@@ -22,6 +22,31 @@ namespace Ember.Bot.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Ember.Bot.Models.DayMark", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date", "Kind")
+                        .IsUnique();
+
+                    b.ToTable("DayMarks");
+                });
+
             modelBuilder.Entity("Ember.Bot.Models.Habit", b =>
                 {
                     b.Property<int>("Id")
@@ -136,6 +161,17 @@ namespace Ember.Bot.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Ember.Bot.Models.DayMark", b =>
+                {
+                    b.HasOne("Ember.Bot.Models.User", "User")
+                        .WithMany("DayMarks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Ember.Bot.Models.Habit", b =>
                 {
                     b.HasOne("Ember.Bot.Models.User", "User")
@@ -165,6 +201,8 @@ namespace Ember.Bot.Data.Migrations
 
             modelBuilder.Entity("Ember.Bot.Models.User", b =>
                 {
+                    b.Navigation("DayMarks");
+
                     b.Navigation("Habits");
                 });
 #pragma warning restore 612, 618

@@ -187,6 +187,51 @@ public class HabitService
         return DayEditResult.Saved;
     }
 
+    /// <summary>
+    /// Marks the user's local <paramref name="date"/> as a low day for all their habits (see <see cref="ConsecutiveStreak"/>
+    /// and <see cref="FlexibleStreak"/>). Any day up to the user's local today can be marked; marking it again is a no-op.
+    /// Needs the health-data consent, since a low day can say something about the user's health.
+    /// </summary>
+    public async Task<DayEditResult> SetLowDayAsync(ulong discordUserId, DateOnly date)
+    {
+        if (!await HasHealthDataConsentAsync(discordUserId)) return DayEditResult.ConsentRequired;
+        if (date > await GetLocalTodayAsync(discordUserId)) return DayEditResult.InFuture;
+
+        var userId = (long)discordUserId;
+        if (await IsLowDayStoredAsync(userId, date)) return DayEditResult.Saved;
+
+        var mark = new DayMark { UserId = userId, Date = date, Kind = DayMarkKind.LowDay };
+        _db.DayMarks.Add(mark);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(mark).State = EntityState.Detached;
+            if (!await IsLowDayStoredAsync(userId, date)) throw;
+        }
+        return DayEditResult.Saved;
+    }
+
+    /// <summary>Removes the low-day mark from the user's local <paramref name="date"/>, if there is one.</summary>
+    public async Task ClearLowDayAsync(ulong discordUserId, DateOnly date)
+    {
+        await _db.DayMarks
+            .Where(m => m.UserId == (long)discordUserId && m.Date == date && m.Kind == DayMarkKind.LowDay)
+            .ExecuteDeleteAsync();
+    }
+
+    /// <summary>All of the user's low days (local dates), for <see cref="ConsecutiveStreak"/>, <see cref="BestStreak"/> and <see cref="FlexibleStreak"/>.</summary>
+    public async Task<HashSet<DateOnly>> GetLowDaysAsync(ulong discordUserId)
+        => (await _db.DayMarks
+            .Where(m => m.UserId == (long)discordUserId && m.Kind == DayMarkKind.LowDay)
+            .Select(m => m.Date)
+            .ToListAsync()).ToHashSet();
+
+    private Task<bool> IsLowDayStoredAsync(long userId, DateOnly date)
+        => _db.DayMarks.AnyAsync(m => m.UserId == userId && m.Date == date && m.Kind == DayMarkKind.LowDay);
+
     private async Task<(Habit? Habit, DayEditResult Result)> FindEditableHabitAsync(ulong discordUserId, int habitId, DateOnly date)
     {
         var habit = await _db.Habits
@@ -200,13 +245,16 @@ public class HabitService
     }
 
     /// <summary>
-    /// Returns how many of the last <paramref name="days"/> days were completed,
-    /// using a rolling window ending on the user's local <paramref name="today"/>.
+    /// Returns how many of the last <paramref name="days"/> days were kept, using a rolling window ending on the
+    /// user's local <paramref name="today"/>. A day is kept when it was completed or is one of the user's <paramref name="lowDays"/>.
     /// </summary>
-    public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7)
+    public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7, IReadOnlySet<DateOnly>? lowDays = null)
     {
         var cutoff = today.AddDays(-(days - 1));
-        return habit.Logs.Count(l => l.Completed && l.Date >= cutoff);
+        var kept = habit.Logs.Where(l => l.Completed && l.Date >= cutoff).Select(l => l.Date).ToHashSet();
+        if (lowDays is not null)
+            kept.UnionWith(lowDays.Where(d => d >= cutoff && d <= today));
+        return kept.Count;
     }
 
     /// <summary>
@@ -223,10 +271,12 @@ public class HabitService
     /// Returns the current streak of completed days ending at the user's local <paramref name="today"/>,
     /// with up to <paramref name="graceDays"/> forgiven gaps, and how many grace days that streak used.
     /// Open days (<see cref="OpenDays"/>: today and yesterday) that aren't done yet are pending: they never
-    /// break the streak and use no grace. Streaks are computed from the logs, never stored, so backfilling
-    /// an older day heals the streak retroactively.
+    /// break the streak and use no grace. Paused days, the user's <paramref name="lowDays"/> and an unlogged
+    /// <see cref="TimezoneHelper.SwitchoverDate"/> are protected: they neither break nor extend the streak.
+    /// Streaks are computed from the logs, never stored, so backfilling an older day heals the streak retroactively.
     /// </summary>
-    public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1)
+    public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1,
+        IReadOnlySet<DateOnly>? lowDays = null)
     {
         var completed = habit.Logs
             .Where(l => l.Completed)
@@ -245,9 +295,9 @@ public class HabitService
         var day = today;
         while (day >= floor)
         {
-            if (IsCoveredOn(habit, day, completed))
+            if (IsCoveredOn(habit, day, completed, lowDays))
             {
-                // Paused — skip without grace, but guard against underflow
+                // Protected — skip without grace, but guard against underflow
                 if (day == floor) break;
                 day = day.AddDays(-1);
                 continue;
@@ -281,8 +331,9 @@ public class HabitService
     public static bool IsPausedOn(Habit habit, DateOnly date)
         => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value;
 
-    private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed)
-        => IsPausedOn(habit, date) || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
+    private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed, IReadOnlySet<DateOnly>? lowDays)
+        => IsPausedOn(habit, date) || lowDays?.Contains(date) == true
+            || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
 
     /// <summary>Returns the longest consecutive completed-day streak (no grace).</summary>
     public static int BestStreak(Habit habit)
@@ -427,7 +478,7 @@ public class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
-    /// <summary>Permanently deletes the user; the database cascades to all their habits and logs (reminders live on the habits).</summary>
+    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs and day marks (reminders live on the habits).</summary>
     public async Task DeleteUserDataAsync(ulong discordUserId)
     {
         await _db.Users

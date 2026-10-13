@@ -34,25 +34,27 @@ public static class WeeklySummaryService
     {
         var from = weekEnd.AddDays(-(WindowDays - 1));
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
+        var lowDays = user.DayMarks.Where(m => m.Kind == DayMarkKind.LowDay).Select(m => m.Date).ToHashSet();
 
         var habits = user.Habits
             .OrderBy(h => h.CreatedAt)
-            .Select(h => BuildHabit(h, user.GraceDaysPerWeek, from, weekEnd, tz))
+            .Select(h => BuildHabit(h, user.GraceDaysPerWeek, from, weekEnd, tz, lowDays))
             .ToList();
 
         return new UserSummary(habits, habits.Sum(h => h.Done), habits.Sum(h => h.Possible));
     }
 
-    private static HabitSummary BuildHabit(Habit habit, int graceDays, DateOnly from, DateOnly weekEnd, TimeZoneInfo tz)
+    private static HabitSummary BuildHabit(Habit habit, int graceDays, DateOnly from, DateOnly weekEnd, TimeZoneInfo tz,
+        HashSet<DateOnly> lowDays)
     {
         var done = habit.Logs.Count(l => l.Completed && l.Date >= from && l.Date <= weekEnd);
 
         // Days in the window the habit could actually have been checked in:
-        // strictly after its creation date and not paused.
+        // strictly after its creation date, not paused and not a low day.
         var activeDays = 0;
         for (var d = from; d <= weekEnd; d = d.AddDays(1))
         {
-            if (HabitService.IsActiveOn(habit, d, tz) && !HabitService.IsPausedOn(habit, d))
+            if (HabitService.IsActiveOn(habit, d, tz) && !HabitService.IsPausedOn(habit, d) && !lowDays.Contains(d))
                 activeDays++;
         }
 
@@ -65,7 +67,7 @@ public static class WeeklySummaryService
         possible = Math.Max(possible, done);
 
         var (streak, graceUsed) = habit.FrequencyType == FrequencyType.Daily
-            ? HabitService.ConsecutiveStreak(habit, weekEnd.AddDays(1), graceDays)
+            ? HabitService.ConsecutiveStreak(habit, weekEnd.AddDays(1), graceDays, lowDays)
             : (0, 0);
 
         return new HabitSummary(habit, done, possible, streak, graceUsed, BuildDotString(habit, from, weekEnd));
