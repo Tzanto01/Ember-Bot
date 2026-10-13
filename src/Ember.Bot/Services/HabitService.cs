@@ -229,6 +229,42 @@ public class HabitService
             .Select(m => m.Date)
             .ToListAsync()).ToHashSet();
 
+    /// <summary>
+    /// Returns the habit's last <paramref name="days"/> local days, oldest first and ending at the user's local today,
+    /// with each day's <see cref="DayState"/> and raw log. Null when the habit doesn't exist or isn't the user's.
+    /// State precedence: before start, paused, low day, done, pending (open), not done.
+    /// </summary>
+    public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(ulong discordUserId, int habitId, int days)
+    {
+        var habit = await _db.Habits
+            .Include(h => h.User)
+            .Include(h => h.Logs)
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+
+        if (habit is null) return null;
+
+        var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
+        var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
+        var start = StartDate(habit, tz);
+        var lowDays = await GetLowDaysAsync(discordUserId);
+        var logs = habit.Logs.ToDictionary(l => l.Date, l => l.Completed);
+
+        return Enumerable.Range(0, days)
+            .Select(i => today.AddDays(i - days + 1))
+            .Select(date =>
+            {
+                bool? completed = logs.TryGetValue(date, out var c) ? c : null;
+                var state = date < start ? DayState.BeforeStart
+                    : IsPausedOn(habit, date) ? DayState.Paused
+                    : lowDays.Contains(date) ? DayState.LowDay
+                    : completed == true ? DayState.Done
+                    : IsOpen(date, today) ? DayState.Pending
+                    : DayState.NotDone;
+                return new HabitDay(date, state, completed);
+            })
+            .ToList();
+    }
+
     private Task<bool> IsLowDayStoredAsync(long userId, DateOnly date)
         => _db.DayMarks.AnyAsync(m => m.UserId == userId && m.Date == date && m.Kind == DayMarkKind.LowDay);
 
