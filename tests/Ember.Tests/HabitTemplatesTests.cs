@@ -1,4 +1,4 @@
-using Ember.Bot.Services;
+using Ember.Core.Services;
 using FluentAssertions;
 
 namespace Ember.Tests;

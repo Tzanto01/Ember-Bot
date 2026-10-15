@@ -1,9 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Data;
-using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
@@ -18,12 +16,10 @@ namespace Ember.Bot.Modules;
 /// </summary>
 public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly EmberDbContext _db;
     private readonly HabitService _habits;
 
-    public OnboardingModule(EmberDbContext db, HabitService habits)
+    public OnboardingModule(HabitService habits)
     {
-        _db    = db;
         _habits = habits;
     }
 
@@ -220,11 +216,7 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await _habits.EnsureUserAsync(Context.User.Id);
-
-        var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)Context.User.Id);
-        user.Timezone = tz.Id;
-        await _db.SaveChangesAsync();
+        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id);
         await _habits.RescheduleRemindersAsync(Context.User.Id);
 
         var embed = new EmbedBuilder()

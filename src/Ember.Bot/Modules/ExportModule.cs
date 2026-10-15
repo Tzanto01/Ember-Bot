@@ -1,8 +1,6 @@
 using Discord;
 using Discord.Interactions;
-using Ember.Bot.Data;
-using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Services;
 using System.Text;
 
 namespace Ember.Bot.Modules;
@@ -15,11 +13,11 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
         [ChoiceDisplay("JSON")] Json,
     }
 
-    private readonly EmberDbContext _db;
+    private readonly HabitService _habits;
 
-    public ExportModule(EmberDbContext db)
+    public ExportModule(HabitService habits)
     {
-        _db = db;
+        _habits = habits;
     }
 
     /// <summary>
@@ -35,13 +33,7 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: true);
 
-        var userId = (long)Context.User.Id;
-        var user = await _db.Users
-            .AsNoTracking()
-            .Include(u => u.Habits).ThenInclude(h => h.Logs)
-            .Include(u => u.DayMarks)
-            .AsSplitQuery()
-            .FirstOrDefaultAsync(u => u.DiscordUserId == userId);
+        var user = await _habits.GetUserForExportAsync(Context.User.Id);
 
         if (user is null)
         {

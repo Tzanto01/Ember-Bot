@@ -1,9 +1,10 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Data;
 using Ember.Bot.Jobs;
 using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
