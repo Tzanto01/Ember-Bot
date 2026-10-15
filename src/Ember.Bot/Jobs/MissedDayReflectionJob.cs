@@ -1,7 +1,6 @@
 using Discord;
-using Ember.Bot.Data;
 using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -43,12 +42,9 @@ public class MissedDayReflectionJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
+        var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
 
-        var candidates = await db.Users
-            .Where(u => u.Habits.Any())
-            .Select(u => new { u.DiscordUserId, u.Timezone })
-            .ToListAsync(context.CancellationToken);
+        var candidates = await habits.GetUserTimezonesWithHabitsAsync(context.CancellationToken);
 
         var dueIds = candidates
             .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time).Hour == LocalSendHour)
@@ -57,19 +53,13 @@ public class MissedDayReflectionJob : IJob
 
         if (dueIds.Count == 0) return;
 
-        var users = await db.Users
-            .Include(u => u.Habits)
-                .ThenInclude(h => h.Logs)
-            .Include(u => u.DayMarks)
-            .AsSplitQuery()
-            .Where(u => dueIds.Contains(u.DiscordUserId))
-            .ToListAsync(context.CancellationToken);
+        var users = await habits.GetUsersWithHabitsAsync(dueIds, context.CancellationToken);
 
         foreach (var user in users)
         {
             try
             {
-                if (!await db.Users.AnyAsync(u => u.DiscordUserId == user.DiscordUserId, context.CancellationToken))
+                if (!await habits.UserExistsAsync((ulong)user.DiscordUserId, context.CancellationToken))
                     continue;
 
                 var yesterday = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
@@ -82,9 +72,9 @@ public class MissedDayReflectionJob : IJob
         }
     }
 
-    private async Task ProcessUserAsync(Ember.Bot.Models.User user, DateOnly yesterday, DateOnly weekStart)
+    private async Task ProcessUserAsync(Ember.Core.Models.User user, DateOnly yesterday, DateOnly weekStart)
     {
-        if (user.DayMarks.Any(m => m.Kind == Ember.Bot.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
+        if (user.DayMarks.Any(m => m.Kind == Ember.Core.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
 
         var open = new List<string>();
         var anyDaily = false;
@@ -92,7 +82,7 @@ public class MissedDayReflectionJob : IJob
 
         foreach (var habit in user.Habits)
         {
-            if (habit.FrequencyType == Ember.Bot.Models.FrequencyType.Daily)
+            if (habit.FrequencyType == Ember.Core.Models.FrequencyType.Daily)
             {
                 if (IsOpenDaily(habit, yesterday, tz))
                 {
@@ -150,8 +140,8 @@ public class MissedDayReflectionJob : IJob
     }
 
     /// <summary>Whether a daily habit is active and unpaused on <paramref name="date"/> but not logged as done yet.</summary>
-    internal static bool IsOpenDaily(Ember.Bot.Models.Habit habit, DateOnly date, TimeZoneInfo tz)
-        => habit.FrequencyType == Ember.Bot.Models.FrequencyType.Daily
+    internal static bool IsOpenDaily(Ember.Core.Models.Habit habit, DateOnly date, TimeZoneInfo tz)
+        => habit.FrequencyType == Ember.Core.Models.FrequencyType.Daily
             && HabitService.IsActiveOn(habit, date, tz)
             && !HabitService.IsPausedOn(habit, date)
             && !habit.Logs.Any(l => l.Date == date && l.Completed);

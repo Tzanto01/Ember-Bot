@@ -1,9 +1,8 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Data;
 using Ember.Bot.Modules;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -119,8 +118,7 @@ public class BotService : IHostedService
         try
         {
             using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
-            var habitCount = await db.Habits.CountAsync();
+            var habitCount = await scope.ServiceProvider.GetRequiredService<HabitService>().CountHabitsAsync();
 
             var (activity, status) = habitCount switch
             {

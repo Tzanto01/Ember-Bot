@@ -1,7 +1,7 @@
 using Discord;
 using Discord.Interactions;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;

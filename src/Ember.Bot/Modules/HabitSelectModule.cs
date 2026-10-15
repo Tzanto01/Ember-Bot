@@ -1,8 +1,8 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 

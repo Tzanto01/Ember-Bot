@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Services;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
@@ -60,7 +61,7 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     }
 
     /// <summary>Sets a preset reminder time on one of the clicking user's own habits; null if the habit isn't theirs or the input is malformed.</summary>
-    internal static async Task<Models.Habit?> SetPresetReminderAsync(HabitService habits, ulong userId, string habitIdStr, string time)
+    internal static async Task<Ember.Core.Models.Habit?> SetPresetReminderAsync(HabitService habits, ulong userId, string habitIdStr, string time)
     {
         if (!int.TryParse(habitIdStr, out var habitId) || !TimeOnly.TryParseExact(time, "HH:mm", out var reminderTime))
             return null;

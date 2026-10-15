@@ -1,6 +1,6 @@
-using Ember.Bot.Data;
 using Ember.Bot.Modules;
-using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,7 +1,7 @@
 using Discord;
 using Ember.Bot;
-using Ember.Bot.Data;
 using Ember.Bot.Services;
+using Ember.Core.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

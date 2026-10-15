@@ -1,7 +1,7 @@
-using Ember.Bot.Data;
 using Ember.Bot.Jobs;
-using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Models;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
