@@ -41,6 +41,18 @@ public class LowDayTests
     }
 
     [Fact]
+    public void LowDay_BeforeTheLocalStartDay_IsNotCountedForTheLastSevenDays()
+    {
+        // Created 23:30 UTC three days ago: still that day in UTC, already the next day in Tokyo.
+        var habit = HabitFactory.Make();
+        habit.CreatedAt = Today.AddDays(-3).ToDateTime(new TimeOnly(23, 30), DateTimeKind.Utc);
+        var tokyo = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
+
+        HabitService.FlexibleStreak(habit, Today, 7, LowDays(3)).Should().Be(1);
+        HabitService.FlexibleStreak(habit, Today, 7, LowDays(3), tokyo).Should().Be(0);
+    }
+
+    [Fact]
     public void LowDay_CountsAsKeptForTheLastSevenDays_OncePerDay()
     {
         var habit = HabitFactory.Make((0, true), (1, true), (2, false));
