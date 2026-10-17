@@ -5,7 +5,7 @@ public enum FrequencyType { Daily, Weekly }
 public class Habit
 {
     public int Id { get; set; }
-    public long UserId { get; set; }
+    public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Time of day to send the DM reminder, stored in the user's local time. Null means no reminder.</summary>

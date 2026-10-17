@@ -29,7 +29,7 @@ public class HabitServiceIntegrationTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var user = await db.Users.FindAsync(123L);
+            var user = await db.Users.FindAsync(await TestUsers.UserIdAsync(sp, 123));
             var habit = await db.Habits.FindAsync(habitId);
 
             user.Should().NotBeNull();
@@ -133,7 +133,8 @@ public class HabitServiceIntegrationTests
             var add51st = () => service.AddHabitAsync(789, "One more", reminderTime: null, FrequencyType.Weekly, 2);
 
             await add51st.Should().ThrowAsync<HabitLimitReachedException>();
-            db.Habits.Count(h => h.UserId == 789).Should().Be(HabitService.MaxHabitsPerUser);
+            var userId = await TestUsers.UserIdAsync(sp, 789);
+            db.Habits.Count(h => h.UserId == userId).Should().Be(HabitService.MaxHabitsPerUser);
         });
     }
 
@@ -166,14 +167,14 @@ public class HabitServiceIntegrationTests
             var today = DateOnly.FromDateTime(now.UtcDateTime);
 
             db.Users.AddRange(
-                new User { DiscordUserId = 1, Timezone = "UTC" },
-                new User { DiscordUserId = 2, Timezone = "UTC" },
-                new User { DiscordUserId = 3, Timezone = "UTC" });
+                new User { Id = TestUsers.Id(1), Logins = TestUsers.Discord(1), Timezone = "UTC" },
+                new User { Id = TestUsers.Id(2), Logins = TestUsers.Discord(2), Timezone = "UTC" },
+                new User { Id = TestUsers.Id(3), Logins = TestUsers.Discord(3), Timezone = "UTC" });
 
             db.Habits.AddRange(
-                new Habit { Id = 10, UserId = 1, Name = "Hydrate", CreatedAt = now.UtcDateTime.AddDays(-10) },
-                new Habit { Id = 20, UserId = 2, Name = "Walk", CreatedAt = now.UtcDateTime.AddDays(-10) },
-                new Habit { Id = 30, UserId = 3, Name = "Study", CreatedAt = now.UtcDateTime.AddDays(-10) });
+                new Habit { Id = 10, UserId = TestUsers.Id(1), Name = "Hydrate", CreatedAt = now.UtcDateTime.AddDays(-10) },
+                new Habit { Id = 20, UserId = TestUsers.Id(2), Name = "Walk", CreatedAt = now.UtcDateTime.AddDays(-10) },
+                new Habit { Id = 30, UserId = TestUsers.Id(3), Name = "Study", CreatedAt = now.UtcDateTime.AddDays(-10) });
 
             db.HabitLogs.AddRange(
                 new HabitLog { HabitId = 10, Date = today, Completed = true, GuildId = 999 },
@@ -195,7 +196,7 @@ public class HabitServiceIntegrationTests
         });
 
         leaderboard.Should().ContainSingle();
-        leaderboard[0].UserId.Should().Be(1);
+        leaderboard[0].DiscordUserId.Should().Be(1);
         leaderboard[0].CheckIns.Should().Be(2);
     }
 
