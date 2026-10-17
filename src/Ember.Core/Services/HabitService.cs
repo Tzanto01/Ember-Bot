@@ -291,15 +291,18 @@ public class HabitService
     /// <summary>
     /// Returns how many of the last <paramref name="days"/> days were kept, using a rolling window ending on the
     /// user's local <paramref name="today"/>. A day is kept when it was completed or is one of the user's <paramref name="lowDays"/>;
-    /// low days only count from the habit's start day (by its UTC creation date) and outside its paused range.
+    /// low days only count from the habit's local start day (<see cref="StartDate"/> in <paramref name="tz"/>, UTC when omitted)
+    /// and outside its paused range.
     /// </summary>
-    public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7, IReadOnlySet<DateOnly>? lowDays = null)
+    public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7, IReadOnlySet<DateOnly>? lowDays = null,
+        TimeZoneInfo? tz = null)
     {
         var cutoff = today.AddDays(-(days - 1));
         var kept = habit.Logs.Where(l => l.Completed && l.Date >= cutoff).Select(l => l.Date).ToHashSet();
         if (lowDays is not null)
         {
-            var from = StartDate(habit, TimeZoneInfo.Utc) > cutoff ? StartDate(habit, TimeZoneInfo.Utc) : cutoff;
+            var start = StartDate(habit, tz ?? TimeZoneInfo.Utc);
+            var from = start > cutoff ? start : cutoff;
             kept.UnionWith(lowDays.Where(d => d >= from && d <= today && !IsPausedOn(habit, d)));
         }
         return kept.Count;
@@ -463,9 +466,17 @@ public class HabitService
         return habit;
     }
 
-    /// <summary>Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's or has no reminder.</summary>
-    public async Task<bool> SnoozeReminderAsync(ulong discordUserId, int habitId)
+    /// <summary>How long a reminder's snooze button stays usable after the reminder was sent.</summary>
+    public static readonly TimeSpan SnoozeWindow = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's or has no reminder,
+    /// or when the reminder was sent (<paramref name="sentAtUtc"/>) more than <see cref="SnoozeWindow"/> ago, so an old DM can't displace the schedule.
+    /// </summary>
+    public async Task<bool> SnoozeReminderAsync(ulong discordUserId, int habitId, DateTimeOffset sentAtUtc)
     {
+        if (_time.GetUtcNow() - sentAtUtc > SnoozeWindow) return false;
+
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId && h.ReminderTime != null);
 

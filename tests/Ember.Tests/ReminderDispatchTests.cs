@@ -119,8 +119,8 @@ public class ReminderDispatchTests
         var time = new FakeTimeProvider(Now);
         await using var host = await CreateHostAsync(time, DueHabit(1, 10, TomorrowNineBerlin));
 
-        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(10, 1));
-        var othersSnooze = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(99, 1));
+        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(10, 1, Now));
+        var othersSnooze = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(99, 1, Now));
 
         snoozed.Should().BeTrue();
         othersSnooze.Should().BeFalse();

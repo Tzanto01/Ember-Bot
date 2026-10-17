@@ -9,7 +9,8 @@ namespace Ember.Bot.Modules;
 /// <summary>
 /// Handles the ✅/❌/⏰ button interactions sent in DM reminders.
 /// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
-/// Buttons never expire: done and skip log the user's local day the reminder was sent on.
+/// Done and skip never expire: they log the user's local day the reminder was sent on.
+/// Snooze only works within <see cref="HabitService.SnoozeWindow"/> of the send time.
 /// </summary>
 public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContext>
 {
@@ -87,13 +88,14 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("checkin:snooze:*:*")]
     public async Task OnSnoozeAsync(string habitIdStr, string timestampStr)
     {
-        if (!int.TryParse(habitIdStr, out var habitId))
+        if (!int.TryParse(habitIdStr, out var habitId)
+            || !long.TryParse(timestampStr, out var sentUnix) || sentUnix is < 0 or > 253402300799)
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
             return;
         }
 
-        if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId))
+        if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId, DateTimeOffset.FromUnixTimeSeconds(sentUnix)))
         {
             await RespondAsync("This reminder isn't active anymore, so there's nothing to snooze. 💙", ephemeral: true);
             return;
