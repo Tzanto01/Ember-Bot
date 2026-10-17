@@ -50,7 +50,7 @@ public class WeeklySummaryJob : IJob
 
         var dueIds = candidates
             .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { DayOfWeek: DayOfWeek.Sunday, Hour: LocalSendHour })
-            .Select(u => u.DiscordUserId)
+            .Select(u => u.UserId)
             .ToList();
 
         if (dueIds.Count == 0) return;
@@ -63,25 +63,27 @@ public class WeeklySummaryJob : IJob
         {
             try
             {
-                if (!await habits.UserExistsAsync((ulong)user.DiscordUserId, context.CancellationToken))
+                // Only Discord users get the summary DM; a web-only user has nowhere to receive it yet.
+                if (user.DiscordId() is not { } discordId
+                    || !await habits.UserExistsAsync(user.Id, context.CancellationToken))
                     continue;
 
                 var weekEnd = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
-                await SendSummaryAsync(user, weekEnd);
+                await SendSummaryAsync(user, discordId, weekEnd);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to send weekly summary to user {UserId}.", user.DiscordUserId);
+                _logger.LogWarning(ex, "Failed to send weekly summary to user {UserId}.", user.Id);
             }
         }
     }
 
-    private async Task SendSummaryAsync(User user, DateOnly weekEnd)
+    private async Task SendSummaryAsync(User user, ulong discordId, DateOnly weekEnd)
     {
         var summary = WeeklySummaryService.Build(user, weekEnd);
         if (!summary.HasSummarableWeek)
         {
-            _logger.LogDebug("WeeklySummaryJob: nothing to summarise for user {UserId}, skipping.", user.DiscordUserId);
+            _logger.LogDebug("WeeklySummaryJob: nothing to summarise for user {UserId}, skipping.", user.Id);
             return;
         }
 
@@ -107,7 +109,7 @@ public class WeeklySummaryJob : IJob
             embed.AddField("…and more", $"Plus **{overflow}** more habits — see them all with `/habit list`.", inline: false);
 
         embed.WithFooter(footer);
-        await _discord.SendMessageAsync((ulong)user.DiscordUserId, embed: embed.Build());
+        await _discord.SendMessageAsync(discordId, embed: embed.Build());
     }
 
     private static string FormatHabitLine(WeeklySummaryService.HabitSummary h)

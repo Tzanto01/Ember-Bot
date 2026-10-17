@@ -24,7 +24,8 @@ public class BackfillTests
     private static async Task SetTimezoneAsync(IServiceProvider sp, string timezone)
     {
         var db = sp.GetRequiredService<EmberDbContext>();
-        await db.Users.Where(u => u.DiscordUserId == (long)UserId).ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezone));
+        var userId = await TestUsers.UserIdAsync(sp, UserId);
+        await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezone));
     }
 
     private static Task<DayEditResult> CheckInAsync(IntegrationTestHost host, int habitId, DateOnly date, bool completed = true)

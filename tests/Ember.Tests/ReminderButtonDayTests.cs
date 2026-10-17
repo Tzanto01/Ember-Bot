@@ -104,8 +104,9 @@ public class ReminderButtonDayTests
     {
         var service = sp.GetRequiredService<HabitService>();
         await service.GiveHealthDataConsentAsync(UserId);
+        var userId = await TestUsers.UserIdAsync(sp, UserId);
         await sp.GetRequiredService<EmberDbContext>().Users
-            .Where(u => u.DiscordUserId == (long)UserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, "America/Los_Angeles"));
         return (await service.AddHabitAsync(UserId, "Stretch", null)).Id;
     });

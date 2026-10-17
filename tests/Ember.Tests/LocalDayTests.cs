@@ -21,8 +21,8 @@ public class LocalDayTests
         return await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            db.Users.Add(new User { DiscordUserId = userId, Timezone = timezone });
-            var habit = new Habit { UserId = userId, Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+            db.Users.Add(new User { Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId), Timezone = timezone });
+            var habit = new Habit { UserId = TestUsers.Id(userId), Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
             db.Habits.Add(habit);
             await db.SaveChangesAsync();
             return habit.Id;
@@ -98,11 +98,11 @@ public class LocalDayTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-            var notDue = new User { DiscordUserId = 601, Timezone = Brisbane };
-            notDue.Habits.Add(new Habit { UserId = 601, Name = "Walk", CreatedAt = created });
+            var notDue = new User { Id = TestUsers.Id(601), Logins = TestUsers.Discord(601), Timezone = Brisbane };
+            notDue.Habits.Add(new Habit { UserId = TestUsers.Id(601), Name = "Walk", CreatedAt = created });
 
-            var due = new User { DiscordUserId = 602, Timezone = LosAngeles };
-            var habit = new Habit { UserId = 602, Name = "Read", CreatedAt = created };
+            var due = new User { Id = TestUsers.Id(602), Logins = TestUsers.Discord(602), Timezone = LosAngeles };
+            var habit = new Habit { UserId = TestUsers.Id(602), Name = "Read", CreatedAt = created };
             habit.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 17), Completed = true });
             due.Habits.Add(habit);
 

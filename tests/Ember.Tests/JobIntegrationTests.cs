@@ -26,8 +26,8 @@ public class JobIntegrationTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var today = DateOnly.FromDateTime(SundayMorningUtc.UtcDateTime);
 
-            var user = new User { DiscordUserId = 55, Timezone = "UTC" };
-            var habit = new Habit { UserId = 55, Name = "Meditate", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-8) };
+            var user = new User { Id = TestUsers.Id(55), Logins = TestUsers.Discord(55), Timezone = "UTC" };
+            var habit = new Habit { UserId = TestUsers.Id(55), Name = "Meditate", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-8) };
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-1), Completed = true });
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-3), Completed = true });
             user.Habits.Add(habit);
@@ -77,15 +77,15 @@ public class JobIntegrationTests
 
             // Seeded first so it is processed before the nudge user's DM arrives:
             // habit created today → zero countable days in the window → skipped.
-            var brandNew = new User { DiscordUserId = 74, Timezone = "UTC" };
-            brandNew.Habits.Add(new Habit { UserId = 74, Name = "Stretch", CreatedAt = SundayMorningUtc.UtcDateTime });
+            var brandNew = new User { Id = TestUsers.Id(74), Logins = TestUsers.Discord(74), Timezone = "UTC" };
+            brandNew.Habits.Add(new Habit { UserId = TestUsers.Id(74), Name = "Stretch", CreatedAt = SundayMorningUtc.UtcDateTime });
 
             // Established habit, no check-ins at all → gentle nudge.
-            var quietWeek = new User { DiscordUserId = 77, Timezone = "UTC" };
-            quietWeek.Habits.Add(new Habit { UserId = 77, Name = "Journal", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10) });
+            var quietWeek = new User { Id = TestUsers.Id(77), Logins = TestUsers.Discord(77), Timezone = "UTC" };
+            quietWeek.Habits.Add(new Habit { UserId = TestUsers.Id(77), Name = "Journal", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10) });
 
             // No habits at all → nothing to summarise, never queried.
-            var noHabits = new User { DiscordUserId = 78, Timezone = "UTC" };
+            var noHabits = new User { Id = TestUsers.Id(78), Logins = TestUsers.Discord(78), Timezone = "UTC" };
 
             db.Users.AddRange(brandNew, quietWeek, noHabits);
             await db.SaveChangesAsync();
@@ -114,12 +114,12 @@ public class JobIntegrationTests
         {
             var db = sp.GetRequiredService<EmberDbContext>();
 
-            var user = new User { DiscordUserId = 90, Timezone = "UTC" };
+            var user = new User { Id = TestUsers.Id(90), Logins = TestUsers.Discord(90), Timezone = "UTC" };
             for (var i = 1; i <= 30; i++)
             {
                 user.Habits.Add(new Habit
                 {
-                    UserId = 90,
+                    UserId = TestUsers.Id(90),
                     Name = $"Habit {i:00}",
                     CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10).AddMinutes(i)
                 });
@@ -152,7 +152,7 @@ public class JobIntegrationTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var yesterday = DateOnly.FromDateTime(ReflectionHourUtc.UtcDateTime).AddDays(-1);
 
-            var eligibleUser = new User { DiscordUserId = 1001, Timezone = "UTC" };
+            var eligibleUser = new User { Id = TestUsers.Id(1001), Logins = TestUsers.Discord(1001), Timezone = "UTC" };
             eligibleUser.Habits.Add(new Habit
             {
                 Name = "Stretch",
@@ -160,7 +160,7 @@ public class JobIntegrationTests
                 Logs = []
             });
 
-            var pausedUser = new User { DiscordUserId = 1002, Timezone = "UTC" };
+            var pausedUser = new User { Id = TestUsers.Id(1002), Logins = TestUsers.Discord(1002), Timezone = "UTC" };
             pausedUser.Habits.Add(new Habit
             {
                 Name = "Walk",
@@ -168,14 +168,14 @@ public class JobIntegrationTests
                 PausedUntil = yesterday
             });
 
-            var newUser = new User { DiscordUserId = 1003, Timezone = "UTC" };
+            var newUser = new User { Id = TestUsers.Id(1003), Logins = TestUsers.Discord(1003), Timezone = "UTC" };
             newUser.Habits.Add(new Habit
             {
                 Name = "Journal",
                 CreatedAt = ReflectionHourUtc.UtcDateTime,
             });
 
-            var lowDayUser = new User { DiscordUserId = 1004, Timezone = "UTC" };
+            var lowDayUser = new User { Id = TestUsers.Id(1004), Logins = TestUsers.Discord(1004), Timezone = "UTC" };
             lowDayUser.Habits.Add(new Habit { Name = "Read", CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5) });
             lowDayUser.DayMarks.Add(new DayMark { Date = yesterday, Kind = DayMarkKind.LowDay });
 
@@ -205,10 +205,10 @@ public class JobIntegrationTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-            var utcUser = new User { DiscordUserId = 1101, Timezone = "UTC" };
+            var utcUser = new User { Id = TestUsers.Id(1101), Logins = TestUsers.Discord(1101), Timezone = "UTC" };
             utcUser.Habits.Add(new Habit { Name = "Walk", CreatedAt = created });
 
-            var tokyoUser = new User { DiscordUserId = 1102, Timezone = "Asia/Tokyo" };
+            var tokyoUser = new User { Id = TestUsers.Id(1102), Logins = TestUsers.Discord(1102), Timezone = "Asia/Tokyo" };
             tokyoUser.Habits.Add(new Habit { Name = "Stretch", CreatedAt = created });
 
             db.Users.AddRange(utcUser, tokyoUser);
@@ -232,7 +232,7 @@ public class JobIntegrationTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var user = new User { DiscordUserId = 1201, Timezone = "UTC" };
+            var user = new User { Id = TestUsers.Id(1201), Logins = TestUsers.Discord(1201), Timezone = "UTC" };
             var habit = new Habit
             {
                 Name = "Swim",
@@ -267,13 +267,13 @@ public class JobIntegrationTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-            var weeklyUser = new User { DiscordUserId = 1301, Timezone = "Australia/Brisbane" };
+            var weeklyUser = new User { Id = TestUsers.Id(1301), Logins = TestUsers.Discord(1301), Timezone = "Australia/Brisbane" };
             var weekly = new Habit { Name = "Swim", FrequencyType = FrequencyType.Weekly, WeeklyTarget = 3, CreatedAt = created };
             weekly.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 15), Completed = true });
             weeklyUser.Habits.Add(weekly);
 
             // Processed after the weekly user, so its DM proves the run reached the end.
-            var dailyUser = new User { DiscordUserId = 1302, Timezone = "Australia/Brisbane" };
+            var dailyUser = new User { Id = TestUsers.Id(1302), Logins = TestUsers.Discord(1302), Timezone = "Australia/Brisbane" };
             dailyUser.Habits.Add(new Habit { Name = "Stretch", CreatedAt = created });
 
             db.Users.AddRange(weeklyUser, dailyUser);
@@ -298,7 +298,7 @@ public class JobIntegrationTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var user = new User { DiscordUserId = 1401, Timezone = "Pacific/Auckland" };
+            var user = new User { Id = TestUsers.Id(1401), Logins = TestUsers.Discord(1401), Timezone = "Pacific/Auckland" };
             var habit = new Habit { Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
             habit.Logs.Add(new HabitLog { Date = new DateOnly(2026, 1, 12), Completed = true });
             user.Habits.Add(habit);
@@ -320,7 +320,7 @@ public class JobIntegrationTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var user = new User { DiscordUserId = 1501, Timezone = "UTC" };
+            var user = new User { Id = TestUsers.Id(1501), Logins = TestUsers.Discord(1501), Timezone = "UTC" };
             user.Habits.Add(new Habit { Name = "Stretch", CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5) });
             db.Users.Add(user);
             await db.SaveChangesAsync();

@@ -41,16 +41,17 @@ public class DoubleTapTests
     }
 
     [Fact]
-    public async Task EnsureUser_WhenAnotherRequestInsertedTheUserFirst_DoesNotThrowAndKeepsOneRow()
+    public async Task ResolveOrCreateDiscordUser_WhenAnotherRequestInsertedTheUserFirst_ReturnsThatUserAndKeepsOneRow()
     {
         var race = new RaceInterceptor();
         await using var host = await IntegrationTestHost.CreateAsync(configureDb: o => o.AddInterceptors(race));
 
-        race.Competitor = c => InsertFromOtherRequestAsync(c, db => db.Users.Add(new User { DiscordUserId = 700 }));
+        race.Competitor = c => InsertFromOtherRequestAsync(c, db => db.Users.Add(new User { Id = TestUsers.Id(700), Logins = TestUsers.Discord(700) }));
 
-        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().EnsureUserAsync(700));
+        var userId = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().ResolveOrCreateDiscordUserAsync(700));
+        userId.Should().Be(TestUsers.Id(700));
 
-        var count = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.CountAsync(u => u.DiscordUserId == 700));
+        var count = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.CountAsync(u => u.Id == TestUsers.Id(700)));
         count.Should().Be(1);
     }
 
@@ -64,7 +65,7 @@ public class DoubleTapTests
         var habitId = await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var habit = new Habit { User = new User { DiscordUserId = 701 }, Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+            var habit = new Habit { User = new User { Id = TestUsers.Id(701), Logins = TestUsers.Discord(701) }, Name = "Stretch", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
             db.Habits.Add(habit);
             await db.SaveChangesAsync();
             return habit.Id;

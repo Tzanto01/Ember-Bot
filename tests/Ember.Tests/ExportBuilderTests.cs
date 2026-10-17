@@ -11,7 +11,7 @@ public class ExportBuilderTests
     {
         var user = new User
         {
-            DiscordUserId = 1,
+            Id = TestUsers.Id(1), Logins = TestUsers.Discord(1),
             Timezone = "Europe/Berlin",
             GraceDaysPerWeek = 2,
             LeaderboardOptIn = true,
