@@ -1,10 +1,11 @@
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Ember.Core.Services;
 
-public class HabitService
+public partial class HabitService
 {
     /// <summary>Most habits a single user can track.</summary>
     public const int MaxHabitsPerUser = 25;
@@ -27,40 +28,17 @@ public class HabitService
         _time = time;
     }
 
-    /// <summary>
-    /// Ensures a User row exists for this Discord user. Safe against concurrent calls:
-    /// losing the insert race to another request is not an error.
-    /// </summary>
-    public async Task EnsureUserAsync(ulong discordUserId)
-    {
-        var id = (long)discordUserId;
-        if (await _db.Users.AnyAsync(u => u.DiscordUserId == id)) return;
-
-        var user = new User { DiscordUserId = id };
-        _db.Users.Add(user);
-        try
-        {
-            await _db.SaveChangesAsync();
-        }
-        catch (DbUpdateException)
-        {
-            _db.Entry(user).State = EntityState.Detached;
-            if (!await _db.Users.AnyAsync(u => u.DiscordUserId == id)) throw;
-        }
-    }
-
     /// <summary>Whether the user agreed to the current health-data consent (<see cref="CurrentConsentPolicyVersion"/>).</summary>
-    public async Task<bool> HasHealthDataConsentAsync(ulong discordUserId)
-        => await _db.Users.AnyAsync(u => u.DiscordUserId == (long)discordUserId
+    public async Task<bool> HasHealthDataConsentAsync(Guid userId)
+        => await _db.Users.AnyAsync(u => u.Id == userId
             && u.HealthDataConsentAt != null && u.ConsentPolicyVersion == CurrentConsentPolicyVersion);
 
-    /// <summary>Records the user's explicit consent (now, for <see cref="CurrentConsentPolicyVersion"/>), creating the user if needed.</summary>
-    public async Task GiveHealthDataConsentAsync(ulong discordUserId)
+    /// <summary>Records the user's explicit consent (now, for <see cref="CurrentConsentPolicyVersion"/>).</summary>
+    public async Task GiveHealthDataConsentAsync(Guid userId)
     {
-        await EnsureUserAsync(discordUserId);
         var now = _time.GetUtcNow().UtcDateTime;
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.HealthDataConsentAt, now)
                 .SetProperty(u => u.ConsentPolicyVersion, CurrentConsentPolicyVersion));
@@ -70,70 +48,70 @@ public class HabitService
     /// For a user who already has habits but no current consent: marks today's consent prompt as shown and
     /// returns true, at most once per local day. Returns false for everyone else.
     /// </summary>
-    public async Task<bool> ClaimConsentPromptAsync(ulong discordUserId)
+    public async Task<bool> ClaimConsentPromptAsync(Guid userId)
     {
-        var today = await GetLocalTodayAsync(discordUserId);
+        var today = await GetLocalTodayAsync(userId);
         return await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId && u.Habits.Any()
+            .Where(u => u.Id == userId && u.Habits.Any()
                 && (u.HealthDataConsentAt == null || u.ConsentPolicyVersion != CurrentConsentPolicyVersion)
                 && (u.ConsentPromptedOn == null || u.ConsentPromptedOn != today))
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today)) == 1;
     }
 
     /// <summary>Undoes <see cref="ClaimConsentPromptAsync"/> when the prompt couldn't be shown, so the next interaction asks again.</summary>
-    public async Task ReleaseConsentPromptAsync(ulong discordUserId)
+    public async Task ReleaseConsentPromptAsync(Guid userId)
     {
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, (DateOnly?)null));
     }
 
     /// <summary>Notes that the consent prompt was shown today. Never creates a user.</summary>
-    public async Task MarkConsentPromptedAsync(ulong discordUserId)
+    public async Task MarkConsentPromptedAsync(Guid userId)
     {
-        var today = await GetLocalTodayAsync(discordUserId);
+        var today = await GetLocalTodayAsync(userId);
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today));
     }
 
     /// <exception cref="ConsentRequiredException">The user hasn't agreed to the current health-data consent.</exception>
     /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
-    public async Task<Habit> AddHabitAsync(ulong discordUserId, string name, TimeOnly? reminderTime,
+    public async Task<Habit> AddHabitAsync(Guid userId, string name, TimeOnly? reminderTime,
         FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null)
     {
-        if (!await HasHealthDataConsentAsync(discordUserId))
+        if (!await HasHealthDataConsentAsync(userId))
             throw new ConsentRequiredException();
-        if (await _db.Habits.CountAsync(h => h.UserId == (long)discordUserId) >= MaxHabitsPerUser)
+        if (await _db.Habits.CountAsync(h => h.UserId == userId) >= MaxHabitsPerUser)
             throw new HabitLimitReachedException();
 
         var habit = new Habit
         {
-            UserId = (long)discordUserId,
+            UserId = userId,
             Name = name,
             ReminderTime = reminderTime,
             FrequencyType = frequency,
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
-        habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(discordUserId));
+        habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
 
         return habit;
     }
 
-    public async Task<Habit?> GetHabitAsync(ulong discordUserId, int habitId)
+    public async Task<Habit?> GetHabitAsync(Guid userId, int habitId)
     {
         return await _db.Habits
             .Include(h => h.Logs)
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
     }
 
-    public async Task<List<Habit>> GetHabitsAsync(ulong discordUserId)
+    public async Task<List<Habit>> GetHabitsAsync(Guid userId)
     {
         return await _db.Habits
-            .Where(h => h.UserId == (long)discordUserId)
+            .Where(h => h.UserId == userId)
             .Include(h => h.Logs)
             .OrderBy(h => h.CreatedAt)
             .ToListAsync();
@@ -144,9 +122,9 @@ public class HabitService
     /// Any day from the habit's local start day (<see cref="StartDate"/>) to the user's local today can be logged,
     /// so past days can be backfilled or corrected; future days are refused.
     /// </summary>
-    public async Task<DayEditResult> CheckInAsync(ulong discordUserId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
+    public async Task<DayEditResult> CheckInAsync(Guid userId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
     {
-        var (habit, result) = await FindEditableHabitAsync(discordUserId, habitId, date);
+        var (habit, result) = await FindEditableHabitAsync(userId, habitId, date);
         if (habit is null) return result;
 
         var existing = await _db.HabitLogs
@@ -186,9 +164,9 @@ public class HabitService
     /// Removes the habit's log for the user's local <paramref name="date"/>, so the day is unlogged again.
     /// Same day range as <see cref="CheckInAsync"/>; clearing a day without a log is a no-op that still returns <see cref="DayEditResult.Saved"/>.
     /// </summary>
-    public async Task<DayEditResult> ClearDayAsync(ulong discordUserId, int habitId, DateOnly date)
+    public async Task<DayEditResult> ClearDayAsync(Guid userId, int habitId, DateOnly date)
     {
-        var (habit, result) = await FindEditableHabitAsync(discordUserId, habitId, date);
+        var (habit, result) = await FindEditableHabitAsync(userId, habitId, date);
         if (habit is null) return result;
 
         await _db.HabitLogs.Where(l => l.HabitId == habitId && l.Date == date).ExecuteDeleteAsync();
@@ -200,12 +178,11 @@ public class HabitService
     /// and <see cref="FlexibleStreak"/>). Any day up to the user's local today can be marked; marking it again is a no-op.
     /// Needs the health-data consent, since a low day can say something about the user's health.
     /// </summary>
-    public async Task<DayEditResult> SetLowDayAsync(ulong discordUserId, DateOnly date)
+    public async Task<DayEditResult> SetLowDayAsync(Guid userId, DateOnly date)
     {
-        if (!await HasHealthDataConsentAsync(discordUserId)) return DayEditResult.ConsentRequired;
-        if (date > await GetLocalTodayAsync(discordUserId)) return DayEditResult.InFuture;
+        if (!await HasHealthDataConsentAsync(userId)) return DayEditResult.ConsentRequired;
+        if (date > await GetLocalTodayAsync(userId)) return DayEditResult.InFuture;
 
-        var userId = (long)discordUserId;
         if (await IsLowDayStoredAsync(userId, date)) return DayEditResult.Saved;
 
         var mark = new DayMark { UserId = userId, Date = date, Kind = DayMarkKind.LowDay };
@@ -223,17 +200,17 @@ public class HabitService
     }
 
     /// <summary>Removes the low-day mark from the user's local <paramref name="date"/>, if there is one.</summary>
-    public async Task ClearLowDayAsync(ulong discordUserId, DateOnly date)
+    public async Task ClearLowDayAsync(Guid userId, DateOnly date)
     {
         await _db.DayMarks
-            .Where(m => m.UserId == (long)discordUserId && m.Date == date && m.Kind == DayMarkKind.LowDay)
+            .Where(m => m.UserId == userId && m.Date == date && m.Kind == DayMarkKind.LowDay)
             .ExecuteDeleteAsync();
     }
 
     /// <summary>All of the user's low days (local dates), for <see cref="ConsecutiveStreak"/>, <see cref="BestStreak"/> and <see cref="FlexibleStreak"/>.</summary>
-    public async Task<HashSet<DateOnly>> GetLowDaysAsync(ulong discordUserId)
+    public async Task<HashSet<DateOnly>> GetLowDaysAsync(Guid userId)
         => (await _db.DayMarks
-            .Where(m => m.UserId == (long)discordUserId && m.Kind == DayMarkKind.LowDay)
+            .Where(m => m.UserId == userId && m.Kind == DayMarkKind.LowDay)
             .Select(m => m.Date)
             .ToListAsync()).ToHashSet();
 
@@ -242,19 +219,19 @@ public class HabitService
     /// with each day's <see cref="DayState"/> and raw log. Null when the habit doesn't exist or isn't the user's.
     /// State precedence: before start, paused, low day, done, pending (open), not done.
     /// </summary>
-    public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(ulong discordUserId, int habitId, int days)
+    public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, int days)
     {
         var habit = await _db.Habits
             .Include(h => h.User)
             .Include(h => h.Logs)
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
         var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
         var start = StartDate(habit, tz);
-        var lowDays = await GetLowDaysAsync(discordUserId);
+        var lowDays = await GetLowDaysAsync(userId);
         var logs = habit.Logs.ToDictionary(l => l.Date, l => l.Completed);
 
         return Enumerable.Range(0, days)
@@ -273,14 +250,14 @@ public class HabitService
             .ToList();
     }
 
-    private Task<bool> IsLowDayStoredAsync(long userId, DateOnly date)
+    private Task<bool> IsLowDayStoredAsync(Guid userId, DateOnly date)
         => _db.DayMarks.AnyAsync(m => m.UserId == userId && m.Date == date && m.Kind == DayMarkKind.LowDay);
 
-    private async Task<(Habit? Habit, DayEditResult Result)> FindEditableHabitAsync(ulong discordUserId, int habitId, DateOnly date)
+    private async Task<(Habit? Habit, DayEditResult Result)> FindEditableHabitAsync(Guid userId, int habitId, DateOnly date)
     {
         var habit = await _db.Habits
             .Include(h => h.User)
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return (null, DayEditResult.HabitNotFound);
         if (date > TimezoneHelper.LocalToday(habit.User.Timezone, _time)) return (null, DayEditResult.InFuture);
@@ -417,10 +394,10 @@ public class HabitService
     public static DateOnly StartDate(Habit habit, TimeZoneInfo tz)
         => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(habit.CreatedAt, DateTimeKind.Utc), tz));
 
-    public async Task<Habit?> SetFrequencyAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget)
+    public async Task<Habit?> SetFrequencyAsync(Guid userId, int habitId, FrequencyType type, int? weeklyTarget)
     {
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
@@ -430,10 +407,10 @@ public class HabitService
         return habit;
     }
 
-    public async Task<bool> DeleteHabitAsync(ulong discordUserId, int habitId)
+    public async Task<bool> DeleteHabitAsync(Guid userId, int habitId)
     {
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return false;
 
@@ -442,10 +419,10 @@ public class HabitService
         return true;
     }
 
-    public async Task<Habit?> EditHabitAsync(ulong discordUserId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder)
+    public async Task<Habit?> EditHabitAsync(Guid userId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder)
     {
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
@@ -459,7 +436,7 @@ public class HabitService
         else if (newReminderTime.HasValue)
         {
             habit.ReminderTime = newReminderTime;
-            habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(discordUserId));
+            habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
         }
 
         await _db.SaveChangesAsync();
@@ -473,12 +450,12 @@ public class HabitService
     /// Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's or has no reminder,
     /// or when the reminder was sent (<paramref name="sentAtUtc"/>) more than <see cref="SnoozeWindow"/> ago, so an old DM can't displace the schedule.
     /// </summary>
-    public async Task<bool> SnoozeReminderAsync(ulong discordUserId, int habitId, DateTimeOffset sentAtUtc)
+    public async Task<bool> SnoozeReminderAsync(Guid userId, int habitId, DateTimeOffset sentAtUtc)
     {
         if (_time.GetUtcNow() - sentAtUtc > SnoozeWindow) return false;
 
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId && h.ReminderTime != null);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId && h.ReminderTime != null);
 
         if (habit is null) return false;
 
@@ -488,11 +465,11 @@ public class HabitService
     }
 
     /// <summary>Recomputes every reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
-    public async Task<int> RescheduleRemindersAsync(ulong discordUserId)
+    public async Task<int> RescheduleRemindersAsync(Guid userId)
     {
-        var tz = await GetUserTzAsync(discordUserId);
+        var tz = await GetUserTzAsync(userId);
         var habits = await _db.Habits
-            .Where(h => h.UserId == (long)discordUserId && h.ReminderTime != null)
+            .Where(h => h.UserId == userId && h.ReminderTime != null)
             .ToListAsync();
 
         foreach (var habit in habits)
@@ -506,35 +483,35 @@ public class HabitService
     /// Marks the "your DM reminders are paused" notice as shown. Returns true only for the one
     /// call that should show it: the user's DM reminders are paused and they haven't been told yet.
     /// </summary>
-    public async Task<bool> ClaimDmPauseNoticeAsync(ulong discordUserId)
+    public async Task<bool> ClaimDmPauseNoticeAsync(Guid userId)
     {
         var now = _time.GetUtcNow().UtcDateTime;
         return await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId && u.DmRemindersPausedAt != null && u.DmPauseNoticeSentAt == null)
+            .Where(u => u.Id == userId && u.DmRemindersPausedAt != null && u.DmPauseNoticeSentAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
     /// <summary>Permanently deletes the user; the database cascades to all their habits, logs and day marks (reminders live on the habits).</summary>
-    public async Task DeleteUserDataAsync(ulong discordUserId)
+    public async Task DeleteUserDataAsync(Guid userId)
     {
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteDeleteAsync();
     }
 
     /// <summary>Undoes <see cref="ClaimDmPauseNoticeAsync"/> when the notice couldn't be shown, so the next interaction shows it.</summary>
-    public async Task ReleaseDmPauseNoticeAsync(ulong discordUserId)
+    public async Task ReleaseDmPauseNoticeAsync(Guid userId)
     {
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, (DateTime?)null));
     }
 
     /// <summary>Turns DM reminders back on after Ember could reach the user again.</summary>
-    public async Task ResumeDmRemindersAsync(ulong discordUserId)
+    public async Task ResumeDmRemindersAsync(Guid userId)
     {
         await _db.Users
-            .Where(u => u.DiscordUserId == (long)discordUserId)
+            .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.DmFailureCount, 0)
                 .SetProperty(u => u.DmRemindersPausedAt, (DateTime?)null)
@@ -551,14 +528,14 @@ public class HabitService
     /// A new pause starts today; extending a running pause keeps its start. Resuming ends the pause yesterday,
     /// so the days already paused stay protected; a pause that started today is removed entirely.
     /// </summary>
-    public async Task<Habit?> PauseHabitAsync(ulong discordUserId, int habitId, DateOnly? pausedUntil)
+    public async Task<Habit?> PauseHabitAsync(Guid userId, int habitId, DateOnly? pausedUntil)
     {
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == (long)discordUserId);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
-        var today = await GetLocalTodayAsync(discordUserId);
+        var today = await GetLocalTodayAsync(userId);
         if (pausedUntil is not null)
         {
             if (!IsPausedOn(habit, today)) habit.PausedFrom = today;
@@ -578,35 +555,31 @@ public class HabitService
         return habit;
     }
 
-    public async Task<int> GetGraceDaysAsync(ulong discordUserId)
+    public async Task<int> GetGraceDaysAsync(Guid userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         return user?.GraceDaysPerWeek ?? 1;
     }
 
-    public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays)
+    public async Task SetGraceDaysAsync(Guid userId, int graceDays)
     {
-        await EnsureUserAsync(discordUserId);
-        var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)discordUserId);
-        user.GraceDaysPerWeek = graceDays;
-        await _db.SaveChangesAsync();
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.GraceDaysPerWeek, graceDays));
     }
 
-    /// <summary>Sets leaderboard visibility. Opting out never creates a user row for someone Ember has no data on.</summary>
-    public async Task SetLeaderboardOptInAsync(ulong discordUserId, bool optIn)
+    public async Task SetLeaderboardOptInAsync(Guid userId, bool optIn)
     {
-        if (!optIn && !await _db.Users.AnyAsync(u => u.DiscordUserId == (long)discordUserId)) return;
-        await EnsureUserAsync(discordUserId);
-        var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)discordUserId);
-        user.LeaderboardOptIn = optIn;
-        await _db.SaveChangesAsync();
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LeaderboardOptIn, optIn));
     }
 
     /// <summary>
     /// Returns the top N opted-in users in a guild by completed check-ins over the
     /// rolling last 7 days. Users who have not opted in are never included.
     /// </summary>
-    public async Task<List<(ulong UserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
+    public async Task<List<(ulong DiscordUserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
     {
         var weekAgo = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-6);
         var guildIdLong = (long)guildId;
@@ -619,70 +592,77 @@ public class HabitService
             .Take(top)
             .ToListAsync();
 
-        return rows.Select(r => ((ulong)r.UserId, r.CheckIns)).ToList();
+        // A guild check-in always comes from Discord, so every ranked user has a Discord login.
+        var userIds = rows.Select(r => r.UserId).ToList();
+        var discordIds = await _db.UserLogins
+            .Where(l => l.LoginProvider == DiscordLogin.Provider && userIds.Contains(l.UserId))
+            .ToDictionaryAsync(l => l.UserId, l => ulong.Parse(l.ProviderKey, CultureInfo.InvariantCulture));
+
+        return rows.Where(r => discordIds.ContainsKey(r.UserId))
+            .Select(r => (discordIds[r.UserId], r.CheckIns)).ToList();
     }
 
-    public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
+    public async Task<TimeZoneInfo> GetUserTzAsync(Guid userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         return TimezoneHelper.Find(user?.Timezone ?? "UTC") ?? TimeZoneInfo.Utc;
     }
 
     /// <summary>The user's current local day (UTC when the user has no known timezone).</summary>
-    public async Task<DateOnly> GetLocalTodayAsync(ulong discordUserId)
+    public async Task<DateOnly> GetLocalTodayAsync(Guid userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         return TimezoneHelper.LocalToday(user?.Timezone, _time);
     }
 
-    public async Task<bool> HasTimezoneSetAsync(ulong discordUserId)
+    public async Task<bool> HasTimezoneSetAsync(Guid userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         return user?.Timezone is not null && user.Timezone != "UTC";
     }
 
-    /// <summary>Stores the user's timezone id, creating the user row if needed. Does not reschedule reminders.</summary>
-    public async Task SetTimezoneAsync(ulong discordUserId, string timezoneId)
+    /// <summary>Stores the user's timezone id. Does not reschedule reminders.</summary>
+    public async Task SetTimezoneAsync(Guid userId, string timezoneId)
     {
-        await EnsureUserAsync(discordUserId);
-        var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)discordUserId);
-        user.Timezone = timezoneId;
-        await _db.SaveChangesAsync();
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezoneId));
     }
 
     /// <summary>The user with every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
-    public Task<User?> GetUserForExportAsync(ulong discordUserId)
+    public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
             .AsNoTracking()
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .AsSplitQuery()
-            .FirstOrDefaultAsync(u => u.DiscordUserId == (long)discordUserId);
+            .FirstOrDefaultAsync(u => u.Id == userId);
 
     /// <summary>Total number of habits across all users.</summary>
     public Task<int> CountHabitsAsync() => _db.Habits.CountAsync();
 
-    public Task<bool> UserExistsAsync(ulong discordUserId, CancellationToken cancellationToken = default)
-        => _db.Users.AnyAsync(u => u.DiscordUserId == (long)discordUserId, cancellationToken);
+    public Task<bool> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default)
+        => _db.Users.AnyAsync(u => u.Id == userId, cancellationToken);
 
     /// <summary>Id and timezone of every user with at least one habit.</summary>
-    public async Task<List<(long DiscordUserId, string Timezone)>> GetUserTimezonesWithHabitsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<(Guid UserId, string Timezone)>> GetUserTimezonesWithHabitsAsync(CancellationToken cancellationToken = default)
     {
         var rows = await _db.Users
             .Where(u => u.Habits.Any())
-            .Select(u => new { u.DiscordUserId, u.Timezone })
+            .Select(u => new { u.Id, u.Timezone })
             .ToListAsync(cancellationToken);
-        return rows.Select(r => (r.DiscordUserId, r.Timezone)).ToList();
+        return rows.Select(r => (r.Id, r.Timezone)).ToList();
     }
 
-    /// <summary>The given users (tracked) with their habits, logs and day marks.</summary>
-    public Task<List<User>> GetUsersWithHabitsAsync(List<long> discordUserIds, CancellationToken cancellationToken = default)
+    /// <summary>The given users (tracked) with their logins, habits, logs and day marks.</summary>
+    public Task<List<User>> GetUsersWithHabitsAsync(List<Guid> userIds, CancellationToken cancellationToken = default)
         => _db.Users
+            .Include(u => u.Logins)
             .Include(u => u.Habits)
                 .ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .AsSplitQuery()
-            .Where(u => discordUserIds.Contains(u.DiscordUserId))
+            .Where(u => userIds.Contains(u.Id))
             .ToListAsync(cancellationToken);
 
     /// <summary>Ids of habits whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
@@ -692,9 +672,9 @@ public class HabitService
             .Select(h => h.Id)
             .ToListAsync(cancellationToken);
 
-    /// <summary>The habit (tracked) with its user, regardless of owner. Persist edits with <see cref="SaveChangesAsync"/>.</summary>
+    /// <summary>The habit (tracked) with its user and the user's logins, regardless of owner. Persist edits with <see cref="SaveChangesAsync"/>.</summary>
     public Task<Habit?> GetHabitWithUserAsync(int habitId, CancellationToken cancellationToken = default)
-        => _db.Habits.Include(h => h.User).FirstOrDefaultAsync(h => h.Id == habitId, cancellationToken);
+        => _db.Habits.Include(h => h.User).ThenInclude(u => u.Logins).FirstOrDefaultAsync(h => h.Id == habitId, cancellationToken);
 
     public Task<bool> IsCompletedOnAsync(int habitId, DateOnly date, CancellationToken cancellationToken = default)
         => _db.HabitLogs.AnyAsync(l => l.HabitId == habitId && l.Date == date && l.Completed, cancellationToken);

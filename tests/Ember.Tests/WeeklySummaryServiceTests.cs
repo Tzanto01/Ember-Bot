@@ -17,7 +17,7 @@ public class WeeklySummaryServiceTests
 
     private static User UserWith(params Habit[] habits)
     {
-        var user = new User { DiscordUserId = 1 };
+        var user = new User { Id = TestUsers.Id(1), Logins = TestUsers.Discord(1) };
         foreach (var h in habits)
             user.Habits.Add(h);
         return user;

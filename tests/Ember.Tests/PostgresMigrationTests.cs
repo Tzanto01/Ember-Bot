@@ -1,5 +1,6 @@
 using Ember.Bot;
 using Ember.Core.Data;
+using Ember.Core.Models;
 using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -43,9 +44,9 @@ public class PostgresMigrationTests(PostgresFixture postgres)
         await using (var scope = host.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
-            var stored = await db.Habits.Include(h => h.User).Include(h => h.Logs).SingleAsync(h => h.Id == habitId);
+            var stored = await db.Habits.Include(h => h.User).ThenInclude(u => u.Logins).Include(h => h.Logs).SingleAsync(h => h.Id == habitId);
 
-            stored.User.DiscordUserId.Should().Be(4242);
+            stored.User.DiscordId().Should().Be(4242UL);
             stored.Name.Should().Be("Stretch");
             stored.ReminderTime.Should().Be(new TimeOnly(7, 30));
             stored.Logs.Should().ContainSingle(l => l.Completed && l.GuildId == 99);

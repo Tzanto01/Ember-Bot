@@ -80,7 +80,10 @@ public class ReminderDispatchJob : IJob
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
 
         var user = habit.User;
-        var send = now - dueAt <= StaleAfter
+        // Reminders reach Discord users only; a web-only user's reminder advances unsent and never counts as a DM failure.
+        var discordId = user.DiscordId();
+        var send = discordId is not null
+            && now - dueAt <= StaleAfter
             && user.DmRemindersPausedAt is null
             && !HabitService.IsPausedOn(habit, today)
             && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
@@ -92,7 +95,7 @@ public class ReminderDispatchJob : IJob
             var snoozed = habit.ReminderTime is not { } time
                 || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
 
-            var outcome = await SendAsync(new Reminder((ulong)habit.UserId, habit.Id, habit.Name, recent, snoozed), cancellationToken);
+            var outcome = await SendAsync(new Reminder(discordId!.Value, habit.Id, habit.Name, recent, snoozed), cancellationToken);
             if (outcome == DeliveryOutcome.Delivered)
             {
                 user.DmFailureCount = 0;
@@ -101,7 +104,7 @@ public class ReminderDispatchJob : IJob
             {
                 user.DmRemindersPausedAt = now;
                 _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
-                    user.DiscordUserId, user.DmFailureCount);
+                    user.Id, user.DmFailureCount);
             }
         }
 

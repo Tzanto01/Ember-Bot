@@ -23,7 +23,7 @@ public class ReflectionInviteTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            var user = new User { DiscordUserId = (long)UserId, Timezone = "UTC" };
+            var user = new User { Id = TestUsers.Id((long)UserId), Logins = TestUsers.Discord((long)UserId), Timezone = "UTC" };
             var done = new Habit { Name = "Read", CreatedAt = created };
             done.Logs.Add(new HabitLog { Date = yesterday, Completed = true });
             var skipped = new Habit { Name = "Walk", CreatedAt = created.AddMinutes(1) };

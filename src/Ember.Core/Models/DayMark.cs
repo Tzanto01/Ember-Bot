@@ -10,7 +10,7 @@ public enum DayMarkKind
 public class DayMark
 {
     public int Id { get; set; }
-    public long UserId { get; set; }
+    public Guid UserId { get; set; }
 
     /// <summary>The user's local calendar date (in <see cref="User.Timezone"/>).</summary>
     public DateOnly Date { get; set; }

@@ -25,7 +25,7 @@ public class PrivacyDeleteTests
             var db = sp.GetRequiredService<EmberDbContext>();
             foreach (var userId in new long[] { 1, 2 })
             {
-                var user = new User { DiscordUserId = userId, Timezone = "Europe/Berlin" };
+                var user = new User { Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId), Timezone = "Europe/Berlin" };
                 for (var i = 0; i < 2; i++)
                 {
                     var habit = new Habit { Name = $"Habit {userId}-{i}", ReminderTime = new TimeOnly(9, 0), NextReminderUtc = DateTime.UtcNow };
@@ -44,9 +44,9 @@ public class PrivacyDeleteTests
         => host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            return (await db.Users.CountAsync(u => u.DiscordUserId == userId),
-                    await db.Habits.CountAsync(h => h.UserId == userId),
-                    await db.HabitLogs.CountAsync(l => l.Habit.UserId == userId));
+            return (await db.Users.CountAsync(u => u.Id == TestUsers.Id(userId)),
+                    await db.Habits.CountAsync(h => h.UserId == TestUsers.Id(userId)),
+                    await db.HabitLogs.CountAsync(l => l.Habit.UserId == TestUsers.Id(userId)));
         });
 
     [Fact]
@@ -82,7 +82,7 @@ public class PrivacyDeleteTests
                 var habit = new Habit { Name = $"Habit {userId}", CreatedAt = now.UtcDateTime.AddDays(created) };
                 if (withLogs)
                     habit.Logs.Add(new HabitLog { Date = DateOnly.FromDateTime(now.UtcDateTime).AddDays(-1), Completed = true });
-                var user = new User { DiscordUserId = userId, Timezone = "UTC" };
+                var user = new User { Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId), Timezone = "UTC" };
                 user.Habits.Add(habit);
                 db.Users.Add(user);
             }
@@ -96,7 +96,7 @@ public class PrivacyDeleteTests
             {
                 first = false;
                 host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users
-                    .Where(u => u.DiscordUserId != (long)recipient).ExecuteDeleteAsync()).GetAwaiter().GetResult();
+                    .Where(u => u.Id != TestUsers.Id(recipient)).ExecuteDeleteAsync()).GetAwaiter().GetResult();
             }
             return DeliveryOutcome.Delivered;
         };
