@@ -1,7 +1,7 @@
-using Ember.Bot.Data;
 using Ember.Bot.Jobs;
-using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Models;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -175,7 +175,11 @@ public class JobIntegrationTests
                 CreatedAt = ReflectionHourUtc.UtcDateTime,
             });
 
-            db.Users.AddRange(eligibleUser, pausedUser, newUser);
+            var lowDayUser = new User { DiscordUserId = 1004, Timezone = "UTC" };
+            lowDayUser.Habits.Add(new Habit { Name = "Read", CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5) });
+            lowDayUser.DayMarks.Add(new DayMark { Date = yesterday, Kind = DayMarkKind.LowDay });
+
+            db.Users.AddRange(eligibleUser, pausedUser, newUser, lowDayUser);
             await db.SaveChangesAsync();
         });
 
@@ -246,8 +250,9 @@ public class JobIntegrationTests
         await scheduler.TriggerJob(MissedDayReflectionJob.Key);
         await host.WaitForDmCountAsync(1);
 
-        host.Discord.Messages.Should().ContainSingle()
-            .Which.Embed!.Description.Should().Contain("1/3 this week");
+        var message = host.Discord.Messages.Should().ContainSingle().Subject;
+        message.Embed!.Description.Should().Contain("1/3 this week");
+        CustomIds(message).Should().NotContain(id => id.StartsWith("reflect:log:"));
     }
 
     [Fact]
@@ -307,4 +312,31 @@ public class JobIntegrationTests
 
         host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(1401);
     }
+
+    [Fact]
+    public async Task MissedDayReflectionJob_InvitesToLogYesterday_WithoutMissedWording()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(ReflectionHourUtc));
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var user = new User { DiscordUserId = 1501, Timezone = "UTC" };
+            user.Habits.Add(new Habit { Name = "Stretch", CreatedAt = ReflectionHourUtc.UtcDateTime.AddDays(-5) });
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        });
+
+        var scheduler = await host.WithScopeAsync(sp => sp.GetRequiredService<ISchedulerFactory>().GetScheduler());
+        await scheduler.TriggerJob(MissedDayReflectionJob.Key);
+        await host.WaitForDmCountAsync(1);
+
+        var message = host.Discord.Messages.Should().ContainSingle().Subject;
+        message.Embed!.Description.Should().Contain("Yesterday is still open");
+        (message.Embed.Description + message.Embed.Footer?.Text).Should().NotContainEquivalentOf("miss");
+        CustomIds(message).Should().Equal("reflect:log:1501:20260113", "reflect:low:1501:20260113", "reflect:dismiss:1501");
+    }
+
+    private static IEnumerable<string> CustomIds(SentDiscordDm message) =>
+        message.Components!.Components.OfType<Discord.ActionRowComponent>()
+            .SelectMany(r => r.Components).OfType<Discord.ButtonComponent>().Select(b => b.CustomId);
 }

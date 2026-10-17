@@ -1,7 +1,7 @@
 using System.Data.Common;
-using Ember.Bot.Data;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -73,9 +73,9 @@ public class DoubleTapTests
         race.Competitor = c => InsertFromOtherRequestAsync(c, db =>
             db.HabitLogs.Add(new HabitLog { HabitId = habitId, Date = new DateOnly(2026, 1, 14), Completed = false }));
 
-        var log = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().CheckInAsync(701, habitId, completed: true));
+        var result = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().CheckInAsync(701, habitId, new DateOnly(2026, 1, 14), completed: true));
 
-        log.Should().NotBeNull();
+        result.Should().Be(DayEditResult.Saved);
         var logs = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().HabitLogs.Where(l => l.HabitId == habitId).ToListAsync());
         logs.Should().ContainSingle().Which.Completed.Should().BeTrue();
     }

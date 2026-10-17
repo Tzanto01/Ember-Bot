@@ -1,7 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Services;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
@@ -32,7 +32,21 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("delete", "Permanently delete all your Ember data")]
-    public async Task DeleteAsync()
+    public Task DeleteAsync() => RespondWithDeleteConfirmationAsync();
+
+    [ComponentInteraction("privacy:delete:start:*", ignoreGroupNames: true)]
+    public async Task OnStartDeleteAsync(string ownerIdStr)
+    {
+        if (!IsOwner(ownerIdStr, Context.User.Id))
+        {
+            await RespondAsync(NotYourButton, ephemeral: true);
+            return;
+        }
+
+        await RespondWithDeleteConfirmationAsync();
+    }
+
+    private async Task RespondWithDeleteConfirmationAsync()
     {
         var userId = Context.User.Id;
         var buttons = new ComponentBuilder()

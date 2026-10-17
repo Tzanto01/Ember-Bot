@@ -31,4 +31,8 @@
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.18.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Ember.Core\Ember.Core.csproj" />
+  </ItemGroup>
+
 </Project>

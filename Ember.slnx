@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Ember.Bot/Ember.Bot.csproj" />
+    <Project Path="src/Ember.Core/Ember.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Ember.Tests/Ember.Tests.csproj" />

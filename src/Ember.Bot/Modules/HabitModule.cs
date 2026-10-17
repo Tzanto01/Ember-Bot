@@ -1,7 +1,8 @@
 using Discord;
 using Discord.Interactions;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
@@ -9,10 +10,12 @@ namespace Ember.Bot.Modules;
 public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly HabitService _habits;
+    private readonly IConfiguration _config;
 
-    public HabitModule(HabitService habits)
+    public HabitModule(HabitService habits, IConfiguration config)
     {
         _habits = habits;
+        _config = config;
     }
 
     internal async Task<string> FormatReminderAsync(ulong userId, TimeOnly? localTime)
@@ -58,6 +61,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("add", "Add a new habit to track")]
     public async Task AddAsync()
     {
+        if (!await _habits.HasHealthDataConsentAsync(Context.User.Id))
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
+        }
+
         var modal = new ModalBuilder()
             .WithTitle("Add a new habit")
             .WithCustomId("habit:add:modal")
@@ -74,6 +83,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("template", "Start a habit from a pre-built template")]
     public async Task TemplateAsync()
     {
+        if (!await _habits.HasHealthDataConsentAsync(Context.User.Id))
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
+        }
+
         var menu = new SelectMenuBuilder()
             .WithCustomId("habit:template:select")
             .WithPlaceholder("Choose a template…")
@@ -107,6 +122,8 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
         var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
+        var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
+        var tz     = await _habits.GetUserTzAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -141,9 +158,9 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 }
                 else
                 {
-                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace);
+                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
                     var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7)}/7**";
+                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
                 }
 
                 embed.AddField(
@@ -179,6 +196,24 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         await RespondAsync("Which habit are you checking in?", components: components, ephemeral: true);
     }
 
+    // ── /habit history ────────────────────────────────────────────────────────
+
+    [SlashCommand("history", "See and fill in the last two weeks of a habit, and mark low days")]
+    public async Task HistoryAsync()
+    {
+        var habits = await _habits.GetHabitsAsync(Context.User.Id);
+
+        if (habits.Count == 0)
+        {
+            await RespondAsync("You don't have any habits yet. Use `/habit add` to get started!", ephemeral: true);
+            return;
+        }
+
+        var menu = BuildHabitSelectMenu(habits, "history", "Which habit do you want to look at?");
+        var components = new ComponentBuilder().WithSelectMenu(menu).Build();
+        await RespondAsync("Which habit's history do you want to see?", components: components, ephemeral: true);
+    }
+
     // ── /habit streak ─────────────────────────────────────────────────────────
 
     [SlashCommand("streak", "See your personal habit stats")]
@@ -187,6 +222,8 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
         var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
+        var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
+        var tz     = await _habits.GetUserTzAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -219,10 +256,10 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 }
                 else
                 {
-                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace);
-                    var last7  = HabitService.FlexibleStreak(h, today, 7);
-                    var last30 = HabitService.FlexibleStreak(h, today, 30);
-                    var best   = HabitService.BestStreak(h);
+                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
+                    var last7  = HabitService.FlexibleStreak(h, today, 7, lowDays, tz);
+                    var last30 = HabitService.FlexibleStreak(h, today, 30, lowDays, tz);
+                    var best   = HabitService.BestStreak(h, today, grace, lowDays);
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
                     statsText =
@@ -352,7 +389,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
         await RespondAsync(
             $"Your current setting: **{current} flex day{(current == 1 ? "" : "s")}/week**\n" +
-            "How many missed days per week before a streak breaks?",
+            "How many unlogged days per week can a streak carry before it resets?",
             components: components,
             ephemeral: true);
     }

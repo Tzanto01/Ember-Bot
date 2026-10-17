@@ -1,21 +1,17 @@
 using Discord;
 using Discord.Interactions;
-using Ember.Bot.Data;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Models;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
 [Group("timezone", "Manage your timezone settings")]
 public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly EmberDbContext _db;
     private readonly HabitService _habits;
 
-    public TimezoneModule(EmberDbContext db, HabitService habits)
+    public TimezoneModule(HabitService habits)
     {
-        _db     = db;
         _habits = habits;
     }
 
@@ -56,11 +52,7 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await _habits.EnsureUserAsync(Context.User.Id);
-
-        var user = await _db.Users.FirstAsync(u => u.DiscordUserId == (long)Context.User.Id);
-        user.Timezone = tz.Id;
-        await _db.SaveChangesAsync();
+        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id);
 
         var rescheduled = await _habits.RescheduleRemindersAsync(Context.User.Id);
 
@@ -75,9 +67,7 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("show", "Show your current timezone setting")]
     public async Task ShowAsync()
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.DiscordUserId == (long)Context.User.Id);
-        var tzId = user?.Timezone ?? "UTC";
-        var tz   = TimezoneHelper.Find(tzId) ?? TimeZoneInfo.Utc;
+        var tz = await _habits.GetUserTzAsync(Context.User.Id);
 
         await RespondAsync(
             $"Your timezone is currently **{tz.Id}**.",

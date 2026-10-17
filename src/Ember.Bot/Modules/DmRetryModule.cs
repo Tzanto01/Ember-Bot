@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Services;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 

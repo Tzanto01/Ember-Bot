@@ -1,4 +1,4 @@
-using Ember.Bot.Models;
+using Ember.Core.Models;
 
 namespace Ember.Tests;
 

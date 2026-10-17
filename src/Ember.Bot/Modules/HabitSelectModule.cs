@@ -1,8 +1,8 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
@@ -55,7 +55,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var today = await _habits.GetLocalTodayAsync(Context.User.Id);
-        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today);
+        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id));
         var component = (SocketMessageComponent)Context.Interaction;
 
         // Acknowledge the component interaction first, then post publicly.
@@ -181,7 +181,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     private async Task NotFoundAsync() =>
         await RespondAsync("Couldn't find that habit.", ephemeral: true);
 
-    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today)
+    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays)
     {
         var from  = today.AddDays(-29);
 
@@ -197,7 +197,9 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             for (int col = 0; col < 10; col++)
             {
                 var d = from.AddDays(row * 10 + col);
-                dots.Append(completed.Contains(d) ? "🟩" : (d == today ? "⬜" : "🟥"));
+                dots.Append(completed.Contains(d) ? "🟩"
+                    : HabitService.IsOpen(d, today) ? "⬜"
+                    : "⬛");
             }
             rows.Add(dots.ToString());
         }
@@ -214,8 +216,8 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         }
         else
         {
-            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace);
-            var best   = HabitService.BestStreak(habit);
+            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace, lowDays);
+            var best   = HabitService.BestStreak(habit, today, grace, lowDays);
             var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
             var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
@@ -232,6 +234,6 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             .WithTimestamp(DateTimeOffset.UtcNow);
     }
 
-    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today) =>
-        BuildShareEmbedBase(habit, grace, username, today).Build();
+    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays) =>
+        BuildShareEmbedBase(habit, grace, username, today, lowDays).Build();
 }

@@ -1,6 +1,6 @@
 using Ember.Bot;
-using Ember.Bot.Data;
-using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -33,9 +33,11 @@ public class PostgresMigrationTests(PostgresFixture postgres)
             db.Database.HasPendingModelChanges().Should().BeFalse();
 
             var service = scope.ServiceProvider.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(4242);
             var habit = await service.AddHabitAsync(4242, "Stretch", new TimeOnly(7, 30));
             habitId = habit.Id;
-            (await service.CheckInAsync(4242, habitId, completed: true, guildId: 99)).Should().NotBeNull();
+            (await service.CheckInAsync(4242, habitId, await service.GetLocalTodayAsync(4242), completed: true, guildId: 99))
+                .Should().Be(DayEditResult.Saved);
         }
 
         await using (var scope = host.Services.CreateAsyncScope())
@@ -68,6 +70,37 @@ public class PostgresMigrationTests(PostgresFixture postgres)
         var users = await db.Users.AsNoTracking().ToListAsync();
         users.Should().HaveCount(2).And.OnlyContain(u => !u.LeaderboardOptIn);
     }
+
+    [DockerFact]
+    public async Task PausedFromMigration_StartsRunningPausesOnTheMigrationDate_AndEmptiesEndedPauses()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20261013073035_AddDayMarks");
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"Users\" (\"DiscordUserId\", \"Timezone\", \"GraceDaysPerWeek\", \"LeaderboardOptIn\") VALUES (1, 'UTC', 1, FALSE);" +
+            "INSERT INTO \"Habits\" (\"UserId\", \"Name\", \"CreatedAt\", \"FrequencyType\", \"PausedUntil\") VALUES " +
+            "(1, 'Paused', now(), 0, '2999-01-01'), (1, 'Ended', now(), 0, '2020-01-10'), (1, 'Active', now(), 0, NULL)");
+
+        var before = await CurrentDateAsync(db);
+        await migrator.MigrateAsync();
+        var after = await CurrentDateAsync(db);
+
+        var habits = await db.Habits.AsNoTracking().OrderBy(h => h.Name).ToListAsync();
+        habits.Select(h => h.Name).Should().Equal("Active", "Ended", "Paused");
+        habits[0].PausedFrom.Should().BeNull();
+        habits[1].PausedFrom.Should().Be(new DateOnly(2020, 1, 11));
+        habits[1].PausedUntil.Should().Be(new DateOnly(2020, 1, 10));
+        HabitService.IsPausedOn(habits[1], new DateOnly(2020, 1, 1)).Should().BeFalse("an ended pause no longer hides earlier history");
+        habits[2].PausedFrom.Should().NotBeNull();
+        habits[2].PausedFrom!.Value.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
+    }
+
+    private static async Task<DateOnly> CurrentDateAsync(EmberDbContext db)
+        => (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
 
     [DockerFact]
     public async Task UpgradingAnExistingDatabase_FillsNextReminderForHabitsWithAReminder()

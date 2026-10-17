@@ -1,5 +1,5 @@
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using FluentAssertions;
 
 namespace Ember.Tests;
@@ -37,44 +37,69 @@ public class ConsecutiveStreakTests
         graceUsed.Should().Be(0);
     }
 
+    // ── Open days (today and yesterday) ────────────────────────────────────────
+
+    [Fact]
+    public void YesterdayNotLoggedYet_IsPendingAndNotCountedAsMissed()
+    {
+        var habit = HabitFactory.Make((2, true), (3, true));
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
+        streak.Should().Be(2);
+        graceUsed.Should().Be(0);
+    }
+
+    [Fact]
+    public void YesterdayLoggedAsNotDone_StaysOpenUntilItCloses()
+    {
+        var habit = HabitFactory.Make((1, false), (2, true), (3, true));
+        HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0).streak.Should().Be(2);
+        HabitService.ConsecutiveStreak(habit, HabitFactory.Today.AddDays(1), graceDays: 0).streak.Should().Be(0);
+    }
+
+    [Fact]
+    public void TheDayBeforeYesterday_IsClosedAndAGapThereCounts()
+    {
+        var habit = HabitFactory.Make((3, true), (4, true));
+        HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0).streak.Should().Be(0);
+    }
+
     // ── Grace days ─────────────────────────────────────────────────────────────
 
     [Fact]
     public void OneMissedDay_WithOneGrace_StreakContinues()
     {
-        // Checked in today and 2 days ago, missed yesterday
-        var habit = HabitFactory.Make((0, true), (2, true), (3, true));
+        // Checked in today, yesterday and 3+ days ago; missed the (closed) day before yesterday
+        var habit = HabitFactory.Make((0, true), (1, true), (3, true), (4, true));
         var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 1);
-        streak.Should().Be(3);
+        streak.Should().Be(4);
         graceUsed.Should().Be(1);
     }
 
     [Fact]
     public void TwoMissedDays_WithOneGrace_StreakBreaksAfterFirstMiss()
     {
-        // Checked in today; missed yesterday and day-before; 3 days ago checked in
-        // Grace covers 1 miss, second miss breaks the streak → streak = 1 (just today) + 1 grace consumed
-        var habit = HabitFactory.Make((0, true), (3, true), (4, true));
+        // Grace covers the miss 2 days ago, the miss 3 days ago breaks the streak
+        var habit = HabitFactory.Make((0, true), (1, true), (4, true), (5, true));
         var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 1);
-        streak.Should().Be(1);
+        streak.Should().Be(2);
         graceUsed.Should().Be(1);
     }
 
     [Fact]
     public void TwoMissedDays_WithTwoGrace_StreakContinues()
     {
-        var habit = HabitFactory.Make((0, true), (3, true), (4, true));
+        var habit = HabitFactory.Make((0, true), (1, true), (4, true), (5, true));
         var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 2);
-        streak.Should().Be(3);
+        streak.Should().Be(4);
         graceUsed.Should().Be(2);
     }
 
     [Fact]
     public void ZeroGrace_SingleMissedDay_BreaksStreak()
     {
-        var habit = HabitFactory.Make((0, true), (2, true), (3, true));
+        var habit = HabitFactory.Make((0, true), (1, true), (3, true), (4, true));
         var (streak, _) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
-        streak.Should().Be(1); // only today counts; gap at day 1 breaks it immediately
+        streak.Should().Be(2); // the closed gap 2 days ago breaks it
     }
 
     [Fact]
@@ -111,11 +136,11 @@ public class ConsecutiveStreakTests
     public void GapOnAnotherDateAroundSwitchover_StillBreaksStreak()
     {
         var s = TimezoneHelper.SwitchoverDate;
-        var habit = HabitWithLogsOn(s.AddDays(2), s, s.AddDays(-1));
+        var habit = HabitWithLogsOn(s.AddDays(3), s.AddDays(2), s, s.AddDays(-1));
 
-        var (streak, _) = HabitService.ConsecutiveStreak(habit, s.AddDays(2), graceDays: 0);
+        var (streak, _) = HabitService.ConsecutiveStreak(habit, s.AddDays(3), graceDays: 0);
 
-        streak.Should().Be(1);
+        streak.Should().Be(2);
     }
 
     // ── Paused days ────────────────────────────────────────────────────────────
@@ -147,29 +172,6 @@ public class ConsecutiveStreakTests
 
         // Walk: today=done(+1), yesterday=paused(skip), day2=paused(skip), day3=paused(skip)
         // Then we hit the habit.CreatedAt boundary → streak=1, graceUsed=0
-        var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
-        streak.Should().Be(1);
-        graceUsed.Should().Be(0);
-    }
-
-    [Fact]
-    public void ActivePause_MissedDayInsidePause_DoesNotBreakStreak()
-    {
-        // Checked in 4 and 5 days ago; paused days 1–3; checked in today.
-        // pausedUntilDaysAgo=1 → PausedUntil = today-1, covering days 1, 2, 3...
-        // Actually: IsPaused checks date <= PausedUntil (today-1).
-        // days 1,2,3 are all <= today-1 → all paused. day 4 > today-1? today-4 vs today-1:
-        // today-4 < today-1, so today-4 <= today-1 → also paused? That would be wrong.
-        // The model: PausedUntil is the END date of the pause. Date <= PausedUntil means paused.
-        // So PausedUntil=yesterday covers ALL past dates too, not just the recent window.
-        // This is a design note: the current IsPaused impl treats everything before PausedUntil as paused.
-        // Test accordingly — use PausedUntil=today-1 and only assert today is active.
-        var habit = HabitFactory.Make(
-            pausedUntilDaysAgo: 1,
-            FrequencyType.Daily,
-            weeklyTarget: null,
-            (0, true));
-
         var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, HabitFactory.Today, graceDays: 0);
         streak.Should().Be(1);
         graceUsed.Should().Be(0);

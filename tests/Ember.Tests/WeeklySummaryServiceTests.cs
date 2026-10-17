@@ -1,5 +1,5 @@
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using FluentAssertions;
 
 namespace Ember.Tests;

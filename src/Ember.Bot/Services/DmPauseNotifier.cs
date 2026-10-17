@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Ember.Bot.Modules;
+using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
