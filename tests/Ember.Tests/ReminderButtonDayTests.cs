@@ -72,11 +72,32 @@ public class ReminderButtonDayTests
         await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
         var habitId = await AddHabitInLosAngelesAsync(host);
 
-        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(UserId, habitId));
+        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(UserId, habitId, time.GetUtcNow()));
         var next = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Habits.Where(h => h.Id == habitId).Select(h => h.NextReminderUtc).SingleAsync());
 
         snoozed.Should().BeFalse();
         next.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SnoozeButton_OnAReminderOlderThanTheSnoozeWindow_LeavesTheScheduleAlone()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2027, 1, 5, 20, 0, 0, TimeSpan.Zero));
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
+        var habitId = await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            await service.GiveHealthDataConsentAsync(UserId);
+            return (await service.AddHabitAsync(UserId, "Stretch", new TimeOnly(9, 0))).Id;
+        });
+        var before = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Habits.Where(h => h.Id == habitId).Select(h => h.NextReminderUtc).SingleAsync());
+
+        var stale = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>()
+            .SnoozeReminderAsync(UserId, habitId, time.GetUtcNow() - HabitService.SnoozeWindow - TimeSpan.FromMinutes(1)));
+        var after = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Habits.Where(h => h.Id == habitId).Select(h => h.NextReminderUtc).SingleAsync());
+
+        stale.Should().BeFalse();
+        after.Should().Be(before);
     }
 
     private static Task<int> AddHabitInLosAngelesAsync(IntegrationTestHost host) => host.WithScopeAsync(async sp =>

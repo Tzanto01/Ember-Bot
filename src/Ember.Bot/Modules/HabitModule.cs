@@ -123,6 +123,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
         var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
         var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
+        var tz     = await _habits.GetUserTzAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -159,7 +160,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 {
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
                     var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays)}/7**";
+                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
                 }
 
                 embed.AddField(
@@ -222,6 +223,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
         var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
         var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
+        var tz     = await _habits.GetUserTzAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -255,8 +257,8 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 else
                 {
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
-                    var last7  = HabitService.FlexibleStreak(h, today, 7, lowDays);
-                    var last30 = HabitService.FlexibleStreak(h, today, 30, lowDays);
+                    var last7  = HabitService.FlexibleStreak(h, today, 7, lowDays, tz);
+                    var last30 = HabitService.FlexibleStreak(h, today, 30, lowDays, tz);
                     var best   = HabitService.BestStreak(h, today, grace, lowDays);
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
