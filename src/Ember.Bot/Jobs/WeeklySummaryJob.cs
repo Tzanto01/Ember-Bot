@@ -1,8 +1,7 @@
 using Discord;
-using Ember.Bot.Data;
-using Ember.Bot.Models;
 using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -45,12 +44,9 @@ public class WeeklySummaryJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
+        var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
 
-        var candidates = await db.Users
-            .Where(u => u.Habits.Any())
-            .Select(u => new { u.DiscordUserId, u.Timezone })
-            .ToListAsync(context.CancellationToken);
+        var candidates = await habits.GetUserTimezonesWithHabitsAsync(context.CancellationToken);
 
         var dueIds = candidates
             .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { DayOfWeek: DayOfWeek.Sunday, Hour: LocalSendHour })
@@ -59,11 +55,7 @@ public class WeeklySummaryJob : IJob
 
         if (dueIds.Count == 0) return;
 
-        var users = await db.Users
-            .Include(u => u.Habits)
-                .ThenInclude(h => h.Logs)
-            .Where(u => dueIds.Contains(u.DiscordUserId))
-            .ToListAsync(context.CancellationToken);
+        var users = await habits.GetUsersWithHabitsAsync(dueIds, context.CancellationToken);
 
         _logger.LogInformation("WeeklySummaryJob: evaluating {Count} users.", users.Count);
 
@@ -71,7 +63,7 @@ public class WeeklySummaryJob : IJob
         {
             try
             {
-                if (!await db.Users.AnyAsync(u => u.DiscordUserId == user.DiscordUserId, context.CancellationToken))
+                if (!await habits.UserExistsAsync((ulong)user.DiscordUserId, context.CancellationToken))
                     continue;
 
                 var weekEnd = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);

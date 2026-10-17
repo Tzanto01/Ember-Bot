@@ -1,9 +1,10 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Data;
 using Ember.Bot.Jobs;
 using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,7 +125,10 @@ public static class AppHost
         await db.SaveChangesAsync(cancellationToken);
 
         if (host.Services.GetService<InteractionService>() is { } interactions)
+        {
             interactions.InteractionExecuted += ActivatorUtilities.CreateInstance<DmPauseNotifier>(host.Services).OnInteractionExecutedAsync;
+            interactions.InteractionExecuted += ActivatorUtilities.CreateInstance<ConsentPromptNotifier>(host.Services).OnInteractionExecutedAsync;
+        }
     }
 
     private sealed class NullDiscordDmSender : IDiscordDmSender

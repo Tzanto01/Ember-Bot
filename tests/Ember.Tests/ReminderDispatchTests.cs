@@ -1,9 +1,10 @@
 using System.Data.Common;
 using Discord;
-using Ember.Bot.Data;
 using Ember.Bot.Jobs;
-using Ember.Bot.Models;
 using Ember.Bot.Services;
+using Ember.Core.Data;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -118,8 +119,8 @@ public class ReminderDispatchTests
         var time = new FakeTimeProvider(Now);
         await using var host = await CreateHostAsync(time, DueHabit(1, 10, TomorrowNineBerlin));
 
-        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(10, 1));
-        var othersSnooze = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(99, 1));
+        var snoozed = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(10, 1, Now));
+        var othersSnooze = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SnoozeReminderAsync(99, 1, Now));
 
         snoozed.Should().BeTrue();
         othersSnooze.Should().BeFalse();
@@ -272,6 +273,7 @@ public class ReminderDispatchTests
             var db = sp.GetRequiredService<EmberDbContext>();
             db.Users.Add(new User { DiscordUserId = 10, Timezone = Berlin });
             await db.SaveChangesAsync();
+            await sp.GetRequiredService<HabitService>().GiveHealthDataConsentAsync(10);
             return await sp.GetRequiredService<HabitService>().AddHabitAsync(10, "Stretch", new TimeOnly(10, 0));
         });
         (await NextReminderAsync(host, habit.Id)).Should().Be(new DateTime(2027, 1, 15, 9, 0, 0));

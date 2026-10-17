@@ -1,8 +1,9 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
@@ -23,10 +24,12 @@ namespace Ember.Bot.Modules;
 public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly HabitService _habits;
+    private readonly IConfiguration _config;
 
-    public HabitActionModule(HabitService habits)
+    public HabitActionModule(HabitService habits, IConfiguration config)
     {
         _habits = habits;
+        _config = config;
     }
 
     // ── habit:add:modal ───────────────────────────────────────────────────────
@@ -46,6 +49,11 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         try
         {
             habit = await _habits.AddHabitAsync(Context.User.Id, name, reminderTime: null);
+        }
+        catch (ConsentRequiredException)
+        {
+            await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
+            return;
         }
         catch (HabitLimitReachedException ex)
         {
@@ -127,9 +135,12 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: true, guildId);
-
-        if (log is null) { await NotFoundAsync(); return; }
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: true, guildId) != DayEditResult.Saved)
+        {
+            await NotFoundAsync();
+            return;
+        }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -147,9 +158,12 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
 
         var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: false, guildId);
-
-        if (log is null) { await NotFoundAsync(); return; }
+        var today = await _habits.GetLocalTodayAsync(Context.User.Id);
+        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: false, guildId) != DayEditResult.Saved)
+        {
+            await NotFoundAsync();
+            return;
+        }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -260,7 +274,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         string message = duration == "resume"
             ? $"**{habit.Name}** is back on. Welcome back! 🔥"
             : $"**{habit.Name}** is paused until **{pausedUntil:MMM d}**.\n" +
-              "Reminders are off and missed days won't count against your streak. Rest well. 💙";
+              "Reminders are off and paused days won't count against your streak. Rest well. 💙";
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -306,7 +320,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         var description = days switch
         {
             0 => "Strict mode — streaks require a check-in every single day.",
-            1 => "1 flex day per week — one missed day won't break your streak.",
+            1 => "1 flex day per week — one unlogged day won't break your streak.",
             2 => "2 flex days per week — life happens, your streak is safe.",
             3 => "3 flex days per week — maximum flexibility.",
             _ => ""

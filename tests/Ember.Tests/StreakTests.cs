@@ -1,5 +1,5 @@
-using Ember.Bot.Models;
-using Ember.Bot.Services;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using FluentAssertions;
 
 namespace Ember.Tests;
@@ -62,14 +62,14 @@ public class StreakTests
     public void BestStreak_NoLogs_ReturnsZero()
     {
         var habit = HabitFactory.Make();
-        HabitService.BestStreak(habit).Should().Be(0);
+        HabitService.BestStreak(habit, HabitFactory.Today, graceDays: 0).Should().Be(0);
     }
 
     [Fact]
     public void BestStreak_SingleDay_ReturnsOne()
     {
         var habit = HabitFactory.Make((0, true));
-        HabitService.BestStreak(habit).Should().Be(1);
+        HabitService.BestStreak(habit, HabitFactory.Today, graceDays: 0).Should().Be(1);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class StreakTests
     {
         var habit = HabitFactory.Make(
             (0, true), (1, true), (2, true), (3, true), (4, true));
-        HabitService.BestStreak(habit).Should().Be(5);
+        HabitService.BestStreak(habit, HabitFactory.Today, graceDays: 0).Should().Be(5);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class StreakTests
         var habit = HabitFactory.Make(
             (0, true), (1, true), (2, true),
             (4, true), (5, true));
-        HabitService.BestStreak(habit).Should().Be(3);
+        HabitService.BestStreak(habit, HabitFactory.Today, graceDays: 0).Should().Be(3);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class StreakTests
         // day 2+3 completed consecutively = 2, day 0 alone = 1 — best is 2
         var habit = HabitFactory.Make(
             (0, true), (1, false), (2, true), (3, true));
-        HabitService.BestStreak(habit).Should().Be(2);
+        HabitService.BestStreak(habit, HabitFactory.Today.AddDays(7), graceDays: 0).Should().Be(2);
     }
 
     [Fact]
@@ -106,6 +106,6 @@ public class StreakTests
             (0, true), (1, true),
             (3, true), (4, true),
             (6, true), (7, true));
-        HabitService.BestStreak(habit).Should().Be(2);
+        HabitService.BestStreak(habit, HabitFactory.Today, graceDays: 0).Should().Be(2);
     }
 }

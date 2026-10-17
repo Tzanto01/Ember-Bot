@@ -1,7 +1,6 @@
-using Ember.Bot.Data;
-using Ember.Bot.Models;
 using Ember.Bot.Services;
-using Microsoft.EntityFrameworkCore;
+using Ember.Core.Models;
+using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -47,10 +46,8 @@ public class ReminderDispatchJob : IJob
         List<int> dueIds;
         using (var scope = _services.CreateScope())
         {
-            dueIds = await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Habits
-                .Where(h => h.NextReminderUtc != null && h.NextReminderUtc <= now)
-                .Select(h => h.Id)
-                .ToListAsync(cancellationToken);
+            dueIds = await scope.ServiceProvider.GetRequiredService<HabitService>()
+                .GetDueReminderHabitIdsAsync(now, cancellationToken);
         }
 
         foreach (var habitId in dueIds)
@@ -75,8 +72,8 @@ public class ReminderDispatchJob : IJob
     private async Task ProcessAsync(int habitId, DateTime now, CancellationToken cancellationToken)
     {
         using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EmberDbContext>();
-        var habit = await db.Habits.Include(h => h.User).FirstOrDefaultAsync(h => h.Id == habitId, cancellationToken);
+        var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
+        var habit = await habits.GetHabitWithUserAsync(habitId, cancellationToken);
         if (habit?.NextReminderUtc is not { } dueAt || dueAt > now) return;
 
         var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
@@ -86,13 +83,12 @@ public class ReminderDispatchJob : IJob
         var send = now - dueAt <= StaleAfter
             && user.DmRemindersPausedAt is null
             && !HabitService.IsPausedOn(habit, today)
-            && !await db.HabitLogs.AnyAsync(l => l.HabitId == habit.Id && l.Date == today && l.Completed, cancellationToken);
+            && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
 
         if (send)
         {
             var weekAgo = today.AddDays(-7);
-            var recent = await db.HabitLogs
-                .CountAsync(l => l.HabitId == habit.Id && l.Date > weekAgo && l.Date < today && l.Completed, cancellationToken);
+            var recent = await habits.CountCompletedBetweenAsync(habit.Id, weekAgo, today, cancellationToken);
             var snoozed = habit.ReminderTime is not { } time
                 || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
 
@@ -112,7 +108,7 @@ public class ReminderDispatchJob : IJob
         habit.NextReminderUtc = habit.ReminderTime is { } reminderTime
             ? TimezoneHelper.NextOccurrenceUtc(reminderTime, tz, now)
             : null;
-        await db.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
+        await habits.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
     }
 
     private async Task DeferAsync(int habitId, DateTime until, CancellationToken cancellationToken)
@@ -120,9 +116,8 @@ public class ReminderDispatchJob : IJob
         try
         {
             using var scope = _services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Habits
-                .Where(h => h.Id == habitId)
-                .ExecuteUpdateAsync(s => s.SetProperty(h => h.NextReminderUtc, until), cancellationToken);
+            await scope.ServiceProvider.GetRequiredService<HabitService>()
+                .DeferReminderAsync(habitId, until, cancellationToken);
         }
         catch (Exception ex)
         {

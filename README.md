@@ -31,6 +31,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | `/habit add` | Create a new habit via a modal |
 | `/habit template` | Start from a pre-built habit template |
 | `/habit checkin` | Log today's check-in |
+| `/habit history` | See the last 14 days of a habit, fill in or fix any day, and mark low days |
 | `/habit list` | See all habits with progress and reminders |
 | `/habit streak` | View full stats — streak, 7-day, 30-day, best, total |
 | `/habit share` | Post a public streak card in this channel |
@@ -80,16 +81,26 @@ The leaderboard is opt-in: nobody appears on it until they join. It shows displa
 |---|---|
 | 🎛️ **Zero-parameter commands** | Everything is menus and buttons — nothing to memorise |
 | 📈 **Flexible streaks** | "X out of last 7 days", not just consecutive days |
-| 🌿 **Grace days** | Configurable missed-day forgiveness before a streak breaks |
+| 🌿 **Grace days** | Configurable flex days per week before a streak resets |
 | 📋 **Habit templates** | Pre-built habits to get started in seconds |
 | ⏸️ **Pause** | Take a break without losing your streak |
 | 📅 **Daily or weekly habits** | Track every day, or set a weekly target (1×–6×) |
 | 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with ✅ / ❌ / ⏰ buttons: one tap to check in or snooze. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
-| 🤔 **Missed day reflection** | A gentle nudge, not a guilt trip |
+| 🤔 **Gentle check-in** | If yesterday is still unlogged, a DM invites you to log it or call it a low day. A nudge, not a guilt trip |
 | 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
 | 🏆 **Leaderboard** | Opt-in server check-in board; you only appear if you join |
 | 🔒 **Private by default** | Replies are visible only to you. Only `/habit share` and `/leaderboard` post in a channel, and the leaderboard lists only members who opted in |
+
+---
+
+## Backfill, open days and low days
+
+- **Backfill:** `/habit history` shows the last 14 days of a habit as buttons. Tap a day to cycle it: ✅ done, ➖ not done, ▫️ not logged. Any day since the habit started can be filled in, so fixing last week takes a few taps, and streaks recalculate right away.
+- **Open days:** today and yesterday are always open. An unlogged open day never counts against a streak; a day only counts as a gap once it has closed. Older days can still be filled in later.
+- **Low days:** pick a day in the 🌙 menu under the history grid (or tap **It was a low day** in the check-in DM). A low day protects all your habits: it neither breaks nor extends a streak, and counts as kept in the 7-day and 30-day views. Pick it again to remove it.
+- **Reminder buttons** never expire: tapping an old one logs the day that reminder was for.
+- **Consent:** habits and low days can say something about your health, so Ember asks once for your OK before storing them. You can withdraw any time with `/privacy delete`.
 
 ---
 

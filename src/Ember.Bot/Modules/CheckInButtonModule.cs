@@ -1,18 +1,19 @@
+using System.Globalization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Ember.Bot.Services;
+using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
 
 /// <summary>
 /// Handles the ✅/❌/⏰ button interactions sent in DM reminders.
 /// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
-/// Buttons expire 24 hours after the reminder was sent.
+/// Done and skip never expire: they log the user's local day the reminder was sent on.
+/// Snooze only works within <see cref="HabitService.SnoozeWindow"/> of the send time.
 /// </summary>
 public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private const int ExpiryHours = 24;
     private readonly HabitService _habits;
 
     public CheckInButtonModule(HabitService habits)
@@ -21,96 +22,82 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
     }
 
     /// <summary>
-    /// Checks whether the reminder button has expired (more than 24 hours since sent).
-    /// If expired, updates the message to show the expiry notice and returns true.
+    /// Logs the habit for the user's local day at <paramref name="timestampStr"/> (the reminder's send time, unix seconds),
+    /// or for local today when the timestamp is malformed. A "not done" never overwrites a day already logged as done
+    /// (<c>KeptDone</c>). Returns the edit result and the day it applied to.
     /// </summary>
-    private async Task<bool> IsExpiredAsync(string timestampStr)
+    internal static async Task<(DayEditResult Result, DateOnly Day, bool KeptDone)> LogReminderDayAsync(
+        HabitService habits, ulong userId, int habitId, string timestampStr, bool completed, ulong? guildId)
     {
-        if (!long.TryParse(timestampStr, out var sentUnix))
-            return false; // malformed timestamp — let the action proceed
+        var day = long.TryParse(timestampStr, out var sentUnix) && sentUnix is >= 0 and <= 253402300799
+            ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(sentUnix), await habits.GetUserTzAsync(userId)).DateTime)
+            : await habits.GetLocalTodayAsync(userId);
 
-        var sentTime = DateTimeOffset.FromUnixTimeSeconds(sentUnix);
-        if (DateTimeOffset.UtcNow - sentTime <= TimeSpan.FromHours(ExpiryHours))
-            return false;
+        if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) == true)
+            return (DayEditResult.Saved, day, true);
 
-        // Expired — update the message to remove buttons and show expiry notice
-        var component = (SocketMessageComponent)Context.Interaction;
-        await component.UpdateAsync(msg =>
+        return (await habits.CheckInAsync(userId, habitId, day, completed, guildId), day, false);
+    }
+
+    private async Task LogAsync(string habitIdStr, string timestampStr, bool completed, string todayText, string earlierText)
+    {
+        if (!int.TryParse(habitIdStr, out var habitId))
         {
-            msg.Content    = $"⏰ This reminder has expired — check-ins are only available for {ExpiryHours} hours after the reminder.";
+            await RespondAsync("Something went wrong with that button.", ephemeral: true);
+            return;
+        }
+
+        var (result, day, keptDone) = await LogReminderDayAsync(_habits, Context.User.Id, habitId, timestampStr, completed, Context.Guild?.Id);
+        switch (result)
+        {
+            case DayEditResult.Saved:
+                break;
+            case DayEditResult.BeforeHabitStart:
+                await RespondAsync("That reminder is from before this habit started, so there's nothing to log for that day. 💙", ephemeral: true);
+                return;
+            case DayEditResult.InFuture:
+                await RespondAsync("Something went wrong with that button.", ephemeral: true);
+                return;
+            default:
+                await RespondAsync("Couldn't find that habit.", ephemeral: true);
+                return;
+        }
+
+        var text = keptDone
+            ? "You already logged that day as done, so I've left it that way. ✅"
+            : day == await _habits.GetLocalTodayAsync(Context.User.Id)
+                ? todayText
+                : string.Format(earlierText, day.ToString("dddd d MMM", CultureInfo.InvariantCulture));
+        await ((SocketMessageComponent)Context.Interaction).UpdateAsync(msg =>
+        {
+            msg.Content    = text;
             msg.Components = new ComponentBuilder().Build();
         });
-        return true;
     }
 
     [ComponentInteraction("checkin:done:*:*")]
-    public async Task OnDoneAsync(string habitIdStr, string timestampStr)
-    {
-        if (await IsExpiredAsync(timestampStr)) return;
-
-        if (!int.TryParse(habitIdStr, out var habitId))
-        {
-            await RespondAsync("Something went wrong with that button.", ephemeral: true);
-            return;
-        }
-
-        var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: true, guildId);
-        if (log is null)
-        {
-            await RespondAsync("Couldn't find that habit.", ephemeral: true);
-            return;
-        }
-
-        var component = (SocketMessageComponent)Context.Interaction;
-        await component.UpdateAsync(msg =>
-        {
-            msg.Content    = "Logged! Great work today. ✅";
-            msg.Components = new ComponentBuilder().Build();
-        });
-    }
+    public async Task OnDoneAsync(string habitIdStr, string timestampStr) =>
+        await LogAsync(habitIdStr, timestampStr, completed: true,
+            "Logged! Great work today. ✅", "Logged for {0}. Great work. ✅");
 
     [ComponentInteraction("checkin:skip:*:*")]
-    public async Task OnSkipAsync(string habitIdStr, string timestampStr)
-    {
-        if (await IsExpiredAsync(timestampStr)) return;
-
-        if (!int.TryParse(habitIdStr, out var habitId))
-        {
-            await RespondAsync("Something went wrong with that button.", ephemeral: true);
-            return;
-        }
-
-        var guildId = Context.Guild?.Id;
-        var log = await _habits.CheckInAsync(Context.User.Id, habitId, completed: false, guildId);
-        if (log is null)
-        {
-            await RespondAsync("Couldn't find that habit.", ephemeral: true);
-            return;
-        }
-
-        var component = (SocketMessageComponent)Context.Interaction;
-        await component.UpdateAsync(msg =>
-        {
-            msg.Content    = "No worries — noted. Tomorrow's a fresh start. 💙";
-            msg.Components = new ComponentBuilder().Build();
-        });
-    }
+    public async Task OnSkipAsync(string habitIdStr, string timestampStr) =>
+        await LogAsync(habitIdStr, timestampStr, completed: false,
+            "No worries — noted. Tomorrow's a fresh start. 💙", "No worries, noted for {0}. 💙");
 
     [ComponentInteraction("checkin:snooze:*:*")]
     public async Task OnSnoozeAsync(string habitIdStr, string timestampStr)
     {
-        if (await IsExpiredAsync(timestampStr)) return;
-
-        if (!int.TryParse(habitIdStr, out var habitId))
+        if (!int.TryParse(habitIdStr, out var habitId)
+            || !long.TryParse(timestampStr, out var sentUnix) || sentUnix is < 0 or > 253402300799)
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
             return;
         }
 
-        if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId))
+        if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId, DateTimeOffset.FromUnixTimeSeconds(sentUnix)))
         {
-            await RespondAsync("Couldn't find that habit.", ephemeral: true);
+            await RespondAsync("This reminder isn't active anymore, so there's nothing to snooze. 💙", ephemeral: true);
             return;
         }
 
