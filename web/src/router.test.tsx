@@ -48,4 +48,10 @@ describe('router guards', () => {
     expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
     expect(url(router)).toBe('/today');
   });
+
+  it('shows the not-found page for an unknown address', async () => {
+    await visit('/no/such/page');
+
+    expect(await screen.findByRole('heading', { name: 'This page wandered off' })).toBeInTheDocument();
+  });
 });
