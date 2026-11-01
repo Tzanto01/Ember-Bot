@@ -83,6 +83,8 @@ public class PostgresCollection : ICollectionFixture<PostgresFixture>;
 /// <summary>Request bodies of the Identity and account endpoints (camelCase on the wire).</summary>
 public sealed record Credentials(string Email, string Password);
 
+public sealed record ConfirmRequest(string UserId, string Code, string Password);
+
 public sealed record ResetRequest(string Email, string ResetCode, string NewPassword);
 
 public sealed record DeleteRequest(string? Password, string? Confirm);
@@ -175,17 +177,17 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         client.Email = NewEmail();
         await (await client.Post("/api/auth/register", new Credentials(client.Email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
-        await (await OpenConfirmLinkAsync(client, (await Mail.WaitForAsync(client.Email, 1)).Single())).Expect(HttpStatusCode.OK);
+        var mail = (await Mail.WaitForAsync(client.Email, 1)).Single();
+        await (await OpenConfirmLinkAsync(client, mail, ApiClient.Passphrase)).Expect(HttpStatusCode.OK);
         return client;
     }
 
-    /// <summary>Calls the API's confirmEmail endpoint with the values from the web link in a confirmation mail.</summary>
-    public Task<HttpResponseMessage> OpenConfirmLinkAsync(ApiClient client, SentMail mail)
+    /// <summary>Posts the web link's <c>userId</c> and <c>code</c> from a confirmation mail, with the password entered on the confirm page, to confirmEmail.</summary>
+    /// <param name="code">Replaces the code from the link.</param>
+    public Task<HttpResponseMessage> OpenConfirmLinkAsync(ApiClient client, SentMail mail, string passphrase, string? code = null)
     {
         var query = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query);
-        var userId = Uri.EscapeDataString(query["userId"].ToString());
-        var code = Uri.EscapeDataString(query["code"].ToString());
-        return client.Get($"/api/auth/confirmEmail?userId={userId}&code={code}");
+        return client.Post("/api/auth/confirmEmail", new ConfirmRequest(query["userId"].ToString(), code ?? query["code"].ToString(), passphrase));
     }
 
     /// <summary>A confirmed user signed in with the cookie and an antiforgery token, optionally with the health-data consent.</summary>
@@ -252,7 +254,7 @@ public sealed class ApiHost : WebApplicationFactory<Program>
 }
 
 /// <summary>An HTTP client with its own cookie jar at <c>https://localhost</c>, no redirects, and the antiforgery token in <see cref="Csrf"/>.</summary>
-public sealed class ApiClient
+public sealed partial class ApiClient
 {
     public const string Passphrase = "correct-horse-battery";
 
@@ -267,7 +269,7 @@ public sealed class ApiClient
     /// <summary>Sent as <c>X-XSRF-TOKEN</c> on every request while set.</summary>
     public string? Csrf { get; set; }
 
-    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar));
+    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar, () => host.Time.GetUtcNow()));
 
     /// <summary>The value of a cookie the client would send to <paramref name="path"/>, or null.</summary>
     public string? CookieValue(string name, string path = "/") => _jar.GetCookies(new Uri(Origin, path))[name]?.Value;
@@ -312,8 +314,19 @@ public sealed class ApiClient
     public async Task<JsonElement> CreateHabitAsync(string? name = null, string frequency = "daily")
         => await (await Post("/api/habits", new { name = name ?? $"Habit {Guid.NewGuid():N}", frequency })).ExpectJson(HttpStatusCode.Created);
 
-    private sealed class CookieJar(CookieContainer jar) : DelegatingHandler
+    /// <summary>Stores cookies with their <c>Expires</c> moved from the host's fake clock to the real one, so they keep their lifetime.</summary>
+    private sealed partial class CookieJar(CookieContainer jar, Func<DateTimeOffset> fakeNow) : DelegatingHandler
     {
+        [GeneratedRegex(@"expires=([^;]+)", RegexOptions.IgnoreCase)]
+        private static partial Regex ExpiresAttribute();
+
+        private string ToRealClock(string setCookie)
+            => ExpiresAttribute().Replace(setCookie, match =>
+                DateTimeOffset.TryParse(match.Groups[1].Value, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)
+                    ? "expires=" + (DateTimeOffset.UtcNow + (expires - fakeNow())).ToString("R", CultureInfo.InvariantCulture)
+                    : match.Value);
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var header = jar.GetCookieHeader(request.RequestUri!);
@@ -322,7 +335,7 @@ public sealed class ApiClient
             var response = await base.SendAsync(request, cancellationToken);
             if (response.Headers.TryGetValues("Set-Cookie", out var values))
                 foreach (var value in values)
-                    jar.SetCookies(request.RequestUri!, value);
+                    jar.SetCookies(request.RequestUri!, ToRealClock(value));
             return response;
         }
     }

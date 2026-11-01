@@ -52,8 +52,8 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var mails = await Host.Mail.WaitForAsync(email, 2);
         mails.Should().HaveCount(2);
 
-        (await Host.OpenConfirmLinkAsync(client, mails[0])).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        await (await Host.OpenConfirmLinkAsync(client, mails[1])).Expect(HttpStatusCode.OK);
+        (await Host.OpenConfirmLinkAsync(client, mails[0], first)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await (await Host.OpenConfirmLinkAsync(client, mails[1], second)).Expect(HttpStatusCode.OK);
 
         (await client.Post(LoginUrl, new Credentials(email, first))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         await (await client.Post(LoginUrl, new Credentials(email, second))).Expect(HttpStatusCode.OK);
