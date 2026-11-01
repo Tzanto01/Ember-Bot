@@ -7,6 +7,7 @@ using Ember.Core.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Ember.Api;
@@ -92,8 +93,15 @@ internal static class DiscordEndpoints
             var owner = await users.FindByLoginAsync(DiscordLogin.Provider, key);
             if (owner is null)
             {
-                if (!(await users.AddLoginAsync(user, new UserLoginInfo(DiscordLogin.Provider, key, DiscordLogin.Provider))).Succeeded)
+                try
+                {
+                    if (!(await users.AddLoginAsync(user, new UserLoginInfo(DiscordLogin.Provider, key, DiscordLogin.Provider))).Succeeded)
+                        return Results.Redirect(LinkConflict);
+                }
+                catch (DbUpdateException)
+                {
                     return Results.Redirect(LinkConflict);
+                }
                 await users.UpdateSecurityStampAsync(user);
                 await signIn.RefreshSignInAsync(user);
                 return Results.Redirect(Linked);
