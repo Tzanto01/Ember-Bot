@@ -1,19 +1,22 @@
-# Ember design tokens v1
+# Ember design tokens v1.1
 
-Shared interface between the React web app (team `react`, consumer) and the design directions (team `design`, producer). Changes go only through the department lead.
+v1.1 (2026-11-01, Nico): all four directions ship as user-selectable themes; Hearthlight is the default. `hearth.css` is retired.
+
+Shared interface between the React web app (team `react`) and the design directions (team `design`). Changes go only through the department lead.
 
 ## How a theme plugs in
 
-- A theme is one CSS file, `web/src/themes/<id>.css`, that sets every token below on `:root` (light) and on `:root.dark` (dark), and nothing else: no component selectors, no layout.
-- Fonts: self-hosted only (the CSP is `default-src 'self'`), OFL or similarly permissive. A theme names its font packages in `design/README.md`; team `design` never edits `web/package.json` (its storyboard uses `design/package.json`). The department lead adds the picked theme's font package to `web/package.json` and `web/src/themes/index.ts` at pick time.
-- The app loads exactly one theme through `web/src/themes/index.css` (one `@import`) and `web/src/themes/index.ts` (font imports, may be empty).
-- Dark mode: `.dark` on `<html>`, set from `prefers-color-scheme` by an external script (no inline script), with a manual override later.
-- Ownership: team `react` owns `web/src/themes/index.css`, `index.ts`, `hearth.css` (the current Angular palette, ported as the working default) and the Tailwind mapping (`@theme inline` that registers each token below as a `--color-*`, `--radius-*`, `--font-*`, `--ease-*` utility; it lives outside `web/src/themes/`). Team `design` owns every other file in `web/src/themes/` and everything under `design/`.
-- Applying a pick also updates, outside CSS: `theme-color` metas in `index.html`, `theme_color`/`background_color` in the web manifest, Android status-bar and splash colors, and re-renders the flame icons if the flame colors change (department lead or team `react`).
+- A theme is one CSS file, `web/src/themes/<id>.css`, that sets every token below on `:root[data-theme="<id>"]` (light) and `:root[data-theme="<id>"].dark` (dark), and nothing else: no component selectors, no layout. Ids: `hearthlight` (default), `fieldnotes`, `tidepool`, `marigold`.
+- The app imports all theme files and all their font packages (self-hosted, OFL; the CSP is `default-src 'self'`). Browsers download a font file only when a page uses that family; the service worker precaches only the default theme's font files, the others are cached on first use.
+- The selected theme is a device setting, stored in `localStorage` under `ember.theme` (the Capacitor WebView keeps it). The external `/theme-init.js` sets `data-theme` (an unknown or missing value falls back to `hearthlight`) and `.dark` on `<html>` before first paint; no inline script.
+- Settings has an Appearance section: a radio group of the four themes, each with a small live preview (the theme's own tokens) and its name, applied instantly. It also updates `<meta name="theme-color">` at runtime.
+- Dark mode: `.dark` from `prefers-color-scheme`, with a manual override later.
+- Static colors that can't follow the theme use Hearthlight: the web manifest `theme_color`/`background_color`, the Android status bar and splash, and the app icons (flame from Hearthlight's `--flame`/`--flame-core`).
+- Ownership: team `react` owns `web/src/themes/**` (including the four theme files, for the selector change) and the Tailwind mapping. Team `design` owns `design/**`; `design/contrast.mjs` checks every theme file in `web/src/themes/`.
 
 ## Color tokens
 
-Any CSS color (`oklch()` preferred). "text" pairs need WCAG 2.x 4.5:1, "UI" pairs 3:1, in light and in dark. `design/contrast.mjs` (team `design`) computes every listed pair for every theme file, including `hearth.css`, and fails on any miss.
+Any CSS color (`oklch()` preferred). "text" pairs need WCAG 2.x 4.5:1, "UI" pairs 3:1, in light and in dark. `design/contrast.mjs` (team `design`) computes every listed pair for every theme file and fails on any miss.
 
 | Token | Pairs that must pass |
 | --- | --- |
