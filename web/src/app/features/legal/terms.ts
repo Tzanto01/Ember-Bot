@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { PageComponent } from '../../shared/page';
+import { LegalDocumentComponent } from './legal-document';
 
-/** Placeholder; run 2 replaces it. */
 @Component({
   selector: 'app-terms-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageComponent],
-  template: `<app-page heading="Terms" />`,
+  imports: [LegalDocumentComponent],
+  template: `<app-legal-document file="nutzungsbedingungen.md" fallbackHeading="Terms" />`,
 })
 export class TermsPage {}
