@@ -3,7 +3,7 @@ import { type ReactNode, useId } from 'react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-/** Default field messages (the Angular validator copy). */
+/** Default field validation messages. */
 export const fieldMessages = {
   required: 'Please fill this in.',
   email: "That doesn't look like an email address yet.",
