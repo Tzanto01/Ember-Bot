@@ -22,6 +22,8 @@ import { RouterLink } from '@angular/router';
       font-size: var(--text-sm);
     }
     a {
+      min-width: var(--tap);
+      justify-content: center;
       color: var(--color-text-muted);
     }
   `,

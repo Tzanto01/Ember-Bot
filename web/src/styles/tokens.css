@@ -65,9 +65,9 @@
   --color-flame: light-dark(#f0962b, #f2a65a);
   --color-flame-core: light-dark(#ffd58a, #ffe2a8);
 
-  --color-done: light-dark(#c2660a, #e08a3c);
+  --color-done: light-dark(#a85800, #e08a3c);
   --color-on-done: light-dark(#ffffff, #1a1512);
-  --color-lowday: light-dark(#6e6a9e, #a9a4db);
+  --color-lowday: light-dark(#5e5a8e, #a9a4db);
   --color-lowday-bg: light-dark(#eceaf5, #2c2a3d);
 
   --color-success: light-dark(#3d6b4f, #8fc2a0);

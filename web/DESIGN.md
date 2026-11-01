@@ -33,9 +33,9 @@ Every colour is a `light-dark()` pair, so the theme follows `prefers-color-schem
 | `--color-focus` | `#8F5200` | `#F2A65A` | 3 px focus ring | 5.8 / 8.9 on bg |
 | `--color-flame` | `#F0962B` | `#F2A65A` | Logo only (decorative) | n/a |
 | `--color-flame-core` | `#FFD58A` | `#FFE2A8` | Logo only (decorative) | n/a |
-| `--color-done` | `#C2660A` | `#E08A3C` | Done day fill | 3.8 on bg, 4.0 on surface / 6.2 on surface |
+| `--color-done` | `#A85800` | `#E08A3C` | Done day fill (white date text on it: 5.2) | 4.8 on bg / 6.2 on surface |
 | `--color-on-done` | `#FFFFFF` | `#1A1512` | Check mark on a done day | 4.0 / 6.8 |
-| `--color-lowday` | `#6E6A9E` | `#A9A4DB` | Low-day moon icon | 4.2 on lowday-bg, 5.0 on surface / 6.0 on lowday-bg, 7.1 on surface |
+| `--color-lowday` | `#5E5A8E` | `#A9A4DB` | Low-day moon icon and date text | 5.3 on lowday-bg / 6.0 on lowday-bg, 7.1 on surface |
 | `--color-lowday-bg` | `#ECEAF5` | `#2C2A3D` | Low-day cell and notice | |
 | `--color-success` | `#3D6B4F` | `#8FC2A0` | Success icon | 5.4 on success-bg / 7.3 on success-bg |
 | `--color-success-bg` | `#EAF1EB` | `#1F2B23` | Success notice | |
@@ -111,7 +111,7 @@ Use the global `.day` class: `<span class="day" data-state="…">`. Each state h
 | --- | --- | --- | --- |
 | `done` | Filled `--color-done`, check in `--color-on-done` | check | "done" |
 | `notdone` | Empty cell, `--color-border-strong` outline | none | "not checked in" (never "missed") |
-| `pending` | Empty cell, 2 px `--color-primary` outline (today, not yet checked in) | none | "today, not checked in yet" |
+| `pending` | Empty cell, 2 px `--color-primary` outline (an open day: today or yesterday, not yet checked in) | none | "still open" ("today, still open" for today) |
 | `lowday` | `--color-lowday-bg` fill, moon in `--color-lowday` | moon | "low day, resting" |
 | `paused` | Dashed outline with soft diagonal hatch | pause (optional on larger cells) | "paused" |
 | `beforestart` | No outline, no fill (just the date number, muted), not interactive | none | "before this habit started" |
@@ -141,4 +141,4 @@ Each at 360 px wide and at 1280 px, in light and in dark (4 shots per screen):
 
 - Angular 21 pending Nico; upgrade to 22 once Node 22.22.3+/24.15+ is installed.
 - Tokens use CSS `light-dark()` (Chrome 123, Safari 17.5, Firefox 120 and later).
-- App icons: the flame mark is `public/icons/icon.svg` (any) and `public/icons/icon-maskable.svg`, plus `public/favicon.svg`. The PNG sizes in `public/icons/` are still the scaffold's images until they are re-rendered from the SVG.
+- App icons: the flame mark is `public/icons/icon.svg` (any) and `public/icons/icon-maskable.svg`, plus `public/favicon.svg`. The PNG sizes in `public/icons/` are rendered from `icon-maskable.svg`.

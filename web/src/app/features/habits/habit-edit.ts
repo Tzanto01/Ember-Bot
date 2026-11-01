@@ -211,6 +211,7 @@ const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', 
               @if (confirmingDelete()) {
                 <div
                   id="delete-confirm"
+                  (keydown.escape)="cancelDelete()"
                   class="stack"
                   role="group"
                   aria-labelledby="delete-question"
@@ -336,6 +337,7 @@ export class HabitEditPage {
     }
     this.status.set('loading');
     this.loadProblem.set(null);
+    await this.auth.loadMe(true).catch(() => null);
     try {
       this.setHabit(await this.api.getHabit(this.id));
       this.status.set('ready');

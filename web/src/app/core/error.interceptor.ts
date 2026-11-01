@@ -1,4 +1,10 @@
-import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpEvent,
+  HttpInterceptorFn,
+  HttpRequest,
+  HttpXsrfTokenExtractor,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, last, Observable, switchMap, throwError } from 'rxjs';
@@ -14,9 +20,17 @@ import { toApiError } from './problem';
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const xsrf = inject(HttpXsrfTokenExtractor);
+
+  const withFreshToken = (): HttpRequest<unknown> => {
+    const token = xsrf.getToken();
+    return req.clone({
+      headers: token ? req.headers.set('X-XSRF-TOKEN', token) : req.headers.delete('X-XSRF-TOKEN'),
+    });
+  };
 
   const send = (retried: boolean): Observable<HttpEvent<unknown>> =>
-    next(req).pipe(
+    next(retried ? withFreshToken() : req).pipe(
       catchError((response: unknown) => {
         if (!(response instanceof HttpErrorResponse)) return throwError(() => response);
         const error = toApiError(response);

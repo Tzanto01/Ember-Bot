@@ -125,6 +125,6 @@ export class AuthService {
     } catch {
       /* ignored */
     }
-    await subscription.unsubscribe().catch(() => false);
+    await this.swPush.unsubscribe().catch(() => undefined);
   }
 }

@@ -97,6 +97,9 @@ const NAV: { path: string; label: string; icon: IconName }[] = [
       text-decoration: none;
       border-radius: 0;
     }
+    .nav-link:focus-visible {
+      outline-offset: -3px;
+    }
     .nav-link.active {
       color: var(--color-primary);
       font-weight: var(--weight-bold);
