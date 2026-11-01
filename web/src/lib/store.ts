@@ -30,18 +30,15 @@ export class Store<T> {
   }
 
   /** Calls `listener` after every change; returns the unsubscribe function. */
-  subscribe(listener: () => void): () => void {
+  readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
-  }
+  };
 }
 
 /** The current value of `store`; the component re-renders when it changes. */
 export function useStore<T>(store: Store<T>): T {
-  return useSyncExternalStore(
-    (listener) => store.subscribe(listener),
-    () => store.get(),
-  );
+  return useSyncExternalStore(store.subscribe, () => store.get());
 }
