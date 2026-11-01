@@ -26,7 +26,7 @@ Neutral comparison (no recommendation):
 | --- | --- | --- | --- | --- |
 | Closest to today's app | yes | no | no | no |
 | Stimulation level | low-medium | lowest | low | highest |
-| Brand warmth ("ember") | strongest | medium | weakest (flame is the only warm spot) | medium |
+| Brand warmth ("ember") | strongest | medium | weakest (flame and notices are the only warm colours) | medium |
 | States readable at a glance | good | good | good | strongest (ink outlines) |
 | Font weight to ship (Latin) | 38 KB | 69 KB | 39 KB | 60 KB |
 | Main risk | least new | journal more than app | cool, more scrolling | busy for sensory-sensitive users |
@@ -173,8 +173,8 @@ Every pair from the contract, light and dark. Hearth (`hearth.css`, team `react`
 | accent-foreground on accent | text 4.5:1 | 13.05 | 11.12 |
 | input on background | ui 3:1 | 3.67 | 4.56 |
 | input on card | ui 3:1 | 3.91 | 4.04 |
-| ring on background | ui 3:1 | 5.75 | 9.51 |
-| ring on card | ui 3:1 | 6.12 | 8.42 |
+| ring on background | ui 3:1 | 14.61 | 15.21 |
+| ring on card | ui 3:1 | 15.53 | 13.47 |
 | destructive on background | text 4.5:1 | 6.76 | 10.65 |
 | destructive on card | text 4.5:1 | 7.19 | 9.43 |
 | destructive-foreground on destructive | text 4.5:1 | 7.13 | 10.65 |
@@ -251,8 +251,8 @@ Every pair from the contract, light and dark. Hearth (`hearth.css`, team `react`
 | accent-foreground on accent | text 4.5:1 | 12.30 | 11.32 |
 | input on background | ui 3:1 | 3.58 | 4.67 |
 | input on card | ui 3:1 | 3.86 | 4.19 |
-| ring on background | ui 3:1 | 6.26 | 10.80 |
-| ring on card | ui 3:1 | 6.77 | 9.70 |
+| ring on background | ui 3:1 | 13.70 | 15.34 |
+| ring on card | ui 3:1 | 14.80 | 13.78 |
 | destructive on background | text 4.5:1 | 6.40 | 10.72 |
 | destructive on card | text 4.5:1 | 6.91 | 9.63 |
 | destructive-foreground on destructive | text 4.5:1 | 6.81 | 10.72 |
