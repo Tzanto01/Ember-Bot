@@ -1,5 +1,6 @@
 /* Hearthlight: Hearth evolved. Candle-warm cream and ember amber, round coin-like day cells, no hard edges, a soft glow on check-in. */
-:root {
+:root[data-theme="hearthlight"],
+[data-theme="hearthlight"] {
   --background: oklch(0.972 0.014 78);
   --foreground: oklch(0.255 0.022 50);
   --card: oklch(0.993 0.006 80);
@@ -54,7 +55,8 @@
   --ember-reward: glow;
 }
 
-:root.dark {
+:root[data-theme="hearthlight"].dark,
+.dark [data-theme="hearthlight"] {
   --background: oklch(0.2 0.016 50);
   --foreground: oklch(0.94 0.016 78);
   --card: oklch(0.25 0.02 50);

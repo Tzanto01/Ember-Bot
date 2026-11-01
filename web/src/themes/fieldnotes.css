@@ -1,5 +1,6 @@
 /* Fieldnotes: a pocket notebook. Recycled paper, blue-black ink, moss ticks in square boxes, a soft serif for headings, ink that fills the box on check-in. */
-:root {
+:root[data-theme="fieldnotes"],
+[data-theme="fieldnotes"] {
   --background: oklch(0.963 0.016 92);
   --foreground: oklch(0.25 0.025 255);
   --card: oklch(0.985 0.009 92);
@@ -54,7 +55,8 @@
   --ember-reward: fill;
 }
 
-:root.dark {
+:root[data-theme="fieldnotes"].dark,
+.dark [data-theme="fieldnotes"] {
   --background: oklch(0.205 0.014 155);
   --foreground: oklch(0.93 0.016 92);
   --card: oklch(0.25 0.016 155);
