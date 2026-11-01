@@ -17,7 +17,7 @@ public static class ExportBuilder
         "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
         "health_data_consent_at,consent_policy_version,consent_prompted_on," +
         "habit_id,name,frequency,weekly_target,reminder_time,paused_until,paused_from,created_at,next_reminder_utc," +
-        "date,completed,guild_id,kind";
+        "date,completed,guild_id,kind,email,discord_id";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -42,9 +42,14 @@ public static class ExportBuilder
     /// <summary>One mark on a local day, such as a low day (<c>Kind</c> = <c>low_day</c>).</summary>
     public sealed record DayMarkRecord(DateOnly Date, string Kind);
 
-    /// <summary>The JSON export document.</summary>
-    public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks);
+    /// <summary>The account's email (null for accounts created through Discord) and Discord ID (a string, null when not linked).</summary>
+    public sealed record AccountRecord(string? Email, string? DiscordId);
 
+    /// <summary>The JSON export document.</summary>
+    public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks,
+        AccountRecord? Account = null);
+
+    /// <summary>Builds the export. <see cref="ExportDocument.Account"/> needs <see cref="User.Logins"/> loaded for the Discord ID.</summary>
     public static ExportDocument BuildDocument(User user)
     {
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
@@ -59,7 +64,8 @@ public static class ExportBuilder
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture)))).ToList(),
             user.DayMarks.OrderBy(m => m.Date).ThenBy(m => m.Kind)
-                .Select(m => new DayMarkRecord(m.Date, JsonNamingPolicy.SnakeCaseLower.ConvertName(m.Kind.ToString()))).ToList());
+                .Select(m => new DayMarkRecord(m.Date, JsonNamingPolicy.SnakeCaseLower.ConvertName(m.Kind.ToString()))).ToList(),
+            new AccountRecord(user.Email, user.DiscordId() is { } discordId ? DiscordLogin.Key(discordId) : null));
     }
 
     public static string BuildJson(User user) => JsonSerializer.Serialize(BuildDocument(user), JsonOptions);
@@ -79,7 +85,8 @@ public static class ExportBuilder
         AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn),
             Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
             Utc(s.HealthDataConsentAt), s.ConsentPolicyVersion ?? "", Date(s.ConsentPromptedOn),
-            "", "", "", "", "", "", "", "", "", "", "", "", "");
+            "", "", "", "", "", "", "", "", "", "", "", "", "",
+            doc.Account?.Email ?? "", doc.Account?.DiscordId ?? "");
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "",
@@ -87,17 +94,17 @@ public static class ExportBuilder
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
                 h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "", Date(h.PausedFrom),
                 Utc(h.CreatedAt), Utc(h.NextReminderUtc),
-                "", "", "", "");
+                "", "", "", "", "", "");
 
         foreach (var l in doc.Logs)
             AppendRow(csv, "log", "", "", "", "", "", "", "", "", "",
                 Num(l.HabitId), "", "", "", "", "", "", "", "",
-                l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "");
+                l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "", "", "");
 
         foreach (var m in doc.DayMarks)
             AppendRow(csv, "day_mark", "", "", "", "", "", "", "", "", "",
                 "", "", "", "", "", "", "", "", "",
-                Date(m.Date), "", "", m.Kind);
+                Date(m.Date), "", "", m.Kind, "", "");
 
         return csv.ToString();
     }

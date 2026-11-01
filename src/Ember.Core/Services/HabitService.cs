@@ -221,33 +221,49 @@ public partial class HabitService
     /// </summary>
     public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, int days)
     {
+        var today = await GetLocalTodayAsync(userId);
+        return await GetHabitDaysAsync(userId, habitId, today.AddDays(1 - days), today);
+    }
+
+    /// <summary>
+    /// Returns the habit's local days from <paramref name="from"/> through <paramref name="to"/>, oldest first (empty when
+    /// <paramref name="from"/> is after <paramref name="to"/>), by the rules of <see cref="DayOn"/>.
+    /// Null when the habit doesn't exist or isn't the user's.
+    /// </summary>
+    public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, DateOnly from, DateOnly to)
+    {
         var habit = await _db.Habits
             .Include(h => h.User)
-            .Include(h => h.Logs)
+            .Include(h => h.Logs.Where(l => l.Date >= from && l.Date <= to))
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
         var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
-        var start = StartDate(habit, tz);
         var lowDays = await GetLowDaysAsync(userId);
-        var logs = habit.Logs.ToDictionary(l => l.Date, l => l.Completed);
 
-        return Enumerable.Range(0, days)
-            .Select(i => today.AddDays(i - days + 1))
-            .Select(date =>
-            {
-                bool? completed = logs.TryGetValue(date, out var c) ? c : null;
-                var state = date < start ? DayState.BeforeStart
-                    : IsPausedOn(habit, date) ? DayState.Paused
-                    : lowDays.Contains(date) ? DayState.LowDay
-                    : completed == true ? DayState.Done
-                    : IsOpen(date, today) ? DayState.Pending
-                    : DayState.NotDone;
-                return new HabitDay(date, state, completed);
-            })
-            .ToList();
+        var result = new List<HabitDay>();
+        for (var date = from; date <= to; date = date.AddDays(1))
+            result.Add(DayOn(habit, date, today, tz, lowDays));
+        return result;
+    }
+
+    /// <summary>
+    /// The habit's <see cref="DayState"/> and raw log on the user's local <paramref name="date"/>, given the user's local
+    /// <paramref name="today"/>, timezone and low days. Needs the habit's log of that date loaded, if there is one.
+    /// State precedence: before start, paused, low day, done, pending (open), not done.
+    /// </summary>
+    public static HabitDay DayOn(Habit habit, DateOnly date, DateOnly today, TimeZoneInfo tz, IReadOnlySet<DateOnly> lowDays)
+    {
+        var completed = habit.Logs.FirstOrDefault(l => l.Date == date)?.Completed;
+        var state = date < StartDate(habit, tz) ? DayState.BeforeStart
+            : IsPausedOn(habit, date) ? DayState.Paused
+            : lowDays.Contains(date) ? DayState.LowDay
+            : completed == true ? DayState.Done
+            : IsOpen(date, today) ? DayState.Pending
+            : DayState.NotDone;
+        return new HabitDay(date, state, completed);
     }
 
     private Task<bool> IsLowDayStoredAsync(Guid userId, DateOnly date)
@@ -629,10 +645,11 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezoneId));
     }
 
-    /// <summary>The user with every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
+    /// <summary>The user with their logins and every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
             .AsNoTracking()
+            .Include(u => u.Logins)
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .AsSplitQuery()
