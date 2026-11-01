@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { DayCell } from '@/components/day-cell';
+import { DayCell, joinsRun } from '@/components/day-cell';
 import type { RewardKeyword } from '@/components/today/reward';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
@@ -101,7 +101,7 @@ export function MonthCalendar({
                           isToday={day.isToday}
                           onSelect={day.editable ? () => onSelect(day.date) : undefined}
                           expanded={openDate === day.date}
-                          runToNext={day.state === 'done' && next?.inMonth === true && next.state === 'done'}
+                          runToNext={next?.inMonth === true && joinsRun(day.state, next.state)}
                           className={cn('align-middle', keyword && `ember-cell-reward-${keyword}`)}
                         />
                       )}
