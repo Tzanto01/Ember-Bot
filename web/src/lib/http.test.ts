@@ -110,6 +110,31 @@ describe('Http XSRF and cookies', () => {
     absolute.respond(204);
   });
 
+  it('sends no XSRF header to a configured API base on another origin', async () => {
+    setCookie('token-1');
+
+    void new Http({ native: false, apiBase: 'https://api.example.test' }).request(
+      'POST',
+      '/api/habits',
+      { body: {} },
+    );
+
+    const call = await mock.next('POST', 'https://api.example.test/api/habits');
+    expect(call.headers.has('X-XSRF-TOKEN')).toBe(false);
+    call.respond(204);
+  });
+
+  it('still sends the request, with the raw value, when the XSRF cookie is malformed', async () => {
+    setCookie('%E0%A4%A');
+
+    const result = new Http(web).request('POST', '/api/habits', { body: {} });
+
+    const call = await mock.next('POST', '/api/habits');
+    expect(call.headers.get('X-XSRF-TOKEN')).toBe('%E0%A4%A');
+    call.respond(204);
+    await expect(result).resolves.toBeUndefined();
+  });
+
   it('sends neither cookies nor an XSRF header in the native build', async () => {
     setCookie('token-1');
 

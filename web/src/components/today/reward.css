@@ -1,0 +1,182 @@
+.ember-reward-glow::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    var(--flame-core) 0%,
+    color-mix(in oklch, var(--flame) 45%, transparent) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  animation: ember-glow var(--ember-dur-slow) var(--ember-ease);
+}
+
+.ember-reward-fill > * {
+  position: relative;
+  z-index: 1;
+}
+.ember-reward-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--card);
+  transform-origin: top;
+  pointer-events: none;
+  animation: ember-fill var(--ember-dur-slow) var(--ember-ease) both;
+}
+
+.ember-row-fill {
+  background-color: var(--card);
+}
+.ember-row-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in oklch, var(--done) 8%, var(--card));
+  transform-origin: left;
+  pointer-events: none;
+  animation: ember-sweep var(--ember-dur-slow) var(--ember-ease) both;
+}
+
+.ember-reward-rise::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 9999px;
+  background: var(--flame);
+  opacity: 0;
+  pointer-events: none;
+  animation: ember-rise var(--ember-dur-slow) var(--ember-ease);
+}
+.ember-reward-rise svg {
+  animation: ember-check var(--ember-dur-slow) var(--ember-ease) both;
+}
+
+.ember-cell-reward-glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    var(--flame-core) 0%,
+    color-mix(in oklch, var(--flame) 45%, transparent) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  animation: ember-glow-half var(--ember-dur-slow) var(--ember-ease);
+}
+.ember-cell-reward-fill > * {
+  position: relative;
+  z-index: 1;
+}
+.ember-cell-reward-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--card);
+  transform-origin: top;
+  pointer-events: none;
+  animation: ember-fill-half var(--ember-dur-slow) var(--ember-ease) both;
+}
+.ember-cell-reward-rise svg {
+  animation: ember-check-half var(--ember-dur-slow) var(--ember-ease) both;
+}
+
+@keyframes ember-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+@keyframes ember-glow-half {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+@keyframes ember-fill {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0);
+  }
+}
+@keyframes ember-fill-half {
+  from {
+    transform: scaleY(0.5);
+  }
+  to {
+    transform: scaleY(0);
+  }
+}
+@keyframes ember-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+@keyframes ember-check {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ember-check-half {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
