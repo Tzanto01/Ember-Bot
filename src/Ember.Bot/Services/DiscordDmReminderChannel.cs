@@ -1,4 +1,5 @@
 using Discord;
+using Ember.Core.Models;
 
 namespace Ember.Bot.Services;
 
@@ -14,8 +15,12 @@ public class DiscordDmReminderChannel : IReminderChannel
         _time    = time;
     }
 
+    public ReminderChannels Channel => ReminderChannels.Discord;
+
     public async Task<DeliveryOutcome> SendAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
+        if (reminder.DiscordUserId is not { } discordUserId) return DeliveryOutcome.UserNotFound;
+
         var name = reminder.HabitName;
         string intro = reminder.Snoozed
             ? $"⏰ Snoozed reminder: **{name}**. Ready when you are!"
@@ -34,6 +39,6 @@ public class DiscordDmReminderChannel : IReminderChannel
             .WithButton("Snooze 1h ⏰", $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .Build();
 
-        return await _discord.SendMessageAsync(reminder.UserId, message, components: components, cancellationToken: cancellationToken);
+        return await _discord.SendMessageAsync(discordUserId, message, components: components, cancellationToken: cancellationToken);
     }
 }
