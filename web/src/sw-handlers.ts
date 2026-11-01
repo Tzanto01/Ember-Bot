@@ -59,9 +59,11 @@ export async function handleNotificationClick(
     await clients.openWindow(target);
     return;
   }
-  const focused = await client.focus();
-  const shown = new URL(focused.url);
-  if (shown.pathname + shown.search !== target) {
-    await focused.navigate(new URL(target, origin).href).catch(() => null);
+  try {
+    const focused = await client.focus();
+    const shown = new URL(focused.url);
+    if (shown.pathname + shown.search !== target) await focused.navigate(new URL(target, origin).href);
+  } catch {
+    await clients.openWindow(target);
   }
 }

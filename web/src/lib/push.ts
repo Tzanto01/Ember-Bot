@@ -4,12 +4,11 @@ import { Store } from './store';
 
 /**
  * This page's service worker registration once it is active, or null when the browser has no push support or no
- * worker becomes ready within 3 seconds (development, or the mobile build that registers none).
+ * worker is registered (development, the mobile build) or none becomes ready within 3 seconds.
  */
-export function serviceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
-  if (!('serviceWorker' in navigator) || typeof PushManager === 'undefined') {
-    return Promise.resolve(null);
-  }
+export async function serviceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator) || typeof PushManager === 'undefined') return null;
+  if (!(await navigator.serviceWorker.getRegistration())) return null;
   return Promise.race([
     navigator.serviceWorker.ready,
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),

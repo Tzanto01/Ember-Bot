@@ -44,14 +44,19 @@ export interface BearerTokens {
 const reminderInputs = /\/api\/habits(\/|\?|$)/;
 const mutating = new Set<Method>(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-function isRelative(url: string): boolean {
-  return !/^[a-z][a-z\d+.-]*:|^\/\//i.test(url);
+function isSameOrigin(url: string): boolean {
+  return new URL(url, location.href).origin === location.origin;
 }
 
 function readCookie(name: string): string | null {
   for (const part of document.cookie.split(';')) {
     const [key, ...value] = part.trim().split('=');
-    if (key === name) return decodeURIComponent(value.join('='));
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return value.join('=');
+    }
   }
   return null;
 }
@@ -177,11 +182,12 @@ export class Http {
     const hasBody = options.body !== undefined && options.body !== null;
     if (hasBody) headers.set('Content-Type', 'application/json');
     if (token) headers.set('Authorization', `Bearer ${token}`);
-    if (!this.config.native && mutating.has(method) && isRelative(url)) {
+    const resolved = this.resolve(url, options.params);
+    if (!this.config.native && mutating.has(method) && isSameOrigin(resolved)) {
       const xsrf = readCookie('XSRF-TOKEN');
       if (xsrf) headers.set('X-XSRF-TOKEN', xsrf);
     }
-    return fetch(this.resolve(url, options.params), {
+    return fetch(resolved, {
       method,
       headers,
       body: hasBody ? JSON.stringify(options.body) : undefined,
