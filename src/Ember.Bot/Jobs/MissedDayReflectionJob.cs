@@ -1,5 +1,6 @@
 using Discord;
 using Ember.Bot.Services;
+using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -48,7 +49,7 @@ public class MissedDayReflectionJob : IJob
 
         var dueIds = candidates
             .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time).Hour == LocalSendHour)
-            .Select(u => u.DiscordUserId)
+            .Select(u => u.UserId)
             .ToList();
 
         if (dueIds.Count == 0) return;
@@ -59,20 +60,22 @@ public class MissedDayReflectionJob : IJob
         {
             try
             {
-                if (!await habits.UserExistsAsync((ulong)user.DiscordUserId, context.CancellationToken))
+                // Only Discord users get the reflection DM; a web-only user has nowhere to receive it yet.
+                if (user.DiscordId() is not { } discordId
+                    || !await habits.UserExistsAsync(user.Id, context.CancellationToken))
                     continue;
 
                 var yesterday = TimezoneHelper.LocalToday(user.Timezone, _time).AddDays(-1);
-                await ProcessUserAsync(user, yesterday, HabitService.WeekStart(yesterday));
+                await ProcessUserAsync(user, discordId, yesterday, HabitService.WeekStart(yesterday));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "MissedDayReflectionJob failed for user {UserId}", user.DiscordUserId);
+                _logger.LogWarning(ex, "MissedDayReflectionJob failed for user {UserId}", user.Id);
             }
         }
     }
 
-    private async Task ProcessUserAsync(Ember.Core.Models.User user, DateOnly yesterday, DateOnly weekStart)
+    private async Task ProcessUserAsync(Ember.Core.Models.User user, ulong discordId, DateOnly yesterday, DateOnly weekStart)
     {
         if (user.DayMarks.Any(m => m.Kind == Ember.Core.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
 
@@ -119,7 +122,7 @@ public class MissedDayReflectionJob : IJob
             "There's no streak worth burning yourself out for.",
             "If it was a rough day, a low day keeps your streaks safe.",
         };
-        var closing = closingLines[Math.Abs(user.DiscordUserId.GetHashCode()) % closingLines.Length];
+        var closing = closingLines[Math.Abs(discordId.GetHashCode()) % closingLines.Length];
 
         var embed = new EmbedBuilder()
             .WithColor(0x5865F2) // soft indigo — calm, not alarm
@@ -131,12 +134,12 @@ public class MissedDayReflectionJob : IJob
         var date = yesterday.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
         var components = new ComponentBuilder();
         if (anyDaily)
-            components.WithButton("Log yesterday", $"reflect:log:{user.DiscordUserId}:{date}", ButtonStyle.Success, new Emoji("✅"));
+            components.WithButton("Log yesterday", $"reflect:log:{discordId}:{date}", ButtonStyle.Success, new Emoji("✅"));
         components
-            .WithButton("It was a low day", $"reflect:low:{user.DiscordUserId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))
-            .WithButton("That's ok, move on", $"reflect:dismiss:{user.DiscordUserId}", ButtonStyle.Secondary);
+            .WithButton("It was a low day", $"reflect:low:{discordId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))
+            .WithButton("That's ok, move on", $"reflect:dismiss:{discordId}", ButtonStyle.Secondary);
 
-        await _discord.SendMessageAsync((ulong)user.DiscordUserId, embed: embed, components: components.Build());
+        await _discord.SendMessageAsync(discordId, embed: embed, components: components.Build());
     }
 
     /// <summary>Whether a daily habit is active and unpaused on <paramref name="date"/> but not logged as done yet.</summary>
