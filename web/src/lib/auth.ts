@@ -22,6 +22,7 @@ export interface NativeSession {
 export class AuthService {
   private loaded = false;
   private inFlight: Promise<Me | null> | null = null;
+  private session = 0;
   private consentPrompted = false;
 
   /** The signed-in user, or null. */
@@ -61,6 +62,7 @@ export class AuthService {
    */
   loadMe(force = false): Promise<Me | null> {
     if (this.loaded && !force) return Promise.resolve(this.me.get());
+    const session = this.session;
     this.inFlight ??= this.api
       .getMe()
       .then(
@@ -72,6 +74,7 @@ export class AuthService {
         },
       )
       .then((me) => {
+        if (session !== this.session) return null;
         this.me.set(me);
         this.loaded = true;
         return me;
@@ -88,6 +91,8 @@ export class AuthService {
 
   /** Forgets the session locally (the server already ended it). */
   clearSession(): void {
+    this.session++;
+    this.inFlight = null;
     this.me.set(null);
     this.loaded = true;
   }
