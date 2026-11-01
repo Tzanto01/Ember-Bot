@@ -32,7 +32,7 @@ internal static class AuthEndpoints
 
     public static RouteGroupBuilder MapAuth(this RouteGroupBuilder auth)
     {
-        auth.MapIdentityApi<User>().AddEndpointFilter(IdentityFilter);
+        auth.MapIdentityApi<User>().AddEndpointFilter(IdentityFilter).RequireRateLimiting(RateLimits.AuthPolicy);
 
         auth.MapPost("/confirmEmail", async (ConfirmEmailRequest request, UserManager<User> users, SignInManager<User> signIn) =>
         {
@@ -54,7 +54,7 @@ internal static class AuthEndpoints
 
             await users.ResetAccessFailedCountAsync(user);
             return Results.Ok();
-        });
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         auth.MapGet("/antiforgery", (HttpContext http, IAntiforgery antiforgery, IHostEnvironment environment) =>
         {

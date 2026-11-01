@@ -9,7 +9,7 @@ public partial class HabitService
     /// <summary>Most push subscriptions a single user keeps; saving another drops the least recently saved.</summary>
     public const int MaxPushSubscriptionsPerUser = 10;
 
-    /// <summary>The lowercase names of the set channels (<c>discord</c>, <c>webpush</c>), in flag order.</summary>
+    /// <summary>The lowercase names of the set channels (<c>discord</c>, <c>webpush</c>, <c>mobile</c>), in flag order.</summary>
     public static List<string> ReminderChannelNames(ReminderChannels channels)
         => Enum.GetValues<ReminderChannels>()
             .Where(c => c != ReminderChannels.None && channels.HasFlag(c))

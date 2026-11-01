@@ -231,8 +231,9 @@ internal static class HabitEndpoints
             {
                 case "discord": channels |= ReminderChannels.Discord; break;
                 case "webpush": channels |= ReminderChannels.WebPush; break;
+                case "mobile": channels |= ReminderChannels.Mobile; break;
                 default:
-                    errors["reminderChannels"] = ["Each must be discord or webpush."];
+                    errors["reminderChannels"] = ["Each must be discord, webpush or mobile."];
                     return null;
             }
         }

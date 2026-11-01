@@ -31,7 +31,7 @@ public static class ExportBuilder
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
         DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn);
 
-    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds <c>discord</c> and/or <c>webpush</c>.</summary>
+    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds any of <c>discord</c>, <c>webpush</c> and <c>mobile</c>.</summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
         TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc,
