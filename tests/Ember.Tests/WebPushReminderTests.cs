@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Ember.Bot;
 using Ember.Bot.Jobs;
 using Ember.Bot.Services;
 using Ember.Core.Data;
@@ -122,6 +123,20 @@ public class WebPushReminderTests
         => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().PushSubscriptions.Select(s => s.Endpoint).ToListAsync());
 
     private const ReminderChannels Both = ReminderChannels.Discord | ReminderChannels.WebPush;
+
+    [Fact]
+    public void BuildingTheBotHostWithOnlyThePublicKey_FailsNamingTheWebPushSettings()
+    {
+        var builder = AppHost.CreateHostBuilder(["--WebPush:PublicKey=only-the-public-key"], new EmberHostOptions
+        {
+            IncludeDiscordGateway = false,
+            ConfigureDbContext = (options, _) => options.UseSqlite("Data Source=:memory:"),
+        });
+
+        var build = () => builder.Build();
+
+        build.Should().Throw<InvalidOperationException>().WithMessage("*WebPush*");
+    }
 
     [Fact]
     public async Task EachDueReminder_GoesOnlyThroughTheSelectedChannelsTheUserCanReceive()

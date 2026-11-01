@@ -117,11 +117,19 @@ public sealed class WebPushReminderChannel : IReminderChannel
             }
             catch (PushServiceClientException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
             {
-                using var scope = _scopes.CreateScope();
-                await scope.ServiceProvider.GetRequiredService<HabitService>()
-                    .DeletePushSubscriptionByEndpointAsync(subscription.Endpoint, cancellationToken);
-                _logger.LogInformation("Removed an expired push subscription {SubscriptionId} of user {UserId}.",
-                    subscription.Id, reminder.UserId);
+                try
+                {
+                    using var scope = _scopes.CreateScope();
+                    await scope.ServiceProvider.GetRequiredService<HabitService>()
+                        .DeletePushSubscriptionByEndpointAsync(subscription.Endpoint, cancellationToken);
+                    _logger.LogInformation("Removed an expired push subscription {SubscriptionId} of user {UserId}.",
+                        subscription.Id, reminder.UserId);
+                }
+                catch (Exception deleteEx) when (!cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(deleteEx, "Could not remove the expired push subscription {SubscriptionId} of user {UserId}.",
+                        subscription.Id, reminder.UserId);
+                }
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
