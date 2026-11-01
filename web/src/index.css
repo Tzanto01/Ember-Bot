@@ -43,9 +43,10 @@
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) * 1.6);
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --radius-cell: var(--cell-radius);
   --shadow-card: var(--shadow-card);
   --spacing: var(--space-unit);
@@ -90,7 +91,7 @@
     line-height: 1.2;
   }
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 3px solid var(--ring);
     outline-offset: 2px;
   }
 }
