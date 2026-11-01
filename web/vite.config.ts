@@ -9,7 +9,8 @@ const apiHost = 'http://localhost:5081';
 
 /**
  * Web build (`vite build`): PWA with the custom service worker in `src/sw.ts`, output `dist/ember-web/browser`.
- * Mobile build (`vite build --mode mobile`, settings in `.env.mobile`): no service worker, output
+ * Mobile build (`vite build --mode mobile`, settings in `.env.mobile`): no service worker (the PWA plugin is
+ * disabled, so `virtual:pwa-register` resolves to a no-op), output
  * `dist/ember-mobile/browser` for Capacitor.
  */
 export default defineConfig(({ mode }) => {
@@ -18,18 +19,18 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      !mobile &&
-        VitePWA({
-          strategies: 'injectManifest',
-          srcDir: 'src',
-          filename: 'sw.ts',
-          injectRegister: false,
-          manifest: false,
-          injectManifest: {
-            globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}', 'legal/*.md'],
-          },
-          devOptions: { enabled: false },
-        }),
+      VitePWA({
+        disable: mobile,
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        injectRegister: false,
+        manifest: false,
+        injectManifest: {
+          globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}', 'legal/*.md'],
+        },
+        devOptions: { enabled: false },
+      }),
     ],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     build: {
