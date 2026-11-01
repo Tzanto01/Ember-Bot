@@ -94,7 +94,7 @@ Risks:
 
 Play requires two things for apps where users create accounts:
 
-1. **In-app deletion.** Ember has it: Settings, section "Delete your account", button "Delete my account". It is the same Angular screen the app wraps. It needs the password, or the typed word DELETE when the account has no password (`POST /api/me/delete`). Test it on a device, including that device data is wiped (section 4.3).
+1. **In-app deletion.** Ember has it: Settings, section "Delete your account", button "Delete my account". It is the same web screen the app wraps. It needs the password, or the typed word DELETE when the account has no password (`POST /api/me/delete`). Test it on a device, including that device data is wiped (section 4.3).
 2. **A web link** to request deletion, listed in the Data safety form. It must work for someone who no longer has the app.
 
 Current state: there is no public deletion page. The route list in `web/src/app/app.routes.ts` has none. `/settings` needs sign-in, so it fails the "no app needed" test for a user who has forgotten the password. Recommendation: add a public page with the deletion steps, for example `{WebOrigin}/delete-account`. That page is not built. Until it exists, `{WebOrigin}/settings` is the only option.

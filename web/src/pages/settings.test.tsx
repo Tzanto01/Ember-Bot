@@ -89,6 +89,20 @@ describe('SettingsPage', () => {
     expect(auth.me.get()).toBeNull();
   });
 
+  it('says it could not sign out and stays when the server cannot end the session', async () => {
+    const user = userEvent.setup();
+    const { fetch, router } = await open();
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    (await fetch.next('POST', '/api/auth/logout')).respond(503);
+
+    expect(
+      await screen.findByText("Ember couldn't sign you out. Check your connection and try again."),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/settings');
+    expect(auth.me.get()).not.toBeNull();
+  });
+
   it('hides the notifications section when the server answers 501 for the push key', async () => {
     const registration = { pushManager: { getSubscription: async () => null } };
     vi.stubGlobal('PushManager', class {});

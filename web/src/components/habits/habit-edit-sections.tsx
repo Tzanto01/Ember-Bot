@@ -455,7 +455,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
       ) : (
         <>
           <p className="text-[14px]">If this habit no longer fits, you can let it go.</p>
-          <Button id="delete-start" type="button" variant="secondary" block onClick={ask}>
+          <Button id="delete-start" type="button" variant="secondary" block className="bg-card" onClick={ask}>
             Delete habit
           </Button>
         </>

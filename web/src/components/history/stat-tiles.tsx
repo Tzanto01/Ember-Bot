@@ -6,8 +6,7 @@ export interface StatTilesProps {
   habit: Habit;
   /** Month name of the shown month, for example "October". */
   monthName: string;
-  /** `done` days in the shown month. */
-  /** Null while the month's days aren't loaded; the tile is left out then and at 0. */
+  /** `done` days in the shown month; null while the month's days aren't loaded; the tile is left out then and at 0. */
   doneInMonth: number | null;
   /** Low days in the shown month. */
   lowDaysInMonth: number;

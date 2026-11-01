@@ -135,6 +135,31 @@ describe('TodayPage', () => {
     await waitFor(() => expect(settled.className).not.toMatch(/ember-reward-/));
   });
 
+  it('marks today as a low day for the local day and shows the low-day notice', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark today as a low day' }));
+    (await f.next('PUT', '/api/low-days/2026-11-01')).respond(204);
+
+    expect(await screen.findByText('Today is a low day')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark today as a low day' })).toBeNull();
+  });
+
+  it('clears the low day with a DELETE and brings the mark button back', async () => {
+    renderToday();
+    (await f.next('GET', '/api/me')).respond(200, me);
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+    (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, ['2026-11-01']);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Clear low day' }));
+    (await f.next('DELETE', '/api/low-days/2026-11-01')).respond(204);
+
+    expect(await screen.findByRole('button', { name: 'Mark today as a low day' })).toBeInTheDocument();
+    expect(screen.queryByText('Today is a low day')).toBeNull();
+  });
+
   it('shows the synced list after a check-in that interrupted a sync refetch', async () => {
     renderToday();
     await answerLoad(f, [habit]);

@@ -20,6 +20,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "playwright.config.ts", "vite.config.ts", "capacitor.config.ts"],
-  "exclude": ["src/app"]
+  "include": ["src", "playwright.config.ts", "vite.config.ts", "capacitor.config.ts"]
 }

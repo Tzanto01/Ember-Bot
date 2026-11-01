@@ -66,6 +66,17 @@ describe('HistoryPage', () => {
     }
   });
 
+  it('follows the server\'s local day, not the stale cached one, when choosing the month', async () => {
+    auth.setMe({ ...me, localToday: '2026-10-31' });
+    renderHistory('/history/1');
+
+    (await f.next('GET', '/api/me')).respond(200, { ...me, localToday: '2026-11-02' });
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+
+    await answerMonth(f, 1, '2026-11-01', '2026-11-02');
+    expect(f.all.some((c) => c.url.includes('2026-10-'))).toBe(false);
+  });
+
   it('marks a day done from the day panel and shows it as done', async () => {
     const container = renderHistory();
     await answerHabits(f, [habit]);

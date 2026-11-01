@@ -3,7 +3,7 @@ export type NavigateFn = (path: string) => void;
 
 let registered: NavigateFn | null = null;
 
-/** Registers the router's navigate function (S3 does this once at start); null unregisters it. */
+/** Registers the router's navigate function once at start; null unregisters it. */
 export function setNavigator(fn: NavigateFn | null): void {
   registered = fn;
 }

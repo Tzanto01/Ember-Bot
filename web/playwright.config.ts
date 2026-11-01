@@ -24,7 +24,7 @@ export default defineConfig({
   webServer: baseURL
     ? undefined
     : {
-        command: process.env['E2E_WEB_COMMAND'] ?? 'npm run dev',
+        command: process.env['E2E_WEB_COMMAND'] ?? 'bun --bun run dev',
         url: 'http://localhost:4200',
         reuseExistingServer: true,
         timeout: 120_000,
