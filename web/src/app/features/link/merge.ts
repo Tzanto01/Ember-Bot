@@ -36,7 +36,7 @@ function count(n: number, one: string, many: string): string {
         <div class="card stack">
           <p>{{ summary() }}</p>
           @if (p.habitNames.length) {
-            <ul class="names">
+            <ul class="names" aria-label="Habits to move">
               @for (name of p.habitNames; track $index) {
                 <li>{{ name }}</li>
               }
