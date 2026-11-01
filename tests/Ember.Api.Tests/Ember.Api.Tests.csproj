@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Ember.Api\Ember.Api.csproj" />
+    <ProjectReference Include="..\Ember.Api.TestHost\Ember.Api.TestHost.csproj" />
   </ItemGroup>
 
 </Project>

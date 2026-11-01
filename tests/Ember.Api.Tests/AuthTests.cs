@@ -19,7 +19,7 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
-        var mails = Host.Mail.To(email);
+        var mails = await Host.Mail.WaitForAsync(email, 1);
         mails.Should().HaveCount(1);
         mails[0].Link().Should().StartWith($"{ApiHost.WebOrigin}/confirm-email?userId=").And.Contain("&code=");
     }
@@ -30,10 +30,11 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var client = Host.NewClient();
         var email = ApiHost.NewEmail();
         await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+        await Host.Mail.WaitForAsync(email, 1);
 
         await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
-        var mails = Host.Mail.To(email);
+        var mails = await Host.Mail.WaitForAsync(email, 2);
         mails.Should().HaveCount(2);
         mails[1].Body.Should().Contain($"{ApiHost.WebOrigin}/forgot-password").And.NotContain("confirm-email");
         (await Host.Db(db => db.Users.CountAsync(u => u.NormalizedEmail == email.ToUpperInvariant()))).Should().Be(1);
@@ -48,7 +49,7 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var problem = await (await client.Post("/api/auth/register", new Credentials(email, "123456789"))).ExpectProblem(HttpStatusCode.BadRequest);
 
         problem.GetProperty("errors").Has("PasswordTooShort").Should().BeTrue();
-        Host.Mail.To(email).Should().BeEmpty();
+        (await Host.Mail.SettledAsync(email)).Should().BeEmpty();
         (await Host.Db(db => db.Users.CountAsync(u => u.NormalizedEmail == email.ToUpperInvariant()))).Should().Be(0);
     }
 
@@ -125,7 +126,7 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         await (await client.Post("/api/auth/forgotPassword", new { email = client.Email })).Expect(HttpStatusCode.OK);
 
-        var mails = Host.Mail.To(client.Email);
+        var mails = await Host.Mail.WaitForAsync(client.Email, 2);
         mails.Should().HaveCount(2);
         mails[1].Link().Should().StartWith($"{ApiHost.WebOrigin}/reset-password?email=");
         var query = QueryHelpers.ParseQuery(new Uri(mails[1].Link()).Query);
@@ -144,6 +145,6 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         await (await Host.NewClient().Post("/api/auth/forgotPassword", new { email })).Expect(HttpStatusCode.OK);
 
-        Host.Mail.To(email).Should().BeEmpty();
+        (await Host.Mail.SettledAsync(email)).Should().BeEmpty();
     }
 }

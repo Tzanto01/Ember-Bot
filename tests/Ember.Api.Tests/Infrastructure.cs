@@ -6,7 +6,9 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using DotNet.Testcontainers.Configurations;
 using Ember.Api.Email;
+using Ember.Api.TestHost;
 using Ember.Core.Data;
+using Ember.Core.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -103,6 +105,22 @@ public sealed class CapturingEmailTransport : IEmailTransport
 
     public List<SentMail> To(string email)
         => _sent.Where(m => string.Equals(m.To, email, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    /// <summary>Waits up to 5 seconds until at least <paramref name="count"/> mails to <paramref name="email"/> arrived (the API sends in the background).</summary>
+    public async Task<List<SentMail>> WaitForAsync(string email, int count)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (To(email).Count < count && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        return To(email);
+    }
+
+    /// <summary>The mails to <paramref name="email"/> after a short settle, for asserting that none were sent.</summary>
+    public async Task<List<SentMail>> SettledAsync(string email)
+    {
+        await Task.Delay(300);
+        return To(email);
+    }
 }
 
 /// <summary>The real API against a fresh migrated database, a capturing mail transport and a fixed clock.</summary>
@@ -138,6 +156,7 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(_settings));
         builder.ConfigureServices(services =>
         {
+            services.AddEmberTestFakes();
             services.RemoveAll<IEmailTransport>();
             services.AddSingleton<IEmailTransport>(Mail);
             services.RemoveAll<TimeProvider>();
@@ -156,7 +175,7 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         client.Email = NewEmail();
         await (await client.Post("/api/auth/register", new Credentials(client.Email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
-        var query = QueryHelpers.ParseQuery(new Uri(Mail.To(client.Email).Single().Link()).Query);
+        var query = QueryHelpers.ParseQuery(new Uri((await Mail.WaitForAsync(client.Email, 1)).Single().Link()).Query);
         var userId = Uri.EscapeDataString(query["userId"].ToString());
         var code = Uri.EscapeDataString(query["code"].ToString());
         await (await client.Get($"/api/auth/confirmEmail?userId={userId}&code={code}")).Expect(HttpStatusCode.OK);
@@ -177,6 +196,53 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         return await query(scope.ServiceProvider.GetRequiredService<EmberDbContext>());
     }
+
+    /// <summary>Runs <paramref name="action"/> against Core's <see cref="HabitService"/> (what the bot uses), in its own scope.</summary>
+    public async Task<T> Service<T>(Func<HabitService, Task<T>> action)
+    {
+        using var scope = Services.CreateScope();
+        return await action(scope.ServiceProvider.GetRequiredService<HabitService>());
+    }
+
+    public Task Run(Func<HabitService, Task> action) => Service(async service =>
+    {
+        await action(service);
+        return 0;
+    });
+
+    public static ulong NewDiscordId() => (ulong)Random.Shared.NextInt64(100_000_000_000_000_000, 900_000_000_000_000_000);
+
+    /// <summary>
+    /// Drives a Discord flow through the fake: the challenge at <paramref name="startUrl"/>, the callback (with the state from
+    /// the challenge) and the API's own follow-up redirects. Returns the final relative redirect target.
+    /// </summary>
+    /// <param name="discordId">The Discord user the fake authorizes; null leaves the user-info call failing.</param>
+    /// <param name="deny">Ends the authorization as if the user cancelled on Discord.</param>
+    /// <param name="beforeComplete">Runs after the callback and before the API's <c>.../complete</c> step.</param>
+    public async Task<string> DiscordAsync(ApiClient client, string startUrl, ulong? discordId = null, bool deny = false,
+        Func<Task>? beforeComplete = null)
+    {
+        if (discordId is { } id) Services.GetRequiredService<FakeDiscord>().SetNext(id);
+
+        var challenge = await client.Get(startUrl);
+        challenge.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var authorize = challenge.Headers.Location!.OriginalString;
+        var state = Uri.EscapeDataString(QueryHelpers.ParseQuery(authorize[(authorize.IndexOf('?') + 1)..])["state"].ToString());
+
+        var callback = await client.Get($"/api/auth/discord/callback?{(deny ? "error=access_denied" : "code=fake")}&state={state}");
+        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var next = callback.Headers.Location!.OriginalString;
+
+        if (beforeComplete is not null) await beforeComplete();
+        while (next.StartsWith("/api/auth/discord/", StringComparison.Ordinal))
+        {
+            var step = await client.Get(next);
+            step.StatusCode.Should().Be(HttpStatusCode.Redirect);
+            next = step.Headers.Location!.OriginalString;
+        }
+
+        return next;
+    }
 }
 
 /// <summary>An HTTP client with its own cookie jar at <c>https://localhost</c>, no redirects, and the antiforgery token in <see cref="Csrf"/>.</summary>
@@ -196,6 +262,11 @@ public sealed class ApiClient
     public string? Csrf { get; set; }
 
     internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar));
+
+    /// <summary>The value of a cookie the client would send to <paramref name="path"/>, or null.</summary>
+    public string? CookieValue(string name, string path = "/") => _jar.GetCookies(new Uri(Origin, path))[name]?.Value;
+
+    public void AddCookie(string name, string value, string path) => _jar.Add(Origin, new Cookie(name, value, path));
 
     private string? XsrfCookie => _jar.GetCookies(Origin)["XSRF-TOKEN"] is { } cookie ? Uri.UnescapeDataString(cookie.Value) : null;
 
