@@ -205,6 +205,9 @@ button.day { cursor: pointer; }
 .col { display: flex; flex-direction: column; gap: calc(var(--u) * 4); }
 .narrow { max-width: 40rem; }
 
+@container (min-width: 380px) {
+  .main { padding-inline: 16px; }
+}
 @container (min-width: 768px) {
   .main { padding: calc(var(--u) * 8) 24px calc(var(--u) * 6); gap: calc(var(--u) * 6); }
   .frame h1 { font-size: 36px; }

@@ -190,7 +190,7 @@ function calendar() {
 const legend = `<ul class="legend" aria-label="Legend">${[['done', 'Done'], ['notdone', 'Not checked in'], ['pending', 'Still open'], ['lowday', 'Low day'], ['paused', 'Paused'], ['beforestart', 'Before the habit started']]
   .map(([s, t]) => `<li>${dayCell(s, s === 'beforestart' ? 5 : null, { extra: 'sw' })}<span>${t}</span></li>`).join('')}</ul>`;
 const dayPanel = `<section class="card panel"><h3>Friday, 30 October</h3><p class="muted">Still open</p><div class="btn-row"><button class="btn primary">Done</button><button class="btn secondary">Not done</button><button class="btn secondary">Clear</button></div><button class="btn ghost">${icon('moon')}Mark as a low day</button><p class="muted small">Low days apply to all your habits.</p><button class="btn ghost">Close</button></section>`;
-const stats = `<div class="stats"><div class="stat"><span class="stat-l">Current streak</span><span class="stat-v">4-day streak</span></div><div class="stat"><span class="stat-l">Best</span><span class="stat-v">7 days</span></div><div class="stat"><span class="stat-l">In October</span><span class="stat-v">15 done · 3 low days</span></div></div>`;
+const stats = `<div class="stats"><div class="stat"><span class="stat-l">Current streak</span><span class="stat-v">4 days</span></div><div class="stat"><span class="stat-l">Best</span><span class="stat-v">7 days</span></div><div class="stat"><span class="stat-l">In October</span><span class="stat-v">15 done · 3 low days</span></div></div>`;
 
 function history({ desktop }) {
   const head = `<div class="page-head"><div><h1>History</h1><p class="lede">Any day can be filled in later. Tap a day to change it.</p></div></div>`;
@@ -231,7 +231,7 @@ function login({ desktop }) {
 }
 
 const SCREENS = [
-  ['today', 'Today, with the check-in moment', today, 'Drink water shows the check-in moment at its peak. In this file you can tap the check button on Stretch to play the theme’s reward (it stays off when your system asks for reduced motion).'],
+  ['today', 'Today, with the check-in moment', today, 'Drink water is frozen mid-reward to show the check-in moment (a fill reward is shown part-way). In this file you can tap the check button on Stretch to play the theme’s reward (it stays off when your system asks for reduced motion).'],
   ['history', 'History, all six day states', history, 'October with done runs (joined by the run connector), not checked in (8, 15, 23), low days (11, 18, 25), paused (19–21), still open (30, 31; 31 is today) and before the start (1–5). The day panel is open for 30 October.'],
   ['edit', 'Habit edit', habitEdit, 'Details, reminder channels, pause and the farewell card for deleting.'],
   ['login', 'Login, with a field problem', login, 'The honey notice tone (never red) for a wrong password; the desktop split adds the brand panel.'],

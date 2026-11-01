@@ -9,6 +9,7 @@ Four drop-in themes for the React web app, plus the shared layout they all use. 
 | `../web/src/themes/{hearthlight,fieldnotes,tidepool,marigold}.css` | One theme per direction, every token from `docs/contracts/design-tokens-v1.md` |
 | `contrast.mjs` | Checks every theme in `web/src/themes/` (Hearth too): required tokens, every contrast pair in light and dark, reward keyword, no red or pink |
 | `storyboard/index.html` | Self-contained storyboard, generated from the theme files by `storyboard/build.mjs` |
+| `storyboard/app.css` | Storyboard-only CSS that illustrates `layout.md`; not the reference for behaviour (for example, when the reward plays is defined in `layout.md` section 7) |
 | `storyboard/shots/*.png` | Headless exports, one per direction and screen (360 px and desktop, light and dark) |
 
 ## Directions

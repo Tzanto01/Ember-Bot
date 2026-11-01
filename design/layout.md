@@ -57,7 +57,7 @@ Page titles stay as in `app.routes.ts` ("Today · Ember", …).
 
 | Name | Width | Behaviour |
 | --- | --- | --- |
-| base | 360 px and up | One column. Shell inline padding 16 px (12 px below 380 px). Bottom tab bar. |
+| base | 360 px and up | One column. Shell inline padding 16 px (12 px below 380 px, 8 px below 360 px). Bottom tab bar. |
 | `md` | 48rem (768 px) | Top navigation in the header, no tab bar. Inline padding 24 px. |
 | `lg` | 64rem (1024 px) | Two-column screens (Today, History, Settings, auth split). Content max 72rem. |
 
@@ -196,7 +196,7 @@ Data: `GET /api/habits`, `GET /api/habits/{id}/days?from&to` (the shown month), 
 - `h1` "History", lede "Any day can be filled in later. Tap a day to change it."
 - **Habit picker** (more than one habit): Label "Habit" + Select (native `<select id="habit-picker">` or shadcn Select with the same label). Changing it replaces the URL with `/history/{id}` without a navigation. One habit: its name as a muted paragraph.
 - **At a glance (new):** three compact stat tiles in one row (Card, `--secondary` background, 3-column grid even on 360 px, 14 px label over a 16 px value). Content leads with what is there, never with gaps:
-  - Daily habit: "Current streak" → "{n}-day streak" (when 0: "Fresh start"); "Best" → "{bestStreak} days" (hidden when null or 0, the grid becomes two tiles); "In {Month}" → "{d} done" plus "· {l} low days" when l > 0 (`d` counts `done` days of the shown month).
+  - Daily habit: "Current streak" → "{n} days" (when 0: "Fresh start"); "Best" → "{bestStreak} days" (hidden when null or 0, the grid becomes two tiles); "In {Month}" → "{d} done" plus "· {l} low days" when l > 0 (`d` counts `done` days of the shown month).
   - Weekly habit: "This week" → "{done} of {target}" (done > 0) or "{target} a week"; "Last 7 days" → "{last7} done" (hidden when 0); "In {Month}" as above.
   - Labels and values are **new** strings. No count of `notdone` days anywhere.
 - **Calendar Card** (`section aria-labelledby="month-heading"`):
