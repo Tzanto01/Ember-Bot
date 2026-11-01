@@ -43,4 +43,5 @@ public class User : IdentityUser<Guid>
     public ICollection<IdentityUserLogin<Guid>> Logins { get; set; } = new List<IdentityUserLogin<Guid>>();
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
+    public ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
 }

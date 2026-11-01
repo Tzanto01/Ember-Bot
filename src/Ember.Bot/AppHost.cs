@@ -78,6 +78,12 @@ public static class AppHost
                 });
                 services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
                 services.AddSingleton<IReminderChannel, DiscordDmReminderChannel>();
+                services.AddHttpClient(WebPushReminderChannel.HttpClientName);
+                if (WebPushReminderChannel.IsConfigured(context.Configuration))
+                {
+                    services.AddSingleton(WebPushReminderChannel.CreateVapidAuthentication(context.Configuration));
+                    services.AddSingleton<IReminderChannel, WebPushReminderChannel>();
+                }
 
                 if (options.IncludeDiscordGateway)
                 {
