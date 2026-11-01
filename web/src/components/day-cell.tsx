@@ -21,7 +21,7 @@ export interface DayCellProps {
   onSelect?: () => void;
   /** The day panel is open for this day (buttons only). */
   expanded?: boolean;
-  /** Draws the run connector to the right-hand neighbour; pass true when this and that day are both `done`. */
+  /** Draws the run connector to the right-hand neighbour; pass `joinsRun(state, next)`. */
   runToNext?: boolean;
   className?: string;
 }
@@ -82,7 +82,6 @@ export function DayCell({
     sizeClass[size],
     stateClass[dataState],
     runToNext &&
-      state === 'done' &&
       'after:pointer-events-none after:absolute after:top-1/2 after:left-full after:h-[4px] after:w-[var(--day-gap,4px)] after:-translate-y-1/2 after:bg-done',
     className,
   );
