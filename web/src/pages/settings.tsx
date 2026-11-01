@@ -5,6 +5,7 @@ import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
+import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -102,7 +103,7 @@ function SettingsCard({
 }
 
 /**
- * `/settings`: timezone, grace days, leaderboards, Discord, reminders, push on this device, export, sign out and
+ * `/settings`: timezone, grace days, leaderboards, Discord, reminders, push on this device, appearance, export, sign out and
  * account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
  */
 export default function SettingsPage() {
@@ -376,6 +377,7 @@ export default function SettingsPage() {
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
+    { id: 'appearance', title: 'Appearance' },
     { id: 'export', title: 'Your data' },
     { id: 'account', title: 'Account' },
     { id: 'delete', title: 'Delete your account' },
@@ -645,6 +647,11 @@ export default function SettingsPage() {
                 )}
               </SettingsCard>
             )}
+
+            <SettingsCard id="appearance" title={title('appearance')}>
+              <p id="appearance-hint">Choose how Ember looks on this device.</p>
+              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" />
+            </SettingsCard>
 
             <SettingsCard id="export" title={title('export')}>
               <p>

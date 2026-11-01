@@ -80,4 +80,9 @@ describe('joinsRun', () => {
     expect(joinsRun('done', 'pending')).toBe(false);
     expect(joinsRun('done', undefined)).toBe(false);
   });
+
+  it('draws the connector out of a low day too', () => {
+    const { container } = render(<DayCell state="lowday" size="swatch" runToNext />);
+    expect(container.firstElementChild?.className).toContain('after:bg-done');
+  });
 });
