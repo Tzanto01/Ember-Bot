@@ -15,7 +15,10 @@ public static class TestHostProgram
     {
         var webRoot = Array.IndexOf(args, "--webroot");
         if (webRoot >= 0 && webRoot + 1 < args.Length)
-            args = [.. args[..webRoot], $"--Ember:WebRoot={Path.GetFullPath(args[webRoot + 1])}", .. args[(webRoot + 2)..]];
+            args = [.. args[..webRoot], $"--webroot={args[webRoot + 1]}", .. args[(webRoot + 2)..]];
+        args = args.Select(a => a.StartsWith("--webroot=", StringComparison.Ordinal)
+            ? $"--Ember:WebRoot={Path.GetFullPath(a["--webroot=".Length..])}"
+            : a).ToArray();
 
         var startup = new ConfigurationBuilder().AddEnvironmentVariables().AddCommandLine(args).Build();
         var url = (startup["urls"] ?? startup["ASPNETCORE_URLS"] ?? "http://localhost:5000")
