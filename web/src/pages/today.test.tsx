@@ -105,8 +105,6 @@ describe('TodayPage', () => {
     const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
 
     act(() => deviceSync.synced.update((n) => n + 1));
-    await new Promise((r) => setTimeout(r, 50));
-    console.log('PENDING', f.pending.map((c) => c.method + ' ' + c.url), f.all.length);
     await answerLoad(f, [doneHabit], { stats: { ...weekly, headline: 'Synced week.' } });
     expect(await screen.findByText('Synced week.')).toBeInTheDocument();
 
