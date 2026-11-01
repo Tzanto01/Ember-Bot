@@ -1,0 +1,36 @@
+html { background: #e9e9ec; color: #1d1d22; }
+body { margin: 0; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.sb-head { padding: 32px 40px 8px; max-width: 1400px; }
+.sb-head h1 { font-size: 30px; margin: 0 0 8px; }
+.sb-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.sb-nav a { padding: 6px 14px; border-radius: 999px; background: #fff; color: #1d1d22; text-decoration: none; border: 1px solid #c9c9d0; }
+.compare { border-collapse: collapse; background: #fff; margin: 8px 0; font-size: 14px; }
+.compare th, .compare td { border: 1px solid #d5d5dc; padding: 6px 10px; text-align: left; vertical-align: top; }
+.compare thead th { background: #f4f4f6; }
+.sb-small { font-size: 13px; color: #55555e; }
+.direction { padding: 24px 40px 48px; border-top: 6px solid #c9c9d0; }
+.ann { background: #fff; border-radius: 12px; padding: 20px 24px; max-width: 1360px; margin-bottom: 24px; }
+.ann-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ann-head h2 { margin: 0; font-size: 26px; }
+.tag { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; background: #ececf0; padding: 2px 8px; border-radius: 4px; }
+.ann dl { display: grid; grid-template-columns: 180px 1fr; gap: 6px 16px; margin: 16px 0 0; }
+.ann dt { font-weight: 600; color: #44444c; }
+.ann dd { margin: 0; }
+.type-sample .ts-d { font-family: var(--ember-font-display); font-weight: var(--ember-heading-weight); letter-spacing: var(--ember-heading-tracking); font-size: 22px; }
+.type-sample .ts-b { font-family: var(--ember-font-sans); font-size: 15px; }
+.swatches { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.sw-mode { width: 40px; font-size: 12px; color: #55555e; }
+.swatch { width: 74px; height: 44px; border-radius: 6px; border: 1px solid rgb(0 0 0 / .12); position: relative; }
+.swatch span { position: absolute; left: 0; right: 0; bottom: -17px; font-size: 10px; text-align: center; color: #55555e; }
+.swatches + .swatches { margin-top: 22px; }
+.screen { margin: 28px 0 0; }
+.screen h3 { margin: 0; font-size: 18px; }
+.note { margin: 2px 0 10px; color: #55555e; max-width: 900px; }
+.frames { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.shot { margin: 0; }
+.shot figcaption { font-size: 12px; color: #55555e; margin-bottom: 4px; }
+.frame { overflow: hidden; border-radius: 10px; box-shadow: 0 2px 10px rgb(0 0 0 / .12); }
+.phone .frame { width: 360px; }
+.desk .frame { width: 1280px; zoom: 0.5; }
+.shots .desk .frame { zoom: 1; }
+.shots .frames { flex-wrap: nowrap; }
