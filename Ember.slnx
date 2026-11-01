@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Ember.Api/Ember.Api.csproj" />
     <Project Path="src/Ember.Bot/Ember.Bot.csproj" />
     <Project Path="src/Ember.Core/Ember.Core.csproj" />
   </Folder>
