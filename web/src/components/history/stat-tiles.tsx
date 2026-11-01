@@ -7,7 +7,7 @@ export interface StatTilesProps {
   /** Month name of the shown month, for example "October". */
   monthName: string;
   /** `done` days in the shown month. */
-  /** Null while the month's days aren't loaded (the tile is left out). */
+  /** Null while the month's days aren't loaded; the tile is left out then and at 0. */
   doneInMonth: number | null;
   /** Low days in the shown month. */
   lowDaysInMonth: number;
@@ -31,7 +31,7 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth }: Sta
     tiles.push({ label: 'Current streak', value: streak ? plural(streak, 'day') : 'Fresh start' });
     if (bestStreak) tiles.push({ label: 'Best', value: plural(bestStreak, 'day') });
   }
-  if (doneInMonth !== null) {
+  if (doneInMonth) {
     tiles.push({
       label: `In ${monthName}`,
       value: `${doneInMonth} done${lowDaysInMonth > 0 ? ` · ${plural(lowDaysInMonth, 'low day')}` : ''}`,
@@ -43,7 +43,7 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth }: Sta
       {tiles.map((tile) => (
         <div key={tile.label} className={cn(cardVariants({ variant: 'stat' }), 'min-w-0')}>
           <dt className="text-[14px]">{tile.label}</dt>
-          <dd className="m-0 font-semibold break-words">{tile.value}</dd>
+          <dd className="m-0 mt-auto font-semibold break-words">{tile.value}</dd>
         </div>
       ))}
     </dl>

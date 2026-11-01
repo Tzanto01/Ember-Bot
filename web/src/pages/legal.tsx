@@ -16,7 +16,7 @@ const documents: Record<LegalDoc, { file: string; title: string }> = {
 };
 
 const prose = [
-  'flex max-w-[38rem] flex-col gap-4 [overflow-wrap:anywhere]',
+  'flex max-w-[38rem] flex-col gap-4 [overflow-wrap:anywhere] hyphens-auto',
   '[&_h2]:mt-4 [&_h2]:text-[22px] [&_h3]:text-[18px]',
   '[&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li+li]:mt-1',
   '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4',

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
+import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
 import {
   ChannelsSection,
@@ -28,9 +29,9 @@ function Summary({ habit }: { habit: Habit }) {
           {week.done} of {week.target} this week
         </p>
       )}
-      <Link to={`/history/${habit.id}`} className="inline-flex min-h-[44px] items-center">
+      <TapLink to={`/history/${habit.id}`} className="self-start">
         See its history
-      </Link>
+      </TapLink>
     </Card>
   );
 }

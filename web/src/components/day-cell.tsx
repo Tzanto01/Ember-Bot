@@ -82,7 +82,7 @@ export function DayCell({
   );
   const content = size !== 'pip' && (
     <>
-      {date && large && (
+      {date && (large || (size === 'swatch' && state === 'beforestart')) && (
         <span aria-hidden="true" className={cn(isToday && 'underline decoration-2 underline-offset-[3px]')}>
           {Number(date.slice(8))}
         </span>
