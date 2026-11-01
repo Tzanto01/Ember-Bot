@@ -82,7 +82,7 @@ function waitText(seconds: number | null): string {
 
 /**
  * Maps a failed call to gentle copy. Pure: no navigation, no state.
- * Login 401 (`Failed`, `NotAllowed`, `LockedOut`) and confirm-email 401 are form errors here.
+ * Login 401 (`Failed`, `NotAllowed`) and confirm-email 401 are form errors here.
  */
 export function problemToMessage(error: ApiError, context: ProblemContext = 'general'): FriendlyProblem {
   const result: FriendlyProblem = { message: '', fields: {}, offerResend: false };
@@ -118,14 +118,14 @@ export function problemToMessage(error: ApiError, context: ProblemContext = 'gen
         if (detail === 'NotAllowed') {
           result.message = "Your email isn't confirmed yet. Check your inbox, or we can send the link again.";
           result.offerResend = true;
-        } else if (detail === 'LockedOut') {
-          result.message = 'That was a few tries in a row, so sign-in is resting for 15 minutes. Then try again.';
         } else {
           result.message = "That email and password don't match. Try again, or reset your password.";
         }
-      } else if (context === 'confirm-email' || context === 'reset-password') {
+      } else if (context === 'confirm-email') {
+        result.message = "That link or password didn't work. Check the password you chose when you signed up, or reset it.";
+        result.offerResend = true;
+      } else if (context === 'reset-password') {
         result.message = expiredLink;
-        result.offerResend = context === 'confirm-email';
       } else {
         result.message = 'Your session ended. Please sign in again.';
       }
