@@ -1,5 +1,6 @@
 /* Marigold: a cheerful sticker sheet. Butter paper, ink outlines with a hard offset shadow, chunky grotesque headings; check-ins land like a stamp. */
-:root {
+:root[data-theme="marigold"],
+[data-theme="marigold"] {
   --background: oklch(0.972 0.032 95);
   --foreground: oklch(0.22 0.02 70);
   --card: oklch(0.995 0.012 95);
@@ -54,7 +55,8 @@
   --ember-reward: fill;
 }
 
-:root.dark {
+:root[data-theme="marigold"].dark,
+.dark [data-theme="marigold"] {
   --background: oklch(0.19 0.016 70);
   --foreground: oklch(0.95 0.04 95);
   --card: oklch(0.24 0.02 70);

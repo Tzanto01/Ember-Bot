@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
 import { handleNotificationClick, handlePush } from './sw-handlers';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -11,6 +12,11 @@ registerRoute(
   new NavigationRoute(createHandlerBoundToURL('/index.html'), {
     denylist: [/^\/api(\/|$)/, /^\/health(\/|$)/, /^\/test(\/|$)/, /\/[^/?]+\.[^/?]+$/, /__/],
   }),
+);
+
+registerRoute(
+  ({ request }) => request.destination === 'font',
+  new CacheFirst({ cacheName: 'ember-fonts' }),
 );
 
 self.addEventListener('push', (event) => {

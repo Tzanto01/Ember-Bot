@@ -68,18 +68,21 @@ export const PAIRS = [
 const MIN = { text: 4.5, ui: 3 };
 
 function block(css, selector) {
-  const re = new RegExp(`(^|[}\\s])${selector.replace(/[.]/g, '\\.')}\\s*\\{([^}]*)\\}`, 'm');
-  const match = css.replace(/\/\*[\s\S]*?\*\//g, '').match(re);
   const vars = {};
-  if (!match) return vars;
-  for (const decl of match[2].matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) vars[decl[1]] = decl[2].trim().replace(/\s+/g, ' ');
+  for (const rule of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (!rule[1].split(',').some((s) => selector.test(s.trim()))) continue;
+    for (const decl of rule[2].matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) vars[decl[1]] = decl[2].trim().replace(/\s+/g, ' ');
+  }
   return vars;
 }
 
-/** Parses a theme file into `{ light, dark }` token maps; dark inherits unset tokens from light. */
+/**
+ * Parses a theme file into `{ light, dark }` token maps from its `:root[data-theme="<id>"]` and
+ * `:root[data-theme="<id>"].dark` rules; dark inherits unset tokens from light.
+ */
 export function parseTheme(css) {
-  const light = block(css, ':root');
-  const dark = { ...light, ...block(css, ':root.dark') };
+  const light = block(css, /^:root\[data-theme="[\w-]+"\]$/);
+  const dark = { ...light, ...block(css, /^:root\[data-theme="[\w-]+"\]\.dark$/) };
   return { light, dark };
 }
 

@@ -32,5 +32,11 @@ test('Today, History and Settings load without CSP violations', async ({ page })
   await page.goto('/settings');
   await expect(page.getByRole('button', { name: 'Delete my account' })).toBeVisible();
 
+  await page.getByRole('radio', { name: 'Marigold' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'marigold');
+  await page.reload();
+  await expect(page.getByRole('radio', { name: 'Marigold' })).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'marigold');
+
   expect(violations).toEqual([]);
 });
