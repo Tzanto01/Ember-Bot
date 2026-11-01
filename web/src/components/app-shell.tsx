@@ -25,13 +25,15 @@ export function AppShell() {
   const pending = useStore(offlineQueue.pending);
   const dropped = useStore(deviceSync.dropped);
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const busy = useRef(false);
 
   async function signOut() {
     if (busy.current) return;
     busy.current = true;
     setSigningOut(true);
-    await auth.logout();
+    setSignOutFailed(false);
+    setSignOutFailed(!(await auth.logout()));
     busy.current = false;
     setSigningOut(false);
   }
@@ -84,6 +86,11 @@ export function AppShell() {
         tabIndex={-1}
         className={cn('mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
       >
+        {signOutFailed && (
+          <Notice tone="notice">
+            <p>Ember couldn't sign you out. Check your connection and try again.</p>
+          </Notice>
+        )}
         {pending > 0 && (
           <Notice tone="info">
             {`${pending === 1 ? 'One change is' : `${pending} changes are`} saved on this device and will sync when you're back online.`}

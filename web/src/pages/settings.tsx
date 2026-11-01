@@ -331,7 +331,9 @@ export default function SettingsPage() {
   async function signOut(): Promise<void> {
     if (busyRef.current) return;
     start('signout');
-    await auth.logout();
+    if (await auth.logout()) return;
+    finish();
+    show('signout', { tone: 'notice', text: "Ember couldn't sign you out. Check your connection and try again." });
   }
 
   async function deleteAccount(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -701,6 +703,7 @@ export default function SettingsPage() {
                   Sign out
                 </BusyButton>
               </div>
+              {outcome('signout')}
             </SettingsCard>
 
             <SettingsCard id="delete" title={title('delete')} farewell>
