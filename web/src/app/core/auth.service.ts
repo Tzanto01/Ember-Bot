@@ -122,11 +122,14 @@ export class AuthService {
    */
   async wipeDevice(): Promise<void> {
     const userId = this.meState()?.id;
-    if (userId) await this.queue.clear(userId);
     if (environment.native) {
-      await this.tokens.clear();
       await this.reminders.clearAll();
+      await this.tokens.clear();
     }
+    if (userId) await this.queue.clear(userId);
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('ember.channelsBeforePhone.'))
+      .forEach((key) => localStorage.removeItem(key));
   }
 
   /** True once per app session when the consent step should be offered (used by the signed-in guard). */

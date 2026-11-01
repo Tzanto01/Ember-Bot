@@ -21,6 +21,13 @@ export interface CachedHabits {
   habits: Habit[];
 }
 
+/** The habit with `edit` applied to its `today` entry when the edit is for that day (optimistic view). */
+export function withDayEdit(habit: Habit, edit: DayEdit): Habit {
+  if (habit.today.date !== edit.date) return habit;
+  const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
+  return { ...habit, today: { date: edit.date, state, completed: edit.completed } };
+}
+
 const dbName = 'ember-device';
 const edits = 'edits';
 const cache = 'cache';

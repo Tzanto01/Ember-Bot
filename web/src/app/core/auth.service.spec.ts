@@ -10,6 +10,7 @@ import { SwPush } from '@angular/service-worker';
 import { BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { Me } from './models';
+import { OfflineQueue } from './offline-queue';
 
 const me: Me = {
   id: 'u1',
@@ -42,6 +43,7 @@ describe('AuthService', () => {
     });
     httpMock = TestBed.inject(HttpTestingController);
     vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    vi.spyOn(TestBed.inject(OfflineQueue), 'clear').mockResolvedValue();
     return TestBed.inject(AuthService);
   }
 
@@ -135,6 +137,23 @@ describe('AuthService', () => {
       await done;
       httpMock.expectNone((r) => r.url.includes('push-subscriptions'));
       expect(auth.me()).toBeNull();
+    });
+
+    it("wipes the user's queued edits and remembered phone channels from the device", async () => {
+      const auth = setup(null);
+      localStorage.setItem('ember.channelsBeforePhone.7', '["discord"]');
+      localStorage.setItem('unrelated', 'kept');
+      auth.setMe(me);
+      const done = auth.logout();
+
+      (await next('POST', '/api/auth/logout')).flush(null);
+      (await next('GET', '/api/auth/antiforgery')).flush(null);
+      await done;
+
+      expect(TestBed.inject(OfflineQueue).clear).toHaveBeenCalledWith('u1');
+      expect(localStorage.getItem('ember.channelsBeforePhone.7')).toBeNull();
+      expect(localStorage.getItem('unrelated')).toBe('kept');
+      localStorage.removeItem('unrelated');
     });
 
     it('still signs out locally when the server call fails', async () => {

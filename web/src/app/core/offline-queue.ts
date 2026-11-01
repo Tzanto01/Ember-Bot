@@ -1,3 +1,4 @@
+import { HttpContextToken } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { DayEdit, DeviceStore, QueuedEdit } from './device-store';
 import { ApiError, asApiError } from './problem';
@@ -8,6 +9,9 @@ export interface ReplayResult {
   dropped: number;
   remaining: number;
 }
+
+/** Marks a replayed day edit, so it doesn't trigger a reminder rebuild of its own (the replay ends with one). */
+export const REPLAY = new HttpContextToken(() => false);
 
 /**
  * Contract "Offline day edits": a failed replay is dropped only on 404 or 422 `before_habit_start` /
@@ -27,12 +31,14 @@ export function shouldDrop(error: ApiError): boolean {
 @Injectable({ providedIn: 'root' })
 export class OfflineQueue {
   private readonly store = inject(DeviceStore);
-  private replaying: Promise<ReplayResult> | null = null;
+  private readonly replaying = new Map<string, Promise<ReplayResult>>();
 
   /** The signed-in user the queue belongs to, or null. */
   readonly userId = signal<string | null>(null);
   /** Edits waiting for the signed-in user. */
   readonly pending = signal(0);
+  /** Bumps whenever an edit is queued, so `DeviceSync` can try a replay and rebuild reminders. */
+  readonly added = signal(0);
 
   /** Queues an edit for the signed-in user; false when nobody is signed in or storage is unavailable. */
   async add(edit: DayEdit): Promise<boolean> {
@@ -41,6 +47,7 @@ export class OfflineQueue {
     try {
       await this.store.addEdit(userId, edit);
       await this.refreshCount(userId);
+      this.added.update((count) => count + 1);
       return true;
     } catch {
       return false;
@@ -52,8 +59,12 @@ export class OfflineQueue {
    * the first edit that must be kept stops the replay so the order holds. Concurrent calls share one run.
    */
   replay(userId: string, send: (edit: DayEdit) => Promise<unknown>): Promise<ReplayResult> {
-    this.replaying ??= this.run(userId, send).finally(() => (this.replaying = null));
-    return this.replaying;
+    let run = this.replaying.get(userId);
+    if (!run) {
+      run = this.run(userId, send).finally(() => this.replaying.delete(userId));
+      this.replaying.set(userId, run);
+    }
+    return run;
   }
 
   /** Forgets everything queued and cached for the user. */
