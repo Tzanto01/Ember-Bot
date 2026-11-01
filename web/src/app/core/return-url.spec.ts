@@ -5,7 +5,7 @@ describe('safeReturnUrl', () => {
     expect(safeReturnUrl(url)).toBe(url);
   });
 
-  it.each(['//evil.com', '/\\evil.com', 'https://evil.com', 'today', '', null, undefined])(
+  it.each(['//evil.com', '/\\evil.com', '/\t/evil.com', '/\n/evil.com', 'https://evil.com', 'today', '', null, undefined])(
     'falls back for %s',
     (url) => {
       expect(safeReturnUrl(url)).toBe('/today');

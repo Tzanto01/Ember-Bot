@@ -55,16 +55,21 @@ describe('errorInterceptor', () => {
 
   const antiforgeryBody = { type: 'antiforgery' };
 
-  it('refreshes the antiforgery token once and retries the POST, whose success reaches the caller', async () => {
+  it('refreshes the antiforgery token once and retries the POST with the new token, whose success reaches the caller', async () => {
+    document.cookie = 'XSRF-TOKEN=stale; path=/';
     const result = firstValueFrom(http.post<{ id: number }>('/api/habits', { name: 'Walk' }));
 
-    httpMock
-      .expectOne({ method: 'POST', url: '/api/habits' })
-      .flush(antiforgeryBody, { status: 403, statusText: 'Forbidden' });
+    const first = httpMock.expectOne({ method: 'POST', url: '/api/habits' });
+    expect(first.request.headers.get('X-XSRF-TOKEN')).toBe('stale');
+    first.flush(antiforgeryBody, { status: 403, statusText: 'Forbidden' });
+    document.cookie = 'XSRF-TOKEN=fresh; path=/';
     httpMock.expectOne({ method: 'GET', url: '/api/auth/antiforgery' }).flush(null);
-    httpMock.expectOne({ method: 'POST', url: '/api/habits' }).flush({ id: 7 });
+    const retry = httpMock.expectOne({ method: 'POST', url: '/api/habits' });
+    expect(retry.request.headers.get('X-XSRF-TOKEN')).toBe('fresh');
+    retry.flush({ id: 7 });
 
     await expect(result).resolves.toEqual({ id: 7 });
+    document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   });
 
   it('does not retry a second antiforgery failure and rejects with an ApiError', async () => {

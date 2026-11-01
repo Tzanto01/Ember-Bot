@@ -216,6 +216,7 @@ function rowFor(habit: Habit): TodayRow {
     }
     .edit {
       align-self: flex-start;
+      min-width: var(--tap);
       font-size: var(--text-sm);
     }
     .check {
@@ -286,6 +287,7 @@ export class TodayPage {
   protected async load(): Promise<void> {
     this.status.set('loading');
     this.loadProblem.set(null);
+    await this.auth.loadMe(true).catch(() => null);
     const today = this.today();
     const [habits, lowDays, weekly] = await Promise.allSettled([
       this.api.listHabits(),

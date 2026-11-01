@@ -49,7 +49,7 @@ const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', 
 const legend = [
   { state: 'done', text: 'Done' },
   { state: 'notdone', text: 'Not checked in' },
-  { state: 'pending', text: 'Today, open' },
+  { state: 'pending', text: 'Still open' },
   { state: 'lowday', text: 'Low day' },
   { state: 'paused', text: 'Paused' },
   { state: 'beforestart', text: 'Before the habit started' },
@@ -507,6 +507,7 @@ export class HistoryPage {
 
   protected async loadHabits(): Promise<void> {
     this.listProblem.set(null);
+    await this.auth.loadMe(true).catch(() => null);
     try {
       this.habits.set(await this.api.listHabits());
     } catch (error) {

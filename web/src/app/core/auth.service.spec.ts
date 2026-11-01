@@ -98,7 +98,8 @@ describe('AuthService', () => {
       const endpoint = 'https://push.example.test/abc?x=1&y=2';
       const auth = setup({
         isEnabled: true,
-        subscription: new BehaviorSubject({ endpoint, unsubscribe }),
+        subscription: new BehaviorSubject({ endpoint }),
+        unsubscribe,
       });
       auth.setMe(me);
       const done = auth.logout();

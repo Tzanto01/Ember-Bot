@@ -17,7 +17,7 @@ export interface CalendarDay {
 export const dayStateWords: Record<DayState, string> = {
   done: 'done',
   notdone: 'not checked in',
-  pending: 'today, not checked in yet',
+  pending: 'still open',
   lowday: 'low day, resting',
   paused: 'paused',
   beforestart: 'before this habit started',
@@ -27,7 +27,7 @@ export const dayStateWords: Record<DayState, string> = {
 export function dayLabel(day: CalendarDay): string {
   if (day.state === null) return 'not yet';
   const words = dayStateWords[day.state];
-  return day.isToday && day.state !== 'pending' ? `today, ${words}` : words;
+  return day.isToday ? `today, ${words}` : words;
 }
 
 /**

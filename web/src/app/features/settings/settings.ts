@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { concatMap } from 'rxjs';
 import {
   AbstractControl,
   FormControl,
@@ -369,13 +370,11 @@ function isStandalone(): boolean {
 
         <section id="account" class="card stack" aria-labelledby="account-heading">
           <h2 id="account-heading">Account</h2>
-          <nav aria-label="Legal">
-            <ul class="links">
+          <ul class="links" aria-label="Legal">
               <li><a class="tap-link" routerLink="/legal/privacy">Privacy</a></li>
               <li><a class="tap-link" routerLink="/legal/terms">Terms</a></li>
               <li><a class="tap-link" routerLink="/legal/imprint">Imprint</a></li>
-            </ul>
-          </nav>
+          </ul>
           <div class="row">
             <button
               class="btn btn-secondary"
@@ -469,8 +468,12 @@ function isStandalone(): boolean {
     </app-page>
   `,
   styles: `
+    :host {
+      display: block;
+      max-width: 44rem;
+    }
     section {
-      scroll-margin-top: var(--space-6);
+      scroll-margin-top: calc(var(--tap) + var(--space-10));
     }
     .links {
       display: flex;
@@ -560,11 +563,11 @@ export class SettingsPage {
     void this.push.check();
 
     this.grace.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((value) => void this.saveGrace(value));
+      .pipe(concatMap((value) => this.saveGrace(value)), takeUntilDestroyed())
+      .subscribe();
     this.leaderboard.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((value) => void this.saveLeaderboard(value));
+      .pipe(concatMap((value) => this.saveLeaderboard(value)), takeUntilDestroyed())
+      .subscribe();
 
     const outcome = this.route.snapshot.queryParamMap.get('discord');
     if (outcome && Object.hasOwn(discordOutcomes, outcome)) {
