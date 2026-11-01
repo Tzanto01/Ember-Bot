@@ -60,7 +60,8 @@ internal sealed class EmberSignInManager(
         return SignInResult.Success;
     }
 
-    private void VerifyDummy(string password)
+    /// <summary>Costs one password hash check against a throwaway hash, so a path without an account takes as long as one with.</summary>
+    internal void VerifyDummy(string password)
     {
         var hasher = UserManager.PasswordHasher;
         dummyHash ??= hasher.HashPassword(new User(), Guid.NewGuid().ToString());
