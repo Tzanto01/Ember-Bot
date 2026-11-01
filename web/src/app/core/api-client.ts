@@ -1,6 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
+import { DayEdit } from './device-store';
+import { OfflineQueue } from './offline-queue';
+import { asApiError } from './problem';
 import {
   Credentials,
   DayEntry,
@@ -27,6 +30,12 @@ export interface ExportFile {
 
 const seg = encodeURIComponent;
 
+function withDay(habit: Habit, edit: DayEdit): Habit {
+  if (habit.today.date !== edit.date) return habit;
+  const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
+  return { ...habit, today: { date: edit.date, state, completed: edit.completed } };
+}
+
 function range(from?: LocalDateString, to?: LocalDateString): HttpParams {
   let params = new HttpParams();
   if (from) params = params.set('from', from);
@@ -36,12 +45,20 @@ function range(from?: LocalDateString, to?: LocalDateString): HttpParams {
 
 /**
  * One method per endpoint of API contract v1. Every method returns a Promise and rejects with an
- * `ApiError` (see `problem.ts`); use `problemToMessage` for the copy. Stateless: session state lives
- * in `AuthService`.
+ * `ApiError` (see `problem.ts`); use `problemToMessage` for the copy. Session state lives in `AuthService`;
+ * the client only remembers the habits it last saw, so a day edit made offline can be queued (contract
+ * "Offline day edits") and answered optimistically.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiClient {
   private readonly http = inject(HttpClient);
+  private readonly offline = inject(OfflineQueue);
+  private readonly known = new Map<number, Habit>();
+
+  private remember(habit: Habit): Habit {
+    this.known.set(habit.id, habit);
+    return habit;
+  }
 
   private run<T>(request: Observable<T>): Promise<T> {
     return firstValueFrom(request);
@@ -156,12 +173,12 @@ export class ApiClient {
 
   /** `GET /api/habits`. */
   listHabits(): Promise<Habit[]> {
-    return this.run(this.http.get<Habit[]>('/api/habits'));
+    return this.run(this.http.get<Habit[]>('/api/habits')).then((habits) => habits.map((habit) => this.remember(habit)));
   }
 
   /** `GET /api/habits/{id}`. */
   getHabit(id: number): Promise<Habit> {
-    return this.run(this.http.get<Habit>(`/api/habits/${id}`));
+    return this.run(this.http.get<Habit>(`/api/habits/${id}`)).then((habit) => this.remember(habit));
   }
 
   /** `POST /api/habits`: 409 `habit_limit`, 403 `consent_required`. */
@@ -189,14 +206,34 @@ export class ApiClient {
     return this.run(this.http.get<DayEntry[]>(`/api/habits/${id}/days`, { params: range(from, to) }));
   }
 
-  /** `PUT /api/habits/{id}/days/{date}`: check-in or backfill. */
+  /** `PUT /api/habits/{id}/days/{date}`: check-in or backfill. Offline, the edit is queued and answered optimistically. */
   setDay(id: number, date: LocalDateString, completed: boolean): Promise<Habit> {
-    return this.run(this.http.put<Habit>(`/api/habits/${id}/days/${seg(date)}`, { completed }));
+    return this.dayEdit({ habitId: id, date, completed });
   }
 
-  /** `DELETE /api/habits/{id}/days/{date}`: clears the day. */
+  /** `DELETE /api/habits/{id}/days/{date}`: clears the day. Offline, the edit is queued and answered optimistically. */
   clearDay(id: number, date: LocalDateString): Promise<Habit> {
-    return this.run(this.http.delete<Habit>(`/api/habits/${id}/days/${seg(date)}`));
+    return this.dayEdit({ habitId: id, date, completed: null });
+  }
+
+  /** Sends one day edit (`completed` null clears) without the offline fallback; used to replay the queue. */
+  sendDayEdit(edit: DayEdit): Promise<Habit> {
+    const url = `/api/habits/${edit.habitId}/days/${seg(edit.date)}`;
+    const request =
+      edit.completed === null
+        ? this.http.delete<Habit>(url)
+        : this.http.put<Habit>(url, { completed: edit.completed });
+    return this.run(request).then((habit) => this.remember(habit));
+  }
+
+  private async dayEdit(edit: DayEdit): Promise<Habit> {
+    try {
+      return await this.sendDayEdit(edit);
+    } catch (error) {
+      const known = this.known.get(edit.habitId);
+      if (asApiError(error).status !== 0 || !known || !(await this.offline.add(edit))) throw error;
+      return this.remember(withDay(known, edit));
+    }
   }
 
   /** `GET /api/habit-templates`. */

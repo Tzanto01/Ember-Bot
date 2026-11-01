@@ -31,6 +31,8 @@ import { NoticeComponent, NoticeTone } from '../../shared/notice';
 import { PageComponent } from '../../shared/page';
 import { SpinnerComponent } from '../../shared/spinner';
 import { createHabitForm, HabitFieldsComponent, habitFormValue } from './habit-form';
+import { environment } from '../../../environments/environment';
+import { ReminderService } from '../../core/native/reminder.service';
 
 interface Feedback {
   tone: NoticeTone;
@@ -133,7 +135,24 @@ const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', 
                     />
                     Web push
                   </label>
+                  @if (native) {
+                    <label class="checkbox">
+                      <input
+                        #phoneBox
+                        type="checkbox"
+                        [checked]="channels.includes('mobile')"
+                        (change)="togglePhone(phoneBox)"
+                      />
+                      Remind me on this phone
+                    </label>
+                  }
                 </fieldset>
+                @if (channels.includes('mobile')) {
+                  <p class="muted small">
+                    Reminders for this habit come to your phone only, not Discord or web push, so
+                    you get each one once.
+                  </p>
+                }
                 @if (channels.length === 0) {
                   <p class="muted small">
                     No reminders will go out for this habit. That's fine too.
@@ -283,6 +302,8 @@ const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', 
 export class HabitEditPage {
   private readonly api = inject(ApiClient);
   private readonly auth = inject(AuthService);
+  private readonly reminders = inject(ReminderService);
+  protected readonly native = environment.native;
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
@@ -388,6 +409,42 @@ export class HabitEditPage {
       }
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /**
+   * Native build: "Remind me on this phone" sets the channels to `mobile` only (contract v1.3; provisional
+   * product default). Turning it off restores the channels the habit had before, remembered on this device,
+   * else Discord when linked, else web push.
+   */
+  protected async togglePhone(box: HTMLInputElement): Promise<void> {
+    const habit = this.habit();
+    if (!habit?.reminderChannels || this.channelsBusy()) {
+      box.checked = !box.checked;
+      return;
+    }
+    const key = `ember.channelsBeforePhone.${habit.id}`;
+    const previous = JSON.parse(localStorage.getItem(key) ?? 'null') as ReminderChannel[] | null;
+    const fallback: ReminderChannel[] = this.auth.me()?.discord.linked ? ['discord'] : ['webpush'];
+    const next: ReminderChannel[] = box.checked ? ['mobile'] : (previous ?? fallback);
+    this.channelsBusy.set(true);
+    this.channelFeedback.set(null);
+    try {
+      const allowed = box.checked ? await this.reminders.requestPermission().catch(() => false) : true;
+      this.habit.set(await this.api.updateHabit(habit.id, { reminderChannels: next }));
+      if (box.checked) localStorage.setItem(key, JSON.stringify(habit.reminderChannels.filter((c) => c !== 'mobile')));
+      else localStorage.removeItem(key);
+      this.channelFeedback.set(
+        allowed
+          ? { tone: 'success', text: box.checked ? 'This phone will remind you.' : 'Reminder channels saved.' }
+          : { tone: 'notice', text: 'Notifications are off for Ember on this phone. Turn them on in your phone settings so reminders can arrive.' },
+      );
+    } catch (error) {
+      box.checked = !box.checked;
+      const apiError = asApiError(error);
+      if (!apiError.handled) this.channelFeedback.set({ tone: 'notice', text: problemToMessage(apiError).message });
+    } finally {
+      this.channelsBusy.set(false);
     }
   }
 

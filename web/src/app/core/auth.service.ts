@@ -2,7 +2,11 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SwPush } from '@angular/service-worker';
 import { catchError, firstValueFrom, of, timeout } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { ApiClient } from './api-client';
+import { ReminderService } from './native/reminder.service';
+import { TokenStore } from './native/token-store';
+import { OfflineQueue } from './offline-queue';
 import { Me } from './models';
 import { asApiError } from './problem';
 
@@ -15,6 +19,9 @@ export class AuthService {
   private readonly api = inject(ApiClient);
   private readonly router = inject(Router);
   private readonly swPush = inject(SwPush, { optional: true });
+  private readonly tokens = inject(TokenStore);
+  private readonly queue = inject(OfflineQueue);
+  private readonly reminders = inject(ReminderService);
 
   private readonly meState = signal<Me | null>(null);
   private loaded = false;
@@ -33,8 +40,9 @@ export class AuthService {
     return !!consent && (!consent.given || consent.policyVersion !== consent.currentPolicyVersion);
   });
 
-  /** `GET /api/auth/antiforgery`. Never throws: a failure only means the next unsafe call retries once. */
+  /** `GET /api/auth/antiforgery` (web build only; the native app uses bearer tokens). Never throws. */
   async refreshAntiforgery(): Promise<void> {
+    if (environment.native) return;
     try {
       await this.api.antiforgery();
     } catch {
@@ -81,7 +89,8 @@ export class AuthService {
 
   /** Signs in with email and password, refreshes antiforgery and loads `me`. Rejects with `ApiError`. */
   async login(email: string, password: string, staySignedIn: boolean): Promise<Me | null> {
-    await this.api.login({ email, password }, staySignedIn);
+    if (environment.native) await this.tokens.signIn(email, password, staySignedIn);
+    else await this.api.login({ email, password }, staySignedIn);
     await this.refreshAntiforgery();
     this.consentPrompted = true;
     return this.loadMe(true);
@@ -92,16 +101,32 @@ export class AuthService {
    * refreshes antiforgery and goes to `/login`. Never throws.
    */
   async logout(): Promise<void> {
-    await this.dropPushSubscription();
-    try {
-      await this.api.logout();
-    } catch {
-      /* ignored */
+    if (!environment.native) {
+      await this.dropPushSubscription();
+      try {
+        await this.api.logout();
+      } catch {
+        /* ignored */
+      }
     }
+    await this.wipeDevice();
     this.clearSession();
     this.consentPrompted = false;
     await this.refreshAntiforgery();
     await this.router.navigateByUrl('/login');
+  }
+
+  /**
+   * Forgets this device's state for the signed-in user: queued offline edits and the habit cache, and in the
+   * native build the tokens and every scheduled reminder. Call before `clearSession()`. Never throws.
+   */
+  async wipeDevice(): Promise<void> {
+    const userId = this.meState()?.id;
+    if (userId) await this.queue.clear(userId);
+    if (environment.native) {
+      await this.tokens.clear();
+      await this.reminders.clearAll();
+    }
   }
 
   /** True once per app session when the consent step should be offered (used by the signed-in guard). */
