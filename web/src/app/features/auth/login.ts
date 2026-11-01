@@ -20,6 +20,8 @@ import {
 import { NoticeComponent } from '../../shared/notice';
 import { PageComponent } from '../../shared/page';
 import { SpinnerComponent } from '../../shared/spinner';
+import { environment } from '../../../environments/environment';
+import { openOnWeb } from '../../core/native/browser';
 
 @Component({
   selector: 'app-login-page',
@@ -116,8 +118,18 @@ import { SpinnerComponent } from '../../shared/spinner';
         </button>
       </form>
 
-      <p class="divider">or</p>
-      <a class="btn btn-secondary btn-block" [href]="discordUrl">Sign in with Discord</a>
+      @if (native) {
+        <p class="muted">
+          Started with the Ember bot on Discord? Discord sign-in works on the web. Create an email
+          login there, then link Discord in Settings: your habits come along.
+        </p>
+        <button class="btn btn-secondary btn-block" type="button" (click)="openWebSignup()">
+          Open Ember on the web
+        </button>
+      } @else {
+        <p class="divider">or</p>
+        <a class="btn btn-secondary btn-block" [href]="discordUrl">Sign in with Discord</a>
+      }
       <p class="text-center muted">
         New to Ember? <a class="tap-link" routerLink="/signup">Create an account</a>
       </p>
@@ -135,6 +147,11 @@ export class LoginPage {
   protected readonly discordFailed = this.query.get('discord') === 'error';
   protected readonly reason = this.query.get('reason');
   protected readonly discordUrl = this.api.discordLoginUrl(this.returnUrl);
+  protected readonly native = environment.native;
+
+  protected openWebSignup(): void {
+    void openOnWeb('/signup');
+  }
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {

@@ -34,6 +34,9 @@ import {
 import { NoticeComponent, NoticeTone } from '../../shared/notice';
 import { PageComponent } from '../../shared/page';
 import { SpinnerComponent } from '../../shared/spinner';
+import { environment } from '../../../environments/environment';
+import { openOnWeb } from '../../core/native/browser';
+import { ReminderService } from '../../core/native/reminder.service';
 
 type Section =
   | 'timezone'
@@ -247,8 +250,19 @@ function isStandalone(): boolean {
               habits.
             </p>
             <div class="row">
-              <a class="btn btn-secondary" [href]="linkUrl">Link Discord</a>
+              @if (native) {
+                <button class="btn btn-secondary" type="button" (click)="openWebSettings()">
+                  Link Discord on the web
+                </button>
+              } @else {
+                <a class="btn btn-secondary" [href]="linkUrl">Link Discord</a>
+              }
             </div>
+            @if (native) {
+              <p class="muted small">
+                Linking happens in your browser. Come back here afterwards and Ember picks it up.
+              </p>
+            }
           }
           @if (messages()['discord']; as m) {
             <app-notice [tone]="m.tone">{{ m.text }}</app-notice>
@@ -335,6 +349,27 @@ function isStandalone(): boolean {
             </div>
             @if (messages()['push']; as m) {
               <app-notice [tone]="m.tone">{{ m.text }}</app-notice>
+            }
+          </section>
+        }
+
+        @if (native) {
+          <section id="phone-reminders" class="card stack" aria-labelledby="phone-heading">
+            <h2 id="phone-heading">Reminders on this phone</h2>
+            <p>
+              Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on
+              this phone, so they arrive even without a connection.
+            </p>
+            @if (exactAllowed() === false) {
+              <p class="muted small">
+                Your phone may deliver them a few minutes late. Allow exact alarms for Ember to get
+                them right on time.
+              </p>
+              <div class="row">
+                <button class="btn btn-secondary" type="button" (click)="allowExact()">
+                  Allow exact reminder times
+                </button>
+              </div>
             }
           </section>
         }
@@ -508,6 +543,18 @@ export class SettingsPage {
   protected readonly graceOptions = [0, 1, 2, 3];
   protected readonly exportFormats: ExportFormat[] = ['json', 'csv'];
   protected readonly linkUrl = this.api.discordLinkUrl();
+  protected readonly native = environment.native;
+  private readonly reminders = inject(ReminderService);
+  protected readonly exactAllowed = signal<boolean | null>(null);
+
+  protected openWebSettings(): void {
+    void openOnWeb('/settings');
+  }
+
+  protected async allowExact(): Promise<void> {
+    await this.reminders.openExactSetting().catch(() => undefined);
+    this.exactAllowed.set(await this.reminders.exactAllowed().catch(() => null));
+  }
   protected readonly showIosHint = isIos() && !isStandalone();
   protected readonly tzMessages = {
     required: 'Pick a timezone, or start typing a city.',
@@ -561,6 +608,7 @@ export class SettingsPage {
 
   constructor() {
     void this.push.check();
+    if (this.native) void this.reminders.exactAllowed().then((ok) => this.exactAllowed.set(ok), () => undefined);
 
     this.grace.valueChanges
       .pipe(concatMap((value) => this.saveGrace(value)), takeUntilDestroyed())
@@ -733,6 +781,7 @@ export class SettingsPage {
       return;
     }
     await this.push.forgetDevice();
+    await this.auth.wipeDevice();
     this.auth.clearSession();
     await this.auth.refreshAntiforgery();
     await this.router.navigateByUrl('/login?reason=deleted');

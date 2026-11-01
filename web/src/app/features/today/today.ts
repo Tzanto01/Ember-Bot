@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, effect, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiClient } from '../../core/api-client';
 import { AuthService } from '../../core/auth.service';
@@ -7,6 +7,7 @@ import { Habit, WeeklyStats } from '../../core/models';
 import { asApiError, problemToMessage } from '../../core/problem';
 import { EmptyStateComponent } from '../../shared/empty-state';
 import { IconComponent } from '../../shared/icon';
+import { DeviceSync } from '../../core/device-sync';
 import { NoticeComponent } from '../../shared/notice';
 import { PageComponent } from '../../shared/page';
 import { SpinnerComponent } from '../../shared/spinner';
@@ -258,6 +259,7 @@ function rowFor(habit: Habit): TodayRow {
 export class TodayPage {
   private readonly api = inject(ApiClient);
   private readonly auth = inject(AuthService);
+  private readonly sync = inject(DeviceSync);
 
   protected readonly placeholders = [1, 2, 3];
   protected readonly today = computed(() => this.auth.me()?.localToday ?? null);
@@ -281,7 +283,10 @@ export class TodayPage {
   protected readonly announcement = signal('');
 
   constructor() {
-    void this.load();
+    effect(() => {
+      this.sync.synced();
+      untracked(() => void this.load());
+    });
   }
 
   protected async load(): Promise<void> {
