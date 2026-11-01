@@ -79,12 +79,11 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Middleware: <c>/api/auth/manage/**</c> and Identity's <c>GET /api/auth/confirmEmail</c> (mapped only so its route name
-    /// builds the confirmation link) are not exposed.
+    /// Middleware: <c>/api/auth/manage/**</c> is not exposed. Identity's GET endpoints (also <c>confirmEmail</c>, mapped only so its
+    /// route name builds the confirmation link) answer 404 in the Identity endpoint filter.
     /// </summary>
     public static Task HideIdentityManage(HttpContext http, RequestDelegate next)
         => http.Request.Path.StartsWithSegments(Manage, StringComparison.OrdinalIgnoreCase)
-            || (HttpMethods.IsGet(http.Request.Method) && http.Request.Path.Equals(ConfirmEmail, StringComparison.OrdinalIgnoreCase))
             ? Problems.NotFound().ExecuteAsync(http)
             : next(http);
 
@@ -136,7 +135,7 @@ internal static class AuthEndpoints
         if (request is not null && email is not null)
         {
             using var lease = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>()
-                .AttemptAcquire($"{request.GetType().Name}:{email.Trim().ToUpperInvariant()}");
+                .AttemptAcquire($"{request.GetType().Name}:{http.RequestServices.GetRequiredService<ILookupNormalizer>().NormalizeEmail(email.Trim())}");
             if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
         }
 
@@ -150,15 +149,17 @@ internal static class AuthEndpoints
             if (remaining.Count > 0) return Problems.Validation(remaining);
 
             var users = http.RequestServices.GetRequiredService<UserManager<User>>();
-            if (await users.FindByEmailAsync(email) is { EmailConfirmed: false } unconfirmed
-                && (await users.GetLoginsAsync(unconfirmed)).Count == 0
-                && (await users.DeleteAsync(unconfirmed)).Succeeded)
+            var existing = await users.FindByEmailAsync(email);
+            if (existing is { EmailConfirmed: false }
+                && (await users.GetLoginsAsync(existing)).Count == 0
+                && (await users.DeleteAsync(existing)).Succeeded)
             {
                 result = await next(context);
                 if (DuplicateErrors(result) is null) return result;
+                existing = await users.FindByEmailAsync(email);
             }
 
-            await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(email);
+            await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(existing?.Email ?? email);
             return TypedResults.Ok();
         }
 
