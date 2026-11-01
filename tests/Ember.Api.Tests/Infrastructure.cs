@@ -267,7 +267,7 @@ public sealed class ApiClient
     /// <summary>Sent as <c>X-XSRF-TOKEN</c> on every request while set.</summary>
     public string? Csrf { get; set; }
 
-    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar));
+    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar, host.Time));
 
     /// <summary>The value of a cookie the client would send to <paramref name="path"/>, or null.</summary>
     public string? CookieValue(string name, string path = "/") => _jar.GetCookies(new Uri(Origin, path))[name]?.Value;
@@ -312,8 +312,20 @@ public sealed class ApiClient
     public async Task<JsonElement> CreateHabitAsync(string? name = null, string frequency = "daily")
         => await (await Post("/api/habits", new { name = name ?? $"Habit {Guid.NewGuid():N}", frequency })).ExpectJson(HttpStatusCode.Created);
 
-    private sealed class CookieJar(CookieContainer jar) : DelegatingHandler
+    /// <summary>
+    /// The server stamps a cookie's <c>expires</c> from <see cref="ApiHost.Time"/>, but <see cref="CookieContainer"/> checks it
+    /// against the real clock. Each <c>expires</c> is moved by the real clock's lead over the fake one, so cookies live as long
+    /// as the server meant, whatever day the tests run on.
+    /// </summary>
+    private sealed class CookieJar(CookieContainer jar, TimeProvider serverTime) : DelegatingHandler
     {
+        private static readonly Regex Expires = new(@"(?<=;\s*expires=)[^;]+", RegexOptions.IgnoreCase);
+
+        private string ToRealClock(string setCookie) => Expires.Replace(setCookie, m =>
+            DateTimeOffset.TryParse(m.Value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var expires)
+                ? (expires + (DateTimeOffset.UtcNow - serverTime.GetUtcNow())).ToString("R", CultureInfo.InvariantCulture)
+                : m.Value);
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var header = jar.GetCookieHeader(request.RequestUri!);
@@ -322,7 +334,7 @@ public sealed class ApiClient
             var response = await base.SendAsync(request, cancellationToken);
             if (response.Headers.TryGetValues("Set-Cookie", out var values))
                 foreach (var value in values)
-                    jar.SetCookies(request.RequestUri!, value);
+                    jar.SetCookies(request.RequestUri!, ToRealClock(value));
             return response;
         }
     }
