@@ -151,6 +151,32 @@ public class PushApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task A_merge_leaves_the_account_with_its_ten_most_recently_saved_subscriptions()
+    {
+        var user = await Host.SignedInAsync();
+        var own = new[] { FcmEndpoint(), FcmEndpoint() };
+        foreach (var endpoint in own)
+            await (await Subscribe(user, endpoint)).Expect(HttpStatusCode.NoContent);
+        var discordId = ApiHost.NewDiscordId();
+        var botId = await Host.Service(s => s.ResolveOrCreateDiscordUserAsync(discordId));
+        var now = Host.Time.GetUtcNow().UtcDateTime;
+        var botEndpoints = Enumerable.Range(1, 11).Select(_ => FcmEndpoint()).ToList();
+        await Host.Db(async db =>
+        {
+            db.PushSubscriptions.AddRange(botEndpoints.Select((endpoint, i) => new Ember.Core.Models.PushSubscription
+            {
+                UserId = botId, Endpoint = endpoint, P256dh = Base64Url(65), Auth = Base64Url(16), CreatedAt = now.AddMinutes(-(i + 1)),
+            }));
+            return await db.SaveChangesAsync();
+        });
+        (await Host.DiscordAsync(user, "/api/auth/discord/link", discordId)).Should().Be("/link/merge");
+
+        await (await user.Post("/api/account/merge")).Expect(HttpStatusCode.NoContent);
+
+        (await EndpointsOf(await user.IdAsync())).Should().BeEquivalentTo(own.Concat(botEndpoints.Take(8)));
+    }
+
+    [DockerFact]
     public async Task Merging_a_bot_only_account_moves_its_push_subscriptions()
     {
         var user = await Host.SignedInAsync();
