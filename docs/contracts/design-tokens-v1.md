@@ -6,7 +6,7 @@ Shared interface between the React web app (team `react`) and the design directi
 
 ## How a theme plugs in
 
-- A theme is one CSS file, `web/src/themes/<id>.css`, that sets every token below on `:root[data-theme="<id>"]` (light) and `:root[data-theme="<id>"].dark` (dark), and nothing else: no component selectors, no layout. Ids: `hearthlight` (default), `fieldnotes`, `tidepool`, `marigold`.
+- A theme is one CSS file, `web/src/themes/<id>.css`, that sets every token below on `:root[data-theme="<id>"]` (light) and `:root[data-theme="<id>"].dark` (dark), and nothing else: no component selectors, no layout. The same rules also match `[data-theme="<id>"]` and `.dark [data-theme="<id>"]` so a scoped element (the Appearance previews) can show another theme, and Hearthlight also matches `:root:not([data-theme])` as the fallback if `/theme-init.js` fails. Ids: `hearthlight` (default), `fieldnotes`, `tidepool`, `marigold`.
 - The app imports all theme files and all their font packages (self-hosted, OFL; the CSP is `default-src 'self'`). Browsers download a font file only when a page uses that family; the service worker precaches only the default theme's font files, the others are cached on first use.
 - The selected theme is a device setting, stored in `localStorage` under `ember.theme` (the Capacitor WebView keeps it). The external `/theme-init.js` sets `data-theme` (an unknown or missing value falls back to `hearthlight`) and `.dark` on `<html>` before first paint; no inline script.
 - Settings has an Appearance section: a radio group of the four themes, each with a small live preview (the theme's own tokens) and its name, applied instantly. It also updates `<meta name="theme-color">` at runtime.

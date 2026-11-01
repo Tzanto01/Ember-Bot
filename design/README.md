@@ -64,13 +64,12 @@ bun storyboard/shots.mjs     # needs Node 20+ or bun, and a cached Playwright Ch
 
 ## Contrast
 
-Every pair from the contract, light and dark. Hearth (`hearth.css`, team `react`) was checked from its branch with `node contrast.mjs <path>/hearth.css`; once merged it is picked up automatically.
+Every pair from the contract, light and dark, for every theme file in `web/src/themes/`.
 
 <!-- contrast:start -->
 | Theme | Pairs | Light min | Dark min | Result |
 | --- | --- | --- | --- | --- |
 | fieldnotes | 34 × 2 | 1.14× | 1.19× | pass |
-| hearth | 34 × 2 | 1.11× | 1.32× | pass |
 | hearthlight | 34 × 2 | 1.07× | 1.18× | pass |
 | marigold | 34 × 2 | 1.27× | 1.31× | pass |
 | tidepool | 34 × 2 | 1.16× | 1.18× | pass |
@@ -115,45 +114,6 @@ Every pair from the contract, light and dark. Hearth (`hearth.css`, team `react`
 | chart-1 on card | ui 3:1 | 5.53 | 7.15 |
 | chart-2 on card | ui 3:1 | 5.71 | 7.21 |
 | chart-3 on card | ui 3:1 | 4.20 | 8.44 |
-
-### hearth
-
-| Pair | Kind | Light | Dark |
-| --- | --- | --- | --- |
-| foreground on background | text 4.5:1 | 14.76 | 15.34 |
-| card-foreground on card | text 4.5:1 | 15.76 | 14.07 |
-| popover-foreground on popover | text 4.5:1 | 15.76 | 14.07 |
-| primary-foreground on primary | text 4.5:1 | 6.22 | 8.95 |
-| primary on background | text 4.5:1 | 5.83 | 8.95 |
-| primary on card | text 4.5:1 | 6.22 | 8.20 |
-| secondary-foreground on secondary | text 4.5:1 | 13.56 | 12.57 |
-| muted-foreground on background | text 4.5:1 | 6.49 | 8.05 |
-| muted-foreground on card | text 4.5:1 | 6.92 | 7.38 |
-| muted-foreground on muted | text 4.5:1 | 5.96 | 6.60 |
-| muted-foreground on accent | text 4.5:1 | 5.96 | 6.60 |
-| muted-foreground on secondary | text 4.5:1 | 5.96 | 6.60 |
-| accent-foreground on accent | text 4.5:1 | 13.56 | 12.57 |
-| input on background | ui 3:1 | 3.96 | 4.41 |
-| input on card | ui 3:1 | 4.23 | 4.04 |
-| ring on background | ui 3:1 | 5.83 | 8.95 |
-| ring on card | ui 3:1 | 6.22 | 8.20 |
-| destructive on background | text 4.5:1 | 7.35 | 11.19 |
-| destructive on card | text 4.5:1 | 7.84 | 10.26 |
-| destructive-foreground on destructive | text 4.5:1 | 7.84 | 11.19 |
-| notice-foreground on notice | text 4.5:1 | 6.81 | 8.80 |
-| notice-border on notice | ui 3:1 | 3.33 | 4.37 |
-| success-foreground on success | text 4.5:1 | 6.15 | 8.96 |
-| success on background | ui 3:1 | 5.76 | 8.96 |
-| done-foreground on done | text 4.5:1 | 5.17 | 6.79 |
-| done on card | ui 3:1 | 5.17 | 6.22 |
-| lowday-foreground on lowday | text 4.5:1 | 5.30 | 5.99 |
-| paused on card | ui 3:1 | 4.23 | 4.04 |
-| pending on card | ui 3:1 | 6.22 | 8.20 |
-| empty on card | ui 3:1 | 4.23 | 4.04 |
-| beforestart on card | text 4.5:1 | 6.03 | 5.94 |
-| chart-1 on card | ui 3:1 | 6.22 | 8.20 |
-| chart-2 on card | ui 3:1 | 6.31 | 7.13 |
-| chart-3 on card | ui 3:1 | 6.15 | 8.22 |
 
 ### hearthlight
 
