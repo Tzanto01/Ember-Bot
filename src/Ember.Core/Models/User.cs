@@ -1,8 +1,13 @@
+using Microsoft.AspNetCore.Identity;
+
 namespace Ember.Core.Models;
 
-public class User
+/// <summary>
+/// An Ember account. A Discord user is linked through a <see cref="Logins"/> row with
+/// <see cref="DiscordLogin.Provider"/>; a bot-only user has no email and no password.
+/// </summary>
+public class User : IdentityUser<Guid>
 {
-    public long DiscordUserId { get; set; }
     public string Timezone { get; set; } = "UTC";
 
     /// <summary>
@@ -35,6 +40,7 @@ public class User
     /// <summary>The user's local day on which Ember last asked for consent, so it asks at most once per day.</summary>
     public DateOnly? ConsentPromptedOn { get; set; }
 
+    public ICollection<IdentityUserLogin<Guid>> Logins { get; set; } = new List<IdentityUserLogin<Guid>>();
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
 }
