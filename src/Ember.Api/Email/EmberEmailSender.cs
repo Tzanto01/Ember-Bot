@@ -17,14 +17,15 @@ internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration
     {
         var query = QueryHelpers.ParseQuery(new Uri(WebUtility.HtmlDecode(confirmationLink)).Query);
         var link = $"{Origin}/confirm-email?userId={Uri.EscapeDataString(query["userId"].ToString())}&code={Uri.EscapeDataString(query["code"].ToString())}";
-        return Send(email, "Confirm your Ember email address",
+        return Send(user.Email ?? email, "Confirm your Ember email address",
             $"Welcome to Ember.\n\nPlease confirm your email address by opening this link:\n{link}\n\nIf you didn't create an Ember account, you can ignore this email.");
     }
 
     public Task SendPasswordResetCodeAsync(User user, string email, string resetCode)
     {
-        var link = $"{Origin}/reset-password?email={Uri.EscapeDataString(email)}&code={Uri.EscapeDataString(WebUtility.HtmlDecode(resetCode))}";
-        return Send(email, "Reset your Ember password",
+        var to = user.Email ?? email;
+        var link = $"{Origin}/reset-password?email={Uri.EscapeDataString(to)}&code={Uri.EscapeDataString(WebUtility.HtmlDecode(resetCode))}";
+        return Send(to, "Reset your Ember password",
             $"Someone asked to reset the password of your Ember account.\n\nChoose a new password here:\n{link}\n\nIf this wasn't you, you can ignore this email; your password stays the same.");
     }
 

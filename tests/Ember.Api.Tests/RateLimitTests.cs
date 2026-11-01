@@ -22,4 +22,16 @@ public class RateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres)
         limited.Headers.RetryAfter!.Delta.Should().BeGreaterThan(TimeSpan.Zero);
         await (await client.Post("/api/auth/forgotPassword", new { email = ApiHost.NewEmail() })).Expect(HttpStatusCode.OK);
     }
+
+    [DockerFact]
+    public async Task The_per_email_limit_is_per_endpoint()
+    {
+        var client = Host.NewClient();
+        var email = ApiHost.NewEmail();
+        await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+        await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+        await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).ExpectProblem((HttpStatusCode)429, "rate_limited");
+
+        await (await client.Post("/api/auth/forgotPassword", new { email })).Expect(HttpStatusCode.OK);
+    }
 }

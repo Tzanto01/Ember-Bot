@@ -10,6 +10,17 @@ dotnet run --project tests/Ember.Api.TestHost -- --urls http://localhost:5081
 - Runs in the Development environment.
 - `Ember__WebOrigin` defaults to the first `--urls` value. Behind the Angular dev proxy, set it to the dev server: `Ember__WebOrigin=http://localhost:4200`. Email links and the Discord redirect URI use it.
 - Emails go to an in-memory outbox; Discord is faked at the backchannel (the real OAuth handler runs).
+- Email confirmation: the link from the outbox opens `{WebOrigin}/confirm-email?userId=…&code=…`; the page then sends `POST /api/auth/confirmEmail` `{ userId, code, password }` with the password chosen at sign-up. `GET /api/auth/confirmEmail` is 404.
+
+## Same-origin web app (Playwright)
+
+Serve a built web app from the test host, so the app and the API share one origin:
+
+```
+dotnet run --project tests/Ember.Api.TestHost -- --urls http://localhost:5081 --webroot web/dist/ember-web/browser
+```
+
+`--webroot` (or `Ember__WebRoot`) takes a path relative to the current directory. Email links point to `http://localhost:5081/confirm-email`, `/reset-password` etc., which the SPA fallback serves.
 
 ## Test endpoints
 

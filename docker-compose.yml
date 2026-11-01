@@ -35,6 +35,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=emberdb;Username=${DB_USER};Password=${DB_PASSWORD}
       Ember__WebOrigin: ${WEB_ORIGIN}
       Ember__DataProtectionKeysPath: /keys
+      Ember__WebRoot: /app/wwwroot
       Logging__LogLevel__Default: Information
       Logging__LogLevel__Microsoft.AspNetCore: Warning
       Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: Warning
