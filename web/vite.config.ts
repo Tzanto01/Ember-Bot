@@ -32,7 +32,11 @@ export default defineConfig(({ mode }) => {
         injectRegister: false,
         manifest: false,
         injectManifest: {
-          globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}', 'legal/*.md'],
+          globPatterns: [
+            '**/*.{js,css,html,svg,png,webmanifest}',
+            'assets/nunito-*.woff2',
+            'legal/*.md',
+          ],
         },
         devOptions: { enabled: false },
       }),

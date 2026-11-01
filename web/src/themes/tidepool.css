@@ -1,5 +1,6 @@
 /* Tidepool: cool, quiet and spacious. Morning-mist blue, deep teal, one warm flame as the only hot colour, a reading-friendly font and generous spacing; a small bubble rises on check-in. */
-:root {
+:root[data-theme="tidepool"],
+[data-theme="tidepool"] {
   --background: oklch(0.968 0.009 225);
   --foreground: oklch(0.27 0.03 238);
   --card: oklch(0.995 0.003 225);
@@ -54,7 +55,8 @@
   --ember-reward: rise;
 }
 
-:root.dark {
+:root[data-theme="tidepool"].dark,
+.dark [data-theme="tidepool"] {
   --background: oklch(0.195 0.025 238);
   --foreground: oklch(0.94 0.01 225);
   --card: oklch(0.24 0.028 238);
