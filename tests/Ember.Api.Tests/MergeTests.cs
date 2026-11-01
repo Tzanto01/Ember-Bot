@@ -80,6 +80,23 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Merging_reschedules_moved_reminders_in_the_signed_in_accounts_timezone()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { timezone = "Europe/Berlin" })).ExpectJson();
+        var bot = await BotOnlyAsync([]);
+        var habit = await Host.Service(s => s.AddHabitAsync(bot.UserId, "Water", new TimeOnly(9, 0)));
+        var before = await Host.Db(db => db.Habits.Where(h => h.Id == habit.Id).Select(h => h.NextReminderUtc).SingleAsync());
+        before.Should().Be(new DateTime(2026, 11, 2, 9, 0, 0, DateTimeKind.Utc));
+        await StartMergeAsync(user, bot.DiscordId);
+
+        await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
+
+        var after = await Host.Db(db => db.Habits.Where(h => h.Id == habit.Id).Select(h => h.NextReminderUtc).SingleAsync());
+        after.Should().Be(new DateTime(2026, 11, 2, 8, 0, 0, DateTimeKind.Utc));
+    }
+
+    [DockerFact]
     public async Task The_habit_limit_does_not_block_a_merge()
     {
         var user = await Host.SignedInAsync();
