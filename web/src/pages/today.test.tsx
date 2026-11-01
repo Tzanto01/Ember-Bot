@@ -105,6 +105,8 @@ describe('TodayPage', () => {
     const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
 
     act(() => deviceSync.synced.update((n) => n + 1));
+    await new Promise((r) => setTimeout(r, 50));
+    console.log('PENDING', f.pending.map((c) => c.method + ' ' + c.url), f.all.length);
     await answerLoad(f, [doneHabit], { stats: { ...weekly, headline: 'Synced week.' } });
     expect(await screen.findByText('Synced week.')).toBeInTheDocument();
 
@@ -133,5 +135,31 @@ describe('TodayPage', () => {
     const settled = await checkButton();
     fireEvent(settled, new Event('webkitAnimationEnd', { bubbles: true }));
     await waitFor(() => expect(settled.className).not.toMatch(/ember-reward-/));
+  });
+
+  it('shows the synced list after a check-in that interrupted a sync refetch', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+    const button = await checkButton();
+
+    act(() => deviceSync.synced.update((n) => n + 1));
+    await vi.waitFor(() => expect(f.pending.some((c) => c.url === '/api/me')).toBe(true));
+    await userEvent.click(button);
+    (await f.next('GET', '/api/me')).respond(200, { ...me, localToday: '2026-11-01' });
+    (await f.next('PUT', '/api/habits/1/days/2026-11-01')).respond(200, doneHabit);
+
+    const read = { ...habit, id: 2, name: 'Read' };
+    await vi.waitFor(
+      () => {
+        for (const call of [...f.pending]) {
+          if (call.url === '/api/habits') call.respond(200, [doneHabit, read]);
+          else if (call.url.startsWith('/api/low-days')) call.respond(200, []);
+          else if (call.url === '/api/stats/weekly') call.respond(200, weekly);
+          else if (call.url === '/api/me') call.respond(200, { ...me, localToday: '2026-11-01' });
+        }
+        expect(screen.getByRole('heading', { name: 'Read' })).toBeInTheDocument();
+      },
+      { timeout: 2000, interval: 20 },
+    );
   });
 });

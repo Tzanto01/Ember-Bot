@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderPage } from '@/components/auth/render-page';
+import { renderPage } from '@/test-utils';
 import { type FetchMock, mockFetch } from '@/lib/test-support';
 import ConfirmEmailPage from './confirm-email';
 

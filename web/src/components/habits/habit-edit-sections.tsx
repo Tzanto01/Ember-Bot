@@ -160,6 +160,7 @@ export function ChannelsSection({ habit, channels, onChange }: SectionProps & { 
       return { updated: await api.updateHabit(habit.id, { reminderChannels: next }), allowed };
     },
     onSuccess: ({ updated, allowed }, { phone, before }) => {
+      setShown(null);
       onChange(updated);
       if (phone === true) localStorage.setItem(memoryKey, JSON.stringify(before ?? []));
       else if (phone === false) localStorage.removeItem(memoryKey);

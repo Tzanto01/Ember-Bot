@@ -105,6 +105,7 @@ export default function TodayPage() {
     mark(habit.id, true);
     setProblem(null);
     setReward(habit.id, checkIn ? readReward(reduceMotion) : null);
+    const refetching = queryClient.isFetching({ queryKey: todayKey }) > 0;
     await queryClient.cancelQueries({ queryKey: todayKey });
     updateHabit(habit.id, () => optimistic);
     try {
@@ -126,6 +127,7 @@ export default function TodayPage() {
     } finally {
       inFlight.current.delete(habit.id);
       mark(habit.id, false);
+      if (refetching) void queryClient.invalidateQueries({ queryKey: todayKey });
     }
   }
 

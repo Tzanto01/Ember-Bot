@@ -1,24 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import './index.css';
-import { asApiError } from './lib/problem';
+import { auth } from './lib/services';
 import { startApp } from './lib/startup';
+import { clearOnUserChange, createQueryClient } from './query-client';
 import { createAppRouter } from './router';
 import './themes/index';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: (failures, error) => {
-        const { status } = asApiError(error);
-        return failures < 2 && !(status >= 400 && status < 500);
-      },
-    },
-  },
-});
+const queryClient = createQueryClient();
+clearOnUserChange(auth.me, queryClient);
 
 await startApp();
 const router = createAppRouter();

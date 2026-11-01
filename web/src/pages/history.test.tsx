@@ -115,4 +115,21 @@ describe('HistoryPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(f.pending).toEqual([]);
   });
+
+  it('closes the open day when the month changes, so coming back does not reopen it', async () => {
+    const container = renderHistory('/history/1');
+    await answerHabits(f, [{ ...habit, startDate: '2026-10-15' }]);
+    await answerMonth(f, 1, '2026-11-01', '2026-11-04');
+    await userEvent.click(await screen.findByRole('button', { name: /3 November|November 3/ }));
+    expect(container.querySelector('#day-panel')).not.toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    await answerMonth(f, 1, '2026-10-15', '2026-10-31');
+    await userEvent.click(await screen.findByRole('button', { name: 'Next month' }));
+    await answerMonth(f, 1, '2026-11-01', '2026-11-04');
+
+    await waitFor(() => expect(container.querySelector('#day-2026-11-03')).not.toBeNull());
+    expect(container.querySelector('#day-2026-11-03')).toHaveAttribute('aria-expanded', 'false');
+    expect(container.querySelector('#day-panel')).toBeNull();
+  });
 });
