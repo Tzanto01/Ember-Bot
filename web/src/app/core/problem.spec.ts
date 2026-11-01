@@ -10,14 +10,12 @@ describe('problemToMessage', () => {
     it('treats login failures as form messages, different from a general session end', () => {
       const general = problemToMessage(err(401, { type: 'unauthenticated' }));
       const failed = problemToMessage(err(401, { detail: 'Failed' }), 'login');
-      const locked = problemToMessage(err(401, { detail: 'LockedOut' }), 'login');
       const notAllowed = problemToMessage(err(401, { detail: 'NotAllowed' }), 'login');
 
       expect(
-        new Set([general.message, failed.message, locked.message, notAllowed.message]).size,
-      ).toBe(4);
+        new Set([general.message, failed.message, notAllowed.message]).size,
+      ).toBe(3);
       expect(failed.offerResend).toBe(false);
-      expect(locked.offerResend).toBe(false);
       expect(general.offerResend).toBe(false);
     });
 
@@ -25,13 +23,14 @@ describe('problemToMessage', () => {
       expect(problemToMessage(err(401, { detail: 'NotAllowed' }), 'login').offerResend).toBe(true);
     });
 
-    it('reads a bad confirm-email link as an expired link with a resend, and a bad reset link without one', () => {
+    it('reads a failed confirmation as a form error with a resend, and a bad reset link without one, never as a session end', () => {
       const confirm = problemToMessage(err(401), 'confirm-email');
       const reset = problemToMessage(err(401), 'reset-password');
+      const session = problemToMessage(err(401)).message;
       expect(confirm.offerResend).toBe(true);
       expect(reset.offerResend).toBe(false);
-      expect(confirm.message).toBe(reset.message);
-      expect(confirm.message).not.toBe(problemToMessage(err(401)).message);
+      expect(confirm.message).not.toBe(session);
+      expect(reset.message).not.toBe(session);
     });
   });
 

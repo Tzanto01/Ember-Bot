@@ -30,6 +30,8 @@ export async function signUp(page: Page, email: string): Promise<void> {
 export async function confirmEmail(page: Page, email: string): Promise<void> {
   const link = await findOutboxLink(page.request, email, '/confirm-email?');
   await page.goto(link);
+  await page.getByLabel('Password', { exact: true }).fill(SECRET);
+  await page.getByRole('button', { name: 'Confirm email' }).click();
   await expect(page.getByRole('heading', { name: "You're confirmed" })).toBeVisible();
 }
 
@@ -78,7 +80,10 @@ export async function nextDiscordId(request: APIRequestContext, discordId: strin
 }
 
 /** Contract v1 hook: a bot-only user (no email, no password) with one habit starting now. */
-export async function seedBotOnlyUser(request: APIRequestContext, discordId: string): Promise<void> {
+export async function seedBotOnlyUser(
+  request: APIRequestContext,
+  discordId: string,
+): Promise<void> {
   const response = await request.post('/test/users/bot-only', { data: { discordId } });
   expect(response.ok()).toBeTruthy();
 }
@@ -92,7 +97,9 @@ export async function seedBotOnlyUserWithStart(
   discordId: string,
   habitStartDate: string,
 ): Promise<void> {
-  const response = await request.post('/test/users/bot-only', { data: { discordId, habitStartDate } });
+  const response = await request.post('/test/users/bot-only', {
+    data: { discordId, habitStartDate },
+  });
   expect(response.ok()).toBeTruthy();
 }
 
