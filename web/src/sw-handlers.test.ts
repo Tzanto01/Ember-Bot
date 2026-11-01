@@ -99,6 +99,19 @@ describe('handleNotificationClick', () => {
     expect(all.openWindow).toHaveBeenCalledWith('/today');
   });
 
+  it.each(['focus', 'navigate'] as const)(
+    'opens the target in a new window when %s of the open window rejects',
+    async (failing) => {
+      const open = windowClient(`${origin}/history`);
+      open[failing].mockRejectedValue(new Error('detached'));
+      const all = clients([open]);
+
+      await handleNotificationClick(notification(botData), all, origin);
+
+      expect(all.openWindow).toHaveBeenCalledWith('/today');
+    },
+  );
+
   it.each([
     ['an absolute URL', 'https://evil.example/today'],
     ['a protocol-relative URL', '//evil.example/today'],

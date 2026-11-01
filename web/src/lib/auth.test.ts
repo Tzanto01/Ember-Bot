@@ -81,6 +81,21 @@ describe('AuthService', () => {
     });
   });
 
+  describe('loadMe', () => {
+    it('leaves me null when the response arrives after the session was cleared', async () => {
+      const auth = setup();
+
+      const loading = auth.loadMe(true);
+      const call = await mock.next('GET', '/api/me');
+      auth.clearSession();
+      call.respond(200, me);
+
+      await expect(loading).resolves.toBeNull();
+      expect(auth.me.get()).toBeNull();
+      expect(auth.signedIn()).toBe(false);
+    });
+  });
+
   describe('logout', () => {
     it('removes the push subscription before signing out, then refreshes antiforgery and clears the session', async () => {
       const unsubscribe = vi.fn().mockResolvedValue(true);

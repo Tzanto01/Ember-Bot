@@ -3,13 +3,36 @@ import { ApiClient } from './api-client';
 import { DeviceStore } from './device-store';
 import { Http } from './http';
 import { OfflineQueue } from './offline-queue';
-import { PushService } from './push';
+import { PushService, serviceWorkerRegistration } from './push';
 import { type FetchMock, mockFetch } from './test-support';
 
 const endpoint = 'https://push.example.test/send/a b&c=1';
 const removal = `/api/me/push-subscriptions?endpoint=${encodeURIComponent(endpoint)}`;
 /** Base64url VAPID key whose bytes are 01 02 03 FB FF. */
 const vapidKey = 'AQID-_8';
+
+describe('serviceWorkerRegistration', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+  });
+
+  it('resolves null at once when no worker is registered, without waiting for ready', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('PushManager', class {});
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { getRegistration: async () => undefined, ready: new Promise(() => undefined) },
+    });
+    let settled: ServiceWorkerRegistration | null | undefined;
+
+    void serviceWorkerRegistration().then((registration) => (settled = registration));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(settled).toBeNull();
+  });
+});
 
 describe('PushService', () => {
   let mock: FetchMock;
