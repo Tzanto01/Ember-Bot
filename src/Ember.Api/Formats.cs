@@ -22,5 +22,9 @@ internal static class Formats
         return fallback;
     }
 
+    /// <summary><paramref name="date"/> minus <paramref name="days"/>, never earlier than <see cref="DateOnly.MinValue"/>.</summary>
+    public static DateOnly DaysBefore(DateOnly date, int days)
+        => date.DayNumber < days ? DateOnly.MinValue : date.AddDays(-days);
+
     public const string DateMessage = "Must be a date as yyyy-MM-dd.";
 }

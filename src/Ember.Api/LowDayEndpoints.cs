@@ -14,7 +14,7 @@ internal static class LowDayEndpoints
             var today = await habits.GetLocalTodayAsync(userId);
             var errors = new Dictionary<string, string[]>();
             var end = Formats.DateOr(to, today, "to", errors);
-            var start = Formats.DateOr(from, end.AddDays(-365), "from", errors);
+            var start = Formats.DateOr(from, Formats.DaysBefore(end, 365), "from", errors);
             if (errors.Count == 0 && start > end) errors["from"] = ["Can't be after to."];
             if (errors.Count > 0) return Problems.Validation(errors);
 
@@ -30,9 +30,7 @@ internal static class LowDayEndpoints
             if (!await habits.HasHealthDataConsentAsync(userId)) return Problems.ConsentRequired();
             if (day > await habits.GetLocalTodayAsync(userId)) return Problems.DayEdit(DayEditResult.InFuture)!;
 
-            var tz = await habits.GetUserTzAsync(userId);
-            var starts = (await habits.GetHabitsAsync(userId)).Select(h => HabitService.StartDate(h, tz)).ToList();
-            if (starts.Count == 0 || day < starts.Min()) return Problems.DayEdit(DayEditResult.BeforeHabitStart)!;
+            if (await habits.GetEarliestHabitStartAsync(userId) is not { } start || day < start) return Problems.DayEdit(DayEditResult.BeforeHabitStart)!;
 
             return Problems.DayEdit(await habits.SetLowDayAsync(userId, day)) ?? Results.NoContent();
         });

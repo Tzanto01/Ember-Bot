@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace Ember.Api.Email;
 
 /// <summary>Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host).</summary>
-internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration configuration) : IEmailSender<User>
+internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration configuration, ILogger<EmberEmailSender> logger)
+    : IEmailSender<User>
 {
     private string Origin => ApiApp.WebOrigin(configuration)
         ?? throw new InvalidOperationException("Ember:WebOrigin is not configured.");
@@ -36,5 +37,24 @@ internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration
         => Send(email, "Your Ember account",
             $"Someone tried to create an Ember account with this email address, but it already has one.\n\nSign in: {Origin}/login\nForgot your password? {Origin}/forgot-password\n\nIf this wasn't you, you can ignore this email.");
 
-    private Task Send(string to, string subject, string body) => transport.SendAsync(to, subject, body, CancellationToken.None);
+    /// <summary>
+    /// Hands the email off in the background, so every mail-sending endpoint answers at the same speed and an SMTP failure
+    /// never reaches the response (either would reveal whether an account exists). Failures are logged without the address.
+    /// </summary>
+    private Task Send(string to, string subject, string body)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await transport.SendAsync(to, subject, body, CancellationToken.None);
+            }
+            catch (Exception e)
+            {
+                logger.LogError("Sending \"{Subject}\" to a {Domain} address failed: {ExceptionType}",
+                    subject, to[(to.LastIndexOf('@') + 1)..], e.GetType().Name);
+            }
+        });
+        return Task.CompletedTask;
+    }
 }
