@@ -39,7 +39,7 @@ Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and
 
 - `GET /api/auth/antiforgery` → 204 and sets the `XSRF-TOKEN` cookie (readable by JS). The token is tied to the signed-in identity, so the client fetches it on app start, after login, after Discord sign-in and after logout.
 - The browser sends it as the `X-XSRF-TOKEN` header on every POST, PUT, PATCH and DELETE (Angular `HttpClient` does this by default).
-- Enforced on every unsafe request authenticated by the cookie scheme → 403 `antiforgery`. Exempt: anonymous JSON-only auth POSTs (register, login, resendConfirmationEmail, forgotPassword, resetPassword) and bearer-authenticated requests.
+- Enforced on every unsafe request authenticated by the cookie scheme → 403 `antiforgery`. Exempt: anonymous JSON-only auth POSTs (register, login, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword) and bearer-authenticated requests.
 
 ### Identity endpoints (`/api/auth`)
 
