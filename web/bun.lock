@@ -12,6 +12,7 @@
         "@angular/platform-browser": "~21.2.0",
         "@angular/router": "~21.2.0",
         "@angular/service-worker": "~21.2.0",
+        "marked": "^18.1.2",
         "rxjs": "~7.8.0",
         "tslib": "^2.3.0",
       },
@@ -785,6 +786,8 @@
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 
     "make-fetch-happen": ["make-fetch-happen@15.0.6", "", { "dependencies": { "@gar/promise-retry": "^1.0.0", "@npmcli/agent": "^4.0.0", "@npmcli/redact": "^4.0.0", "cacache": "^20.0.1", "http-cache-semantics": "^4.1.1", "minipass": "^7.0.2", "minipass-fetch": "^5.0.0", "minipass-flush": "^1.0.5", "minipass-pipeline": "^1.2.4", "negotiator": "^1.0.0", "proc-log": "^6.0.0", "ssri": "^13.0.0" } }, "sha512-Je0fLJ0F5atA7F+eIlLzk+Wkcl57JDf4kf+EW8xiP5E31xOQxkIxTbgf1Oi1Lw9tRI9UEMRdI5Vz2xTzoNU1Jw=="],
+
+    "marked": ["marked@18.1.2", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-DfOnvLAQ6WYeWxWO1u4RyFOeqyHup6dks5PPqnoFiooU7ipRvidO/2j8plhAHIiZg574E9ZlzSjUiPMLAzFkgg=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
 
