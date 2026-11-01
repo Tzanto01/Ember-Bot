@@ -12,7 +12,11 @@ namespace Ember.Api;
 /// </summary>
 internal sealed record PendingMerge(Guid TargetUserId, string TargetSecurityStamp, Guid SourceUserId, ulong DiscordId, DateTimeOffset ExpiresUtc)
 {
-    public const string CookieName = "ember.merge";
+    /// <summary>The cookie's name outside Development, where it is always Secure.</summary>
+    public const string SecureCookieName = "__Secure-ember.merge";
+
+    /// <summary>The cookie's name in Development.</summary>
+    public const string DevelopmentCookieName = "ember.merge";
 
     private const string Purpose = "Ember.Api.PendingMerge";
     private const string CookiePath = "/api/account/merge";
@@ -22,13 +26,13 @@ internal sealed record PendingMerge(Guid TargetUserId, string TargetSecurityStam
     {
         var expires = http.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() + Lifetime;
         var pending = new PendingMerge(target.Id, target.SecurityStamp ?? "", sourceUserId, discordId, expires);
-        http.Response.Cookies.Append(CookieName, Protector(http).Protect(JsonSerializer.Serialize(pending)), Options(http, Lifetime));
+        http.Response.Cookies.Append(CookieName(http), Protector(http).Protect(JsonSerializer.Serialize(pending)), Options(http, Lifetime));
     }
 
     /// <summary>The pending merge of <paramref name="user"/>, or null when there is none or it is expired, tampered or someone else's.</summary>
     public static PendingMerge? Read(HttpContext http, User user)
     {
-        if (!http.Request.Cookies.TryGetValue(CookieName, out var value) || string.IsNullOrEmpty(value)) return null;
+        if (!http.Request.Cookies.TryGetValue(CookieName(http), out var value) || string.IsNullOrEmpty(value)) return null;
 
         PendingMerge? pending;
         try
@@ -49,7 +53,11 @@ internal sealed record PendingMerge(Guid TargetUserId, string TargetSecurityStam
                 : null;
     }
 
-    public static void Clear(HttpContext http) => http.Response.Cookies.Delete(CookieName, Options(http, null));
+    public static void Clear(HttpContext http) => http.Response.Cookies.Delete(CookieName(http), Options(http, null));
+
+    private static bool IsDevelopment(HttpContext http) => http.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment();
+
+    private static string CookieName(HttpContext http) => IsDevelopment(http) ? DevelopmentCookieName : SecureCookieName;
 
     private static IDataProtector Protector(HttpContext http)
         => http.RequestServices.GetRequiredService<IDataProtectionProvider>().CreateProtector(Purpose);
@@ -58,7 +66,7 @@ internal sealed record PendingMerge(Guid TargetUserId, string TargetSecurityStam
     {
         HttpOnly = true,
         SameSite = SameSiteMode.Lax,
-        Secure = http.Request.IsHttps || !http.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment(),
+        Secure = http.Request.IsHttps || !IsDevelopment(http),
         Path = CookiePath,
         MaxAge = maxAge,
         IsEssential = true,

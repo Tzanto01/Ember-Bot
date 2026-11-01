@@ -6,6 +6,7 @@ using Ember.Core.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
@@ -19,9 +20,7 @@ namespace Ember.Api;
 /// </summary>
 public static class ApiApp
 {
-    private const string ContentSecurityPolicy =
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; " +
-        "manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+    private const string ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
 
     public static WebApplicationBuilder CreateBuilder(string[] args)
     {
@@ -51,14 +50,19 @@ public static class ApiApp
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
             })
-            .AddEntityFrameworkStores<EmberDbContext>();
+            .AddEntityFrameworkStores<EmberDbContext>()
+            .AddSignInManager<EmberSignInManager>();
         services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+            if (!builder.Environment.IsDevelopment())
+            {
+                options.Cookie.Name = "__Host-Ember";
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            }
             options.Events.OnRedirectToLogin = context =>
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -75,6 +79,7 @@ public static class ApiApp
         {
             options.HeaderName = "X-XSRF-TOKEN";
             options.Cookie.SameSite = SameSiteMode.Strict;
+            if (!builder.Environment.IsDevelopment()) options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         });
 
         services.AddSingleton<EmberEmailSender>();
@@ -87,10 +92,10 @@ public static class ApiApp
         services.AddEmberRateLimits(config);
         services.Configure<ForwardedHeadersOptions>(options =>
         {
-            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-            foreach (var proxy in config.GetSection("Ember:ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            foreach (var proxy in KnownProxies(config))
                 options.KnownProxies.Add(IPAddress.Parse(proxy));
-            foreach (var network in config.GetSection("Ember:ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [])
+            foreach (var network in KnownNetworks(config))
                 options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
         });
         services.AddCors();
@@ -124,9 +129,13 @@ public static class ApiApp
         app.Use(AuthEndpoints.HideIdentityManage);
 
         var webRoot = app.Configuration["Ember:WebRoot"] is { Length: > 0 } webRootPath
-            ? new PhysicalFileProvider(Path.GetFullPath(webRootPath))
+            ? new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(Path.GetFullPath(webRootPath)),
+                ContentTypeProvider = WebContentTypes(),
+            }
             : null;
-        if (webRoot is not null) app.UseStaticFiles(new StaticFileOptions { FileProvider = webRoot });
+        if (webRoot is not null) app.UseStaticFiles(webRoot);
 
         app.UseRouting();
         var origin = WebOrigin(app.Configuration);
@@ -160,7 +169,7 @@ public static class ApiApp
         mapExtra?.Invoke(app);
 
         app.MapFallback("/api/{**rest}", () => Problems.NotFound());
-        if (webRoot is not null) app.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = webRoot });
+        if (webRoot is not null) app.MapFallbackToFile("index.html", webRoot);
 
         return app;
     }
@@ -177,7 +186,23 @@ public static class ApiApp
             throw new InvalidOperationException($"Missing configuration outside Development: {string.Join(", ", missing)}.");
         if (!Uri.TryCreate(WebOrigin(configuration), UriKind.Absolute, out var origin) || origin.Scheme != Uri.UriSchemeHttps)
             throw new InvalidOperationException("Ember:WebOrigin must be an absolute https URL outside Development.");
+        if (KnownProxies(configuration).Length == 0 && KnownNetworks(configuration).Length == 0)
+            throw new InvalidOperationException(
+                "Ember:ForwardedHeaders:KnownProxies or Ember:ForwardedHeaders:KnownNetworks must be set outside Development.");
     }
+
+    private static FileExtensionContentTypeProvider WebContentTypes()
+    {
+        var provider = new FileExtensionContentTypeProvider();
+        provider.Mappings[".md"] = "text/markdown";
+        return provider;
+    }
+
+    private static string[] KnownProxies(IConfiguration configuration)
+        => configuration.GetSection("Ember:ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+
+    private static string[] KnownNetworks(IConfiguration configuration)
+        => configuration.GetSection("Ember:ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
 
     private static Task SecurityHeaders(HttpContext http, RequestDelegate next)
     {
