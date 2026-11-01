@@ -440,6 +440,7 @@ export class HabitEditPage {
   }
 
   protected cancelDelete(): void {
+    if (this.deleting()) return;
     this.confirmingDelete.set(false);
     this.focusAfterRender('#delete-start');
   }
