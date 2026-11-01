@@ -122,6 +122,31 @@ describe('AuthService', () => {
       expect(navigate).toHaveBeenCalledWith('/login');
     });
 
+    it('keeps the session and reports failure when the server cannot end it, so the cookie never outlives a sign-out', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      const done = auth.logout();
+
+      (await mock.next('POST', '/api/auth/logout')).respond(503);
+
+      await expect(done).resolves.toBe(false);
+      expect(auth.me.get()).toEqual(me);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('treats a 401 from logout as already signed out', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      const done = auth.logout();
+
+      (await mock.next('POST', '/api/auth/logout')).respond(401);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+
+      await expect(done).resolves.toBe(true);
+      expect(auth.me.get()).toBeNull();
+      expect(navigate).toHaveBeenCalledWith('/login');
+    });
+
     it('signs out without touching push endpoints when there is no subscription', async () => {
       const auth = setup(null);
       auth.setMe(me);
@@ -150,18 +175,6 @@ describe('AuthService', () => {
       expect(localStorage.getItem('ember.channelsBeforePhone.7')).toBeNull();
       expect(localStorage.getItem('unrelated')).toBe('kept');
       localStorage.removeItem('unrelated');
-    });
-
-    it('still signs out locally when the server call fails', async () => {
-      const auth = setup();
-      auth.setMe(me);
-      const done = auth.logout();
-
-      (await mock.next('POST', '/api/auth/logout')).respond(500);
-      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
-
-      await expect(done).resolves.toBeUndefined();
-      expect(auth.me.get()).toBeNull();
     });
 
     it('in the native build wipes reminders, then tokens, then the queue, then the remembered channels, without a request', async () => {

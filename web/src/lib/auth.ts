@@ -108,15 +108,16 @@ export class AuthService {
 
   /**
    * Removes this device's push subscription (server first, then the browser), signs out,
-   * refreshes antiforgery and goes to `/login`. Never throws.
+   * refreshes antiforgery and goes to `/login`. On the web, resolves false and keeps the session when the server
+   * couldn't end it (offline, 5xx), because only the server can clear the auth cookie. Never throws.
    */
-  async logout(): Promise<void> {
+  async logout(): Promise<boolean> {
     if (!this.native) {
       await this.push?.release();
       try {
         await this.api.logout();
-      } catch {
-        /* ignored */
+      } catch (error) {
+        if (asApiError(error).status !== 401) return false;
       }
     }
     await this.wipeDevice();
@@ -124,6 +125,7 @@ export class AuthService {
     this.consentPrompted = false;
     await this.refreshAntiforgery();
     navigate('/login');
+    return true;
   }
 
   /**

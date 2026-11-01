@@ -107,7 +107,7 @@ Original paths are relative to `web/src/app/`; React paths to `web/src/`.
 | core/auth.service.spec.ts › AuthService › logout › removes the push subscription before signing out, then refreshes antiforgery and clears the session | lib/auth.test.ts › AuthService › logout › removes the push subscription before signing out, then refreshes antiforgery and clears the session | ported (the fake `PushManager` subscription replaces the `SwPush` stub) |
 | core/auth.service.spec.ts › AuthService › logout › signs out without touching push endpoints when there is no subscription | lib/auth.test.ts › AuthService › logout › signs out without touching push endpoints when there is no subscription | ported |
 | core/auth.service.spec.ts › AuthService › logout › wipes the user's queued edits and remembered phone channels from the device | lib/auth.test.ts › AuthService › logout › wipes the user's queued edits and remembered phone channels from the device | ported |
-| core/auth.service.spec.ts › AuthService › logout › still signs out locally when the server call fails | lib/auth.test.ts › AuthService › logout › still signs out locally when the server call fails | ported |
+| core/auth.service.spec.ts › AuthService › logout › still signs out locally when the server call fails | lib/auth.test.ts › AuthService › logout › keeps the session and reports failure when the server cannot end it… | retired: behavior reversed by the final security review (a sign-out that only looked done left the HttpOnly cookie valid on a shared device); replaced by the inverse test |
 | core/error.interceptor.spec.ts › errorInterceptor › refreshes the antiforgery token once and retries the POST with the new token, whose success reaches the caller | lib/http.test.ts › Http errors › refreshes the antiforgery token once and retries the POST with the new token, whose success reaches the caller | ported |
 | core/error.interceptor.spec.ts › errorInterceptor › does not retry a second antiforgery failure and rejects with an ApiError | lib/http.test.ts › Http errors › does not retry a second antiforgery failure and rejects with an ApiError | ported |
 | core/error.interceptor.spec.ts › errorInterceptor › rejects with the original error when the token refresh itself fails | lib/http.test.ts › Http errors › rejects with the original error when the token refresh itself fails | ported |
@@ -253,6 +253,7 @@ S2 had no shell, so each mutation below names the exact revert and the test that
 | S3 review: no cached data across users | query-client.test.ts › forgets the previous user's cached data… | killed: clear removed |
 | S3 review: History day panel closes on month change | pages/history.test.tsx › closes the open day when the month changes… | killed |
 | S3 review: Today reloads after a check-in interrupts a sync refetch | pages/today.test.tsx › shows the synced list after a check-in that interrupted a sync refetch | killed |
+| Final security review low: a failed server sign-out keeps the session instead of only looking signed out | lib/auth.test.ts › keeps the session and reports failure when the server cannot end it…; › treats a 401 from logout as already signed out | killed (lead run 2026-11-01): 401-only guard removed |
 
 ## 4. Frozen strings
 
