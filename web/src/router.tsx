@@ -147,9 +147,8 @@ export const routes: RouteObject[] = [
         ],
       },
       {
-        path: '*',
         element: <CenteredShell />,
-        children: [{ index: true, ...page('Page not found', () => import('./pages/not-found')) }],
+        children: [{ path: '*', ...page('Page not found', () => import('./pages/not-found')) }],
       },
     ],
   },
