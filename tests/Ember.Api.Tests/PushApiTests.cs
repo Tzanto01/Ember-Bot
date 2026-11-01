@@ -121,6 +121,11 @@ public class PushApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var both = await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "webpush" } })).ExpectJson();
         Channels(both).Should().BeEquivalentTo("discord", "webpush");
+        Channels(await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "mobile" } })).ExpectJson()).Should().Equal("mobile");
+        Channels(await (await user.Get($"/api/habits/{id}")).ExpectJson()).Should().Equal("mobile");
+        var mixed = await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "mobile" } })).ExpectJson();
+        Channels(mixed).Should().BeEquivalentTo("discord", "mobile");
+        await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "webpush" } })).ExpectJson();
         await (await user.Patch($"/api/habits/{id}", new { name = "Renamed", reminderChannels = new[] { "sms" } })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
         var unchanged = await (await user.Get($"/api/habits/{id}")).ExpectJson();
         Channels(unchanged).Should().BeEquivalentTo("discord", "webpush");

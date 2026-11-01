@@ -7,7 +7,8 @@ namespace Ember.Api.TestHost;
 /// <summary>
 /// Runs the real API in Development against a throwaway PostgreSQL container, with the outbox and fake Discord from
 /// <see cref="TestFakes"/> and the <see cref="TestEndpoints"/>. <c>Ember:WebOrigin</c> defaults to the first <c>--urls</c> value;
-/// <c>--webroot &lt;dir&gt;</c> serves a built web app (as <c>Ember:WebRoot</c>).
+/// <c>--webroot &lt;dir&gt;</c> (or <c>--webroot=&lt;dir&gt;</c>) serves a built web app (as <c>Ember:WebRoot</c>); a relative
+/// dir resolves against the repo root (the nearest ancestor of the build output containing <c>Ember.slnx</c>).
 /// </summary>
 public static class TestHostProgram
 {
@@ -17,7 +18,7 @@ public static class TestHostProgram
         if (webRoot >= 0 && webRoot + 1 < args.Length)
             args = [.. args[..webRoot], $"--webroot={args[webRoot + 1]}", .. args[(webRoot + 2)..]];
         args = args.Select(a => a.StartsWith("--webroot=", StringComparison.Ordinal)
-            ? $"--Ember:WebRoot={Path.GetFullPath(a["--webroot=".Length..])}"
+            ? $"--Ember:WebRoot={Path.GetFullPath(a["--webroot=".Length..], RepoRoot())}"
             : a).ToArray();
 
         var startup = new ConfigurationBuilder().AddEnvironmentVariables().AddCommandLine(args).Build();
@@ -38,5 +39,13 @@ public static class TestHostProgram
             await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Database.MigrateAsync();
 
         await app.RunAsync();
+    }
+
+    /// <summary>The nearest ancestor of the build output containing <c>Ember.slnx</c>, else the current directory.</summary>
+    private static string RepoRoot()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+            if (File.Exists(Path.Combine(dir.FullName, "Ember.slnx"))) return dir.FullName;
+        return Directory.GetCurrentDirectory();
     }
 }

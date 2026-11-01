@@ -20,7 +20,7 @@ Serve a built web app from the test host, so the app and the API share one origi
 dotnet run --project tests/Ember.Api.TestHost -- --urls http://localhost:5081 --webroot web/dist/ember-web/browser
 ```
 
-`--webroot` (or `Ember__WebRoot`) takes a path relative to the current directory. Email links point to `http://localhost:5081/confirm-email`, `/reset-password` etc., which the SPA fallback serves.
+A relative `--webroot` path resolves against the repo root (the folder with `Ember.slnx`), so the command works from any directory; `Ember__WebRoot` instead takes a path relative to the current directory. Email links point to `http://localhost:5081/confirm-email`, `/reset-password` etc., which the SPA fallback serves.
 
 ## Test endpoints
 
