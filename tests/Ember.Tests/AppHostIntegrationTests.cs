@@ -65,11 +65,11 @@ public class AppHostIntegrationTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            db.Users.Add(new User { DiscordUserId = 42, Timezone = "Asia/Tokyo" });
+            db.Users.Add(new User { Id = TestUsers.Id(42), Logins = TestUsers.Discord(42), Timezone = "Asia/Tokyo" });
             db.Habits.AddRange(
-                new Habit { Id = 1, UserId = 42, Name = "Stretch", ReminderTime = new TimeOnly(9, 0) },
-                new Habit { Id = 2, UserId = 42, Name = "Read", ReminderTime = new TimeOnly(9, 0), NextReminderUtc = keptUtc },
-                new Habit { Id = 3, UserId = 42, Name = "Walk" });
+                new Habit { Id = 1, UserId = TestUsers.Id(42), Name = "Stretch", ReminderTime = new TimeOnly(9, 0) },
+                new Habit { Id = 2, UserId = TestUsers.Id(42), Name = "Read", ReminderTime = new TimeOnly(9, 0), NextReminderUtc = keptUtc },
+                new Habit { Id = 3, UserId = TestUsers.Id(42), Name = "Walk" });
 
             await db.SaveChangesAsync();
         });
