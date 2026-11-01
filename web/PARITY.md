@@ -190,6 +190,8 @@ Filled in S2.
 
 ## 4. Frozen strings
 
+URL assertions are end-anchored (`/today$`, `/login$`, `/login?reason=deleted$`, `/link/merge$`): those navigations add no extra query string or hash.
+
 Pinned by `web/e2e/**` (plan amendment F8). Changing any of these needs a spec selector edit, never an expectation edit. Roles and accessible names are exact unless marked as a pattern.
 
 | Screen | Route | Role / selector | Name or text |
@@ -219,6 +221,7 @@ Pinned by `web/e2e/**` (plan amendment F8). Changing any of these needs a spec s
 | History | `/history` | heading | `History` (exact) |
 | History | | buttons | `Previous month`, `Next month` |
 | History | | day buttons | `button` with `id="day-yyyy-MM-dd"`, attributes `data-state` (`done`, `notdone`, `lowday`, …) and `aria-expanded` |
+| History | | structure | Only in-month, editable days (habit start through today) are `button#day-…`; padding, future and before-start cells are not buttons and carry no `day-` id, because `showMonthOf` reads the month from the first `button[id^="day-"]`. `aria-expanded` is always the string `true` or `false`. `#day-panel` contains no `day-` ids |
 | History | | day panel | `#day-panel` with buttons `Done`, `Not done`, `Mark as a low day` (exact) |
 | Settings | `/settings` | link | `Link Discord` |
 | Settings | | button | `Unlink Discord` |
