@@ -1,4 +1,6 @@
-# Ember API contract v1.2
+# Ember API contract v1.3
+
+v1.3 (2026-11-01): auth rate limits cover only credential and mail endpoints; native app (Capacitor) origins and bearer flow; `mobile` reminder channel; offline day edits.
 
 v1.2 (2026-11-01): login never reports `LockedOut` (a locked account answers `Failed`); email confirmation needs the account's password, so a confirmation link can't activate a password someone else chose.
 
@@ -35,6 +37,14 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 
 Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and `/api/auth/refresh`; Discord sign-in is browser-only in v2.
 
+### Native app (Phase 7)
+
+- The Capacitor app runs the same Angular build from the origins `https://localhost` (Android) and `capacitor://localhost` (iOS). CORS allows these in addition to `Ember__WebOrigin`, configurable as `Ember__NativeOrigins` (comma-separated, exact origins only, `*` rejected), with `Authorization` and `Content-Type` headers and without credentials; only the web origin gets credentials. These origins identify nothing (every Capacitor Android app is `https://localhost`); auth is the bearer token alone.
+- The native app uses bearer tokens only: `POST /api/auth/login` without cookie flags, then `POST /api/auth/refresh`. It sends `Authorization: Bearer`, never cookies, so antiforgery doesn't apply. The access token lives in memory only; the refresh token only in the platform's secure storage (Android Keystore-backed, iOS Keychain), never in `localStorage` or Preferences. On a 401 the app refreshes once (single flight) and retries. The native build calls the absolute `{WebOrigin}` API base; the web build stays relative and same-origin.
+- Bearer sessions aren't revoked server-side by logout: the refresh token stays valid until it expires or the security stamp changes (password reset, link, unlink, merge, delete). Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
+- Discord sign-in, link and merge are browser-only in v2. The app's Settings shows the Discord state and opens `{WebOrigin}/settings` in the system browser to link, and re-reads `GET /api/me` when the app resumes. A Discord-only account can't sign in to the app; the login screen says to create an email login on the web and link Discord there (which merges the accounts).
+- Sign-up, confirm and reset links open the web app (`{WebOrigin}`); the user then signs in in the app.
+
 ### Antiforgery
 
 - `GET /api/auth/antiforgery` → 204 and sets the `XSRF-TOKEN` cookie (readable by JS). The token is tied to the signed-in identity, so the client fetches it on app start, after login, after Discord sign-in and after logout.
@@ -62,7 +72,7 @@ Identity options: confirmed email required to sign in, unique emails, lockout af
 
 Emails link to the web app, built from the configured `Ember__WebOrigin` (never the request host), with URL-encoded values: `{WebOrigin}/confirm-email?userId=…&code=…` and `{WebOrigin}/reset-password?email=…&code=…`. The web pages call the API and then remove `code` from the address bar.
 
-Rate limits on `/api/auth/*`: per client IP (after forwarded headers), plus per email address on the mail-sending endpoints (register, resendConfirmationEmail, forgotPassword).
+Rate limits: per client IP (after forwarded headers) on the credential endpoints only (register, login, refresh, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword), plus per email address on the mail-sending ones (register, resendConfirmationEmail, forgotPassword). Every other `/api/auth` request (antiforgery, logout, the Discord redirect steps, and any endpoint added later) falls under a loose per-IP cap of 300 per minute instead.
 
 ### Discord
 
@@ -150,7 +160,7 @@ Endpoints:
 - `GET /api/push/vapid-public-key` → `{ key }`.
 - `POST /api/me/push-subscriptions` `{ endpoint, keys: { p256dh, auth } }` → 204. `endpoint` must be `https` on a known push service host (Google FCM, Mozilla, Microsoft WNS, Apple); anything else → 400. An endpoint already stored for another account moves to the caller (shared device). At most 10 per account.
 - `DELETE /api/me/push-subscriptions?endpoint=<url-encoded>` → 204, only the caller's own. The web app calls it before logout.
-- `Habit.reminderChannels`: `("discord" | "webpush")[]`, settable via `PATCH /api/habits/{id}`. Default: `discord` for habits created in the bot or before this slice, `webpush` for habits created in the web app. Empty means no reminders. A channel the user can't receive (no Discord login, no push subscription) is skipped silently.
+- `Habit.reminderChannels`: `("discord" | "webpush" | "mobile")[]`, settable via `PATCH /api/habits/{id}`. Default: `discord` for habits created in the bot or before this slice, `webpush` for habits created in the web app. Empty means no reminders. A channel the user can't receive (no Discord login, no push subscription) is skipped silently. `mobile` is never dispatched by the server: the native app schedules local notifications on the device for habits that have it, so they fire offline. Turning on "Remind me on this phone" for a habit sets its channels to `mobile` only (replacing `discord` and `webpush`), so the same reminder never arrives twice; the UI says so. Turning it off restores the habit's creation-channel default.
 - Notification payload (Angular service worker shape): `{ "notification": { "title": "Ember", "body": "<text>", "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } } } } }`. The body names no habit by default ("A gentle nudge from Ember"), since it can show on a lock screen.
 - Until the slice lands these return 501 and `reminderChannels` is absent; the web app hides push settings on 501.
 
@@ -165,3 +175,9 @@ A runnable host in the test tree, never in `src/` or the Docker image: `dotnet r
 - the real Discord OAuth handler, with Discord's token and user endpoints faked at the backchannel HTTP boundary. `GET /test/discord/next?id=<discordId>` sets the Discord ID the next authorization returns. The authorize step redirects straight to the callback.
 - a captured outbox instead of SMTP: `GET /test/outbox?email=<address>` returns the latest email's links.
 - `POST /test/users/bot-only` `{ discordId, habitStartDate? }` creates a bot-only user with one habit (for the merge journey). `habitStartDate` (`yyyy-MM-dd`) backdates that habit's creation so past days can be backfilled; omitted means today.
+
+## Offline day edits (Phase 7, also used by the PWA)
+
+- The client queues `PUT`/`DELETE /api/habits/{id}/days/{date}` made while offline (keyed by user ID) and replays them in order once online. The server needs no change and replays are idempotent. "Last write wins" means last replayed: an older offline edit can overwrite a newer edit made elsewhere, accepted for v2.
+- Dates are computed in the account's timezone (`me.timezone`), not the device's.
+- A replay is dropped (with a gentle notice) only on 404 or 422 `before_habit_start`/`in_future`. On `consent_required` it stays queued and the app shows the consent step. On 401, 429, 5xx or network failure it stays queued and is retried.
