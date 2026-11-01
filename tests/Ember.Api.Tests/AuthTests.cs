@@ -197,6 +197,29 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Reset_password_failures_are_400_with_the_same_invalid_token_shape_for_unknown_emails_and_bad_codes()
+    {
+        var client = await Host.ConfirmedUserAsync();
+        await (await client.Post("/api/auth/forgotPassword", new { email = client.Email })).Expect(HttpStatusCode.OK);
+        var resetMail = (await Host.Mail.WaitForAsync(client.Email, 2))[^1];
+        var code = QueryHelpers.ParseQuery(new Uri(resetMail.Link()).Query)["code"].ToString();
+        const string newPassphrase = "another-long-passphrase";
+        static string[] ErrorKeys(System.Text.Json.JsonElement problem) => problem.GetProperty("errors").EnumerateObject().Select(e => e.Name).ToArray();
+
+        var unknownEmail = await (await client.Post("/api/auth/resetPassword", new ResetRequest(ApiHost.NewEmail(), code, newPassphrase)))
+            .ExpectProblem(HttpStatusCode.BadRequest);
+        var badCode = await (await client.Post("/api/auth/resetPassword", new ResetRequest(client.Email, "AAAA", newPassphrase)))
+            .ExpectProblem(HttpStatusCode.BadRequest);
+        var tooShort = await (await client.Post("/api/auth/resetPassword", new ResetRequest(client.Email, code, "123456789")))
+            .ExpectProblem(HttpStatusCode.BadRequest);
+
+        ErrorKeys(unknownEmail).Should().Equal("InvalidToken");
+        ErrorKeys(badCode).Should().Equal(ErrorKeys(unknownEmail));
+        ErrorKeys(tooShort).Should().Contain("PasswordTooShort");
+        await (await client.Post(LoginUrl, new Credentials(client.Email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
     public async Task Forgot_password_for_an_unknown_email_answers_200_and_sends_nothing()
     {
         var email = ApiHost.NewEmail();
