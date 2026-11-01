@@ -15,8 +15,8 @@ function authorized(req: HttpRequest<unknown>, token: string | null): HttpReques
 
 /**
  * Native build only: sends `Authorization: Bearer` (never cookies) on `/api` calls. A 401 outside `/api/auth/*`
- * refreshes once (single flight in {@link TokenStore}) and retries; if the refresh fails the 401 passes on and
- * the error interceptor ends the session.
+ * refreshes once (single flight in {@link TokenStore}) and retries; if the refresh is refused the 401 passes on and
+ * the error interceptor ends the session; a transient refresh failure (network, 429, 5xx) passes on that error instead.
  */
 export const bearerInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.context.get(SKIP_BEARER) || !isOwnApi(req.url)) return next(req);
@@ -32,7 +32,9 @@ export const bearerInterceptor: HttpInterceptorFn = (req, next) => {
       }
       return from(tokens.refresh()).pipe(
         switchMap((ok) =>
-          ok ? next(authorized(req, tokens.accessToken)) : throwError(() => error),
+          ok
+            ? next(authorized(req, tokens.accessToken))
+            : throwError(() => tokens.lastTransientError ?? error),
         ),
       );
     }),

@@ -144,6 +144,23 @@ describe('bearerInterceptor with TokenStore', () => {
     expect(store.accessToken).toBeNull();
   });
 
+  it.each([503, 429])(
+    'passes the refresh error (%i) on and keeps the stored token when the refresh fails transiently',
+    async (status) => {
+      await signIn();
+
+      const rejection = firstValueFrom(http.get('/api/habits')).catch((e: unknown) => e);
+      mock.expectOne('/api/habits').flush(null, unauthorized);
+      await tick();
+      mock.expectOne('/api/auth/refresh').flush(null, { status, statusText: 'Transient' });
+
+      const error = (await rejection) as HttpErrorResponse;
+      expect(error.status).toBe(status);
+      expect(error.url).toBe('/api/auth/refresh');
+      expect(secure.get('ember.refreshToken')).toBe('refresh-1');
+    },
+  );
+
   it('never refreshes a 401 from the login endpoint', async () => {
     await signIn();
 

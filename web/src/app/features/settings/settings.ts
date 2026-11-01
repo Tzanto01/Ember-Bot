@@ -381,6 +381,11 @@ function isStandalone(): boolean {
             all check-ins and low days, your email and your Discord ID. JSON is handy for other
             apps, CSV opens in a spreadsheet.
           </p>
+          @if (native) {
+            <button class="btn btn-secondary" type="button" (click)="openWebSettings()">
+              Download on the web
+            </button>
+          } @else {
           <div class="row">
             @for (format of exportFormats; track format) {
               <button
@@ -398,6 +403,7 @@ function isStandalone(): boolean {
               </button>
             }
           </div>
+          }
           @if (messages()['export']; as m) {
             <app-notice [tone]="m.tone">{{ m.text }}</app-notice>
           }
@@ -607,7 +613,7 @@ export class SettingsPage {
   });
 
   constructor() {
-    void this.push.check();
+    void this.push.claim();
     if (this.native) void this.reminders.exactAllowed().then((ok) => this.exactAllowed.set(ok), () => undefined);
 
     this.grace.valueChanges
