@@ -62,7 +62,7 @@ public class LeaderboardModule : InteractionModuleBase<SocketInteractionContext>
         {
             var rank  = i < medals.Length ? medals[i] : $"**{i + 1}.**";
             var count = rows[i].CheckIns == 1 ? "1 check-in" : $"{rows[i].CheckIns} check-ins";
-            lines.Add($"{rank} {await DisplayNameAsync(rows[i].UserId)} — {count}");
+            lines.Add($"{rank} {await DisplayNameAsync(rows[i].DiscordUserId)} — {count}");
         }
 
         var embed = new EmbedBuilder()

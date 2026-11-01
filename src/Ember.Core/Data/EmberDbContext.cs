@@ -1,24 +1,33 @@
 using Ember.Core.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Core.Data;
 
-public class EmberDbContext : DbContext
+/// <summary>
+/// Ember's data plus the Identity user tables (no roles). Uses Identity's default schema version:
+/// a process that sets <c>IdentityOptions.Stores.SchemaVersion</c> (for passkeys) changes the model and needs a migration.
+/// </summary>
+public class EmberDbContext : IdentityUserContext<User, Guid>
 {
     public EmberDbContext(DbContextOptions<EmberDbContext> options) : base(options) { }
 
-    public DbSet<User> Users => Set<User>();
     public DbSet<Habit> Habits => Set<Habit>();
     public DbSet<HabitLog> HabitLogs => Set<HabitLog>();
     public DbSet<DayMark> DayMarks => Set<DayMark>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(u => u.DiscordUserId);
             entity.Property(u => u.Timezone).HasMaxLength(64).IsRequired();
             entity.Property(u => u.ConsentPolicyVersion).HasMaxLength(16);
+            entity.HasMany(u => u.Logins)
+                  .WithOne()
+                  .HasForeignKey(l => l.UserId)
+                  .IsRequired();
         });
 
         modelBuilder.Entity<Habit>(entity =>
