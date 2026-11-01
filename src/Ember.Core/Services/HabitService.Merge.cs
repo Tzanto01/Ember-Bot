@@ -30,7 +30,7 @@ public partial class HabitService
     /// <summary>
     /// In one transaction, after locking both user rows and re-checking that the source is still a bot-only account
     /// owning the Discord login and the target still has no Discord login: moves the source's habits (with their logs),
-    /// day marks (one per day and kind when both have it) and Discord login to the target, deletes the source and gives
+    /// day marks (one per day and kind when both have it), push subscriptions and Discord login to the target, deletes the source and gives
     /// the target a new security stamp. The habit limit does not apply. Then reschedules the target's reminders in the
     /// target's timezone. The target's settings are kept.
     /// </summary>
@@ -61,6 +61,10 @@ public partial class HabitService
             await _db.DayMarks
                 .Where(m => m.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, targetUserId), cancellationToken);
+
+            await _db.PushSubscriptions
+                .Where(s => s.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId), cancellationToken);
 
             var key = DiscordLogin.Key(discordUserId);
             await _db.UserLogins

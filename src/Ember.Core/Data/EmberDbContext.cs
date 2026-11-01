@@ -15,6 +15,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<Habit> Habits => Set<Habit>();
     public DbSet<HabitLog> HabitLogs => Set<HabitLog>();
     public DbSet<DayMark> DayMarks => Set<DayMark>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +60,20 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasOne(m => m.User)
                   .WithMany(u => u.DayMarks)
                   .HasForeignKey(m => m.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Endpoint).HasMaxLength(2048).IsRequired();
+            entity.Property(s => s.P256dh).HasMaxLength(256).IsRequired();
+            entity.Property(s => s.Auth).HasMaxLength(64).IsRequired();
+            entity.HasIndex(s => s.Endpoint).IsUnique();
+            entity.HasIndex(s => s.UserId);
+            entity.HasOne(s => s.User)
+                  .WithMany(u => u.PushSubscriptions)
+                  .HasForeignKey(s => s.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

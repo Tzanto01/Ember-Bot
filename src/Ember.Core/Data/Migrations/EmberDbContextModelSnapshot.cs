@@ -75,6 +75,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<DateOnly?>("PausedUntil")
                         .HasColumnType("date");
 
+                    b.Property<int>("ReminderChannels")
+                        .HasColumnType("integer");
+
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("time without time zone");
 
@@ -119,6 +122,45 @@ namespace Ember.Core.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("HabitLogs");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PushSubscriptions");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.User", b =>
@@ -313,6 +355,17 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("Habit");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithMany("PushSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.HasOne("Ember.Core.Models.User", null)
@@ -352,6 +405,8 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("Habits");
 
                     b.Navigation("Logins");
+
+                    b.Navigation("PushSubscriptions");
                 });
 #pragma warning restore 612, 618
         }

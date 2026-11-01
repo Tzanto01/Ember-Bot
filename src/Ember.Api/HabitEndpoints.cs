@@ -16,12 +16,13 @@ internal static class HabitEndpoints
     public sealed record HabitDto(
         int Id, string Name, string Frequency, int? WeeklyTarget, string? ReminderTime,
         DateOnly? PausedFrom, DateOnly? PausedUntil, bool PausedToday, DateTime CreatedAt, DateOnly StartDate,
-        DayDto Today, StatsDto Stats);
+        DayDto Today, StatsDto Stats, List<string> ReminderChannels);
 
     public sealed record TemplateDto(string Key, string Name, string Description, string SuggestedReminderTime, string Frequency, int? WeeklyTarget);
 
     public sealed record CreateHabitRequest(string? Name, string? ReminderTime, string? Frequency, int? WeeklyTarget);
-    public sealed record UpdateHabitRequest(string? Name, string? ReminderTime, bool? ClearReminder, string? Frequency, int? WeeklyTarget);
+    public sealed record UpdateHabitRequest(string? Name, string? ReminderTime, bool? ClearReminder, string? Frequency, int? WeeklyTarget,
+        string?[]? ReminderChannels);
     public sealed record PauseRequest(string? Until);
     public sealed record DayRequest(bool? Completed);
 
@@ -54,7 +55,7 @@ internal static class HabitEndpoints
             Habit habit;
             try
             {
-                habit = await habits.AddHabitAsync(userId, name!, reminder, frequency!.Value, request.WeeklyTarget);
+                habit = await habits.AddHabitAsync(userId, name!, reminder, frequency!.Value, request.WeeklyTarget, ReminderChannels.WebPush);
             }
             catch (ConsentRequiredException)
             {
@@ -82,10 +83,11 @@ internal static class HabitEndpoints
             var frequency = ParseFrequency(request.Frequency);
             if (request.Frequency is not null && frequency is null) errors["frequency"] = [FrequencyMessage];
             ValidateWeeklyTarget(request.WeeklyTarget, frequency ?? habit.FrequencyType, errors);
+            var channels = ParseReminderChannels(request.ReminderChannels, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
-            if (name is not null || reminder is not null || request.ClearReminder == true)
-                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true);
+            if (name is not null || reminder is not null || request.ClearReminder == true || channels is not null)
+                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true, channels);
             if (frequency is not null || request.WeeklyTarget is not null)
                 await habits.SetFrequencyAsync(userId, id, frequency ?? habit.FrequencyType, request.WeeklyTarget ?? habit.WeeklyTarget);
 
@@ -195,7 +197,8 @@ internal static class HabitEndpoints
             habit.ReminderTime is { } time ? Formats.Time(time) : null,
             habit.PausedFrom, habit.PausedUntil, HabitService.IsPausedOn(habit, user.Today),
             DateTime.SpecifyKind(habit.CreatedAt, DateTimeKind.Utc), HabitService.StartDate(habit, user.Tz),
-            ToDayDto(HabitService.DayOn(habit, user.Today, user.Today, user.Tz, user.LowDays)), stats);
+            ToDayDto(HabitService.DayOn(habit, user.Today, user.Today, user.Tz, user.LowDays)), stats,
+            HabitService.ReminderChannelNames(habit.ReminderChannels));
     }
 
     private static DayDto ToDayDto(HabitDay day) => new(day.Date, Lower(day.State), day.Completed);
@@ -216,6 +219,24 @@ internal static class HabitEndpoints
         if (Formats.TryParseTime(value, out var time)) return time;
         errors["reminderTime"] = ["Must be a time as HH:mm."];
         return null;
+    }
+
+    private static ReminderChannels? ParseReminderChannels(string?[]? values, Dictionary<string, string[]> errors)
+    {
+        if (values is null) return null;
+        var channels = ReminderChannels.None;
+        foreach (var value in values)
+        {
+            switch (value)
+            {
+                case "discord": channels |= ReminderChannels.Discord; break;
+                case "webpush": channels |= ReminderChannels.WebPush; break;
+                default:
+                    errors["reminderChannels"] = ["Each must be discord or webpush."];
+                    return null;
+            }
+        }
+        return channels;
     }
 
     private static FrequencyType? ParseFrequency(string? value) => value switch
