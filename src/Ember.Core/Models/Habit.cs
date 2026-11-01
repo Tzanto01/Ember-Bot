@@ -9,6 +9,9 @@ public enum ReminderChannels
     None = 0,
     Discord = 1,
     WebPush = 2,
+
+    /// <summary>Stored for the native app, which schedules local notifications on the device; the server never dispatches it.</summary>
+    Mobile = 4,
 }
 
 public class Habit

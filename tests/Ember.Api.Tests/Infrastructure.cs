@@ -146,6 +146,7 @@ public sealed class ApiHost : WebApplicationFactory<Program>
             ["ConnectionStrings:DefaultConnection"] = connectionString,
             ["Ember:WebOrigin"] = WebOrigin,
             ["Ember:RateLimits:AuthPerIpPerMinute"] = "100000",
+            ["Ember:RateLimits:AuthOtherPerIpPerMinute"] = "100000",
             ["Ember:RateLimits:MailPerEmailPerHour"] = "1000",
         };
         foreach (var (key, value) in extraSettings ?? [])

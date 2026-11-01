@@ -12,6 +12,8 @@ namespace Ember.Bot.Jobs;
 /// <see cref="Habit.ReminderChannels"/> the user can receive (Discord: a Discord login and DM reminders not paused;
 /// web push: the channel is registered and the user has push subscriptions), then advances it once to the next local
 /// occurrence of the habit's ReminderTime. Only the Discord outcome counts towards the DM pause.
+/// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
+/// native app schedules those reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
 /// without sending, as are habits paused or already completed on the user's local day.
 /// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
