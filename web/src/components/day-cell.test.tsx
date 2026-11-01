@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { formatDate } from '@/lib/local-date';
 import type { DayState } from '@/lib/models';
-import { DayCell } from './day-cell';
+import { DayCell, joinsRun } from './day-cell';
 
 const longDate = (date: string) => formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -67,5 +67,17 @@ describe('DayCell', () => {
     expect(screen.queryByRole('button')).toBeNull();
     expect(container.querySelector('[id]')).toBeNull();
     expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+  });
+});
+
+describe('joinsRun', () => {
+  it('carries a run through low days, and breaks it at paused, open or empty days', () => {
+    expect(joinsRun('done', 'done')).toBe(true);
+    expect(joinsRun('done', 'lowday')).toBe(true);
+    expect(joinsRun('lowday', 'done')).toBe(true);
+    expect(joinsRun('done', 'paused')).toBe(false);
+    expect(joinsRun('done', 'notdone')).toBe(false);
+    expect(joinsRun('done', 'pending')).toBe(false);
+    expect(joinsRun('done', undefined)).toBe(false);
   });
 });

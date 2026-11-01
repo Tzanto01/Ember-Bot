@@ -1,5 +1,5 @@
 import { Link, Outlet } from 'react-router';
-import { DayCell } from '@/components/day-cell';
+import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { Card } from '@/components/ui/card';
@@ -51,7 +51,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
                   key={i}
                   state={state}
                   size="slot"
-                  runToNext={state === 'done' && sampleWeek[i + 1] === 'done'}
+                  runToNext={joinsRun(state, sampleWeek[i + 1])}
                 />
               ))}
             </div>
