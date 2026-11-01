@@ -1,6 +1,7 @@
 import { HttpClient, HttpContext, HttpContextToken } from '@angular/common/http';
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { asApiError } from '../problem';
 
 /** Marks the token store's own requests so the bearer interceptor leaves them alone. */
 export const SKIP_BEARER = new HttpContextToken(() => false);
@@ -45,6 +46,7 @@ export class TokenStore {
   private access: string | null = null;
   private sessionRefresh: string | null = null;
   private refreshing: Promise<boolean> | null = null;
+  private epoch = 0;
 
   /** The current access token, or null. */
   get accessToken(): string | null {
@@ -54,6 +56,7 @@ export class TokenStore {
   /** `POST /api/auth/login` without cookie flags. Rejects with the login's `ApiError` (401 `Failed`/`NotAllowed`). */
   async signIn(email: string, password: string, persist: boolean): Promise<void> {
     await this.clear();
+    const epoch = this.epoch;
     const tokens = await firstValueFrom(
       this.http.post<TokenResponse>(
         '/api/auth/login',
@@ -61,12 +64,14 @@ export class TokenStore {
         { context: this.context() },
       ),
     );
-    await this.keep(tokens, persist);
+    if (epoch === this.epoch) await this.keep(tokens, persist);
   }
 
   /**
    * Gets a new access token with the refresh token (`POST /api/auth/refresh`). Concurrent callers share one
-   * request. Resolves false, after forgetting the session, when there is no refresh token or it was refused.
+   * request. Resolves false when there is no refresh token or the refresh failed; only a refusal (400/401)
+   * forgets the session, a network error, 429 or 5xx keeps it for a later try. A result that arrives after
+   * `clear()` (logout, another sign-in) is discarded.
    */
   refresh(): Promise<boolean> {
     this.refreshing ??= this.runRefresh().finally(() => (this.refreshing = null));
@@ -75,12 +80,17 @@ export class TokenStore {
 
   /** Forgets both tokens, in memory and in secure storage. */
   async clear(): Promise<void> {
+    this.epoch++;
     this.access = null;
     this.sessionRefresh = null;
-    await this.secure.remove(refreshKey).catch(() => undefined);
+    await this.secure
+      .remove(refreshKey)
+      .catch(() => this.secure.remove(refreshKey))
+      .catch(() => undefined);
   }
 
   private async runRefresh(): Promise<boolean> {
+    const epoch = this.epoch;
     const persisted = this.sessionRefresh === null;
     const refreshToken =
       this.sessionRefresh ?? (await this.secure.get(refreshKey).catch(() => null));
@@ -93,10 +103,12 @@ export class TokenStore {
           { context: this.context() },
         ),
       );
+      if (epoch !== this.epoch) return false;
       await this.keep(tokens, persisted);
       return true;
-    } catch {
-      await this.clear();
+    } catch (error) {
+      const status = asApiError(error).status;
+      if (epoch === this.epoch && (status === 400 || status === 401)) await this.clear();
       return false;
     }
   }

@@ -1,6 +1,6 @@
 # Ember Android app: store submission prep
 
-Status: prep only. The Android project does not exist in the repo yet (no `capacitor.config.*`, no `android/` folder). iOS is parked (section 3). Nothing is submitted and no store account exists yet.
+Status: prep only. The Android project exists (`web/capacitor.config.ts`, `mobile/android`) but no APK or AAB has been built and nothing has run on a device. iOS is parked (section 3). Nothing is submitted and no store account exists yet.
 
 Sources: `docs/legal/datenschutzerklaerung.md`, `docs/legal/README.md`, `docs/contracts/api-v1.md` (v1.3), `docs/v2-plan.md` (Phase 7). Code facts were checked on 2026-11-01. Store rules and fees come from memory and must be checked in the Play Console and the Apple Developer site before submitting.
 
@@ -181,16 +181,13 @@ From `docs/legal/README.md`:
 - Discord sharing answer in the Data safety form (section 2.1). TODO (Nico).
 - `web/src/environments/environment.mobile.ts` still has the placeholders `https://ember.invalid`. Set `apiBase` and `webOrigin` to the deployed `Ember__WebOrigin` before building.
 
-### 4.3 Code gaps found while writing this
+### 4.3 Code gaps
 
-1. **No Android project.** There is no `capacitor.config.*` and no `android/` folder. The app ID, `allowBackup=false`, the merged permissions and INTERNET cannot be checked until it exists.
-2. **Native CORS origins are missing.** Contract v1.3 requires `Ember__NativeOrigins` (`https://localhost` and `capacitor://localhost`). `src/Ember.Api/ApiApp.cs` allows only the web origin, with credentials. The app's API calls will fail.
-3. **Device data is not wiped on logout or deletion.** `OfflineQueue.clear` (`web/src/app/core/offline-queue.ts`, line 60) has no callers. The store copy and the device-store comment both say the data is wiped.
-4. **Local reminders are not wired.** `@capacitor/local-notifications` is listed in `web/package.json`, but no code schedules or cancels notifications.
-5. **Token storage is not wired.** `@aparajita/capacitor-secure-storage` is listed, and its Android code uses AndroidKeyStore (checked in the plugin source). No app code imports it yet.
-6. **No public deletion page** (section 2.4).
+1. **Native CORS origins depend on API round 3.** Contract v1.3 requires `Ember__NativeOrigins` (`https://localhost`, `capacitor://localhost`) and the `mobile` reminder channel. Until that API work is merged and deployed, the app cannot reach the API and `PATCH` with `mobile` returns 400.
+2. **No public deletion page** (section 2.4).
+3. **Not built or device-tested.** No Gradle build, APK or AAB yet. Exact-alarm behaviour, notification permission, Keystore storage and the backup exclusions (`allowBackup=false`, `data_extraction_rules.xml`) still need a run on a real device.
 
-Note: `web/package.json` and `web/bun.lock` have uncommitted Capacitor changes. They are not part of this doc and were not touched.
+Wired since the first draft: Android project (`allowBackup=false`, cleartext off), device wipe on logout and deletion, local reminders (`web/src/app/core/native/reminder.service.ts`) and Keystore token storage (`web/src/app/core/native/token-store.ts`).
 
 ## Changelog
 

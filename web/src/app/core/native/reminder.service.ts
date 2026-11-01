@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiClient } from '../api-client';
-import { DeviceStore } from '../device-store';
+import { DeviceStore, withDayEdit } from '../device-store';
+import { asApiError } from '../problem';
 import { Habit } from '../models';
 import { planReminders } from './reminder-plan';
 
@@ -23,7 +24,8 @@ export class ReminderService {
   private channelReady = false;
 
   /**
-   * Rebuilds the user's reminders from the current habit list (cached when offline), in `timeZone`.
+   * Rebuilds the user's reminders from the current habit list (when offline: the cached list with the queued
+   * day edits applied, so an offline check-in still cancels today's reminder), in `timeZone`.
    * Rebuilds run one after another. Never throws.
    */
   rebuild(userId: string, timeZone: string): Promise<void> {
@@ -69,10 +71,14 @@ export class ReminderService {
     try {
       habits = await this.api.listHabits();
       await this.store.saveHabits({ userId, timeZone, habits }).catch(() => undefined);
-    } catch {
+    } catch (error) {
+      if (asApiError(error).status === 401) return;
       const cached = await this.store.habits(userId).catch(() => null);
       if (!cached) return;
-      habits = cached.habits;
+      const queued = await this.store.edits(userId).catch(() => []);
+      habits = cached.habits.map((habit) =>
+        queued.filter((edit) => edit.habitId === habit.id).reduce(withDayEdit, habit),
+      );
     }
     const plan = planReminders(habits, timeZone, Date.now());
     const plugin = await notifications();

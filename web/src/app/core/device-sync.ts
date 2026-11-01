@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 import { ApiClient } from './api-client';
 import { AuthService } from './auth.service';
 import { ReminderService } from './native/reminder.service';
-import { OfflineQueue } from './offline-queue';
+import { OfflineQueue, REPLAY } from './offline-queue';
 
 /**
  * Keeps the device in step with the account: replays queued offline day edits when the user is known, when
@@ -21,6 +21,7 @@ export class DeviceSync {
   private readonly reminders = inject(ReminderService);
   private readonly router = inject(Router);
   private readonly userId = computed(() => this.auth.me()?.id ?? null);
+  private readonly timeZone = computed(() => this.auth.me()?.timezone ?? null);
 
   /** Bumps after a replay sent or dropped something, so screens can reload. */
   readonly synced = signal(0);
@@ -35,6 +36,13 @@ export class DeviceSync {
         if (id) void this.queue.refreshCount(id).then(() => this.sync());
       });
     });
+    effect(() => {
+      this.timeZone();
+      untracked(() => this.rebuildReminders());
+    });
+    effect(() => {
+      if (this.queue.added()) untracked(() => void this.sync());
+    });
   }
 
   /** Registers the online listener and, in the native build, the resume and notification-tap listeners. */
@@ -48,7 +56,7 @@ export class DeviceSync {
     const me = this.auth.me();
     if (!me) return;
     const result = await this.queue
-      .replay(me.id, (edit) => this.api.sendDayEdit(edit))
+      .replay(me.id, (edit) => this.api.sendDayEdit(edit, true))
       .catch(() => null);
     if (result?.dropped) this.dropped.update((count) => count + result.dropped);
     if (result && (result.sent || result.dropped)) this.synced.update((count) => count + 1);
@@ -74,15 +82,15 @@ export class DeviceSync {
   }
 }
 
-const reminderInputs = /\/api\/(habits|me)(\/|\?|$)/;
+const reminderInputs = /\/api\/habits(\/|\?|$)/;
 
 /**
- * Native build only: after a successful change to habits, days, pauses or settings, rebuilds the local
- * reminders (check-in cancels today's, edits and pauses reschedule, a timezone change moves them).
+ * Native build only: after a successful change to habits, days or pauses, rebuilds the local reminders
+ * (check-in cancels today's, edits and pauses reschedule). A timezone change rebuilds from `DeviceSync`'s
+ * effect once `me` holds the new zone; replayed edits wait for the replay's single rebuild.
  */
 export const reminderTriggerInterceptor: HttpInterceptorFn = (req, next) => {
-  if (req.method === 'GET' || !reminderInputs.test(req.url) || req.url.includes('/api/me/delete'))
-    return next(req);
+  if (req.method === 'GET' || !reminderInputs.test(req.url) || req.context.get(REPLAY)) return next(req);
   const sync = inject(DeviceSync);
   return next(req).pipe(
     tap((event) => {

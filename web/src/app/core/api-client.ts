@@ -1,8 +1,8 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
-import { DayEdit } from './device-store';
-import { OfflineQueue } from './offline-queue';
+import { DayEdit, withDayEdit } from './device-store';
+import { OfflineQueue, REPLAY } from './offline-queue';
 import { asApiError } from './problem';
 import {
   Credentials,
@@ -36,11 +36,6 @@ function unreachable(error: unknown): boolean {
   return apiError.status === 0 || (apiError.status === 504 && !apiError.problem);
 }
 
-function withDay(habit: Habit, edit: DayEdit): Habit {
-  if (habit.today.date !== edit.date) return habit;
-  const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
-  return { ...habit, today: { date: edit.date, state, completed: edit.completed } };
-}
 
 function range(from?: LocalDateString, to?: LocalDateString): HttpParams {
   let params = new HttpParams();
@@ -222,23 +217,26 @@ export class ApiClient {
     return this.dayEdit({ habitId: id, date, completed: null });
   }
 
-  /** Sends one day edit (`completed` null clears) without the offline fallback; used to replay the queue. */
-  sendDayEdit(edit: DayEdit): Promise<Habit> {
+  /** Sends one day edit (`completed` null clears) without the offline fallback; `replay` marks queue replays. */
+  sendDayEdit(edit: DayEdit, replay = false): Promise<Habit> {
     const url = `/api/habits/${edit.habitId}/days/${seg(edit.date)}`;
     const request =
       edit.completed === null
-        ? this.http.delete<Habit>(url)
-        : this.http.put<Habit>(url, { completed: edit.completed });
+        ? this.http.delete<Habit>(url, { context: new HttpContext().set(REPLAY, replay) })
+        : this.http.put<Habit>(url, { completed: edit.completed }, { context: new HttpContext().set(REPLAY, replay) });
     return this.run(request).then((habit) => this.remember(habit));
   }
 
   private async dayEdit(edit: DayEdit): Promise<Habit> {
+    const known = this.known.get(edit.habitId);
+    if (known && this.offline.pending() > 0 && (await this.offline.add(edit))) {
+      return this.remember(withDayEdit(known, edit));
+    }
     try {
       return await this.sendDayEdit(edit);
     } catch (error) {
-      const known = this.known.get(edit.habitId);
       if (!unreachable(error) || !known || !(await this.offline.add(edit))) throw error;
-      return this.remember(withDay(known, edit));
+      return this.remember(withDayEdit(known, edit));
     }
   }
 
