@@ -1,10 +1,12 @@
-# Ember API contract v1
+# Ember API contract v1.1
+
+v1.1 (2026-11-01): CSP allows inline styles, `returnUrl` rejects control characters, static serving includes `/legal/*.md`, test host seeding takes `habitStartDate`.
 
 Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (consumer, team `web`). Changes go only through the department lead and bump the version.
 
 ## Conventions
 
-- Same origin. All endpoints live under `/api`, except `GET /health`. In production the API also serves the built web app; its SPA fallback to `index.html` never applies to `/api/**` or `/health` (an unknown `/api` path is a JSON 404).
+- Same origin. All endpoints live under `/api`, except `GET /health`. In production the API also serves the built web app; static files include `/legal/*.md` (served as `text/markdown`), and its SPA fallback to `index.html` never applies to `/api/**` or `/health` (an unknown `/api` path is a JSON 404).
 - Ports: the API listens on `http://localhost:5080` (team `api`) or `5081` (team `web`'s own runs); the Angular dev server proxies `/api` to it.
 - JSON with camelCase names. Dates are local calendar days as `yyyy-MM-dd`, times of day as `HH:mm`, instants as ISO 8601 UTC. Enums are lowercase strings.
 - Errors are RFC 7807 problem details (`application/problem+json`). Apart from the Identity endpoints listed below, `type` holds one of these codes:
@@ -25,7 +27,7 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 
 - Every endpoint acts only on the signed-in user. Another user's habit ID behaves exactly like a missing one (404).
 - Consent gating follows Core exactly: an endpoint returns `consent_required` where the Core call does (`AddHabitAsync` throws `ConsentRequiredException`; any `DayEditResult.ConsentRequired`), and also for `POST /api/account/merge`. Reads, settings, export and delete never need consent.
-- Every `/api` response has `Cache-Control: no-store`. The app sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy` with `default-src 'self'; frame-ancestors 'none'` (plus what Angular needs), and HSTS outside Development.
+- Every `/api` response has `Cache-Control: no-store`. The app sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy` with `default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'` (Angular injects inline styles), and HSTS outside Development.
 
 ## Auth
 
@@ -66,7 +68,7 @@ Rate limits on `/api/auth/*`: per client IP (after forwarded headers), plus per 
 - `GET /api/auth/discord/login?returnUrl=/today` → challenge. On return:
   - a known Discord ID signs in its account (migrated and bot-only users included);
   - an unknown Discord ID creates an account through Core `ResolveOrCreateDiscordUserAsync` (the same bot-only shape) and signs it in;
-  - redirects to `returnUrl` when it is a local path (starts with a single `/`, not `//` or `/\`), else `/today`.
+  - redirects to `returnUrl` when it is a local path (starts with a single `/`, not `//` or `/\`, and contains no control characters, raw or percent-encoded such as `%09`), else `/today`.
 - `GET /api/auth/discord/link` (signed in) → challenge. The flow is bound to the user who started it; on return, a different or missing signed-in user ends at `/settings?discord=error`. Otherwise it redirects to:
   - `/settings?discord=linked` when the Discord ID was free (login added) or already this account's;
   - `/link/merge` when the Discord ID belongs to a bot-only account (no password, no email). A pending merge is stored in a data-protected, HttpOnly cookie bound to the signed-in user's ID and security stamp, valid 15 minutes, used once;
@@ -160,4 +162,4 @@ A runnable host in the test tree, never in `src/` or the Docker image: `dotnet r
 
 - the real Discord OAuth handler, with Discord's token and user endpoints faked at the backchannel HTTP boundary. `GET /test/discord/next?id=<discordId>` sets the Discord ID the next authorization returns. The authorize step redirects straight to the callback.
 - a captured outbox instead of SMTP: `GET /test/outbox?email=<address>` returns the latest email's links.
-- `POST /test/users/bot-only` `{ discordId }` creates a bot-only user with one habit (for the merge journey).
+- `POST /test/users/bot-only` `{ discordId, habitStartDate? }` creates a bot-only user with one habit (for the merge journey). `habitStartDate` (`yyyy-MM-dd`) backdates that habit's creation so past days can be backfilled; omitted means today.
