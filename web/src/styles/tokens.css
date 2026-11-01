@@ -1,0 +1,92 @@
+/*
+ * Ember design tokens. Every colour is a light-dark() pair, so the theme follows
+ * prefers-color-scheme by default and a manual toggle only needs
+ * <html data-theme="light|dark">. See web/DESIGN.md for ratios and usage.
+ */
+:root {
+  color-scheme: light dark;
+
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", Quicksand, Comfortaa, Manjari,
+    "Arial Rounded MT", "Arial Rounded MT Bold", Calibri, system-ui, sans-serif;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --leading-tight: 1.2;
+  --leading-body: 1.55;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 650;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  --tap: 2.75rem;
+  --measure: 38rem;
+  --shell-max: 64rem;
+  --tabbar-height: 4rem;
+
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --color-bg: light-dark(#fbf7f1, #1a1512);
+  --color-surface: light-dark(#ffffff, #241d19);
+  --color-surface-sunken: light-dark(#f4ede3, #2e2621);
+  --color-text: light-dark(#2a211c, #f3ebe2);
+  --color-text-muted: light-dark(#66574c, #bbaa9b);
+  --color-border: light-dark(#e6dbcd, #3a302a);
+  --color-border-strong: light-dark(#8a7868, #8c7a6b);
+
+  --color-primary: light-dark(#8f5200, #f2a65a);
+  --color-primary-hover: light-dark(#7a4500, #f7bc80);
+  --color-on-primary: light-dark(#ffffff, #1a1512);
+  --color-focus: light-dark(#8f5200, #f2a65a);
+
+  --color-flame: light-dark(#f0962b, #f2a65a);
+  --color-flame-core: light-dark(#ffd58a, #ffe2a8);
+
+  --color-done: light-dark(#c2660a, #e08a3c);
+  --color-on-done: light-dark(#ffffff, #1a1512);
+  --color-lowday: light-dark(#6e6a9e, #a9a4db);
+  --color-lowday-bg: light-dark(#eceaf5, #2c2a3d);
+
+  --color-success: light-dark(#3d6b4f, #8fc2a0);
+  --color-success-bg: light-dark(#eaf1eb, #1f2b23);
+
+  --color-notice-bg: light-dark(#f8eedc, #33291c);
+  --color-notice-border: light-dark(#d9bf8f, #6b5634);
+  --color-notice-icon: light-dark(#8f5200, #f2a65a);
+  --color-notice-text: light-dark(#7a4500, #f2c38f);
+
+  --shadow-1: 0 1px 2px light-dark(rgb(60 40 20 / 0.08), rgb(0 0 0 / 0.4));
+  --shadow-2: 0 2px 4px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.35)),
+    0 8px 24px light-dark(rgb(60 40 20 / 0.08), rgb(0 0 0 / 0.35));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}

@@ -1,10 +1,25 @@
 {
-  "name": "ember-web",
-  "short_name": "ember-web",
+  "name": "Ember",
+  "short_name": "Ember",
+  "description": "A gentle habit tracker.",
   "display": "standalone",
-  "scope": "./",
-  "start_url": "./",
+  "scope": "/",
+  "start_url": "/today",
+  "theme_color": "#fbf7f1",
+  "background_color": "#fbf7f1",
   "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
     {
       "src": "icons/icon-72x72.png",
       "sizes": "72x72",
