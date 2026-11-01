@@ -1,5 +1,7 @@
 using System.Globalization;
+using Ember.Core.Data;
 using Ember.Core.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -9,7 +11,7 @@ namespace Ember.Api.TestHost;
 public static class TestEndpoints
 {
     public sealed record OutboxDto(string To, string Subject, IReadOnlyList<string> Links);
-    public sealed record BotOnlyRequest(string? DiscordId);
+    public sealed record BotOnlyRequest(string? DiscordId, string? HabitStartDate);
     public sealed record BotOnlyDto(Guid UserId, int HabitId);
 
     public static WebApplication MapEmberTestEndpoints(this WebApplication app)
@@ -37,16 +39,29 @@ public static class TestEndpoints
                 ? Results.Ok(new OutboxDto(latest.To, latest.Subject, latest.Links))
                 : Results.NotFound());
 
-        test.MapPost("/users/bot-only", async (BotOnlyRequest request, HabitService habits) =>
+        test.MapPost("/users/bot-only", async (BotOnlyRequest request, HabitService habits, EmberDbContext db, TimeProvider time) =>
         {
             if (!ulong.TryParse(request.DiscordId, NumberStyles.None, CultureInfo.InvariantCulture, out var discordId))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["discordId"] = ["Must be a Discord user ID."] });
+
+            var now = time.GetUtcNow().UtcDateTime;
+            var startDate = DateOnly.FromDateTime(now);
+            if (request.HabitStartDate is not null
+                && (!DateOnly.TryParseExact(request.HabitStartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out startDate)
+                    || startDate > DateOnly.FromDateTime(now)))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["habitStartDate"] = ["Must be a yyyy-MM-dd date, not in the future."] });
+
             if (await habits.FindDiscordUserAsync(discordId) != Guid.Empty)
                 return Results.Conflict();
 
             var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId);
             await habits.GiveHealthDataConsentAsync(userId);
             var habit = await habits.AddHabitAsync(userId, "Water", null);
+            if (startDate < DateOnly.FromDateTime(now))
+            {
+                var createdAt = startDate.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc);
+                await db.Habits.Where(h => h.Id == habit.Id).ExecuteUpdateAsync(s => s.SetProperty(h => h.CreatedAt, createdAt));
+            }
             return Results.Created((string?)null, new BotOnlyDto(userId, habit.Id));
         });
 

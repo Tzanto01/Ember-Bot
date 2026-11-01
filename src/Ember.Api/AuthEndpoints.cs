@@ -27,7 +27,7 @@ internal static class AuthEndpoints
     {
         auth.MapIdentityApi<User>().AddEndpointFilter(IdentityFilter);
 
-        auth.MapGet("/antiforgery", (HttpContext http, IAntiforgery antiforgery) =>
+        auth.MapGet("/antiforgery", (HttpContext http, IAntiforgery antiforgery, IHostEnvironment environment) =>
         {
             var tokens = antiforgery.GetAndStoreTokens(http);
             http.Response.Cookies.Append(XsrfCookieName, tokens.RequestToken!, new CookieOptions
@@ -35,14 +35,14 @@ internal static class AuthEndpoints
                 HttpOnly = false,
                 SameSite = SameSiteMode.Strict,
                 Path = "/",
-                Secure = http.Request.IsHttps,
+                Secure = !environment.IsDevelopment() || http.Request.IsHttps,
             });
             return TypedResults.NoContent();
         });
 
-        auth.MapPost("/logout", async (SignInManager<User> signIn) =>
+        auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn) =>
         {
-            await signIn.SignOutAsync();
+            if (http.User.Identity?.IsAuthenticated == true) await signIn.SignOutAsync();
             return TypedResults.NoContent();
         });
 
@@ -76,8 +76,9 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Rate-limits the mail-sending endpoints per email address, answers a registration with a taken address like a new one
-    /// (and mails the owner instead), and reports a lockout as <c>LockedOut</c>.
+    /// Rate-limits the mail-sending endpoints per email address and reports a lockout as <c>LockedOut</c>. A registration with
+    /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
+    /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
     /// </summary>
     private static async ValueTask<object?> IdentityFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
@@ -99,25 +100,37 @@ internal static class AuthEndpoints
         }
 
         var result = await next(context);
-        var inner = (result as INestedHttpResult)?.Result ?? result as IResult;
 
         if (http.Request.Path.Equals(Register, StringComparison.OrdinalIgnoreCase)
-            && inner is ValidationProblem { ProblemDetails.Errors: var errors }
-            && errors.Keys.Any(IsDuplicate)
+            && DuplicateErrors(result) is { } errors
             && email is not null)
         {
             var remaining = errors.Where(e => !IsDuplicate(e.Key)).ToDictionary();
             if (remaining.Count > 0) return Problems.Validation(remaining);
 
+            var users = http.RequestServices.GetRequiredService<UserManager<User>>();
+            if (await users.FindByEmailAsync(email) is { EmailConfirmed: false } unconfirmed
+                && (await users.GetLoginsAsync(unconfirmed)).Count == 0
+                && (await users.DeleteAsync(unconfirmed)).Succeeded)
+            {
+                result = await next(context);
+                if (DuplicateErrors(result) is null) return result;
+            }
+
             await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(email);
             return TypedResults.Ok();
         }
 
-        if (inner is ProblemHttpResult { ProblemDetails: { Detail: "Lockedout" } problem })
+        if (Unwrap(result) is ProblemHttpResult { ProblemDetails: { Detail: "Lockedout" } problem })
             problem.Detail = "LockedOut";
 
         return result;
     }
+
+    private static IResult? Unwrap(object? result) => (result as INestedHttpResult)?.Result ?? result as IResult;
+
+    private static IDictionary<string, string[]>? DuplicateErrors(object? result)
+        => Unwrap(result) is ValidationProblem { ProblemDetails.Errors: var errors } && errors.Keys.Any(IsDuplicate) ? errors : null;
 
     private static bool IsDuplicate(string code) => code is "DuplicateUserName" or "DuplicateEmail";
 }

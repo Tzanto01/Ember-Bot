@@ -68,7 +68,7 @@ internal static class DiscordEndpoints
 
             var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId);
             var user = await users.FindByIdAsync(userId.ToString());
-            if (user is null || await users.IsLockedOutAsync(user)) return Results.Redirect(LoginError);
+            if (user is null) return Results.Redirect(LoginError);
 
             await signIn.SignInAsync(user, isPersistent: true, authenticationMethod: DiscordLogin.Provider);
             return Results.Redirect(LocalOrToday(returnUrl));
@@ -131,11 +131,23 @@ internal static class DiscordEndpoints
         return api;
     }
 
-    /// <summary>A local path (a single leading <c>/</c>, no <c>//</c>, <c>/\</c> or control characters), else <c>/today</c>.</summary>
+    /// <summary>
+    /// A local ASCII path (a single leading <c>/</c>, no <c>//</c>, <c>/\</c> or control characters, also after percent-decoding),
+    /// else <c>/today</c>.
+    /// </summary>
     internal static string LocalOrToday(string? returnUrl)
-        => returnUrl is ['/', ..] && (returnUrl.Length == 1 || returnUrl[1] is not ('/' or '\\')) && !returnUrl.Any(char.IsControl)
-            ? returnUrl
-            : "/today";
+    {
+        if (returnUrl is null || !returnUrl.All(char.IsAscii)) return "/today";
+
+        var value = returnUrl;
+        while (true)
+        {
+            if (value is not ['/', ..] || (value.Length > 1 && value[1] is '/' or '\\') || value.Any(char.IsControl)) return "/today";
+            var decoded = Uri.UnescapeDataString(value);
+            if (decoded == value) return returnUrl;
+            value = decoded;
+        }
+    }
 
     private static AuthenticationProperties Properties(SignInManager<User> signIn, string flow, string redirectUrl, string? userId = null)
     {
