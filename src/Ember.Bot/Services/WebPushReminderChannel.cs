@@ -62,17 +62,27 @@ public sealed class WebPushReminderChannel : IReminderChannel
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or System.Security.Cryptography.CryptographicException)
         {
-            throw new InvalidOperationException(
-                "Invalid web push configuration: check WebPush:PublicKey, WebPush:PrivateKey and WebPush:Subject " +
-                "(base64url VAPID keys; subject a mailto: or https: URL).", ex);
+            throw new InvalidOperationException(InvalidConfigMessage, ex);
         }
     }
 
-    /// <summary>Whether the VAPID public key, private key and subject are all configured.</summary>
+    private const string InvalidConfigMessage =
+        "Invalid web push configuration: set all or none of WebPush:PublicKey, WebPush:PrivateKey and WebPush:Subject " +
+        "(base64url VAPID keys; subject a mailto: or https: URL).";
+
+    /// <summary>True when the VAPID public key, private key and subject are all configured, false when none is.</summary>
+    /// <exception cref="InvalidOperationException">Only some of them are configured.</exception>
     public static bool IsConfigured(IConfiguration config)
-        => !string.IsNullOrWhiteSpace(config["WebPush:PublicKey"])
-            && !string.IsNullOrWhiteSpace(config["WebPush:PrivateKey"])
-            && !string.IsNullOrWhiteSpace(config["WebPush:Subject"]);
+    {
+        var set = new[] { "WebPush:PublicKey", "WebPush:PrivateKey", "WebPush:Subject" }
+            .Count(key => !string.IsNullOrWhiteSpace(config[key]));
+        return set switch
+        {
+            0 => false,
+            3 => true,
+            _ => throw new InvalidOperationException(InvalidConfigMessage),
+        };
+    }
 
     public ReminderChannels Channel => ReminderChannels.WebPush;
 

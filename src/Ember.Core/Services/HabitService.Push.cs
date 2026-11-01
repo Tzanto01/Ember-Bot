@@ -42,23 +42,30 @@ public partial class HabitService
         catch (DbUpdateException) when (_db.Entry(subscription).State == EntityState.Added)
         {
             _db.Entry(subscription).State = EntityState.Detached;
-            await _db.PushSubscriptions
+            var updated = await _db.PushSubscriptions
                 .Where(s => s.Endpoint == endpoint)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(p => p.UserId, userId)
                     .SetProperty(p => p.P256dh, p256dh)
                     .SetProperty(p => p.Auth, auth)
                     .SetProperty(p => p.CreatedAt, now));
+            if (updated == 0) throw;
         }
 
+        await TrimPushSubscriptionsAsync(userId);
+    }
+
+    /// <summary>Deletes the user's least recently saved subscriptions beyond <see cref="MaxPushSubscriptionsPerUser"/>.</summary>
+    private async Task TrimPushSubscriptionsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
         var excess = await _db.PushSubscriptions
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.CreatedAt).ThenByDescending(s => s.Id)
             .Skip(MaxPushSubscriptionsPerUser)
             .Select(s => s.Id)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         if (excess.Count > 0)
-            await _db.PushSubscriptions.Where(s => excess.Contains(s.Id)).ExecuteDeleteAsync();
+            await _db.PushSubscriptions.Where(s => excess.Contains(s.Id)).ExecuteDeleteAsync(cancellationToken);
     }
 
     /// <summary>Deletes the user's subscription with this endpoint; another account's subscription is left alone. Missing is a no-op.</summary>

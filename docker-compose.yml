@@ -15,6 +15,9 @@ services:
       DevGuildId: ${DEV_GUILD_ID:-}
       Ember__PrivacyPolicyUrl: ${PRIVACY_POLICY_URL:-}
       Ember__WebOrigin: ${WEB_ORIGIN:-}
+      WebPush__PublicKey: ${VAPID_PUBLIC_KEY:-}
+      WebPush__PrivateKey: ${VAPID_PRIVATE_KEY:-}
+      WebPush__Subject: ${VAPID_SUBJECT:-}
     networks:
       - homeserver-net
 
@@ -43,6 +46,7 @@ services:
       Smtp__From: ${SMTP_FROM}
       Discord__ClientId: ${DISCORD_CLIENT_ID}
       Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
+      WebPush__PublicKey: ${VAPID_PUBLIC_KEY:-}
     volumes:
       - ember-api-keys:/keys
     ports:
