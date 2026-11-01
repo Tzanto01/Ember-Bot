@@ -109,37 +109,40 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Rate-limits the mail-sending endpoints per email address. A registration with
+    /// Hides Identity's GET endpoints (confirmEmail, manage/info), whatever the path spelling. Rate-limits each mail-sending
+    /// endpoint per email address. A registration with
     /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
     /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
     /// forgotPassword also mails a reset code to an unconfirmed account, and resetPassword works for one and confirms its email.
+    /// Endpoints are told apart by their bound request type, never by the raw path.
     /// </summary>
     private static async ValueTask<object?> IdentityFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
-        if (http.Request.Path.Equals(ResetPassword, StringComparison.OrdinalIgnoreCase)
-            && context.Arguments.OfType<ResetPasswordRequest>().FirstOrDefault() is { } reset)
+        if (HttpMethods.IsGet(http.Request.Method)) return Problems.NotFound();
+
+        var request = context.Arguments.FirstOrDefault(argument =>
+            argument is RegisterRequest or ResendConfirmationEmailRequest or ForgotPasswordRequest or ResetPasswordRequest);
+        if (request is ResetPasswordRequest reset)
             return await ResetPasswordAsync(http.RequestServices.GetRequiredService<UserManager<User>>(), reset);
 
-        var email = context.Arguments
-            .Select(argument => argument switch
-            {
-                RegisterRequest r => r.Email,
-                ResendConfirmationEmailRequest r => r.Email,
-                ForgotPasswordRequest r => r.Email,
-                _ => null,
-            })
-            .FirstOrDefault(e => e is not null);
-        if (email is not null)
+        var email = request switch
+        {
+            RegisterRequest r => r.Email,
+            ResendConfirmationEmailRequest r => r.Email,
+            ForgotPasswordRequest r => r.Email,
+            _ => null,
+        };
+        if (request is not null && email is not null)
         {
             using var lease = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>()
-                .AttemptAcquire(email.Trim().ToUpperInvariant());
+                .AttemptAcquire($"{request.GetType().Name}:{email.Trim().ToUpperInvariant()}");
             if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
         }
 
         var result = await next(context);
 
-        if (http.Request.Path.Equals(Register, StringComparison.OrdinalIgnoreCase)
+        if (request is RegisterRequest
             && DuplicateErrors(result) is { } errors
             && email is not null)
         {
@@ -159,7 +162,7 @@ internal static class AuthEndpoints
             return TypedResults.Ok();
         }
 
-        if (http.Request.Path.Equals(ForgotPassword, StringComparison.OrdinalIgnoreCase) && email is not null)
+        if (request is ForgotPasswordRequest && email is not null)
         {
             var users = http.RequestServices.GetRequiredService<UserManager<User>>();
             if (await users.FindByEmailAsync(email) is { EmailConfirmed: false } unconfirmed)

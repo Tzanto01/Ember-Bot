@@ -56,6 +56,53 @@ public class ConfirmEmailTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task A_trailing_slash_on_confirm_email_is_a_404_and_confirms_nothing()
+    {
+        var client = Host.NewClient();
+        var email = ApiHost.NewEmail();
+        var mail = await RegisterAsync(client, email, ApiClient.Passphrase, 1);
+        var query = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query);
+
+        var response = await client.Get($"/api/auth/confirmEmail/?userId={query["userId"]}&code={Uri.EscapeDataString(query["code"].ToString())}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await IsConfirmed(email)).Should().BeFalse();
+        var login = await (await client.Post(LoginUrl, new Credentials(email, ApiClient.Passphrase))).ExpectProblem(HttpStatusCode.Unauthorized);
+        login.GetProperty("detail").GetString().Should().Be("NotAllowed");
+    }
+
+    [DockerFact]
+    public async Task Registering_a_taken_confirmed_email_answers_the_same_with_or_without_a_trailing_slash()
+    {
+        var owner = await Host.ConfirmedUserAsync();
+        var client = Host.NewClient();
+
+        foreach (var path in new[] { "/api/auth/register/", "/api/auth/register" })
+        {
+            var body = await (await client.Post(path, new Credentials(owner.Email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+            body.Should().NotContain("Duplicate");
+        }
+
+        var mails = await Host.Mail.WaitForAsync(owner.Email, 3);
+        mails.Should().HaveCount(3);
+        mails.Skip(1).Should().OnlyContain(m => m.Body.Contains($"{ApiHost.WebOrigin}/forgot-password") && !m.Body.Contains("confirm-email"));
+    }
+
+    [DockerFact]
+    public async Task Forgot_password_with_a_trailing_slash_still_mails_an_unconfirmed_account_the_reset_link()
+    {
+        var client = Host.NewClient();
+        var email = ApiHost.NewEmail();
+        await RegisterAsync(client, email, ApiClient.Passphrase, 1);
+
+        await (await client.Post("/api/auth/forgotPassword/", new { email })).Expect(HttpStatusCode.OK);
+
+        var mails = await Host.Mail.WaitForAsync(email, 2);
+        mails.Should().HaveCount(2);
+        mails[1].Link().Should().StartWith($"{ApiHost.WebOrigin}/reset-password?email=");
+    }
+
+    [DockerFact]
     public async Task Five_failed_confirmations_lock_the_account_even_for_the_right_code_and_password()
     {
         var client = Host.NewClient();
