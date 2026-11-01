@@ -106,12 +106,16 @@ export default function HistoryPage() {
   function choose(event: ChangeEvent<HTMLSelectElement>) {
     const id = Number(event.target.value);
     setChosenId(id);
+    setOpen(null);
+    setDayProblem(null);
     window.history.replaceState(window.history.state, '', `/history/${id}`);
   }
 
   function shiftMonth(step: 1 | -1) {
     if (!selected || !month || !(step < 0 ? canPrevious : canNext)) return;
     setShownMonth({ habitId: selected.id, month: addMonths(month, step) });
+    setOpen(null);
+    setDayProblem(null);
   }
 
   function closeDay() {
@@ -255,7 +259,7 @@ export default function HistoryPage() {
           <StatTiles
             habit={selected}
             monthName={formatDate(month, { month: 'long' })}
-            doneInMonth={inMonth.filter((d) => d.state === 'done').length}
+            doneInMonth={daysQuery.data ? inMonth.filter((d) => d.state === 'done').length : null}
             lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
           />
           <MonthCalendar

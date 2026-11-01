@@ -7,7 +7,8 @@ export interface StatTilesProps {
   /** Month name of the shown month, for example "October". */
   monthName: string;
   /** `done` days in the shown month. */
-  doneInMonth: number;
+  /** Null while the month's days aren't loaded (the tile is left out). */
+  doneInMonth: number | null;
   /** Low days in the shown month. */
   lowDaysInMonth: number;
 }
@@ -30,10 +31,12 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth }: Sta
     tiles.push({ label: 'Current streak', value: streak ? plural(streak, 'day') : 'Fresh start' });
     if (bestStreak) tiles.push({ label: 'Best', value: plural(bestStreak, 'day') });
   }
-  tiles.push({
-    label: `In ${monthName}`,
-    value: `${doneInMonth} done${lowDaysInMonth > 0 ? ` · ${plural(lowDaysInMonth, 'low day')}` : ''}`,
-  });
+  if (doneInMonth !== null) {
+    tiles.push({
+      label: `In ${monthName}`,
+      value: `${doneInMonth} done${lowDaysInMonth > 0 ? ` · ${plural(lowDaysInMonth, 'low day')}` : ''}`,
+    });
+  }
 
   return (
     <dl className={cn('grid gap-2', tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>

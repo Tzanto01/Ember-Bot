@@ -117,7 +117,7 @@ export function DayCell({
         onClick={onSelect}
         className={cn(
           classes,
-          'cursor-pointer aria-expanded:outline-3 aria-expanded:outline-offset-2 aria-expanded:outline-ring aria-expanded:outline-solid',
+          'cursor-pointer focus-visible:z-10 aria-expanded:z-10 aria-expanded:outline-3 aria-expanded:outline-offset-2 aria-expanded:outline-ring aria-expanded:outline-solid',
         )}
       >
         {content}
