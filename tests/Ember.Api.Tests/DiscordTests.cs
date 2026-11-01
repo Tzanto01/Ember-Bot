@@ -68,6 +68,10 @@ public class DiscordTests(PostgresFixture postgres) : ApiTestBase(postgres)
             ["//evil.example"] = "/today",
             ["/\\evil.example"] = "/today",
             ["https://evil.example"] = "/today",
+            ["/%09/evil.com"] = "/today",
+            ["/x%0d%0aSet-Cookie:a=b"] = "/today",
+            ["/%2509/evil.com"] = "/today",
+            ["/tödäy"] = "/today",
         };
 
         foreach (var (returnUrl, expected) in cases)
@@ -86,6 +90,25 @@ public class DiscordTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         (await cancelled.Get("/api/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await failed.Get("/api/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [DockerFact]
+    public async Task A_user_locked_out_of_password_login_can_still_sign_in_with_discord()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        var discordId = ApiHost.NewDiscordId();
+        await Host.DiscordAsync(user, Link, discordId);
+        var userId = await user.IdAsync();
+        var browser = Host.NewClient();
+        for (var i = 0; i < 5; i++)
+            await browser.Post("/api/auth/login?useCookies=true", new Credentials(user.Email, "wrong-passphrase-1"));
+        var locked = await (await browser.Post("/api/auth/login?useCookies=true", new Credentials(user.Email, ApiClient.Passphrase)))
+            .ExpectProblem(HttpStatusCode.Unauthorized);
+        locked.GetProperty("detail").GetString().Should().Be("Failed");
+
+        (await Host.DiscordAsync(browser, Login, discordId)).Should().Be("/today");
+
+        (await Me(browser)).GetProperty("id").GetGuid().Should().Be(userId);
     }
 
     [DockerFact]

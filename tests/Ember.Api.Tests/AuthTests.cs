@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using FluentAssertions;
+using Ember.Core.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,10 +28,8 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     [DockerFact]
     public async Task Register_with_a_taken_email_answers_like_a_new_one_mails_the_owner_and_creates_no_second_account()
     {
-        var client = Host.NewClient();
-        var email = ApiHost.NewEmail();
-        await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
-        await Host.Mail.WaitForAsync(email, 1);
+        var client = await Host.ConfirmedUserAsync();
+        var email = client.Email;
 
         await (await client.Post("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
@@ -38,6 +37,63 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         mails.Should().HaveCount(2);
         mails[1].Body.Should().Contain($"{ApiHost.WebOrigin}/forgot-password").And.NotContain("confirm-email");
         (await Host.Db(db => db.Users.CountAsync(u => u.NormalizedEmail == email.ToUpperInvariant()))).Should().Be(1);
+    }
+
+    [DockerFact]
+    public async Task Registering_again_with_an_unconfirmed_email_replaces_the_account_so_only_the_second_password_and_link_work()
+    {
+        var client = Host.NewClient();
+        var email = ApiHost.NewEmail();
+        const string first = "first-long-passphrase";
+        const string second = "second-long-passphrase";
+        await (await client.Post("/api/auth/register", new Credentials(email, first))).Expect(HttpStatusCode.OK);
+        await Host.Mail.WaitForAsync(email, 1);
+        await (await client.Post("/api/auth/register", new Credentials(email, second))).Expect(HttpStatusCode.OK);
+        var mails = await Host.Mail.WaitForAsync(email, 2);
+        mails.Should().HaveCount(2);
+
+        (await Host.OpenConfirmLinkAsync(client, mails[0])).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await (await Host.OpenConfirmLinkAsync(client, mails[1])).Expect(HttpStatusCode.OK);
+
+        (await client.Post(LoginUrl, new Credentials(email, first))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await (await client.Post(LoginUrl, new Credentials(email, second))).Expect(HttpStatusCode.OK);
+        (await Host.Db(db => db.Users.CountAsync(u => u.NormalizedEmail == email.ToUpperInvariant()))).Should().Be(1);
+    }
+
+    [DockerFact]
+    public async Task Login_failures_reveal_nothing_about_the_account_until_the_password_matched()
+    {
+        var client = Host.NewClient();
+        var unconfirmed = ApiHost.NewEmail();
+        await (await client.Post("/api/auth/register", new Credentials(unconfirmed, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+        var discordId = ApiHost.NewDiscordId();
+        await Host.Service(s => s.ResolveOrCreateDiscordUserAsync(discordId));
+        const string wrong = "wrong-passphrase-1";
+
+        var attempts = new[]
+        {
+            new Credentials(ApiHost.NewEmail(), wrong),
+            new Credentials(DiscordLogin.UserName(discordId), wrong),
+            new Credentials(DiscordLogin.UserName(discordId), ApiClient.Passphrase),
+            new Credentials(unconfirmed, wrong),
+        };
+        foreach (var attempt in attempts)
+        {
+            var problem = await (await client.Post(LoginUrl, attempt)).ExpectProblem(HttpStatusCode.Unauthorized);
+            problem.GetProperty("detail").GetString().Should().Be("Failed", "login as {0}", attempt.Email);
+        }
+
+        var notAllowed = await (await client.Post(LoginUrl, new Credentials(unconfirmed, ApiClient.Passphrase))).ExpectProblem(HttpStatusCode.Unauthorized);
+        notAllowed.GetProperty("detail").GetString().Should().Be("NotAllowed");
+    }
+
+    [DockerFact]
+    public async Task Anonymous_logout_is_a_204_that_sets_no_cookie()
+    {
+        var response = await Host.NewClient().Post("/api/auth/logout");
+
+        await response.Expect(HttpStatusCode.NoContent);
+        response.Headers.Contains("Set-Cookie").Should().BeFalse();
     }
 
     [DockerFact]
@@ -95,7 +151,7 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
-    public async Task Five_wrong_passwords_lock_the_account_out_even_for_the_right_password()
+    public async Task Five_wrong_passwords_lock_the_account_and_a_locked_account_never_confirms_the_password()
     {
         var client = await Host.ConfirmedUserAsync();
 
@@ -103,7 +159,9 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
             (await client.Post(LoginUrl, new Credentials(client.Email, "wrong-passphrase-1"))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var problem = await (await client.Post(LoginUrl, new Credentials(client.Email, ApiClient.Passphrase))).ExpectProblem(HttpStatusCode.Unauthorized);
-        problem.GetProperty("detail").GetString().Should().Be("LockedOut");
+        problem.GetProperty("detail").GetString().Should().Be("Failed");
+        var stillWrong = await (await client.Post(LoginUrl, new Credentials(client.Email, "wrong-passphrase-1"))).ExpectProblem(HttpStatusCode.Unauthorized);
+        stillWrong.GetProperty("detail").GetString().Should().Be("Failed");
     }
 
     [DockerFact]

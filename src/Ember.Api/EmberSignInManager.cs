@@ -8,8 +8,9 @@ namespace Ember.Api;
 /// <summary>
 /// Password sign-in that reveals nothing about an account until the password matched: an unknown user or an account without
 /// a password (bot-only, created through Discord) costs one password hash check and fails like a wrong password, and
-/// <see cref="SignInResult.NotAllowed"/> or <see cref="SignInResult.LockedOut"/> is only reported for the right password.
-/// A wrong password counts towards lockout as in Identity (not while already locked out) but always reports <see cref="SignInResult.Failed"/>.
+/// <see cref="SignInResult.NotAllowed"/> is only reported for the right password. A locked-out account fails like a wrong
+/// password without checking it, so lockout neither confirms a guess nor reveals the account. A wrong password counts
+/// towards lockout as in Identity but always reports <see cref="SignInResult.Failed"/>.
 /// </summary>
 internal sealed class EmberSignInManager(
     UserManager<User> userManager,
@@ -40,16 +41,20 @@ internal sealed class EmberSignInManager(
             return SignInResult.Failed;
         }
 
-        var lockedOut = UserManager.SupportsUserLockout && await UserManager.IsLockedOutAsync(user);
+        if (UserManager.SupportsUserLockout && await UserManager.IsLockedOutAsync(user))
+        {
+            VerifyDummy(password);
+            return SignInResult.Failed;
+        }
+
         if (!await UserManager.CheckPasswordAsync(user, password))
         {
-            if (lockoutOnFailure && UserManager.SupportsUserLockout && !lockedOut)
+            if (lockoutOnFailure && UserManager.SupportsUserLockout)
                 await UserManager.AccessFailedAsync(user);
             return SignInResult.Failed;
         }
 
         if (!await CanSignInAsync(user)) return SignInResult.NotAllowed;
-        if (lockedOut) return SignInResult.LockedOut;
 
         if (UserManager.SupportsUserLockout) await UserManager.ResetAccessFailedCountAsync(user);
         return SignInResult.Success;
