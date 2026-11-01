@@ -78,7 +78,7 @@ public partial class HabitService
     /// <exception cref="ConsentRequiredException">The user hasn't agreed to the current health-data consent.</exception>
     /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
     public async Task<Habit> AddHabitAsync(Guid userId, string name, TimeOnly? reminderTime,
-        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null)
+        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, ReminderChannels channels = ReminderChannels.Discord)
     {
         if (!await HasHealthDataConsentAsync(userId))
             throw new ConsentRequiredException();
@@ -92,6 +92,7 @@ public partial class HabitService
             ReminderTime = reminderTime,
             FrequencyType = frequency,
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
+            ReminderChannels = channels,
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
         habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
@@ -214,6 +215,16 @@ public partial class HabitService
             .Select(m => m.Date)
             .ToListAsync()).ToHashSet();
 
+    /// <summary>The local start day (<see cref="StartDate"/>) of the user's oldest habit, or null when they have none. Loads no logs.</summary>
+    public async Task<DateOnly?> GetEarliestHabitStartAsync(Guid userId)
+    {
+        var oldest = await _db.Habits
+            .Where(h => h.UserId == userId)
+            .OrderBy(h => h.CreatedAt)
+            .FirstOrDefaultAsync();
+        return oldest is null ? (DateOnly?)null : StartDate(oldest, await GetUserTzAsync(userId));
+    }
+
     /// <summary>
     /// Returns the habit's last <paramref name="days"/> local days, oldest first and ending at the user's local today,
     /// with each day's <see cref="DayState"/> and raw log. Null when the habit doesn't exist or isn't the user's.
@@ -221,33 +232,49 @@ public partial class HabitService
     /// </summary>
     public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, int days)
     {
+        var today = await GetLocalTodayAsync(userId);
+        return await GetHabitDaysAsync(userId, habitId, today.AddDays(1 - days), today);
+    }
+
+    /// <summary>
+    /// Returns the habit's local days from <paramref name="from"/> through <paramref name="to"/>, oldest first (empty when
+    /// <paramref name="from"/> is after <paramref name="to"/>), by the rules of <see cref="DayOn"/>.
+    /// Null when the habit doesn't exist or isn't the user's.
+    /// </summary>
+    public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, DateOnly from, DateOnly to)
+    {
         var habit = await _db.Habits
             .Include(h => h.User)
-            .Include(h => h.Logs)
+            .Include(h => h.Logs.Where(l => l.Date >= from && l.Date <= to))
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
         var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
-        var start = StartDate(habit, tz);
         var lowDays = await GetLowDaysAsync(userId);
-        var logs = habit.Logs.ToDictionary(l => l.Date, l => l.Completed);
 
-        return Enumerable.Range(0, days)
-            .Select(i => today.AddDays(i - days + 1))
-            .Select(date =>
-            {
-                bool? completed = logs.TryGetValue(date, out var c) ? c : null;
-                var state = date < start ? DayState.BeforeStart
-                    : IsPausedOn(habit, date) ? DayState.Paused
-                    : lowDays.Contains(date) ? DayState.LowDay
-                    : completed == true ? DayState.Done
-                    : IsOpen(date, today) ? DayState.Pending
-                    : DayState.NotDone;
-                return new HabitDay(date, state, completed);
-            })
-            .ToList();
+        var result = new List<HabitDay>();
+        for (var date = from; date <= to; date = date.AddDays(1))
+            result.Add(DayOn(habit, date, today, tz, lowDays));
+        return result;
+    }
+
+    /// <summary>
+    /// The habit's <see cref="DayState"/> and raw log on the user's local <paramref name="date"/>, given the user's local
+    /// <paramref name="today"/>, timezone and low days. Needs the habit's log of that date loaded, if there is one.
+    /// State precedence: before start, paused, low day, done, pending (open), not done.
+    /// </summary>
+    public static HabitDay DayOn(Habit habit, DateOnly date, DateOnly today, TimeZoneInfo tz, IReadOnlySet<DateOnly> lowDays)
+    {
+        var completed = habit.Logs.FirstOrDefault(l => l.Date == date)?.Completed;
+        var state = date < StartDate(habit, tz) ? DayState.BeforeStart
+            : IsPausedOn(habit, date) ? DayState.Paused
+            : lowDays.Contains(date) ? DayState.LowDay
+            : completed == true ? DayState.Done
+            : IsOpen(date, today) ? DayState.Pending
+            : DayState.NotDone;
+        return new HabitDay(date, state, completed);
     }
 
     private Task<bool> IsLowDayStoredAsync(Guid userId, DateOnly date)
@@ -419,7 +446,9 @@ public partial class HabitService
         return true;
     }
 
-    public async Task<Habit?> EditHabitAsync(Guid userId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder)
+    /// <summary>Edits the user's habit; null arguments keep the current value. Null when the habit isn't the user's.</summary>
+    public async Task<Habit?> EditHabitAsync(Guid userId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder,
+        ReminderChannels? channels = null)
     {
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
@@ -427,6 +456,7 @@ public partial class HabitService
         if (habit is null) return null;
 
         if (newName is not null) habit.Name = newName;
+        if (channels is { } c) habit.ReminderChannels = c;
 
         if (clearReminder)
         {
@@ -629,12 +659,14 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezoneId));
     }
 
-    /// <summary>The user with every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
+    /// <summary>The user with their logins, push subscriptions and every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
             .AsNoTracking()
+            .Include(u => u.Logins)
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
+            .Include(u => u.PushSubscriptions)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -672,9 +704,16 @@ public partial class HabitService
             .Select(h => h.Id)
             .ToListAsync(cancellationToken);
 
-    /// <summary>The habit (tracked) with its user and the user's logins, regardless of owner. Persist edits with <see cref="SaveChangesAsync"/>.</summary>
+    /// <summary>
+    /// The habit (tracked) with its user and the user's logins and push subscriptions, regardless of owner.
+    /// Persist edits with <see cref="SaveChangesAsync"/>.
+    /// </summary>
     public Task<Habit?> GetHabitWithUserAsync(int habitId, CancellationToken cancellationToken = default)
-        => _db.Habits.Include(h => h.User).ThenInclude(u => u.Logins).FirstOrDefaultAsync(h => h.Id == habitId, cancellationToken);
+        => _db.Habits
+            .Include(h => h.User).ThenInclude(u => u.Logins)
+            .Include(h => h.User).ThenInclude(u => u.PushSubscriptions)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(h => h.Id == habitId, cancellationToken);
 
     public Task<bool> IsCompletedOnAsync(int habitId, DateOnly date, CancellationToken cancellationToken = default)
         => _db.HabitLogs.AnyAsync(l => l.HabitId == habitId && l.Date == date && l.Completed, cancellationToken);
