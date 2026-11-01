@@ -2,7 +2,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const apiHost = 'http://localhost:5081';
@@ -15,6 +15,11 @@ const apiHost = 'http://localhost:5081';
  */
 export default defineConfig(({ mode }) => {
   const mobile = mode === 'mobile';
+  const root = fileURLToPath(new URL('.', import.meta.url));
+  const vars = loadEnv(mode, root);
+  if (mobile && !(vars['VITE_API_BASE'] && vars['VITE_WEB_ORIGIN'])) {
+    throw new Error('The mobile build needs VITE_API_BASE and VITE_WEB_ORIGIN (see .env.mobile).');
+  }
   return {
     plugins: [
       react(),

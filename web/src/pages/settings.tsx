@@ -155,7 +155,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (scrolled.current || !me || !location.hash) return;
-    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    const target = document.getElementById(location.hash.slice(1));
     if (!target) return;
     scrolled.current = true;
     target.scrollIntoView();

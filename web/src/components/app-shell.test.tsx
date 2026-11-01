@@ -1,13 +1,15 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deviceSync, offlineQueue } from '@/lib/services';
+import { mockFetch } from '@/lib/test-support';
 import { AppShell } from './app-shell';
 
 function renderShell() {
   const router = createMemoryRouter([
     { path: '/', Component: AppShell, children: [{ index: true, element: <h1>Today</h1> }] },
+    { path: '*', element: <h1>Elsewhere</h1> },
   ]);
   render(<RouterProvider router={router} />);
   return screen.findByRole('heading', { name: 'Today' });
@@ -15,8 +17,23 @@ function renderShell() {
 
 describe('AppShell', () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     offlineQueue.pending.set(0);
     deviceSync.dropped.set(0);
+  });
+
+  it('says it could not sign out and stays when the server cannot end the session', async () => {
+    const f = mockFetch();
+    await renderShell();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    (await f.next('POST', '/api/auth/logout')).respond(503);
+
+    expect(
+      await screen.findByText("Ember couldn't sign you out. Check your connection and try again."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('shows the offline notice while edits are queued, with singular and plural copy, and drops it after sync', async () => {

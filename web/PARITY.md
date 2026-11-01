@@ -200,19 +200,19 @@ No original test was dropped or merged in S2; only Angular plumbing changed (`Ht
 
 ## 2. E2E
 
-The brief names 7 tests; `web/e2e/*.spec.ts` currently holds 9 across 7 files.
+The 7 original journeys (6 files) plus the 2 tests of the new `csp-pages.spec.ts` (plan amendment F5). No spec expectation was edited; the original 7 spec files are unchanged. Result: `E2E_BASE_URL=http://localhost:5081 bunx --bun playwright test` against `tests/Ember.Api.TestHost` serving the production build, 9 passed (run 2026-11-01 at e0009aa and again at the final HEAD).
 
 | Test (file › name) | Status |
 | --- | --- |
-| backfill-last-week.spec.ts › last week is backfilled in History and survives a reload | pending S3/S4 |
-| csp-pages.spec.ts › the built index.html has no inline scripts, event handlers or style attributes | pending S3/S4 |
-| csp-pages.spec.ts › Today, History and Settings load without CSP violations | pending S3/S4 |
-| delete-account.spec.ts › deleting the account signs out and the credentials stop working | pending S3/S4 |
-| link-discord-merge.spec.ts › linking a bot-only Discord account merges its habit into the web account | pending S3/S4 |
-| link-discord-merge.spec.ts › linking a Discord account nobody has used goes straight to linked | pending S3/S4 |
-| offline-checkin.spec.ts › a check-in made offline syncs once the browser is back online | pending S3/S4 |
-| signup-first-habit.spec.ts › a new user signs up, confirms, creates a first habit and checks in | pending S3/S4 |
-| styles-csp.spec.ts › the production build applies its full stylesheet under the API CSP without violations | pending S3/S4 |
+| backfill-last-week.spec.ts › last week is backfilled in History and survives a reload | pass (original) |
+| csp-pages.spec.ts › the built index.html has no inline scripts, event handlers or style attributes | pass (new, F5) |
+| csp-pages.spec.ts › Today, History and Settings load without CSP violations | pass (new, F5) |
+| delete-account.spec.ts › deleting the account signs out and the credentials stop working | pass (original) |
+| link-discord-merge.spec.ts › linking a bot-only Discord account merges its habit into the web account | pass (original) |
+| link-discord-merge.spec.ts › linking a Discord account nobody has used goes straight to linked | pass (original) |
+| offline-checkin.spec.ts › a check-in made offline syncs once the browser is back online | pass (original) |
+| signup-first-habit.spec.ts › a new user signs up, confirms, creates a first habit and checks in | pass (original) |
+| styles-csp.spec.ts › the production build applies its full stylesheet under the API CSP without violations | pass (original) |
 
 ## 3. Review fixes
 
@@ -237,7 +237,7 @@ S2 had no shell, so each mutation below names the exact revert and the test that
 | `returnUrl` open-redirect guard on screens (web-P6 R1 #4) | pages/login.test.tsx › ignores an off-site returnUrl…; pages/consent.test.tsx › falls back to /today for an off-site returnUrl | killed: `safeReturnUrl(...)` → raw param |
 | Confirm-email strips `code` and sends the password-bound body (v1.2) | pages/confirm-email.test.tsx › removes the code from the address bar, then confirms with the user id, code and password | killed: strip effect disabled |
 | Consent posts the current policy version | pages/consent.test.tsx › agrees to the current policy version, reloads me and lands on the returnUrl | killed: `policyVersion` sent instead |
-| Stale `me.localToday` after midnight: Today/History/Habit edit reload me (web-P6 R1 #2) | pages/today.test.tsx › looks up low days for the local day reloaded from the server…; pages/habit-edit.test.tsx (reload) | killed for Today and Habit edit: `auth.loadMe(true)` removed; History has the same line, no dedicated test |
+| Stale `me.localToday` after midnight: Today/History/Habit edit reload me (web-P6 R1 #2) | pages/today.test.tsx › looks up low days for the local day reloaded from the server…; pages/habit-edit.test.tsx (reload) | killed for Today, Habit edit and History (pages/history.test.tsx › follows the server's local day…): `auth.loadMe(true)` removed |
 | Late rollback guard (web-P6 R1 re-check) | pages/today.test.tsx › keeps a newer state when a stale check-in failure arrives after it | killed: rollback made unconditional |
 | Adding Discord DM / Web push to a mobile-only habit drops `mobile` (4a1ee54) | pages/habit-edit.test.tsx › drops mobile when Discord DM / Web push is added to a mobile-only habit | killed: filter removed |
 | Escape ignored while the habit delete is in flight (web-P6 R1 re-check) | pages/habit-edit.test.tsx › cancels the delete confirm with Escape, but ignores Escape while the delete is in flight | killed: guard removed |

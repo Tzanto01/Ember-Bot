@@ -12,6 +12,7 @@ import {
 import { AppShell } from '@/components/app-shell';
 import { CenteredShell } from '@/components/centered-shell';
 import { Spinner } from '@/components/spinner';
+import { Button } from '@/components/ui/button';
 import { guest, signedIn } from '@/lib/guards';
 import { setNavigator } from '@/lib/navigation';
 
@@ -106,12 +107,27 @@ function StartingUp() {
   );
 }
 
+function RouteError() {
+  return (
+    <main id="main" className="grid min-h-dvh place-items-center p-6 text-center">
+      <div className="flex max-w-[28rem] flex-col items-center gap-4">
+        <h1 className="text-[28px]">Something went wrong</h1>
+        <p className="text-muted-foreground">Ember hit a snag on this page. Nothing you saved is lost.</p>
+        <Button asChild>
+          <a href="/today">Go to Today</a>
+        </Button>
+      </div>
+    </main>
+  );
+}
+
 /** Every route of the app with its page title; guards run as loaders. */
 export const routes: RouteObject[] = [
   {
     path: '/',
     Component: Root,
     HydrateFallback: StartingUp,
+    ErrorBoundary: RouteError,
     children: [
       { index: true, loader: () => redirect('/today') },
       {
