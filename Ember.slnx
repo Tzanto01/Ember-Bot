@@ -5,6 +5,7 @@
     <Project Path="src/Ember.Core/Ember.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Ember.Api.Tests/Ember.Api.Tests.csproj" />
     <Project Path="tests/Ember.Tests/Ember.Tests.csproj" />
   </Folder>
 </Solution>
