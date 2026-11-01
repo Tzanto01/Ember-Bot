@@ -17,7 +17,7 @@ dotnet run --project tests/Ember.Api.TestHost -- --urls http://localhost:5081
 | --- | --- |
 | `GET /test/discord/next?id=<discordId>` | 204. The next Discord authorization returns this Discord user ID (used once). Without it the callback fails like a Discord error. |
 | `GET /test/discord/next?error=access_denied` | 204. The next authorization ends as if the user cancelled on Discord. |
-| `GET /test/outbox?email=<address>` | 200 `{ "to", "subject", "links": ["http://…"] }` of the latest email to that address, 404 when none. |
+| `GET /test/outbox?email=<address>` | 200 `{ "to", "subject", "links": ["http://…"] }` of the latest email to that address, 404 when none. Mail is sent in the background, so poll briefly after the request that sends it. |
 | `POST /test/users/bot-only` `{ "discordId": "<id>", "habitStartDate": "yyyy-MM-dd" }` | 201 `{ "userId", "habitId" }`: a bot-only user (no email, no password, UTC timezone) with consent and one habit "Water" without reminder. `habitStartDate` is optional (default today) and backdates the habit's creation to noon UTC that day so past days can be backfilled; an invalid or future date → 400. 409 when the Discord ID is already taken. |
 
 `GET /test/discord/authorize` is the fake Discord consent page: the API's challenge sends the browser there and it redirects straight to the callback.
