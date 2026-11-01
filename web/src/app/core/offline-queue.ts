@@ -56,7 +56,8 @@ export class OfflineQueue {
 
   /**
    * Sends the user's queued edits oldest first, one at a time. A sent or dropped edit leaves the queue;
-   * the first edit that must be kept stops the replay so the order holds. Concurrent calls share one run.
+   * the first edit that must be kept stops the replay so the order holds. Concurrent calls share one run, and
+   * edits queued while it runs are sent in the same run.
    */
   replay(userId: string, send: (edit: DayEdit) => Promise<unknown>): Promise<ReplayResult> {
     let run = this.replaying.get(userId);
@@ -83,19 +84,21 @@ export class OfflineQueue {
     send: (edit: DayEdit) => Promise<unknown>,
   ): Promise<ReplayResult> {
     const result: ReplayResult = { sent: 0, dropped: 0, remaining: 0 };
-    const queued = await this.store.edits(userId).catch(() => [] as QueuedEdit[]);
-    for (const [index, edit] of queued.entries()) {
-      try {
-        await send({ habitId: edit.habitId, date: edit.date, completed: edit.completed });
-        result.sent++;
-      } catch (error) {
-        if (!shouldDrop(asApiError(error))) {
-          result.remaining = queued.length - index;
-          break;
+    const load = () => this.store.edits(userId).catch(() => [] as QueuedEdit[]);
+    for (let queued = await load(); queued.length && !result.remaining; queued = await load()) {
+      for (const [index, edit] of queued.entries()) {
+        try {
+          await send({ habitId: edit.habitId, date: edit.date, completed: edit.completed });
+          result.sent++;
+        } catch (error) {
+          if (!shouldDrop(asApiError(error))) {
+            result.remaining = queued.length - index;
+            break;
+          }
+          result.dropped++;
         }
-        result.dropped++;
+        await this.store.deleteEdit(edit.seq);
       }
-      await this.store.deleteEdit(edit.seq);
     }
     await this.refreshCount(userId);
     return result;

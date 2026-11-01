@@ -30,6 +30,21 @@ describe('OfflineQueue', () => {
     return { sent, send };
   }
 
+  it('sends an edit queued while a replay is running in that same replay', async () => {
+    await queue.add(edit(1));
+    const sent: DayEdit[] = [];
+    const send = async (e: DayEdit) => {
+      sent.push(e);
+      if (e.habitId === 1) await queue.add(edit(2));
+    };
+
+    const result = await queue.replay('user-a', send);
+
+    expect(sent).toEqual([edit(1), edit(2)]);
+    expect(result.sent).toBe(2);
+    expect(queue.pending()).toBe(0);
+  });
+
   it('refuses to queue without a signed-in user', async () => {
     queue.userId.set(null);
 
