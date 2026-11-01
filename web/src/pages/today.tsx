@@ -270,7 +270,13 @@ export default function TodayPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Today"
-        lede={today ? formatDate(today, { weekday: 'long', day: 'numeric', month: 'long' }) : undefined}
+        lede={
+          today ? (
+            <span className="whitespace-nowrap">
+              {formatDate(today, { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+          ) : undefined
+        }
         aside={hasHabits ? ember('lg:hidden') : undefined}
       />
       <LiveRegion message={announcement} />

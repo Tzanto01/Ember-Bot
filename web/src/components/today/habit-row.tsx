@@ -99,7 +99,8 @@ export function HabitRow({ habit, busy, reward, onToggle, onRewardEnd }: HabitRo
       <Card
         className={cn(
           'relative isolate grid grid-cols-[minmax(0,1fr)_56px] items-center gap-x-3 gap-y-0 py-3 md:py-3',
-          done && 'border-s-[3px] border-s-done bg-[color-mix(in_oklch,var(--done)_8%,var(--card))]',
+          done &&
+            'bg-[color-mix(in_oklch,var(--done)_8%,var(--card))] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_3px_0_0_var(--done)]',
           reward === 'fill' && 'ember-row-fill',
         )}
       >

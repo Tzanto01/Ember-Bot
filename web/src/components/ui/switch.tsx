@@ -12,7 +12,7 @@ export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrim
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb className="block size-[18px] rounded-full bg-card shadow-card transition-transform data-[state=checked]:translate-x-[18px]" />
+      <SwitchPrimitive.Thumb className="block size-[18px] rounded-full bg-input shadow-card data-[state=checked]:bg-primary-foreground transition-transform data-[state=checked]:translate-x-[18px]" />
     </SwitchPrimitive.Root>
   );
 }

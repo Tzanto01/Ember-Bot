@@ -289,7 +289,7 @@ export default function HistoryPage() {
           />
           <Legend />
         </div>
-        <div className="flex flex-col gap-6 lg:sticky lg:top-4">
+        <div className="flex flex-col gap-6 lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)]">
           {openDay ? (
             <DayPanel
               day={openDay}

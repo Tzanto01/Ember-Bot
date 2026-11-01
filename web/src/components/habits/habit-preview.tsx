@@ -1,4 +1,3 @@
-import { DayCell } from '@/components/day-cell';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -9,10 +8,10 @@ export function HabitPreview({ name, cadence, className }: { name: string; caden
       <p className="text-[14px] text-muted-foreground">On your Today page</p>
       <Card className="flex-row items-center gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="truncate font-display text-[18px] text-foreground">{name.trim() || 'Your habit'}</p>
+          <h2 className="text-[18px] break-words">{name.trim() || 'Your habit'}</h2>
           <p className="text-[14px] text-muted-foreground">{cadence}</p>
         </div>
-        <DayCell state="pending" size="slot" />
+        <span className="size-[56px] shrink-0 rounded-cell border-2 border-pending" />
       </Card>
     </div>
   );
