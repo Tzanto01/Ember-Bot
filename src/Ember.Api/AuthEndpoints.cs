@@ -76,7 +76,7 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Rate-limits the mail-sending endpoints per email address and reports a lockout as <c>LockedOut</c>. A registration with
+    /// Rate-limits the mail-sending endpoints per email address. A registration with
     /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
     /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
     /// </summary>
@@ -120,9 +120,6 @@ internal static class AuthEndpoints
             await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(email);
             return TypedResults.Ok();
         }
-
-        if (Unwrap(result) is ProblemHttpResult { ProblemDetails: { Detail: "Lockedout" } problem })
-            problem.Detail = "LockedOut";
 
         return result;
     }

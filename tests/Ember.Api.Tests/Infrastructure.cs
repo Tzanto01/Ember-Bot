@@ -175,11 +175,17 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         client.Email = NewEmail();
         await (await client.Post("/api/auth/register", new Credentials(client.Email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
 
-        var query = QueryHelpers.ParseQuery(new Uri((await Mail.WaitForAsync(client.Email, 1)).Single().Link()).Query);
+        await (await OpenConfirmLinkAsync(client, (await Mail.WaitForAsync(client.Email, 1)).Single())).Expect(HttpStatusCode.OK);
+        return client;
+    }
+
+    /// <summary>Calls the API's confirmEmail endpoint with the values from the web link in a confirmation mail.</summary>
+    public Task<HttpResponseMessage> OpenConfirmLinkAsync(ApiClient client, SentMail mail)
+    {
+        var query = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query);
         var userId = Uri.EscapeDataString(query["userId"].ToString());
         var code = Uri.EscapeDataString(query["code"].ToString());
-        await (await client.Get($"/api/auth/confirmEmail?userId={userId}&code={code}")).Expect(HttpStatusCode.OK);
-        return client;
+        return client.Get($"/api/auth/confirmEmail?userId={userId}&code={code}");
     }
 
     /// <summary>A confirmed user signed in with the cookie and an antiforgery token, optionally with the health-data consent.</summary>
