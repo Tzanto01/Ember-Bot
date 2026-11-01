@@ -51,6 +51,7 @@ public static class ApiApp
                 options.Password.RequireNonAlphanumeric = false;
             })
             .AddEntityFrameworkStores<EmberDbContext>();
+        services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
         services.ConfigureApplicationCookie(options =>
         {
@@ -142,9 +143,12 @@ public static class ApiApp
         var api = app.MapGroup("/api");
         var auth = api.MapGroup("/auth").RequireRateLimiting(RateLimits.AuthPolicy);
         auth.MapAuth();
+        auth.MapDiscord();
 
         var signedIn = api.MapGroup("").RequireAuthorization();
         signedIn.MapMe();
+        signedIn.MapDiscordUnlink();
+        signedIn.MapMerge();
         signedIn.MapHabits();
         signedIn.MapLowDays();
         signedIn.MapStats();
@@ -166,7 +170,7 @@ public static class ApiApp
 
     private static void ValidateConfiguration(IConfiguration configuration)
     {
-        string[] required = ["Smtp:Host", "Smtp:From", "Ember:WebOrigin", "Ember:DataProtectionKeysPath"];
+        string[] required = ["Smtp:Host", "Smtp:From", "Ember:WebOrigin", "Ember:DataProtectionKeysPath", "Discord:ClientId", "Discord:ClientSecret"];
         var missing = required.Where(key => string.IsNullOrWhiteSpace(configuration[key])).ToList();
         if (missing.Count > 0)
             throw new InvalidOperationException($"Missing configuration outside Development: {string.Join(", ", missing)}.");
