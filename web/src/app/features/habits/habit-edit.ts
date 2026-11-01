@@ -455,7 +455,7 @@ export class HabitEditPage {
       return;
     }
     const others = habit.reminderChannels.filter((c) => c !== channel);
-    const next = box.checked ? [...others, channel] : others;
+    const next = box.checked ? [...others.filter((c) => c !== 'mobile'), channel] : others;
     this.channelsBusy.set(true);
     this.channelFeedback.set(null);
     try {

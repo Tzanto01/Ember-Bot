@@ -101,6 +101,54 @@ describe('PushService', () => {
     expect(swPush.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  it('claim re-registers the existing browser subscription once', async () => {
+    const service = setup(browserSubscription());
+
+    const done = service.claim();
+    httpMock.expectOne('/api/push/vapid-public-key').flush({ key: 'vapid-key' });
+    await tick();
+    const req = httpMock.expectOne('/api/me/push-subscriptions');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ endpoint, keys: { p256dh: 'p256-key', auth: 'auth-key' } });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+  });
+
+  it('claim makes no call without a browser subscription', async () => {
+    const service = setup();
+
+    const done = service.claim();
+    httpMock.expectOne('/api/push/vapid-public-key').flush({ key: 'vapid-key' });
+    await done;
+
+    httpMock.expectNone('/api/me/push-subscriptions');
+  });
+
+  it('claim makes no call and does not throw when the server offers no push', async () => {
+    const service = setup(browserSubscription());
+
+    const done = service.claim();
+    httpMock
+      .expectOne('/api/push/vapid-public-key')
+      .flush(null, { status: 501, statusText: 'Not Implemented' });
+
+    await expect(done).resolves.toBeUndefined();
+    httpMock.expectNone('/api/me/push-subscriptions');
+  });
+
+  it('claim does not throw when the server rejects the registration', async () => {
+    const service = setup(browserSubscription());
+
+    const done = service.claim();
+    httpMock.expectOne('/api/push/vapid-public-key').flush({ key: 'vapid-key' });
+    await tick();
+    httpMock
+      .expectOne('/api/me/push-subscriptions')
+      .flush(null, { status: 500, statusText: 'Server Error' });
+
+    await expect(done).resolves.toBeUndefined();
+  });
+
   it('removes the server subscription by endpoint before unsubscribing the browser', async () => {
     const service = setup(browserSubscription());
     const order: string[] = [];

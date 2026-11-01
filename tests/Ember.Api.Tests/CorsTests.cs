@@ -33,6 +33,18 @@ public class CorsTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Native_origins_can_read_the_download_and_retry_headers()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("Origin", "https://localhost");
+
+        var response = await Host.NewClient().Http.SendAsync(request);
+
+        Header(response, "Access-Control-Expose-Headers")!.ToLowerInvariant()
+            .Should().ContainAll("content-disposition", "retry-after");
+    }
+
+    [DockerFact]
     public async Task The_web_origin_keeps_credentials()
     {
         var response = await Preflight(ApiHost.WebOrigin);

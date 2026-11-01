@@ -73,6 +73,9 @@ export class TokenStore {
    * forgets the session, a network error, 429 or 5xx keeps it for a later try. A result that arrives after
    * `clear()` (logout, another sign-in) is discarded.
    */
+  /** Why the last refresh failed when the session was kept (network error, 429 or 5xx); null otherwise. */
+  lastTransientError: unknown = null;
+
   refresh(): Promise<boolean> {
     this.refreshing ??= this.runRefresh().finally(() => (this.refreshing = null));
     return this.refreshing;
@@ -94,6 +97,7 @@ export class TokenStore {
     const persisted = this.sessionRefresh === null;
     const refreshToken =
       this.sessionRefresh ?? (await this.secure.get(refreshKey).catch(() => null));
+    this.lastTransientError = null;
     if (!refreshToken) return false;
     try {
       const tokens = await firstValueFrom(
@@ -108,7 +112,11 @@ export class TokenStore {
       return true;
     } catch (error) {
       const status = asApiError(error).status;
-      if (epoch === this.epoch && (status === 400 || status === 401)) await this.clear();
+      if (status === 400 || status === 401) {
+        if (epoch === this.epoch) await this.clear();
+      } else {
+        this.lastTransientError = error;
+      }
       return false;
     }
   }

@@ -15,7 +15,8 @@ internal sealed class EmberCorsPolicyProvider(IConfiguration configuration) : IC
         : null;
 
     private readonly CorsPolicy _native = new CorsPolicyBuilder(ApiApp.NativeOrigins(configuration))
-        .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType).AllowAnyMethod().Build();
+        .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType)
+        .WithExposedHeaders(HeaderNames.ContentDisposition, HeaderNames.RetryAfter).AllowAnyMethod().Build();
 
     public Task<CorsPolicy?> GetPolicyAsync(HttpContext context, string? policyName)
     {

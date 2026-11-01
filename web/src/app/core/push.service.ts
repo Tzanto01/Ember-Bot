@@ -39,6 +39,19 @@ export class PushService {
     return this.checking;
   }
 
+  /**
+   * Re-registers this browser's subscription for the signed-in account, so a shared device follows whoever is
+   * signed in. Never throws.
+   */
+  async claim(): Promise<void> {
+    await this.check();
+    const json = this.current()?.toJSON();
+    const p256dh = json?.keys?.['p256dh'];
+    const auth = json?.keys?.['auth'];
+    if (!this.available() || !json?.endpoint || !p256dh || !auth) return;
+    await this.api.addPushSubscription({ endpoint: json.endpoint, keys: { p256dh, auth } }).catch(() => undefined);
+  }
+
   /** True when the browser blocks notifications for this site. */
   isDenied(): boolean {
     return typeof Notification !== 'undefined' && Notification.permission === 'denied';
