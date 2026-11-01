@@ -4,7 +4,7 @@ using MimeKit;
 
 namespace Ember.Api.Email;
 
-/// <summary>Sends through the SMTP server in <c>Smtp:Host/Port/User/Password/From</c>: STARTTLS on port 587, TLS on connect on 465.</summary>
+/// <summary>Sends through the SMTP server in <c>Smtp:Host/Port/User/Password/From</c>: TLS on connect on port 465, required STARTTLS on every other port.</summary>
 internal sealed class SmtpEmailTransport(IConfiguration configuration) : IEmailTransport
 {
     public async Task SendAsync(string to, string subject, string textBody, CancellationToken cancellationToken)
@@ -18,7 +18,7 @@ internal sealed class SmtpEmailTransport(IConfiguration configuration) : IEmailT
 
         var port = smtp.GetValue("Port", 587);
         using var client = new SmtpClient();
-        await client.ConnectAsync(Required(smtp, "Host"), port, port == 587 ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, cancellationToken);
+        await client.ConnectAsync(Required(smtp, "Host"), port, port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, cancellationToken);
         if (smtp["User"] is { Length: > 0 } user)
             await client.AuthenticateAsync(user, smtp["Password"] ?? "", cancellationToken);
         await client.SendAsync(message, cancellationToken);

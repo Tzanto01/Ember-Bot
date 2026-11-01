@@ -214,6 +214,16 @@ public partial class HabitService
             .Select(m => m.Date)
             .ToListAsync()).ToHashSet();
 
+    /// <summary>The local start day (<see cref="StartDate"/>) of the user's oldest habit, or null when they have none. Loads no logs.</summary>
+    public async Task<DateOnly?> GetEarliestHabitStartAsync(Guid userId)
+    {
+        var oldest = await _db.Habits
+            .Where(h => h.UserId == userId)
+            .OrderBy(h => h.CreatedAt)
+            .FirstOrDefaultAsync();
+        return oldest is null ? (DateOnly?)null : StartDate(oldest, await GetUserTzAsync(userId));
+    }
+
     /// <summary>
     /// Returns the habit's last <paramref name="days"/> local days, oldest first and ending at the user's local today,
     /// with each day's <see cref="DayState"/> and raw log. Null when the habit doesn't exist or isn't the user's.

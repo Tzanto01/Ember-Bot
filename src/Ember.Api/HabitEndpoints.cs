@@ -117,7 +117,7 @@ internal static class HabitEndpoints
             var today = await habits.GetLocalTodayAsync(userId);
             var errors = new Dictionary<string, string[]>();
             var end = Formats.DateOr(to, today, "to", errors);
-            var start = Formats.DateOr(from, end.AddDays(-13), "from", errors);
+            var start = Formats.DateOr(from, Formats.DaysBefore(end, 13), "from", errors);
             if (errors.Count == 0)
             {
                 if (end > today) errors["to"] = ["Can't be after today."];
