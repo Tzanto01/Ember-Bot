@@ -159,7 +159,7 @@ Original paths are relative to `web/src/app/`; React paths to `web/src/`.
 | features/today/today.spec.ts › TodayPage › looks up low days for the local day reloaded from the server, not the stale cached one | pages/today.test.tsx › TodayPage › looks up low days for the local day reloaded from the server, not the stale cached one | ported |
 | features/habits/habit-edit.spec.ts › HabitEditPage reminder channels › drops mobile when Discord DM is added to a mobile-only habit | pages/habit-edit.test.tsx › HabitEditPage › drops mobile when Discord DM is added to a mobile-only habit | ported |
 | features/habits/habit-edit.spec.ts › HabitEditPage reminder channels › drops mobile when Web push is added to a mobile-only habit | pages/habit-edit.test.tsx › HabitEditPage › drops mobile when Web push is added to a mobile-only habit | ported |
-| features/settings/settings.spec.ts › SettingsPage › sends quick successive grace changes one PATCH at a time, in order | | pending S4 |
+| features/settings/settings.spec.ts › SettingsPage › sends quick successive grace changes one PATCH at a time, in order | pages/settings.test.tsx › SettingsPage › sends quick successive grace changes one PATCH at a time, in order | ported |
 
 New React tests without an Angular original:
 
@@ -244,6 +244,15 @@ S2 had no shell, so each mutation below names the exact revert and the test that
 | S2 security low: XSRF header only to the same origin after the API base | lib/http.test.ts › sends no XSRF header to a configured API base on another origin | killed |
 | S2 security low: no `me` restore after sign-out | lib/auth.test.ts › leaves me null when the response arrives after the session was cleared | killed |
 | S2 code lows: malformed cookie, no push wait without a worker, notification click fallback, guards | lib/http.test.ts, lib/push.test.ts, sw-handlers.test.ts, lib/guards.test.ts | each killed |
+| Settings autosaves serialized (web-P6 R1 #5) | pages/settings.test.tsx › sends quick successive grace changes one PATCH at a time, in order; › waits for the grace PATCH before sending the leaderboard one | killed (lead run 2026-11-01): chain replaced by `Promise.resolve()` |
+| Settings reloads `me` on entry (web-P6 R1 #2) | pages/settings.test.tsx (every case waits for the reload) | killed: reload removed |
+| Push UI hidden on 501 (contract v1.3) | pages/settings.test.tsx › hides the notifications section when the server answers 501 for the push key | killed |
+| Delete account lands on `/login?reason=deleted` (e2e contract) | pages/settings.test.tsx › deletes the account with the password and lands on /login?reason=deleted | killed |
+| Merge lands on Settings with the linked notice | pages/link-merge.test.tsx › lists each habit as one item, then moves everything and lands on Settings | killed |
+| Legal markdown cannot inject HTML (Angular sanitized `[innerHTML]`) | pages/legal.test.tsx › renders raw HTML from the markdown as text, never as elements; › renders a javascript: link as plain text… | killed (both) |
+| S3 review: no cached data across users | query-client.test.ts › forgets the previous user's cached data… | killed: clear removed |
+| S3 review: History day panel closes on month change | pages/history.test.tsx › closes the open day when the month changes… | killed |
+| S3 review: Today reloads after a check-in interrupts a sync refetch | pages/today.test.tsx › shows the synced list after a check-in that interrupted a sync refetch | killed |
 
 ## 4. Frozen strings
 
