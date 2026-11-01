@@ -63,10 +63,9 @@ export class ApiClient {
     return this.run(this.http.post<void>('/api/auth/login', body, { params }));
   }
 
-  /** `GET /api/auth/confirmEmail`: 401 for a bad or expired code. */
-  confirmEmail(userId: string, code: string): Promise<void> {
-    const params = new HttpParams().set('userId', userId).set('code', code);
-    return this.run(this.http.get<void>('/api/auth/confirmEmail', { params }));
+  /** `POST /api/auth/confirmEmail` (v1.2): needs the password chosen at sign-up; 401 for a bad or expired code or a wrong password. */
+  confirmEmail(userId: string, code: string, password: string): Promise<void> {
+    return this.run(this.http.post<void>('/api/auth/confirmEmail', { userId, code, password }));
   }
 
   /** `POST /api/auth/resendConfirmationEmail`: always 200. */
