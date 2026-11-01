@@ -31,7 +31,7 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 
 - Every endpoint acts only on the signed-in user. Another user's habit ID behaves exactly like a missing one (404).
 - Consent gating follows Core exactly: an endpoint returns `consent_required` where the Core call does (`AddHabitAsync` throws `ConsentRequiredException`; any `DayEditResult.ConsentRequired`), and also for `POST /api/account/merge`. Reads, settings, export and delete never need consent.
-- Every `/api` response has `Cache-Control: no-store`. The app sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy` with `default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'` (Angular injects inline styles), and HSTS outside Development.
+- Every `/api` response has `Cache-Control: no-store`. The app sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy` with `default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'`, and HSTS outside Development.
 
 ## Auth
 
