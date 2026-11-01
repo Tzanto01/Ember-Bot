@@ -38,7 +38,7 @@ export type Frequency = 'daily' | 'weekly';
 /** Core `DayState`. `notdone` is just an empty day, never "missed". */
 export type DayState = 'beforestart' | 'done' | 'notdone' | 'pending' | 'lowday' | 'paused';
 
-export type ReminderChannel = 'discord' | 'webpush';
+export type ReminderChannel = 'discord' | 'webpush' | 'mobile';
 
 export interface DayEntry {
   date: LocalDateString;

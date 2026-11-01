@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { DeviceSync } from '../core/device-sync';
+import { OfflineQueue } from '../core/offline-queue';
+import { NoticeComponent } from '../shared/notice';
 import { FlameMarkComponent } from '../shared/flame-mark';
 import { IconComponent, IconName } from '../shared/icon';
 import { LegalLinksComponent } from '../shared/legal-links';
@@ -15,7 +18,7 @@ const NAV: { path: string; label: string; icon: IconName }[] = [
 @Component({
   selector: 'app-app-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FlameMarkComponent, IconComponent, LegalLinksComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FlameMarkComponent, IconComponent, LegalLinksComponent, NoticeComponent],
   template: `
     <header class="topbar">
       <div class="topbar-inner">
@@ -34,6 +37,19 @@ const NAV: { path: string; label: string; icon: IconName }[] = [
       </div>
     </header>
     <main id="main" tabindex="-1" class="main">
+      @if (queue.pending() > 0) {
+        <app-notice tone="info">
+          {{ queue.pending() === 1 ? 'One change is' : queue.pending() + ' changes are' }} saved on this
+          device and will sync when you're back online.
+        </app-notice>
+      }
+      @if (sync.dropped() > 0) {
+        <app-notice>
+          A change you made offline couldn't be saved: that day can't be edited anymore, or the habit is
+          gone. Everything else is in place.
+          <button class="btn btn-quiet" type="button" (click)="sync.dropped.set(0)">Okay</button>
+        </app-notice>
+      }
       <router-outlet />
     </main>
     <footer class="footer">
@@ -159,6 +175,8 @@ const NAV: { path: string; label: string; icon: IconName }[] = [
 })
 export class AppLayout {
   private readonly auth = inject(AuthService);
+  protected readonly queue = inject(OfflineQueue);
+  protected readonly sync = inject(DeviceSync);
   protected readonly nav = NAV;
   protected readonly signingOut = signal(false);
 
