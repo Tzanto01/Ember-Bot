@@ -30,6 +30,12 @@ export interface ExportFile {
 
 const seg = encodeURIComponent;
 
+/** No answer from the API: a network error (status 0), or the service worker's own 504 without a problem body. */
+function unreachable(error: unknown): boolean {
+  const apiError = asApiError(error);
+  return apiError.status === 0 || (apiError.status === 504 && !apiError.problem);
+}
+
 function withDay(habit: Habit, edit: DayEdit): Habit {
   if (habit.today.date !== edit.date) return habit;
   const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
@@ -231,7 +237,7 @@ export class ApiClient {
       return await this.sendDayEdit(edit);
     } catch (error) {
       const known = this.known.get(edit.habitId);
-      if (asApiError(error).status !== 0 || !known || !(await this.offline.add(edit))) throw error;
+      if (!unreachable(error) || !known || !(await this.offline.add(edit))) throw error;
       return this.remember(withDay(known, edit));
     }
   }
