@@ -27,7 +27,13 @@ function ThemePreview({ id }: { id: ThemeId }) {
 }
 
 /** Settings → Appearance: the four themes as a radio group, each with a live preview in its own tokens; applies instantly. */
-export function ThemePicker({ labelledBy }: { labelledBy: string }) {
+export function ThemePicker({
+  labelledBy,
+  describedBy,
+}: {
+  labelledBy: string;
+  describedBy?: string;
+}) {
   const [theme, setTheme] = useState<ThemeId>(currentTheme);
 
   function choose(value: string): void {
@@ -40,6 +46,7 @@ export function ThemePicker({ labelledBy }: { labelledBy: string }) {
   return (
     <RadioGroup
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       value={theme}
       onValueChange={choose}
       className="grid gap-3 sm:grid-cols-2"
@@ -48,7 +55,7 @@ export function ThemePicker({ labelledBy }: { labelledBy: string }) {
         <label
           key={t.id}
           htmlFor={`theme-${t.id}`}
-          className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border-[length:max(1px,var(--border-width))] border-border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground"
+          className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border-[length:max(1px,var(--border-width))] border-border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:ring-1 has-[[data-state=checked]]:ring-primary has-[[data-state=checked]]:text-accent-foreground"
         >
           <RadioGroupItem
             id={`theme-${t.id}`}

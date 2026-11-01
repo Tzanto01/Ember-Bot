@@ -649,8 +649,8 @@ export default function SettingsPage() {
             )}
 
             <SettingsCard id="appearance" title={title('appearance')}>
-              <p>Choose how Ember looks on this device.</p>
-              <ThemePicker labelledBy="appearance-heading" />
+              <p id="appearance-hint">Choose how Ember looks on this device.</p>
+              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" />
             </SettingsCard>
 
             <SettingsCard id="export" title={title('export')}>
