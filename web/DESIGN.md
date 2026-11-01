@@ -16,7 +16,7 @@ Deliberately avoided: Discord blurple, cool dark-gray chat layouts, red of any k
 
 ## Palette
 
-Every colour is a `light-dark()` pair, so the theme follows `prefers-color-scheme`. A manual toggle later only sets `<html data-theme="light|dark">` (already wired in the tokens). Ratios are WCAG 2.x contrast against the background named.
+Every colour is set for light (`:root`) and dark (`:root.dark`); `public/theme-init.js` sets `.dark` from `prefers-color-scheme`. Ratios are WCAG 2.x contrast against the background named.
 
 | Token | Light | Dark | Role | Contrast (light / dark) |
 | --- | --- | --- | --- | --- |
@@ -139,6 +139,5 @@ Each at 360 px wide and at 1280 px, in light and in dark (4 shots per screen):
 
 ## Tech notes
 
-- Angular 21 pending Nico; upgrade to 22 once Node 22.22.3+/24.15+ is installed.
-- Tokens use CSS `light-dark()` (Chrome 123, Safari 17.5, Firefox 120 and later).
+- React 19 + Vite. Tokens follow `docs/contracts/design-tokens-v1.md`; the active theme is `src/themes/hearth.css`, loaded through `src/themes/index.css`. Layout: `design/layout.md`.
 - App icons: the flame mark is `public/icons/icon.svg` (any) and `public/icons/icon-maskable.svg`, plus `public/favicon.svg`. The PNG sizes in `public/icons/` are rendered from `icon-maskable.svg`.

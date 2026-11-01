@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Capacitor 8 wraps the `mobile` Angular build (`ng build --configuration mobile`). The Android project lives
+ * Capacitor 8 wraps the mobile build (`bun --bun run build:mobile`). The Android project lives
  * in `mobile/android`. HTTPS scheme (origin `https://localhost`), no cleartext, no mixed content.
  */
 const config: CapacitorConfig = {

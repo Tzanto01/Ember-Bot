@@ -106,7 +106,7 @@ function StartingUp() {
   );
 }
 
-/** Every route of the app (the Angular `app.routes.ts` paths and titles), guards as loaders. */
+/** Every route of the app with its page title; guards run as loaders. */
 export const routes: RouteObject[] = [
   {
     path: '/',
