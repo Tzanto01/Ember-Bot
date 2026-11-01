@@ -269,7 +269,7 @@ public sealed partial class ApiClient
     /// <summary>Sent as <c>X-XSRF-TOKEN</c> on every request while set.</summary>
     public string? Csrf { get; set; }
 
-    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar, () => host.Time.GetUtcNow()));
+    internal ApiClient(ApiHost host) => Http = host.CreateDefaultClient(Origin, new CookieJar(_jar, host.Time));
 
     /// <summary>The value of a cookie the client would send to <paramref name="path"/>, or null.</summary>
     public string? CookieValue(string name, string path = "/") => _jar.GetCookies(new Uri(Origin, path))[name]?.Value;
@@ -314,18 +314,19 @@ public sealed partial class ApiClient
     public async Task<JsonElement> CreateHabitAsync(string? name = null, string frequency = "daily")
         => await (await Post("/api/habits", new { name = name ?? $"Habit {Guid.NewGuid():N}", frequency })).ExpectJson(HttpStatusCode.Created);
 
-    /// <summary>Stores cookies with their <c>Expires</c> moved from the host's fake clock to the real one, so they keep their lifetime.</summary>
-    private sealed partial class CookieJar(CookieContainer jar, Func<DateTimeOffset> fakeNow) : DelegatingHandler
+    /// <summary>
+    /// The server stamps a cookie's <c>expires</c> from <see cref="ApiHost.Time"/>, but <see cref="CookieContainer"/> checks it
+    /// against the real clock. Each <c>expires</c> is moved by the real clock's lead over the fake one, so cookies live as long
+    /// as the server meant, whatever day the tests run on.
+    /// </summary>
+    private sealed class CookieJar(CookieContainer jar, TimeProvider serverTime) : DelegatingHandler
     {
-        [GeneratedRegex(@"expires=([^;]+)", RegexOptions.IgnoreCase)]
-        private static partial Regex ExpiresAttribute();
+        private static readonly Regex Expires = new(@"(?<=;\s*expires=)[^;]+", RegexOptions.IgnoreCase);
 
-        private string ToRealClock(string setCookie)
-            => ExpiresAttribute().Replace(setCookie, match =>
-                DateTimeOffset.TryParse(match.Groups[1].Value, CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)
-                    ? "expires=" + (DateTimeOffset.UtcNow + (expires - fakeNow())).ToString("R", CultureInfo.InvariantCulture)
-                    : match.Value);
+        private string ToRealClock(string setCookie) => Expires.Replace(setCookie, m =>
+            DateTimeOffset.TryParse(m.Value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var expires)
+                ? (expires + (DateTimeOffset.UtcNow - serverTime.GetUtcNow())).ToString("R", CultureInfo.InvariantCulture)
+                : m.Value);
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
