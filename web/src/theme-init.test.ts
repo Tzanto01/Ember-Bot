@@ -24,9 +24,12 @@ describe('/theme-init.js', () => {
     expect(runThemeInit(id).dataset['theme']).toBe(id);
   });
 
-  it.each([null, '', 'hearth', 'Marigold', 'toString'])('falls back to hearthlight for %o', (stored) => {
-    expect(runThemeInit(stored).dataset['theme']).toBe('hearthlight');
-  });
+  it.each([null, '', 'hearth', 'Marigold', 'toString'])(
+    'falls back to hearthlight for %o',
+    (stored) => {
+      expect(runThemeInit(stored).dataset['theme']).toBe('hearthlight');
+    },
+  );
 
   it('sets dark from the colour-scheme preference', () => {
     expect(runThemeInit('tidepool', true).classList.contains('dark')).toBe(true);

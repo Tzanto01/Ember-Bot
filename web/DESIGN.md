@@ -1,6 +1,6 @@
 # Ember web design
 
-Status: proposal for Nico's sign-off. Tokens live in `src/styles/tokens.css` (imported by `src/styles.css`); this file explains them.
+Status: the original Hearth direction, kept for its rationale (tone, day states, QA list). The app now ships four selectable themes, Hearthlight by default; their tokens live in `src/themes/<id>.css` and `design/README.md` describes them.
 
 ## Direction
 
@@ -16,7 +16,7 @@ Deliberately avoided: Discord blurple, cool dark-gray chat layouts, red of any k
 
 ## Palette
 
-Every colour is set for light (`:root`) and dark (`:root.dark`); `public/theme-init.js` sets `.dark` from `prefers-color-scheme`. Ratios are WCAG 2.x contrast against the background named.
+Every colour is set for light (`:root[data-theme="<id>"]`) and dark (`:root[data-theme="<id>"].dark`); `public/theme-init.js` sets `data-theme` from `localStorage['ember.theme']` (fallback `hearthlight`) and `.dark` from `prefers-color-scheme`. Ratios are WCAG 2.x contrast against the background named.
 
 | Token | Light | Dark | Role | Contrast (light / dark) |
 | --- | --- | --- | --- | --- |
@@ -139,5 +139,5 @@ Each at 360 px wide and at 1280 px, in light and in dark (4 shots per screen):
 
 ## Tech notes
 
-- React 19 + Vite. Tokens follow `docs/contracts/design-tokens-v1.md`; the active theme is `src/themes/hearth.css`, loaded through `src/themes/index.css`. Layout: `design/layout.md`.
-- App icons: the flame mark is `public/icons/icon.svg` (any) and `public/icons/icon-maskable.svg`, plus `public/favicon.svg`. The PNG sizes in `public/icons/` are rendered from `icon-maskable.svg`.
+- React 19 + Vite. Tokens follow `docs/contracts/design-tokens-v1.md`; the four themes `src/themes/{hearthlight,fieldnotes,tidepool,marigold}.css` are all loaded through `src/themes/index.css` (fonts in `src/themes/index.ts`), picked in Settings → Appearance. Layout: `design/layout.md`.
+- App icons: the flame mark is `public/icons/icon.svg` (any) and `public/icons/icon-maskable.svg`, plus `public/favicon.svg`. The PNG sizes in `public/icons/` are rendered from `icon-maskable.svg`; the flame uses Hearthlight's `--flame` and `--flame-core`.
