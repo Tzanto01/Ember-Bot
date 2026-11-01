@@ -1,11 +1,22 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiClient } from '../../core/api-client';
 import { AuthService } from '../../core/auth.service';
 import { asApiError, FriendlyProblem, problemToMessage } from '../../core/problem';
 import { safeReturnUrl } from '../../core/return-url';
-import { FieldInputDirective, focusFirstInvalid, FormFieldComponent } from '../../shared/form-field';
+import {
+  FieldInputDirective,
+  focusFirstInvalid,
+  FormFieldComponent,
+} from '../../shared/form-field';
 import { NoticeComponent } from '../../shared/notice';
 import { PageComponent } from '../../shared/page';
 import { SpinnerComponent } from '../../shared/spinner';
@@ -13,7 +24,15 @@ import { SpinnerComponent } from '../../shared/spinner';
 @Component({
   selector: 'app-login-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageComponent, FormFieldComponent, FieldInputDirective, NoticeComponent, SpinnerComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    PageComponent,
+    FormFieldComponent,
+    FieldInputDirective,
+    NoticeComponent,
+    SpinnerComponent,
+  ],
   template: `
     <app-page heading="Welcome back" lede="Sign in to check in on your habits.">
       @if (discordFailed) {
@@ -22,15 +41,36 @@ import { SpinnerComponent } from '../../shared/spinner';
       @if (reason === 'session') {
         <app-notice>Your session ended. Sign in again to pick up where you left off.</app-notice>
       } @else if (reason === 'offline') {
-        <app-notice tone="notice">Ember can't be reached right now. Check your connection, then try again.</app-notice>
+        <app-notice tone="notice"
+          >Ember can't be reached right now. Check your connection, then try again.</app-notice
+        >
+      } @else if (reason === 'deleted') {
+        <app-notice tone="info"
+          >Your account and everything in it are deleted. Thank you for spending time with
+          Ember.</app-notice
+        >
       }
 
       <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <app-form-field label="Email" [serverError]="fieldErrors()['email']">
-          <input appFieldInput class="input" type="email" formControlName="email" autocomplete="email" inputmode="email" spellcheck="false" />
+          <input
+            appFieldInput
+            class="input"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+            spellcheck="false"
+          />
         </app-form-field>
         <app-form-field label="Password">
-          <input appFieldInput class="input" type="password" formControlName="password" autocomplete="current-password" />
+          <input
+            appFieldInput
+            class="input"
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+          />
         </app-form-field>
         <div class="row row-between">
           <label class="checkbox">
@@ -48,7 +88,12 @@ import { SpinnerComponent } from '../../shared/spinner';
                 <p>If that address still needs confirming, a fresh link is on its way.</p>
               } @else {
                 <div>
-                  <button class="btn btn-secondary" type="button" [attr.aria-disabled]="resend() === 'sending' ? 'true' : null" (click)="resendConfirmation()">
+                  <button
+                    class="btn btn-secondary"
+                    type="button"
+                    [attr.aria-disabled]="resend() === 'sending' ? 'true' : null"
+                    (click)="resendConfirmation()"
+                  >
                     Send the link again
                   </button>
                 </div>
@@ -57,7 +102,11 @@ import { SpinnerComponent } from '../../shared/spinner';
           </app-notice>
         }
 
-        <button class="btn btn-primary btn-block" type="submit" [attr.aria-disabled]="pending() ? 'true' : null">
+        <button
+          class="btn btn-primary btn-block"
+          type="submit"
+          [attr.aria-disabled]="pending() ? 'true' : null"
+        >
           @if (pending()) {
             <app-spinner />
             Signing in…
@@ -69,7 +118,9 @@ import { SpinnerComponent } from '../../shared/spinner';
 
       <p class="divider">or</p>
       <a class="btn btn-secondary btn-block" [href]="discordUrl">Sign in with Discord</a>
-      <p class="text-center muted">New to Ember? <a class="tap-link" routerLink="/signup">Create an account</a></p>
+      <p class="text-center muted">
+        New to Ember? <a class="tap-link" routerLink="/signup">Create an account</a>
+      </p>
     </app-page>
   `,
 })
@@ -86,14 +137,19 @@ export class LoginPage {
   protected readonly discordUrl = this.api.discordLoginUrl(this.returnUrl);
 
   protected readonly form = new FormGroup({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     staySignedIn: new FormControl(true, { nonNullable: true }),
   });
 
   protected readonly pending = signal(false);
   protected readonly problem = signal<FriendlyProblem | null>(null);
-  protected readonly fieldErrors = computed<Record<string, string>>(() => this.problem()?.fields ?? {});
+  protected readonly fieldErrors = computed<Record<string, string>>(
+    () => this.problem()?.fields ?? {},
+  );
   protected readonly resend = signal<'idle' | 'sending' | 'sent'>('idle');
 
   protected async submit(): Promise<void> {

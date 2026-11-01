@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { PageComponent } from '../../shared/page';
+import { LegalDocumentComponent } from './legal-document';
 
-/** Placeholder; run 2 replaces it. */
 @Component({
   selector: 'app-privacy-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageComponent],
-  template: `<app-page heading="Privacy" />`,
+  imports: [LegalDocumentComponent],
+  template: `<app-legal-document file="datenschutzerklaerung.md" fallbackHeading="Privacy" />`,
 })
 export class PrivacyPage {}
