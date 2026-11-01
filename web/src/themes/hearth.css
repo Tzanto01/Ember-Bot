@@ -1,0 +1,100 @@
+/* Hearth: warm cream and honey, the Angular app's palette ported to design-tokens-v1. */
+:root {
+  --background: #fbf7f1;
+  --foreground: #2a211c;
+  --card: #ffffff;
+  --card-foreground: #2a211c;
+  --popover: #ffffff;
+  --popover-foreground: #2a211c;
+  --primary: #8f5200;
+  --primary-foreground: #ffffff;
+  --secondary: #f4ede3;
+  --secondary-foreground: #2a211c;
+  --muted: #f4ede3;
+  --muted-foreground: #66574c;
+  --accent: #f4ede3;
+  --accent-foreground: #2a211c;
+  --border: #e6dbcd;
+  --input: #8a7868;
+  --ring: #8f5200;
+  --destructive: #7a4500;
+  --destructive-foreground: #ffffff;
+  --notice: #f8eedc;
+  --notice-foreground: #7a4500;
+  --notice-border: #a77a33;
+  --success: #3d6b4f;
+  --success-foreground: #ffffff;
+  --done: #a85800;
+  --done-foreground: #ffffff;
+  --lowday: #eceaf5;
+  --lowday-foreground: #5e5a8e;
+  --paused: #8a7868;
+  --pending: #8f5200;
+  --empty: #8a7868;
+  --beforestart: #6f6055;
+  --flame: #f0962b;
+  --flame-core: #ffd58a;
+  --chart-1: #8f5200;
+  --chart-2: #5e5a8e;
+  --chart-3: #3d6b4f;
+
+  --radius: 10px;
+  --cell-radius: 10px;
+  --border-width: 1px;
+  --shadow-card: 0 1px 2px rgb(60 40 20 / 0.08);
+  --space-unit: 4px;
+  --ember-font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --ember-font-display:
+    ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari,
+    'Arial Rounded MT', 'Arial Rounded MT Bold', Calibri, system-ui, sans-serif;
+  --ember-heading-weight: 650;
+  --ember-heading-tracking: -0.01em;
+  --ember-dur-fast: 120ms;
+  --ember-dur: 200ms;
+  --ember-dur-slow: 320ms;
+  --ember-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ember-reward: glow;
+}
+
+:root.dark {
+  --background: #1a1512;
+  --foreground: #f3ebe2;
+  --card: #241d19;
+  --card-foreground: #f3ebe2;
+  --popover: #241d19;
+  --popover-foreground: #f3ebe2;
+  --primary: #f2a65a;
+  --primary-foreground: #1a1512;
+  --secondary: #2e2621;
+  --secondary-foreground: #f3ebe2;
+  --muted: #2e2621;
+  --muted-foreground: #bbaa9b;
+  --accent: #2e2621;
+  --accent-foreground: #f3ebe2;
+  --border: #3a302a;
+  --input: #8c7a6b;
+  --ring: #f2a65a;
+  --destructive: #f2c38f;
+  --destructive-foreground: #1a1512;
+  --notice: #33291c;
+  --notice-foreground: #f2c38f;
+  --notice-border: #a88a5a;
+  --success: #8fc2a0;
+  --success-foreground: #1a1512;
+  --done: #e08a3c;
+  --done-foreground: #1a1512;
+  --lowday: #2c2a3d;
+  --lowday-foreground: #a9a4db;
+  --paused: #8c7a6b;
+  --pending: #f2a65a;
+  --empty: #8c7a6b;
+  --beforestart: #a89888;
+  --flame: #f2a65a;
+  --flame-core: #ffe2a8;
+  --chart-1: #f2a65a;
+  --chart-2: #a9a4db;
+  --chart-3: #8fc2a0;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+}
