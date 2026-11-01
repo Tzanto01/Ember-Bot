@@ -47,6 +47,12 @@ const stateClass: Record<DayState | 'future', string> = {
   future: 'text-beforestart',
 };
 
+/** True when two neighbouring days join one run: done and low days carry it; paused and empty days break it. */
+export function joinsRun(state: DayState | null | undefined, next: DayState | null | undefined): boolean {
+  const carries = (s: DayState | null | undefined) => s === 'done' || s === 'lowday';
+  return carries(state) && carries(next);
+}
+
 /** "{long date}, {state text}", with "today, " before the state text on today. Never "missed". */
 export function dayCellName(date: LocalDateString, state: DayState | null, isToday = false): string {
   const words = state === null ? 'not yet' : dayStateWords[state];
