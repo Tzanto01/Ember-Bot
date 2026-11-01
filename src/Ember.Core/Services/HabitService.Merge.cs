@@ -65,6 +65,7 @@ public partial class HabitService
             await _db.PushSubscriptions
                 .Where(s => s.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId), cancellationToken);
+            await TrimPushSubscriptionsAsync(targetUserId, cancellationToken);
 
             var key = DiscordLogin.Key(discordUserId);
             await _db.UserLogins

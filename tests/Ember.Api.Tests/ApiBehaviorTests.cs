@@ -126,14 +126,13 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
-    public async Task Health_is_200_and_the_push_endpoints_are_501_until_the_push_slice_lands()
+    public async Task Health_is_200_the_vapid_key_is_501_until_configured_and_push_subscriptions_need_a_session()
     {
-        var user = await Host.SignedInAsync();
-
         await (await Host.NewClient().Get("/health")).Expect(HttpStatusCode.OK);
         (await Host.NewClient().Get("/api/push/vapid-public-key")).StatusCode.Should().Be(HttpStatusCode.NotImplemented);
-        (await user.Post("/api/me/push-subscriptions")).StatusCode.Should().Be(HttpStatusCode.NotImplemented);
-        (await user.Delete("/api/me/push-subscriptions?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fx")).StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+        (await Host.NewClient().Post("/api/me/push-subscriptions",
+            new { endpoint = "https://fcm.googleapis.com/fcm/send/x", keys = new { p256dh = "AA", auth = "AA" } })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Host.NewClient().Delete("/api/me/push-subscriptions?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fx")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [DockerFact]
