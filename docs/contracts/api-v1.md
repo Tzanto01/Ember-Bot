@@ -1,4 +1,6 @@
-# Ember API contract v1.1
+# Ember API contract v1.2
+
+v1.2 (2026-11-01): login never reports `LockedOut` (a locked account answers `Failed`); email confirmation needs the account's password, so a confirmation link can't activate a password someone else chose.
 
 v1.1 (2026-11-01): CSP allows inline styles, `returnUrl` rejects control characters, static serving includes `/legal/*.md`, test host seeding takes `habitStartDate`.
 
@@ -44,9 +46,9 @@ Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and
 These keep ASP.NET Core Identity's response shapes:
 
 - `POST /api/auth/register` `{ email, password }` → 200 for any well-formed request, whether or not the email is taken (a taken address gets an "already registered" email instead). 400 `validation` problem with Identity error codes as `errors` keys (`PasswordTooShort`, `InvalidEmail`, ...) for a bad password or email. Password rule: at least 10 characters, no composition rules.
-- `POST /api/auth/login?useCookies=true` or `?useSessionCookies=true` (when "stay signed in" is off) `{ email, password }` → 200 and the cookie. Failure: 401 problem whose `detail` is `Failed`, `NotAllowed` (email not confirmed) or `LockedOut`. The client shows these as a login error, not as a session expiry. Without either flag it returns `{ tokenType, accessToken, expiresIn, refreshToken }`.
+- `POST /api/auth/login?useCookies=true` or `?useSessionCookies=true` (when "stay signed in" is off) `{ email, password }` → 200 and the cookie. Failure: 401 problem whose `detail` is `Failed` (wrong credentials, or the account is locked; the two are indistinguishable on purpose) or `NotAllowed` (email not confirmed). The client shows these as a login error, not as a session expiry. Without either flag it returns `{ tokenType, accessToken, expiresIn, refreshToken }`.
 - `POST /api/auth/refresh` `{ refreshToken }` → new tokens.
-- `GET /api/auth/confirmEmail?userId&code` → 200, or 401 for a bad or expired code.
+- `POST /api/auth/confirmEmail` `{ userId, code, password }` → 200 and the email is confirmed (the client then signs in normally). 401 problem for a bad or expired code or a wrong password (indistinguishable). Rate-limited like login and counted towards lockout. The web page `/confirm-email` asks for the password the user chose at sign-up and links to forgot-password; a successful password reset through the emailed code also confirms the email. `GET` on this path is not supported.
 - `POST /api/auth/resendConfirmationEmail` `{ email }` → 200 always.
 - `POST /api/auth/forgotPassword` `{ email }` → 200 always.
 - `POST /api/auth/resetPassword` `{ email, resetCode, newPassword }` → 200, or 400 `validation` problem.
