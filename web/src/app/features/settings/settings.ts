@@ -740,14 +740,14 @@ export class SettingsPage {
 
   private async saveGrace(value: number): Promise<void> {
     const error = await this.patch('grace', { graceDaysPerWeek: value });
-    if (!error) return;
+    if (!error || this.grace.value !== value) return;
     this.grace.setValue(this.me()?.graceDaysPerWeek ?? 0, { emitEvent: false });
     this.fail('grace', error);
   }
 
   private async saveLeaderboard(value: boolean): Promise<void> {
     const error = await this.patch('leaderboard', { leaderboardOptIn: value });
-    if (!error) return;
+    if (!error || this.leaderboard.value !== value) return;
     this.leaderboard.setValue(this.me()?.leaderboardOptIn ?? false, { emitEvent: false });
     this.fail('leaderboard', error);
   }

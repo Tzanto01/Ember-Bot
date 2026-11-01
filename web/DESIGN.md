@@ -34,7 +34,7 @@ Every colour is a `light-dark()` pair, so the theme follows `prefers-color-schem
 | `--color-flame` | `#F0962B` | `#F2A65A` | Logo only (decorative) | n/a |
 | `--color-flame-core` | `#FFD58A` | `#FFE2A8` | Logo only (decorative) | n/a |
 | `--color-done` | `#A85800` | `#E08A3C` | Done day fill (white date text on it: 5.2) | 4.8 on bg / 6.2 on surface |
-| `--color-on-done` | `#FFFFFF` | `#1A1512` | Check mark on a done day | 4.0 / 6.8 |
+| `--color-on-done` | `#FFFFFF` | `#1A1512` | Check mark and date on a done day | 5.2 / 6.8 |
 | `--color-lowday` | `#5E5A8E` | `#A9A4DB` | Low-day moon icon and date text | 5.3 on lowday-bg / 6.0 on lowday-bg, 7.1 on surface |
 | `--color-lowday-bg` | `#ECEAF5` | `#2C2A3D` | Low-day cell and notice | |
 | `--color-success` | `#3D6B4F` | `#8FC2A0` | Success icon | 5.4 on success-bg / 7.3 on success-bg |
