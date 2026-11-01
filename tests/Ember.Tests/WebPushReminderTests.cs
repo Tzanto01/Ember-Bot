@@ -160,6 +160,19 @@ public class WebPushReminderTests
     }
 
     [Fact]
+    public async Task AMobileOnlyReminder_SendsNeitherDiscordNorWebPush_AndStillAdvances()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(10, ReminderChannels.Mobile, [Endpoint("u10")]));
+        await using var hostScope = host;
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().BeEmpty();
+        push.Requests.Should().BeEmpty();
+        (await NextReminderAsync(host, 10)).Should().Be(TomorrowNineBerlin);
+    }
+
+    [Fact]
     public async Task RunningTheDispatchTwiceForTheSameDueTime_SendsOncePerChannel()
     {
         var (host, push, _) = await CreateAsync(new Seed(30, Both, [Endpoint("u30")]));

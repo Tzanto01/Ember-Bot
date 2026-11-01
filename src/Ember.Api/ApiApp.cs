@@ -3,6 +3,7 @@ using Ember.Api.Email;
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Ember.Core.Services;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -99,6 +100,7 @@ public static class ApiApp
                 options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
         });
         services.AddCors();
+        services.AddSingleton<ICorsPolicyProvider, EmberCorsPolicyProvider>();
 
         var dataProtection = services.AddDataProtection().SetApplicationName("Ember");
         if (config["Ember:DataProtectionKeysPath"] is { Length: > 0 } keysPath)
@@ -116,6 +118,7 @@ public static class ApiApp
         if (!builder.Environment.IsDevelopment()) ValidateConfiguration(builder.Configuration);
 
         var app = builder.Build();
+        _ = NativeOrigins(app.Configuration);
 
         app.UseForwardedHeaders();
         app.UseExceptionHandler();
@@ -138,20 +141,16 @@ public static class ApiApp
         if (webRoot is not null) app.UseStaticFiles(webRoot);
 
         app.UseRouting();
-        var origin = WebOrigin(app.Configuration);
-        app.UseCors(policy =>
-        {
-            if (origin is not null) policy.WithOrigins(origin).AllowCredentials().AllowAnyHeader().AllowAnyMethod();
-        });
-        app.UseAuthentication();
+        app.UseCors();
         app.UseRateLimiter();
+        app.UseAuthentication();
         app.Use(AuthEndpoints.EnforceAntiforgery);
         app.UseAuthorization();
 
         app.MapHealthChecks("/health");
 
         var api = app.MapGroup("/api");
-        var auth = api.MapGroup("/auth").RequireRateLimiting(RateLimits.AuthPolicy);
+        var auth = api.MapGroup("/auth").RequireRateLimiting(RateLimits.AuthOtherPolicy);
         auth.MapAuth();
         auth.MapDiscord();
 
@@ -177,6 +176,25 @@ public static class ApiApp
     /// <summary><c>Ember:WebOrigin</c> without a trailing slash, or null when it isn't configured.</summary>
     internal static string? WebOrigin(IConfiguration configuration)
         => configuration["Ember:WebOrigin"] is { Length: > 0 } origin ? origin.TrimEnd('/') : null;
+
+    /// <summary>
+    /// The comma-separated <c>Ember:NativeOrigins</c> (default <c>https://localhost,capacitor://localhost</c> when unset; an
+    /// empty value means none), each trimmed, without one trailing slash and normalized.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">An entry isn't an exact origin (<c>scheme://host[:port]</c>), such as <c>*</c>.</exception>
+    internal static string[] NativeOrigins(IConfiguration configuration)
+        => (configuration["Ember:NativeOrigins"] ?? "https://localhost,capacitor://localhost")
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(entry => ExactOrigin(entry.EndsWith('/') ? entry[..^1] : entry)
+                ?? throw new InvalidOperationException($"Ember:NativeOrigins entries must be exact origins (scheme://host[:port]); '{entry}' is not."))
+            .ToArray();
+
+    private static string? ExactOrigin(string entry)
+    {
+        var authority = entry.IndexOf("://", StringComparison.Ordinal) + 3;
+        if (authority < 3 || entry.AsSpan(authority).IndexOfAny("/?#@\\*") >= 0) return null;
+        return Uri.TryCreate(entry, UriKind.Absolute, out var uri) && uri.Host.Length > 0 ? uri.GetLeftPart(UriPartial.Authority) : null;
+    }
 
     private static void ValidateConfiguration(IConfiguration configuration)
     {
