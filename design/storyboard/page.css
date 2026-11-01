@@ -7,7 +7,7 @@ body { margin: 0; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, s
 .compare { border-collapse: collapse; background: #fff; margin: 8px 0; font-size: 14px; }
 .compare th, .compare td { border: 1px solid #d5d5dc; padding: 6px 10px; text-align: left; vertical-align: top; }
 .compare thead th { background: #f4f4f6; }
-.small { font-size: 13px; color: #55555e; }
+.sb-small { font-size: 13px; color: #55555e; }
 .direction { padding: 24px 40px 48px; border-top: 6px solid #c9c9d0; }
 .ann { background: #fff; border-radius: 12px; padding: 20px 24px; max-width: 1360px; margin-bottom: 24px; }
 .ann-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }

@@ -23,7 +23,7 @@ export const DIRECTIONS = [
     type: 'Nunito (rounded) for headings and body; extra-bold headings.',
     motion: 'glow: a warm halo blooms behind the check button and fades.',
     optimizes: 'Continuity with today’s Hearth and the softest, friendliest first impression.',
-    risks: 'Closest to the current app, so the least new. Round cells leave a little less room for the date. Borderless cards rely on a shadow that is faint in dark mode.',
+    risks: 'Closest to the current app, so the least new. Round cells leave a little less room for the date. Borderless cards rely on a shadow that is faint in dark mode. The honey delete outline sits close to the amber primary, so the farewell card and wording carry it.',
     tokens: 'Round day cells and check buttons (--cell-radius 9999px), no card borders (--border-width 0, --shadow-card carries the edge), 16px radius, one font family.',
   },
   {
@@ -44,7 +44,7 @@ export const DIRECTIONS = [
     mood: 'Early morning by the water: cool, airy, unhurried.',
     type: 'Lexend for everything (designed for reading fluency); medium-weight headings with tight tracking.',
     motion: 'rise: the check floats up into place and one small bubble rises and fades.',
-    optimizes: 'Calm and focus: the most spacious density and a cool palette that leaves the flame as the only warm spot.',
+    optimizes: 'Calm and focus: the most spacious density and a cool palette where the flame and the honey notices are the only warm colours.',
     risks: 'Moves away from the warm “ember” feel of the name. More scrolling at 360 px because of the extra space. Teal done and lavender low day rely on their icons for colour-blind users.',
     tokens: 'Spacious density (--space-unit 5px), 18px radius with soft squircle cells (--cell-radius 14px), the slowest, gentlest motion curve.',
   },
@@ -128,7 +128,7 @@ function shell(content, { desktop, active = 'today' }) {
 
 function habitRow(h) {
   let meta;
-  if (h.meta === 'streak') meta = `${h.done ? '<span>Done today ·</span> ' : ''}<span class="badge">${icon('flame')}${h.streak}-day streak</span>`;
+  if (h.meta === 'streak') meta = `${h.done ? '<span>Done today</span>' : ''}<span class="badge">${icon('flame')}${h.streak}-day streak</span>`;
   else if (h.meta === 'week') {
     const [done, target] = h.week;
     const pips = Array.from({ length: target }, (_, i) => `<span class="pip" data-state="${i < done ? 'done' : 'notdone'}"></span>`).join('');
@@ -138,7 +138,7 @@ function habitRow(h) {
     ? `<span class="slot">${dayCell('paused', null)}</span>`
     : `<label class="check${h.moment ? ' moment' : ''}"><input type="checkbox"${h.done ? ' checked' : ''} aria-label="Check in ${esc(h.name)} for today"><span class="fillbar"></span>${icon('check', 'check-ic')}</label>`;
   return `<li class="card habit${h.done ? ' is-done' : ''}${h.moment ? ' moment-row' : ''}">
-    <div class="habit-text"><h2 class="habit-name">${esc(h.name)}</h2><p class="meta">${meta}</p></div>
+    <div class="habit-text"><h2 class="habit-name">${esc(h.name)}</h2><p class="meta${h.meta === 'paused' ? ' plain' : ''}">${meta}</p></div>
     <button class="btn icon ghost edit" aria-label="Edit ${esc(h.name)}">${icon('pencil')}</button>
     ${check}
   </li>`;
@@ -317,7 +317,7 @@ ${APP_CSS}
 <p>Four directions for the React web app, generated from <code>web/src/themes/*.css</code> by <code>design/storyboard/build.mjs</code>. Every screen uses the same layout (<code>design/layout.md</code>); only the theme tokens differ. Synthetic data; today is Saturday 31 October 2026.</p>
 <nav class="sb-nav">${themes.map((t) => `<a href="#${t.id}">${t.name}</a>`).join('')}</nav>
 ${compare}
-<p class="small">No direction is recommended here. Contrast headroom is the weakest required pair divided by its minimum (1.00× = exactly at the bar), across light and dark. Real-app screenshots per theme follow after the React screens are built.</p>
+<p class="sb-small">No direction is recommended here. Contrast headroom is the weakest required pair divided by its minimum (1.00× = exactly at the bar), across light and dark. Real-app screenshots per theme follow after the React screens are built.</p>
 </header>
 ${sections}
 </body></html>`;

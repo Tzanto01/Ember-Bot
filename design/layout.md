@@ -65,7 +65,7 @@ Page titles stay as in `app.routes.ts` ("Today · Ember", …).
 - Radii (derived by the app from `--radius`): `sm` = radius − 4 px, `md` = radius − 2 px, `lg` = radius, `xl` = radius + 4 px. Buttons and inputs `md`, cards `xl`, pills 9999 px, day cells and check buttons `--cell-radius`.
 - Card: `--card` background, `--border-width` solid `--border`, `--shadow-card`.
 - Type sizes (fixed): 13 px tab labels only, 14 px hints and footers, 16 px body and inputs, 18 px h3 and habit names, 22 px h2, 28 px h1 (36 px from `md`). Body line height 1.55, headings 1.2. Headings use `--ember-font-display`, `--ember-heading-weight`, `--ember-heading-tracking`; everything else `--ember-font-sans`. Reading measure 38rem.
-- Focus: `:focus-visible` 3 px `--ring` outline, 2 px offset, on every interactive element.
+- Focus: `:focus-visible` 3 px `--ring` outline, 2 px offset, on every interactive element. Themes keep `--ring` distinct from `--done` so the ring shows on a done cell.
 
 ## 3. Shells
 
@@ -106,13 +106,13 @@ Page titles stay as in `app.routes.ts` ("Today · Ember", …).
 | --- | --- | --- | --- | --- | --- |
 | `done` | `--done` | none | `--done-foreground` | check | "done" |
 | `notdone` | none | 1.5 px `--empty` | `--foreground` | none | "not checked in" (never "missed") |
-| `pending` | none | 2 px `--pending` | `--foreground`, weight 600 | none (today: 4 px dot in `--primary` under the number) | "still open" |
-| `lowday` | `--lowday` | none | `--lowday-foreground` | moon | "low day, resting" |
+| `pending` | none | 2 px `--pending` | `--foreground`, weight 600 | 5 px `--pending` dot near the bottom edge (the non-colour cue that separates it from `notdone`) | "still open" |
+| `lowday` | `--lowday` | 1 px inset `color-mix(in oklch, var(--lowday-foreground) 35%, transparent)` | `--lowday-foreground` | moon | "low day, resting" |
 | `paused` | 45° hatch: `color-mix(in oklch, var(--paused) 22%, transparent)` stripes | 1.5 px dashed `--paused` | `--foreground` | pause (cells ≥ 48 px) | "paused" |
 | `beforestart` | none | none | `--beforestart` | none | "before this habit started" (span, not a button) |
 | future (not a state) | none | none | `--beforestart` | none | "not yet" (span) |
 
-- Accessible name: "{long date}, {state text}", prefixed "today, " on today (for example "Sunday, 1 November, today, done"). Today also gets `aria-current="date"`.
+- Accessible name: "{long date}, {state text}", prefixed "today, " on today (for example "Sunday, 1 November, today, done"). Today also gets `aria-current="date"` and a 2 px underline under its number in `currentColor` (so it stays visible on a done fill).
 - Open day (`aria-expanded="true"`): 3 px `--ring` outline, 2 px offset (same as focus, so it stays visible after the mouse moves away).
 - **Run connector (new):** when a `done` cell's right-hand neighbour in the same week row is also `done`, a 4 px tall bar in `--done` bridges the gap at mid-height (decorative, `::after`). Runs read as one band, gaps stay neutral. Low days never break the visual, they are just a different fill.
 - The same component renders the legend swatches, the auth brand strip and the Today week pips (static spans, no ids).
@@ -153,12 +153,12 @@ Data: `GET /api/habits`, `GET /api/low-days?from=today&to=today`, `GET /api/stat
     - daily with streak > 0: Badge (secondary) with a small flame icon and "{n}-day streak";
     - daily, no streak: "Every day";
     - weekly: `target` pips (6 px DayCell dots, `done` filled for `week.done`, the rest `notdone` outline) then "{done} of {target} this week" when done > 0, else "Once a week" / "{target} times a week";
-    - done today prefixes "Done today · " to the above;
+    - done today puts "Done today" before the above as its own item (no separator, so nothing dangles when the line wraps);
     - low day today: moon icon + "Low day, resting. Checking in is still welcome.";
     - paused: pause icon + "Paused until {d month}. You can resume it any time under Edit." / "Paused. You can resume it any time under Edit.";
     - not started: "Starts {d month}.".
   - Edit: ghost icon Button (pencil), 44 px, accessible name "Edit {habit}" (visible text "Edit" was the old pattern; the icon button saves a line on 360 px), links to `/habits/{id}/edit`.
-  - **CheckButton** (only when checkable): 56 px square with `--cell-radius`, `aria-pressed`, `aria-label` "Check in {habit} for today". Unpressed: 2 px `--pending` edge, check icon in `--muted-foreground`. Pressed: `--done` fill, check icon in `--done-foreground`. Busy: spinner, `aria-disabled`. Paused or not started: no button; a static 56 px DayCell (`paused` hatch or `beforestart`) holds the slot so rows stay aligned.
+  - **CheckButton** (only when checkable): 56 px square with `--cell-radius`, `aria-pressed`, `aria-label` "Check in {habit} for today". Unpressed: 2 px `--pending` edge, empty inside (no tick, so an open habit never looks done). Pressed: `--done` fill, check icon in `--done-foreground`. Busy: spinner, `aria-disabled`. Paused or not started: no button; a static 56 px DayCell (`paused` hatch or `beforestart`) holds the slot so rows stay aligned.
   - Done row: card background `color-mix(in oklch, var(--done) 8%, var(--card))` and a 3 px `--done` inline-start edge. Not a reward by itself, just the at-a-glance "this one is done".
 - **Check-in reward moment** (see section 7 for timing): tap → button fills, the theme's `--ember-reward` animation plays, the row takes its done tint, the streak or week count steps up (number rolls), the Today's ember flame grows one step, and the polite live region says "{habit}: checked in for today.". Un-check: instant reverse, no animation, "{habit}: check-in cleared.".
 - **Action row:** secondary Button with plus icon "New habit" (link `/habits/new`); ghost Button with moon "Mark today as a low day" (hidden when today is a low day or the low-day lookup failed). Below `lg` they stack full width; from `lg` they sit in one row under the list.
@@ -195,14 +195,14 @@ Data: `GET /api/habits`, `GET /api/habits/{id}/days?from&to` (the shown month), 
 
 - `h1` "History", lede "Any day can be filled in later. Tap a day to change it."
 - **Habit picker** (more than one habit): Label "Habit" + Select (native `<select id="habit-picker">` or shadcn Select with the same label). Changing it replaces the URL with `/history/{id}` without a navigation. One habit: its name as a muted paragraph.
-- **At a glance (new):** three compact stat tiles in one row (Card, `--secondary` background, 3-column grid even on 360 px, 12 px label over an 18 px value). Content leads with what is there, never with gaps:
+- **At a glance (new):** three compact stat tiles in one row (Card, `--secondary` background, 3-column grid even on 360 px, 14 px label over a 16 px value). Content leads with what is there, never with gaps:
   - Daily habit: "Current streak" → "{n}-day streak" (when 0: "Fresh start"); "Best" → "{bestStreak} days" (hidden when null or 0, the grid becomes two tiles); "In {Month}" → "{d} done" plus "· {l} low days" when l > 0 (`d` counts `done` days of the shown month).
   - Weekly habit: "This week" → "{done} of {target}" (done > 0) or "{target} a week"; "Last 7 days" → "{last7} done" (hidden when 0); "In {Month}" as above.
   - Labels and values are **new** strings. No count of `notdone` days anywhere.
 - **Calendar Card** (`section aria-labelledby="month-heading"`):
   - Header: icon Button "Previous month" (`aria-disabled` at the habit's first month), `h2#month-heading` month and year (`aria-live=polite`), icon Button "Next month" (`aria-disabled` after the current month). 44 px buttons.
   - `table` (`aria-labelledby="month-heading"`, `aria-busy` while loading), Monday first, 7 `th scope=col` with short visible weekday and visually hidden long name. Only the shown month's days get a cell; others are empty `td`.
-  - **360 px math:** shell padding 12 px below 380 px, calendar Card has no inline padding below `md`, gap 4 px: (360 − 24 − 24) / 7 = 44.6 px cells. From `md` the cells grow to 56 px and the Card gets normal padding.
+  - **360 px math:** shell padding 12 px below 380 px, calendar Card has no inline padding below `md`, gap 4 px, the table bleeds 4 px into the Card on each side: (336 + 8 − 7 × 4) / 7 = 44.6 px cells (44.0 px with a 2 px card border). Below 360 px: gap 2 px and shell padding 8 px so the 44 px minimum still fits without horizontal scroll. From `md` the cells grow to 56 px and the Card gets normal padding.
   - Editable day: `button#day-{date}` DayCell with `data-state`, `aria-label`, `aria-expanded`, and `aria-controls="day-panel"` when open. Non-editable: span DayCell.
 - **Legend** (`ul aria-label="Legend"`): DayCell swatch (24 px) + "Done", "Not checked in", "Still open", "Low day", "Paused", "Before the habit started". 2-column grid on 360 px, one wrapping row from `md`.
 - **Day panel** `section#day-panel` Card (only rendered while a day is open; tapping the same day or Escape closes it; focus moves to its heading; below `lg` it renders directly under the calendar and scrolls into view):
@@ -261,18 +261,18 @@ All forms: Label above Input, hint under the label text (`aria-describedby`), er
 
 ## 7. Motion and the reward keyword
 
-Durations come from the theme: `--ember-dur-fast` (press, hover), `--ember-dur` (state change), `--ember-dur-slow` (reward; themes keep it at or below 480 ms), easing `--ember-ease`. Only `transform`, `opacity`, `clip-path` and colours animate. No overshoot, no confetti, no shaking, nothing loops.
+Durations come from the theme: `--ember-dur-fast` (press, hover), `--ember-dur` (state change), `--ember-dur-slow` (reward; themes keep it at or below 480 ms), easing `--ember-ease`. Only `transform`, `opacity` and colours animate. No overshoot, no confetti, no shaking, nothing loops.
 
-The app reads `--ember-reward` once per check-in (`getComputedStyle(document.documentElement).getPropertyValue('--ember-reward').trim()`):
+The reward plays only in response to the user's own check-in tap (a transient class removed on `animationend`), never on mount, refetch, route change or theme change, so rows that are already done stay still. The app reads `--ember-reward` once per check-in (`getComputedStyle(document.documentElement).getPropertyValue('--ember-reward').trim()`):
 
 | Keyword | Check-in reward (on the CheckButton and its row) |
 | --- | --- |
 | `glow` | A soft radial halo (`--flame-core` to transparent) behind the button: opacity 0 → 0.7 → 0, scale 0.8 → 1.6 over `--ember-dur-slow`; the fill cross-fades over `--ember-dur`. |
-| `fill` | The `--done` fill rises inside the button from bottom to top (`clip-path: inset(100% 0 0 0)` → `inset(0)`) over `--ember-dur-slow`; the row's done tint sweeps in from the inline start (`scaleX` 0 → 1, origin start) over the same time. |
+| `fill` | The `--done` fill rises inside the button from bottom to top (`transform: scaleY(0)` → `scaleY(1)`, origin bottom) over `--ember-dur-slow`; the row's done tint sweeps in from the inline start (`scaleX` 0 → 1, origin start) over the same time. |
 | `rise` | The check icon rises 6 px into place while fading in, and one 6 px ember dot (`--flame`) floats 16 px up from the button's top edge and fades, over `--ember-dur-slow`. |
 | `none` | Instant change. |
 
-Always (except `none`): the meta number rolls (old value up and out, new value in, `--ember-dur`) and the Today's ember flame steps up (`--ember-dur-slow`). Day cells in History use the same keyword at half the distance when marked done from the day panel. Under `prefers-reduced-motion: reduce` every keyword behaves like `none`; the colour, icon, text and live announcement still change.
+Always (except `none`): the meta number rolls (old value up and out, new value in, `--ember-dur`) and the Today's ember flame steps up (`--ember-dur-slow`). Day cells in History use the same keyword at half the distance when marked done from the day panel. Under `prefers-reduced-motion: reduce` every keyword behaves like `none` (global CSS rule and Motion's `useReducedMotion`); the colour, icon, text and live announcement still change.
 
 Other motion: buttons scale to 0.98 while pressed (`--ember-dur-fast`); the day panel fades and slides 8 px in (`--ember-dur`); route changes do not animate.
 
