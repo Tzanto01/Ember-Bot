@@ -11,7 +11,7 @@ import { Store } from './store';
  * edit is queued, when the browser comes back online and (native) when the app resumes; in the native build
  * (`reminders` set) it also re-reads `me` on resume and rebuilds the local reminders after every sync and
  * whenever `me` holds a new time zone. When a user is known whose zone was never set, it sends the device's zone
- * once (a failure waits for the next app start).
+ * (not UTC) once per user on this device (a failure waits for the next app start).
  */
 export class DeviceSync {
   private userId: string | null = null;
@@ -75,9 +75,12 @@ export class DeviceSync {
 
   private async claimTimeZone(id: string): Promise<void> {
     const timezone = browserTimeZone();
-    if (!timezone) return;
+    const claimed = `ember.tzClaimed.${id}`;
+    if (!timezone || timezone === 'UTC' || timezone === 'Etc/UTC' || localStorage.getItem(claimed)) return;
     const me = await this.api.updateMe({ timezone }).catch(() => null);
-    if (me && this.auth.me.get()?.id === id) this.auth.setMe(me);
+    if (!me) return;
+    localStorage.setItem(claimed, '1');
+    if (this.auth.me.get()?.id === id) this.auth.setMe(me);
   }
 
   private async listenNative(): Promise<void> {

@@ -12,6 +12,7 @@ import { setNavigator } from './navigation';
 import { OfflineQueue } from './offline-queue';
 import { PushService } from './push';
 import { type FetchMock, me, memorySecureStore, mockFetch } from './test-support';
+import { chooseTheme } from './theme';
 
 describe('AuthService', () => {
   let mock: FetchMock;
@@ -247,6 +248,51 @@ describe('AuthService', () => {
 
       expect(document.documentElement.dataset['theme']).toBe('marigold');
       expect(localStorage.getItem('ember.theme')).toBe('marigold');
+    });
+
+    it('keeps a pick whose save failed and sends it again instead of reverting to the account theme', async () => {
+      localStorage.setItem('ember.accountTheme', 'tidepool');
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('marigold');
+      const patch = await mock.next('PATCH', '/api/me');
+      expect(patch.body).toEqual({ theme: 'marigold' });
+      patch.respond(200, { ...me, theme: 'marigold' });
+      await vi.waitFor(() => expect(localStorage.getItem('ember.accountTheme')).toBe('marigold'));
+      expect(auth.me.get()?.theme).toBe('marigold');
+    });
+
+    it('ignores the account theme from a load that started before the latest pick', async () => {
+      const auth = setup();
+      const loaded = auth.loadMe();
+      const get = await mock.next('GET', '/api/me');
+      chooseTheme('fieldnotes');
+      get.respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('fieldnotes');
+      expect(localStorage.getItem('ember.theme')).toBe('fieldnotes');
+    });
+
+    it('shows the default theme again after sign-out, so the next account starts fresh', async () => {
+      localStorage.setItem('ember.accountTheme', 'marigold');
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup(null);
+      auth.setMe({ ...me, theme: 'marigold' });
+      const done = auth.logout();
+      (await mock.next('POST', '/api/auth/logout')).respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      await done;
+
+      expect(document.documentElement.dataset['theme']).toBe('hearthlight');
+      expect(localStorage.getItem('ember.theme')).toBeNull();
+      expect(localStorage.getItem('ember.accountTheme')).toBeNull();
     });
   });
 });

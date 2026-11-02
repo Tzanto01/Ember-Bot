@@ -7,7 +7,7 @@ import type { OfflineQueue } from './offline-queue';
 import { asApiError } from './problem';
 import type { PushService } from './push';
 import { Store } from './store';
-import { adoptAccountTheme } from './theme';
+import { adoptAccountTheme, rememberAccountTheme, resetTheme, type ThemeId, themePicks } from './theme';
 
 /** The native build's device state: bearer tokens and scheduled reminders. */
 export interface NativeSession {
@@ -64,6 +64,7 @@ export class AuthService {
   loadMe(force = false): Promise<Me | null> {
     if (this.loaded && !force) return Promise.resolve(this.me.get());
     const session = this.session;
+    const picks = themePicks();
     this.inFlight ??= this.api
       .getMe()
       .then(
@@ -76,9 +77,10 @@ export class AuthService {
       )
       .then((me) => {
         if (session !== this.session) return null;
-        if (me) adoptAccountTheme(me.theme);
         this.me.set(me);
         this.loaded = true;
+        const unsaved = me && adoptAccountTheme(me.theme, picks);
+        if (unsaved) void this.saveTheme(unsaved);
         return me;
       })
       .finally(() => (this.inFlight = null));
@@ -89,6 +91,14 @@ export class AuthService {
   setMe(me: Me): void {
     this.me.set(me);
     this.loaded = true;
+  }
+
+  private async saveTheme(theme: ThemeId): Promise<void> {
+    const session = this.session;
+    const me = await this.api.updateMe({ theme }).catch(() => null);
+    if (!me || session !== this.session) return;
+    rememberAccountTheme(me.theme);
+    this.setMe(me);
   }
 
   /** Forgets the session locally (the server already ended it). */
@@ -132,7 +142,8 @@ export class AuthService {
 
   /**
    * Forgets this device's state for the signed-in user: queued offline edits and the habit cache, and in the
-   * native build the tokens and every scheduled reminder. Call before `clearSession()`. Never throws.
+   * native build the tokens and every scheduled reminder; shows the default theme again. Call before `clearSession()`.
+   * Never throws.
    */
   async wipeDevice(): Promise<void> {
     const userId = this.me.get()?.id;
@@ -144,6 +155,7 @@ export class AuthService {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('ember.channelsBeforePhone.'))
       .forEach((key) => localStorage.removeItem(key));
+    resetTheme();
   }
 
   /** True once per app session when the consent step should be offered (used by the signed-in guard). */

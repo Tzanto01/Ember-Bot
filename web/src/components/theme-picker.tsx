@@ -1,7 +1,7 @@
 import { DayCell } from '@/components/day-cell';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useStore } from '@/lib/store';
-import { applyTheme, currentTheme, type ThemeId, themeApplied, themes } from '@/lib/theme';
+import { chooseTheme, currentTheme, type ThemeId, themeApplied, themes } from '@/lib/theme';
 
 function ThemePreview({ id }: { id: ThemeId }) {
   return (
@@ -45,7 +45,7 @@ export function ThemePicker({
   function choose(value: string): void {
     const id = themes.find((t) => t.id === value)?.id;
     if (!id) return;
-    applyTheme(id);
+    chooseTheme(id);
     onChoose?.(id);
   }
 
