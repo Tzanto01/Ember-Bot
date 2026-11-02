@@ -1,6 +1,7 @@
 import type { ApiClient } from './api-client';
 import type { AuthService } from './auth';
 import type { Reminders } from './native/reminders';
+import { browserTimeZone } from './local-date';
 import { navigate } from './navigation';
 import type { OfflineQueue } from './offline-queue';
 import { Store } from './store';
@@ -9,7 +10,8 @@ import { Store } from './store';
  * Keeps the device in step with the account: replays queued offline day edits when the user is known, when an
  * edit is queued, when the browser comes back online and (native) when the app resumes; in the native build
  * (`reminders` set) it also re-reads `me` on resume and rebuilds the local reminders after every sync and
- * whenever `me` holds a new time zone.
+ * whenever `me` holds a new time zone. When a user is known whose zone was never set, it sends the device's zone
+ * once (a failure waits for the next app start).
  */
 export class DeviceSync {
   private userId: string | null = null;
@@ -62,12 +64,20 @@ export class DeviceSync {
       this.userId = id;
       this.queue.userId.set(id);
       if (id) void this.queue.refreshCount(id).then(() => this.sync());
+      if (id && !me?.timezoneSet) void this.claimTimeZone(id);
     }
     const timeZone = me?.timezone ?? null;
     if (timeZone !== this.timeZone) {
       this.timeZone = timeZone;
       this.rebuildReminders();
     }
+  }
+
+  private async claimTimeZone(id: string): Promise<void> {
+    const timezone = browserTimeZone();
+    if (!timezone) return;
+    const me = await this.api.updateMe({ timezone }).catch(() => null);
+    if (me && this.auth.me.get()?.id === id) this.auth.setMe(me);
   }
 
   private async listenNative(): Promise<void> {

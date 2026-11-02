@@ -22,8 +22,19 @@ import { openOnWeb } from '@/lib/native/browser';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
+import type { ThemeId } from '@/lib/theme';
 
-type Section = 'timezone' | 'grace' | 'leaderboard' | 'discord' | 'dm' | 'push' | 'export' | 'signout' | 'delete';
+type Section =
+  | 'timezone'
+  | 'grace'
+  | 'leaderboard'
+  | 'discord'
+  | 'dm'
+  | 'push'
+  | 'appearance'
+  | 'export'
+  | 'signout'
+  | 'delete';
 
 interface Message {
   tone: NoticeTone;
@@ -44,6 +55,8 @@ const pushDeniedText =
 const passwordMismatch = "That password doesn't match. Try again.";
 const typeDeleteText = 'Type DELETE in capital letters to confirm.';
 const unknownZoneText = "Ember doesn't know that timezone. Pick one from the list.";
+const themeNotSavedText =
+  "Your new look is set on this device. We couldn't save it to your account just now, so your other devices keep theirs for now.";
 
 const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
 const graceOptions = [0, 1, 2, 3];
@@ -234,6 +247,13 @@ export default function SettingsPage() {
       leaderboardRef.current = null;
       setLeaderboard(null);
       if (error) fail('leaderboard', error);
+    });
+  }
+
+  function saveTheme(theme: ThemeId): void {
+    if (!auth.signedIn()) return;
+    void patch('appearance', { theme }).then((error) => {
+      if (error && !error.handled) show('appearance', { tone: 'info', text: themeNotSavedText });
     });
   }
 
@@ -649,8 +669,9 @@ export default function SettingsPage() {
             )}
 
             <SettingsCard id="appearance" title={title('appearance')}>
-              <p id="appearance-hint">Choose how Ember looks on this device.</p>
-              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" />
+              <p id="appearance-hint">Choose how Ember looks. Your choice follows you to your other devices.</p>
+              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
+              {outcome('appearance')}
             </SettingsCard>
 
             <SettingsCard id="export" title={title('export')}>

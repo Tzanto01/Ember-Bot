@@ -7,6 +7,7 @@ import type { OfflineQueue } from './offline-queue';
 import { asApiError } from './problem';
 import type { PushService } from './push';
 import { Store } from './store';
+import { adoptAccountTheme } from './theme';
 
 /** The native build's device state: bearer tokens and scheduled reminders. */
 export interface NativeSession {
@@ -57,7 +58,7 @@ export class AuthService {
   }
 
   /**
-   * Loads `me` once and caches it (`force` reloads). Resolves null when signed out (401);
+   * Loads `me` once and caches it (`force` reloads) and adopts the account's theme. Resolves null when signed out (401);
    * rejects with `ApiError` on other failures, for example when offline.
    */
   loadMe(force = false): Promise<Me | null> {
@@ -75,6 +76,7 @@ export class AuthService {
       )
       .then((me) => {
         if (session !== this.session) return null;
+        if (me) adoptAccountTheme(me.theme);
         this.me.set(me);
         this.loaded = true;
         return me;

@@ -1,5 +1,7 @@
 /** Typed shapes of the Ember API contract v1 (`docs/contracts/api-v1.md`). Dates are `yyyy-MM-dd`, times `HH:mm`. */
 
+import type { ThemeId } from './theme';
+
 /** A local calendar day, `yyyy-MM-dd`. */
 export type LocalDateString = string;
 
@@ -21,6 +23,8 @@ export interface Me {
   localToday: LocalDateString;
   graceDaysPerWeek: number;
   leaderboardOptIn: boolean;
+  /** The account's theme id; null when never chosen (the app shows the default). */
+  theme: ThemeId | null;
   consent: { given: boolean; policyVersion: string | null; currentPolicyVersion: string };
   dmReminders: { paused: boolean };
 }
@@ -31,6 +35,7 @@ export interface MePatch {
   /** 0 to 3. */
   graceDaysPerWeek?: number;
   leaderboardOptIn?: boolean;
+  theme?: ThemeId;
 }
 
 export type Frequency = 'daily' | 'weekly';

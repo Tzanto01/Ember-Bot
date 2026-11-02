@@ -1,3 +1,5 @@
+import { Store } from './store';
+
 /** One selectable theme (docs/contracts/design-tokens-v1.md); `colors` are its `--background` as hex, for `<meta name="theme-color">`. */
 export interface Theme {
   id: string;
@@ -38,6 +40,9 @@ export type ThemeId = (typeof themes)[number]['id'];
 
 const storageKey = 'ember.theme';
 
+/** Bumps whenever `applyTheme` runs, so a mounted picker re-reads `currentTheme()`. */
+export const themeApplied = new Store(0);
+
 function find(id: string | undefined) {
   return themes.find((theme) => theme.id === id) ?? themes[0];
 }
@@ -62,4 +67,14 @@ export function applyTheme(id: ThemeId): void {
     localStorage.setItem(storageKey, id);
   } catch {}
   syncThemeColor();
+  themeApplied.update((count) => count + 1);
+}
+
+/** Applies the account's theme from `/api/me` when it differs from this device's copy; null leaves the device as it is. */
+export function adoptAccountTheme(id: ThemeId | null): void {
+  let copy: string | null = null;
+  try {
+    copy = localStorage.getItem(storageKey);
+  } catch {}
+  if (id && id !== copy) applyTheme(id);
 }
