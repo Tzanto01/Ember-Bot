@@ -36,7 +36,7 @@ describe('Reminders', () => {
       schedule,
     } as unknown as LocalNotificationsPlugin;
     const api = new ApiClient(new Http({ native: true, apiBase: '' }), new OfflineQueue(device));
-    reminders = new Reminders(api, device, async () => plugin);
+    reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
     await device.saveHabits({ userId: 'u1', timeZone: zone, habits: [reminded] });
   });
 
@@ -80,4 +80,19 @@ describe('Reminders', () => {
       habits: [{ name: 'Read' }],
     });
   });
+
+  it('calls the native notifications plugin without awaiting the proxy itself', async () => {
+    const native = new Reminders(
+      new ApiClient(new Http({ native: true, apiBase: '' }), new OfflineQueue(device)),
+      device,
+    );
+
+    expect(await native.exactAllowed()).toBe(true);
+  });
 });
+
+vi.mock('@capacitor/local-notifications', async () => ({
+  LocalNotifications: (await import('../test-support')).capacitorPlugin({
+    checkExactNotificationSetting: async () => ({ exact_alarm: 'granted' }),
+  }),
+}));
