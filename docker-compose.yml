@@ -22,6 +22,7 @@ services:
       - homeserver-net
 
   api:
+    profiles: ["api"]
     build:
       context: .
       dockerfile: docker/api.Dockerfile
