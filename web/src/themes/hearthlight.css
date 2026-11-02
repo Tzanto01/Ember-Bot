@@ -1,0 +1,101 @@
+/* Hearthlight: Hearth evolved. Candle-warm cream and ember amber, round coin-like day cells, no hard edges, a soft glow on check-in. */
+:root[data-theme="hearthlight"],
+:root:not([data-theme]),
+[data-theme="hearthlight"] {
+  --background: oklch(0.972 0.014 78);
+  --foreground: oklch(0.255 0.022 50);
+  --card: oklch(0.993 0.006 80);
+  --card-foreground: oklch(0.255 0.022 50);
+  --popover: oklch(0.993 0.006 80);
+  --popover-foreground: oklch(0.255 0.022 50);
+  --primary: oklch(0.5 0.115 55);
+  --primary-foreground: oklch(0.99 0.005 80);
+  --secondary: oklch(0.935 0.035 72);
+  --secondary-foreground: oklch(0.3 0.04 55);
+  --muted: oklch(0.945 0.018 75);
+  --muted-foreground: oklch(0.46 0.03 55);
+  --accent: oklch(0.935 0.035 72);
+  --accent-foreground: oklch(0.255 0.022 50);
+  --border: oklch(0.9 0.02 70);
+  --input: oklch(0.6 0.04 60);
+  --ring: oklch(0.255 0.022 50);
+  --destructive: oklch(0.46 0.1 62);
+  --destructive-foreground: oklch(0.99 0.005 80);
+  --notice: oklch(0.95 0.04 82);
+  --notice-foreground: oklch(0.42 0.09 62);
+  --notice-border: oklch(0.6 0.1 72);
+  --success: oklch(0.48 0.07 155);
+  --success-foreground: oklch(0.99 0.005 80);
+  --done: oklch(0.56 0.135 57);
+  --done-foreground: oklch(0.995 0.004 80);
+  --lowday: oklch(0.93 0.03 292);
+  --lowday-foreground: oklch(0.44 0.09 290);
+  --paused: oklch(0.6 0.035 60);
+  --pending: oklch(0.56 0.135 57);
+  --empty: oklch(0.64 0.035 60);
+  --beforestart: oklch(0.5 0.025 55);
+  --flame: oklch(0.76 0.155 62);
+  --flame-core: oklch(0.91 0.1 85);
+  --chart-1: oklch(0.56 0.135 57);
+  --chart-2: oklch(0.55 0.1 290);
+  --chart-3: oklch(0.55 0.08 155);
+
+  --radius: 16px;
+  --cell-radius: 9999px;
+  --border-width: 0px;
+  --shadow-card: 0 1px 2px oklch(0.4 0.06 55 / 0.08), 0 6px 18px -8px oklch(0.4 0.08 55 / 0.18);
+  --space-unit: 4px;
+  --ember-font-sans: 'Nunito Variable', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ember-font-display: 'Nunito Variable', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --ember-heading-weight: 800;
+  --ember-heading-tracking: -0.015em;
+  --ember-dur-fast: 120ms;
+  --ember-dur: 220ms;
+  --ember-dur-slow: 420ms;
+  --ember-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ember-reward: glow;
+}
+
+:root[data-theme="hearthlight"].dark,
+:root:not([data-theme]).dark,
+.dark [data-theme="hearthlight"] {
+  --background: oklch(0.2 0.016 50);
+  --foreground: oklch(0.94 0.016 78);
+  --card: oklch(0.25 0.02 50);
+  --card-foreground: oklch(0.94 0.016 78);
+  --popover: oklch(0.27 0.02 50);
+  --popover-foreground: oklch(0.94 0.016 78);
+  --primary: oklch(0.8 0.12 68);
+  --primary-foreground: oklch(0.2 0.016 50);
+  --secondary: oklch(0.31 0.035 58);
+  --secondary-foreground: oklch(0.94 0.016 78);
+  --muted: oklch(0.29 0.02 50);
+  --muted-foreground: oklch(0.77 0.03 70);
+  --accent: oklch(0.31 0.035 58);
+  --accent-foreground: oklch(0.94 0.016 78);
+  --border: oklch(0.33 0.022 50);
+  --input: oklch(0.6 0.035 60);
+  --ring: oklch(0.94 0.016 78);
+  --destructive: oklch(0.83 0.09 75);
+  --destructive-foreground: oklch(0.2 0.016 50);
+  --notice: oklch(0.29 0.04 70);
+  --notice-foreground: oklch(0.86 0.08 78);
+  --notice-border: oklch(0.6 0.08 72);
+  --success: oklch(0.78 0.08 155);
+  --success-foreground: oklch(0.2 0.016 50);
+  --done: oklch(0.74 0.135 62);
+  --done-foreground: oklch(0.2 0.016 50);
+  --lowday: oklch(0.31 0.045 290);
+  --lowday-foreground: oklch(0.82 0.07 290);
+  --paused: oklch(0.6 0.03 60);
+  --pending: oklch(0.8 0.12 68);
+  --empty: oklch(0.6 0.03 60);
+  --beforestart: oklch(0.7 0.025 65);
+  --flame: oklch(0.8 0.14 66);
+  --flame-core: oklch(0.93 0.08 88);
+  --chart-1: oklch(0.74 0.135 62);
+  --chart-2: oklch(0.75 0.08 290);
+  --chart-3: oklch(0.75 0.08 155);
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.35), 0 8px 24px -10px oklch(0 0 0 / 0.5);
+}

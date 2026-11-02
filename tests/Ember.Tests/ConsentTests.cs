@@ -21,7 +21,7 @@ public class ConsentTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var user = new User
             {
-                DiscordUserId = userId,
+                Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId),
                 Timezone = "Pacific/Auckland",
                 HealthDataConsentAt = policyVersion is null ? null : new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 ConsentPolicyVersion = policyVersion,

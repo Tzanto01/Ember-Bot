@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ember_background">#FBF5EC</color>
+    <bool name="ember_light_bars">true</bool>
+</resources>

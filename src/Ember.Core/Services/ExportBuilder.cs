@@ -7,7 +7,7 @@ namespace Ember.Core.Services;
 
 /// <summary>
 /// Builds a user's complete data export (GDPR Art. 15/20): settings, every habit (including habits
-/// without logs), every log and every day mark. Expects <see cref="User.Habits"/>, each habit's logs and <see cref="User.DayMarks"/> to be loaded.
+/// without logs), every log, every day mark and every push subscription endpoint. Expects <see cref="User.Habits"/>, each habit's logs and <see cref="User.DayMarks"/> to be loaded.
 /// </summary>
 public static class ExportBuilder
 {
@@ -17,7 +17,7 @@ public static class ExportBuilder
         "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
         "health_data_consent_at,consent_policy_version,consent_prompted_on," +
         "habit_id,name,frequency,weekly_target,reminder_time,paused_until,paused_from,created_at,next_reminder_utc," +
-        "date,completed,guild_id,kind";
+        "date,completed,guild_id,kind,reminder_channels,endpoint,email,discord_id";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -31,10 +31,14 @@ public static class ExportBuilder
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
         DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn);
 
-    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC.</summary>
+    /// <summary>One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds any of <c>discord</c>, <c>webpush</c> and <c>mobile</c>.</summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
-        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc);
+        TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc,
+        List<string> ReminderChannels);
+
+    /// <summary>One browser push subscription: its endpoint and when (UTC) it was last saved. Keys are not exported.</summary>
+    public sealed record PushSubscriptionRecord(string Endpoint, DateTime CreatedAt);
 
     /// <summary>One check-in log. <c>GuildId</c> is a string because Discord snowflakes exceed JSON's safe integer range.</summary>
     public sealed record LogRecord(int HabitId, DateOnly Date, bool Completed, string? GuildId);
@@ -42,9 +46,17 @@ public static class ExportBuilder
     /// <summary>One mark on a local day, such as a low day (<c>Kind</c> = <c>low_day</c>).</summary>
     public sealed record DayMarkRecord(DateOnly Date, string Kind);
 
-    /// <summary>The JSON export document.</summary>
-    public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks);
+    /// <summary>The account's email (null for accounts created through Discord) and Discord ID (a string, null when not linked).</summary>
+    public sealed record AccountRecord(string? Email, string? DiscordId);
 
+    /// <summary>The JSON export document.</summary>
+    public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks,
+        AccountRecord? Account = null, List<PushSubscriptionRecord>? PushSubscriptions = null);
+
+    /// <summary>
+    /// Builds the export. <see cref="ExportDocument.Account"/> needs <see cref="User.Logins"/> loaded for the Discord ID,
+    /// <see cref="ExportDocument.PushSubscriptions"/> needs <see cref="User.PushSubscriptions"/>.
+    /// </summary>
     public static ExportDocument BuildDocument(User user)
     {
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
@@ -55,18 +67,22 @@ public static class ExportBuilder
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
-                AsUtc(h.NextReminderUtc))).ToList(),
+                AsUtc(h.NextReminderUtc), HabitService.ReminderChannelNames(h.ReminderChannels))).ToList(),
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture)))).ToList(),
             user.DayMarks.OrderBy(m => m.Date).ThenBy(m => m.Kind)
-                .Select(m => new DayMarkRecord(m.Date, JsonNamingPolicy.SnakeCaseLower.ConvertName(m.Kind.ToString()))).ToList());
+                .Select(m => new DayMarkRecord(m.Date, JsonNamingPolicy.SnakeCaseLower.ConvertName(m.Kind.ToString()))).ToList(),
+            new AccountRecord(user.Email, user.DiscordId() is { } discordId ? DiscordLogin.Key(discordId) : null),
+            user.PushSubscriptions.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
+                .Select(p => new PushSubscriptionRecord(p.Endpoint, DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc))).ToList());
     }
 
     public static string BuildJson(User user) => JsonSerializer.Serialize(BuildDocument(user), JsonOptions);
 
     /// <summary>
     /// One CSV file with <see cref="CsvHeader"/> columns: a <c>settings</c> row, one <c>habit</c> row per habit,
-    /// one <c>log</c> row per log and one <c>day_mark</c> row per day mark; columns that don't apply to a record type are empty.
+    /// one <c>log</c> row per log, one <c>day_mark</c> row per day mark and one <c>push_subscription</c> row per push subscription
+    /// (habit reminder channels are joined with <c>;</c>); columns that don't apply to a record type are empty.
     /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them.
     /// </summary>
     public static string BuildCsv(User user)
@@ -79,7 +95,8 @@ public static class ExportBuilder
         AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn),
             Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
             Utc(s.HealthDataConsentAt), s.ConsentPolicyVersion ?? "", Date(s.ConsentPromptedOn),
-            "", "", "", "", "", "", "", "", "", "", "", "", "");
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            doc.Account?.Email ?? "", doc.Account?.DiscordId ?? "");
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "",
@@ -87,17 +104,22 @@ public static class ExportBuilder
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
                 h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "", Date(h.PausedFrom),
                 Utc(h.CreatedAt), Utc(h.NextReminderUtc),
-                "", "", "", "");
+                "", "", "", "", string.Join(';', h.ReminderChannels), "", "", "");
 
         foreach (var l in doc.Logs)
             AppendRow(csv, "log", "", "", "", "", "", "", "", "", "",
                 Num(l.HabitId), "", "", "", "", "", "", "", "",
-                l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "");
+                l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "", "", "", "", "");
 
         foreach (var m in doc.DayMarks)
             AppendRow(csv, "day_mark", "", "", "", "", "", "", "", "", "",
                 "", "", "", "", "", "", "", "", "",
-                Date(m.Date), "", "", m.Kind);
+                Date(m.Date), "", "", m.Kind, "", "", "", "");
+
+        foreach (var p in doc.PushSubscriptions ?? [])
+            AppendRow(csv, "push_subscription", "", "", "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", Utc(p.CreatedAt), "",
+                "", "", "", "", "", p.Endpoint, "", "");
 
         return csv.ToString();
     }
