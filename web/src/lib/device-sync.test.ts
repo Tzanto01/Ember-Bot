@@ -10,6 +10,7 @@ import { Reminders } from './native/reminders';
 import { TokenStore } from './native/token-store';
 import { OfflineQueue } from './offline-queue';
 import { me, memorySecureStore, mockFetch } from './test-support';
+import { applyTheme } from './theme';
 
 describe('DeviceSync', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -35,6 +36,10 @@ describe('DeviceSync', () => {
     auth.setMe({ ...me, timezone: 'Asia/Tokyo' });
     expect(rebuild).toHaveBeenCalledTimes(1);
     expect(rebuild).toHaveBeenCalledWith('u1', 'Asia/Tokyo');
+
+    rebuild.mockClear();
+    applyTheme('marigold');
+    expect(rebuild).toHaveBeenCalledTimes(1);
   });
 
   describe('automatic time zone', () => {

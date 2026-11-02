@@ -3,6 +3,7 @@ import type { ApiClient } from '../api-client';
 import { type DeviceStore, withDayEdit } from '../device-store';
 import type { Habit } from '../models';
 import { asApiError } from '../problem';
+import { notificationColor } from '../theme';
 import { planReminders } from './reminder-plan';
 
 /** Lock-screen text: names no habit (contract, web push rule). */
@@ -96,12 +97,14 @@ export class Reminders {
     }
     await this.cancelPending();
     if (!plan.length || (await plugin.checkPermissions()).display !== 'granted') return;
+    const iconColor = notificationColor();
     await plugin.schedule({
       notifications: plan.map((reminder) => ({
         id: reminder.id,
         title: 'Ember',
         body: reminderBody,
         channelId,
+        iconColor,
         schedule: { at: new Date(reminder.at), allowWhileIdle: true },
       })),
     });
