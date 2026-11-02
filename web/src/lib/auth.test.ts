@@ -218,4 +218,35 @@ describe('AuthService', () => {
       expect(navigate).toHaveBeenCalledWith('/login');
     });
   });
+
+  describe('account theme', () => {
+    afterEach(() => {
+      localStorage.clear();
+      document.documentElement.removeAttribute('data-theme');
+    });
+
+    it('applies and stores the theme from /api/me when it differs from this device', async () => {
+      localStorage.setItem('ember.theme', 'hearthlight');
+      document.documentElement.dataset['theme'] = 'hearthlight';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('tidepool');
+      expect(localStorage.getItem('ember.theme')).toBe('tidepool');
+    });
+
+    it('leaves this device as it is when the account has no theme', async () => {
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: null });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('marigold');
+      expect(localStorage.getItem('ember.theme')).toBe('marigold');
+    });
+  });
 });

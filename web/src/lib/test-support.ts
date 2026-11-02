@@ -111,6 +111,7 @@ export const me: Me = {
   localToday: '2026-11-01',
   graceDaysPerWeek: 1,
   leaderboardOptIn: false,
+  theme: null,
   consent: { given: true, policyVersion: '1', currentPolicyVersion: '1' },
   dmReminders: { paused: false },
 };

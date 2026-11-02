@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { DayCell } from '@/components/day-cell';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { applyTheme, currentTheme, type ThemeId, themes } from '@/lib/theme';
+import { useStore } from '@/lib/store';
+import { applyTheme, currentTheme, type ThemeId, themeApplied, themes } from '@/lib/theme';
 
 function ThemePreview({ id }: { id: ThemeId }) {
   return (
@@ -26,21 +26,27 @@ function ThemePreview({ id }: { id: ThemeId }) {
   );
 }
 
-/** Settings → Appearance: the four themes as a radio group, each with a live preview in its own tokens; applies instantly. */
+/**
+ * Settings → Appearance: the four themes as a radio group, each with a live preview in its own tokens; applies
+ * instantly, then calls `onChoose` (for example to save it to the account).
+ */
 export function ThemePicker({
   labelledBy,
   describedBy,
+  onChoose,
 }: {
   labelledBy: string;
   describedBy?: string;
+  onChoose?: (id: ThemeId) => void;
 }) {
-  const [theme, setTheme] = useState<ThemeId>(currentTheme);
+  useStore(themeApplied);
+  const theme = currentTheme();
 
   function choose(value: string): void {
     const id = themes.find((t) => t.id === value)?.id;
     if (!id) return;
     applyTheme(id);
-    setTheme(id);
+    onChoose?.(id);
   }
 
   return (

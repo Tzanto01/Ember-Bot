@@ -26,6 +26,8 @@ describe('SettingsPage', () => {
     vi.unstubAllGlobals();
     delete (navigator as { serviceWorker?: unknown }).serviceWorker;
     auth.clearSession();
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
   });
 
   it('sends quick successive grace changes one PATCH at a time, in order', async () => {
@@ -68,6 +70,35 @@ describe('SettingsPage', () => {
     second.respond(200, { ...me, graceDaysPerWeek: 2, leaderboardOptIn: true });
 
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Show me on leaderboards' })).toBeChecked());
+  });
+
+  it('applies a chosen theme at once and saves it to the account', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+
+    await user.click(screen.getByRole('radio', { name: 'Fieldnotes' }));
+
+    expect(document.documentElement.dataset['theme']).toBe('fieldnotes');
+    expect(localStorage.getItem('ember.theme')).toBe('fieldnotes');
+    const patch = await fetch.next('PATCH', '/api/me');
+    expect(patch.body).toEqual({ theme: 'fieldnotes' });
+    patch.respond(200, { ...me, theme: 'fieldnotes' });
+    await waitFor(() => expect(auth.me.get()?.theme).toBe('fieldnotes'));
+    expect(screen.getByRole('radio', { name: 'Fieldnotes' })).toBeChecked();
+  });
+
+  it('keeps the chosen theme on this device and says so gently when saving it fails', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+
+    await user.click(screen.getByRole('radio', { name: 'Tidepool' }));
+    (await fetch.next('PATCH', '/api/me')).fail();
+
+    const status = await screen.findByText(/couldn't save it to your account/);
+    expect(status.closest('[role="status"]')).not.toBeNull();
+    expect(document.documentElement.dataset['theme']).toBe('tidepool');
+    expect(localStorage.getItem('ember.theme')).toBe('tidepool');
+    expect(screen.getByRole('radio', { name: 'Tidepool' })).toBeChecked();
   });
 
   it('deletes the account with the password and lands on /login?reason=deleted', async () => {
