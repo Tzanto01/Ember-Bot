@@ -22,6 +22,12 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public bool LeaderboardOptIn { get; set; }
 
+    /// <summary>The account's app theme id (one of <see cref="Themes"/>); null until the user picks one. The bot ignores it.</summary>
+    public string? Theme { get; set; }
+
+    /// <summary>The theme ids <see cref="Theme"/> may hold.</summary>
+    public static readonly IReadOnlySet<string> Themes = new HashSet<string> { "hearthlight", "fieldnotes", "tidepool", "marigold" };
+
     /// <summary>Consecutive reminder DMs that Discord refused to deliver. Reset by any delivered reminder.</summary>
     public int DmFailureCount { get; set; }
 

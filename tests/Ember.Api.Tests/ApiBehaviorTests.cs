@@ -29,6 +29,33 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Patching_me_with_a_theme_stores_it_and_a_patch_without_theme_keeps_it()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("theme").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var patched = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+        await (await user.Patch("/api/me", new { graceDaysPerWeek = 2 })).ExpectJson();
+
+        patched.GetProperty("theme").GetString().Should().Be("tidepool");
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("theme").GetString().Should().Be("tidepool");
+    }
+
+    [DockerFact]
+    public async Task Patching_me_with_an_unknown_theme_is_a_400_and_keeps_the_stored_theme()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { theme = "marigold" })).ExpectJson();
+
+        var problem = await (await user.Patch("/api/me", new { theme = "hearth", graceDaysPerWeek = 2 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+
+        problem.GetProperty("errors").Has("theme").Should().BeTrue();
+        var me = await (await user.Get("/api/me")).ExpectJson();
+        me.GetProperty("theme").GetString().Should().Be("marigold");
+        me.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(1);
+    }
+
+    [DockerFact]
     public async Task Patching_me_with_an_iana_zone_stores_it_and_reschedules_existing_reminders_into_it()
     {
         var user = await Host.SignedInAsync();
@@ -150,5 +177,21 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         account.GetProperty("discord_id").GetString().Should().Be(discordId.ToString());
         csv.Split('\n')[0].Trim().Should().EndWith("email,discord_id");
         csv.Should().Contain(user.Email).And.Contain(discordId.ToString());
+    }
+
+    [DockerFact]
+    public async Task Export_includes_the_theme_in_json_and_csv()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { theme = "fieldnotes" })).ExpectJson();
+
+        var json = await (await user.Get("/api/me/export?format=json")).ExpectJson();
+        var csv = await (await user.Get("/api/me/export?format=csv")).Expect(HttpStatusCode.OK);
+
+        json.GetProperty("settings").GetProperty("theme").GetString().Should().Be("fieldnotes");
+        var lines = csv.Split("\r\n");
+        var column = Array.IndexOf(lines[0].Split(','), "theme");
+        column.Should().BePositive();
+        lines.Single(l => l.StartsWith("settings,")).Split(',')[column].Should().Be("fieldnotes");
     }
 }
