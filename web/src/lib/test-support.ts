@@ -86,6 +86,19 @@ export function memorySecureStore(): { secure: Map<string, string>; store: Secur
   };
 }
 
+/**
+ * Behaves like a Capacitor plugin proxy on Android: every property it doesn't implement, `then` included, is a
+ * native call that rejects as unimplemented. Resolving a promise with it never settles.
+ */
+export function capacitorPlugin<T extends object>(methods: T): T {
+  return new Proxy(methods, {
+    get: (target, prop) =>
+      prop in target
+        ? target[prop as keyof T]
+        : () => Promise.reject(new Error(`"${String(prop)}()" is not implemented on android`)),
+  });
+}
+
 /** Synthetic signed-in user. */
 export const me: Me = {
   id: 'u1',

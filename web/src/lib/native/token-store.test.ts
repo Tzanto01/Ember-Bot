@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Http } from '../http';
 import { type FetchMock, memorySecureStore, mockFetch } from '../test-support';
-import { TokenStore } from './token-store';
+import { capacitorSecureStore, TokenStore } from './token-store';
 
 const tokens = (access: string, refresh: string) => ({
   tokenType: 'Bearer',
@@ -86,5 +86,17 @@ describe('TokenStore', () => {
 
     expect(secure.size).toBe(0);
     expect(store.accessToken).toBeNull();
+  });
+});
+
+vi.mock('@aparajita/capacitor-secure-storage', async () => ({
+  SecureStorage: (await import('../test-support')).capacitorPlugin({
+    getItem: async () => 'stored-refresh',
+  }),
+}));
+
+describe('capacitorSecureStore', () => {
+  it('reads through the native plugin proxy without awaiting the proxy itself', async () => {
+    expect(await capacitorSecureStore.get('ember.refreshToken')).toBe('stored-refresh');
   });
 });

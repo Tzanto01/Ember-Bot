@@ -9,8 +9,7 @@ import { planReminders } from './reminder-plan';
 export const reminderBody = 'A gentle nudge from Ember';
 const channelId = 'reminders';
 
-const capacitorNotifications = () =>
-  import('@capacitor/local-notifications').then((m) => m.LocalNotifications);
+const capacitorNotifications = () => import('@capacitor/local-notifications');
 
 /**
  * Native build only: keeps the device's local reminder notifications in step with the habits that have the
@@ -23,7 +22,7 @@ export class Reminders {
   constructor(
     private readonly api: ApiClient,
     private readonly store: DeviceStore,
-    private readonly notifications: () => Promise<LocalNotificationsPlugin> = capacitorNotifications,
+    private readonly notifications: () => Promise<{ LocalNotifications: LocalNotificationsPlugin }> = capacitorNotifications,
   ) {}
 
   /**
@@ -38,7 +37,7 @@ export class Reminders {
 
   /** Asks for the notification permission (Android 13+ `POST_NOTIFICATIONS`); true when granted. */
   async requestPermission(): Promise<boolean> {
-    const plugin = await this.notifications();
+    const plugin = (await this.notifications()).LocalNotifications;
     const status = await plugin.checkPermissions();
     return (
       status.display === 'granted' || (await plugin.requestPermissions()).display === 'granted'
@@ -48,21 +47,21 @@ export class Reminders {
   /** True when reminders can fire at the exact minute (Android 12+ exact alarms); else they arrive a little late. */
   async exactAllowed(): Promise<boolean> {
     return (
-      (await (await this.notifications()).checkExactNotificationSetting()).exact_alarm ===
+      (await (await this.notifications()).LocalNotifications.checkExactNotificationSetting()).exact_alarm ===
       'granted'
     );
   }
 
   /** Opens the system setting for exact alarms. */
   async openExactSetting(): Promise<void> {
-    await (await this.notifications()).changeExactNotificationSetting();
+    await (await this.notifications()).LocalNotifications.changeExactNotificationSetting();
   }
 
   /** Cancels every scheduled reminder and clears delivered ones (logout, account deletion). */
   async clearAll(): Promise<void> {
     this.chain = this.chain
       .then(async () => {
-        const plugin = await this.notifications();
+        const plugin = (await this.notifications()).LocalNotifications;
         await this.cancelPending();
         await plugin.removeAllDeliveredNotifications();
       })
@@ -85,7 +84,7 @@ export class Reminders {
       );
     }
     const plan = planReminders(habits, timeZone, Date.now());
-    const plugin = await this.notifications();
+    const plugin = (await this.notifications()).LocalNotifications;
     if (!this.channelReady) {
       await plugin.createChannel({
         id: channelId,
@@ -109,7 +108,7 @@ export class Reminders {
   }
 
   private async cancelPending(): Promise<void> {
-    const plugin = await this.notifications();
+    const plugin = (await this.notifications()).LocalNotifications;
     const pending = await plugin.getPending();
     if (pending.notifications.length) {
       await plugin.cancel({ notifications: pending.notifications.map(({ id }) => ({ id })) });

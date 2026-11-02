@@ -197,7 +197,7 @@ describe('AuthService', () => {
         cancel: async () => void order.push('reminders'),
         removeAllDeliveredNotifications: async () => undefined,
       } as unknown as LocalNotificationsPlugin;
-      const reminders = new Reminders(api, device, async () => plugin);
+      const reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
       vi.spyOn(queue, 'clear').mockImplementation(async () => {
         order.push(
           localStorage.getItem('ember.channelsBeforePhone.7') ? 'queue' : 'queue after channels',

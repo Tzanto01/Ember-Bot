@@ -8,14 +8,13 @@ export interface SecureStore {
   remove(key: string): Promise<void>;
 }
 
-const plugin = () =>
-  import('@aparajita/capacitor-secure-storage').then((m) => m.SecureStorage);
+const plugin = () => import('@aparajita/capacitor-secure-storage');
 
 /** The app's {@link SecureStore}: `@aparajita/capacitor-secure-storage`, loaded on first use (native build only). */
 export const capacitorSecureStore: SecureStore = {
-  get: async (key) => (await plugin()).getItem(key),
-  set: async (key, value) => (await plugin()).setItem(key, value),
-  remove: async (key) => (await plugin()).removeItem(key),
+  get: async (key) => (await plugin()).SecureStorage.getItem(key),
+  set: async (key, value) => (await plugin()).SecureStorage.setItem(key, value),
+  remove: async (key) => (await plugin()).SecureStorage.removeItem(key),
 };
 
 interface TokenResponse {
