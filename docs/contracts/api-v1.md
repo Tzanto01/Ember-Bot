@@ -1,4 +1,6 @@
-# Ember API contract v1.3
+# Ember API contract v1.4
+
+v1.4 (2026-11-02, Nico): the theme is an account setting synced across devices; an account without a chosen timezone takes the device's zone automatically.
 
 v1.3 (2026-11-01): auth rate limits cover only credential and mail endpoints; native app (Capacitor) origins and bearer flow; `mobile` reminder channel; offline day edits.
 
@@ -106,13 +108,15 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
     "id": "guid", "email": "a@b.c", "emailConfirmed": true, "hasPassword": true,
     "discord": { "linked": true, "id": "123" },
     "timezone": "Europe/Berlin", "timezoneSet": true, "localToday": "2026-11-01",
-    "graceDaysPerWeek": 1, "leaderboardOptIn": false,
+    "graceDaysPerWeek": 1, "leaderboardOptIn": false, "theme": null,
     "consent": { "given": true, "policyVersion": "2026-10", "currentPolicyVersion": "2026-10" },
     "dmReminders": { "paused": false }
   }
   ```
   `email` is null for accounts created through Discord. `discord.id` is null when not linked.
-- `PATCH /api/me` `{ timezone?, graceDaysPerWeek? (0–3), leaderboardOptIn? }` → 200 `Me`. Unknown IANA zone → 400.
+- `PATCH /api/me` `{ timezone?, graceDaysPerWeek? (0–3), leaderboardOptIn?, theme? }` → 200 `Me`. Unknown IANA zone → 400.
+- `theme` is the account's theme id: `hearthlight`, `fieldnotes`, `tidepool`, `marigold`, or null (never chosen; the app shows the default, Hearthlight). A PATCH sets it to one of those ids; any other value → 400 `validation`. A PATCH without `theme` leaves it unchanged. The bot ignores it; export includes it.
+- Clients (web and native): after sign-in, when `timezoneSet` is false, the app sends `PATCH /api/me { timezone }` once with the device's IANA zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) if the server knows it; a failure is ignored and retried on the next app start. A zone the user picked (`timezoneSet: true`) is never changed automatically.
 - `POST /api/me/consent` `{ policyVersion }` → 204. 400 when it isn't the current version.
 - `POST /api/me/dm-reminders/resume` → 204.
 - `GET /api/me/export?format=json|csv` → file download. Same content as the bot's `/export`, plus the account's email and Discord ID (and, after the push slice, reminder channels and push subscription endpoints).
