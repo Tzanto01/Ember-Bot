@@ -605,6 +605,13 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.LeaderboardOptIn, optIn));
     }
 
+    public async Task SetThemeAsync(Guid userId, string theme)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Theme, theme));
+    }
+
     /// <summary>
     /// Returns the top N opted-in users in a guild by completed check-ins over the
     /// rolling last 7 days. Users who have not opted in are never included.

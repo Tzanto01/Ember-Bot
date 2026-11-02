@@ -109,7 +109,7 @@ public class ExportBuilderTests
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
 
         doc.Should().NotBeNull();
-        doc!.Settings.Should().Be(new ExportBuilder.SettingsRecord("Europe/Berlin", 2, true, 3,
+        doc!.Settings.Should().Be(new ExportBuilder.SettingsRecord("Europe/Berlin", 2, true, null, 3,
             new DateTime(2025, 6, 17, 9, 0, 0, DateTimeKind.Utc), new DateTime(2025, 6, 18, 7, 45, 0, DateTimeKind.Utc),
             new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc), "2026-10", new DateOnly(2025, 6, 1)));
         doc.Habits.Should().HaveCount(2).And.Contain(h => h.Id == 11 && h.ReminderTime == new TimeOnly(8, 30)
