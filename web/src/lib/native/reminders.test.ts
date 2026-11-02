@@ -8,6 +8,7 @@ import { Http } from '../http';
 import type { Habit } from '../models';
 import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
+import { applyTheme } from '../theme';
 import { Reminders } from './reminders';
 
 const zone = 'Europe/Berlin';
@@ -79,6 +80,17 @@ describe('Reminders', () => {
       timeZone: 'Asia/Tokyo',
       habits: [{ name: 'Read' }],
     });
+  });
+
+  it("tints the reminder icon with the current theme's colour", async () => {
+    applyTheme('tidepool');
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    await done;
+
+    expect(new Set(schedule.mock.calls[0][0].notifications.map((n) => n.iconColor))).toEqual(
+      new Set(['#7DD5D8']),
+    );
   });
 
   it('calls the native notifications plugin without awaiting the proxy itself', async () => {

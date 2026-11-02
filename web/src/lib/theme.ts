@@ -1,11 +1,15 @@
 import { Store } from './store';
 
-/** One selectable theme (docs/contracts/design-tokens-v1.md); `colors` are its `--background` as hex, for `<meta name="theme-color">`. */
+/**
+ * One selectable theme (docs/contracts/design-tokens-v1.md); `colors` are its `--background` as hex, for
+ * `<meta name="theme-color">`, and `notification` tints the Android reminder icon.
+ */
 export interface Theme {
   id: string;
   name: string;
   description: string;
   colors: { light: string; dark: string };
+  notification: string;
 }
 
 /** The four themes in picker order; the first is the default. `/theme-init.js` keeps the same ids. */
@@ -15,24 +19,28 @@ export const themes = [
     name: 'Hearthlight',
     description: 'Candle-lit kitchen table: warm, soft, familiar.',
     colors: { light: '#fbf5ec', dark: '#1c1410' },
+    notification: '#F69835',
   },
   {
     id: 'fieldnotes',
     name: 'Fieldnotes',
     description: 'Pocket notebook: grounded, quiet, literary.',
     colors: { light: '#f6f3e7', dark: '#121914' },
+    notification: '#A9D29C',
   },
   {
     id: 'tidepool',
     name: 'Tidepool',
     description: 'Morning by the water: cool, airy, unhurried.',
     colors: { light: '#eef6f9', dark: '#0a171f' },
+    notification: '#7DD5D8',
   },
   {
     id: 'marigold',
     name: 'Marigold',
     description: 'Sticker sheet: playful, confident, high contrast.',
     colors: { light: '#fcf6de', dark: '#18130c' },
+    notification: '#F6C755',
   },
 ] as const satisfies readonly Theme[];
 
@@ -51,6 +59,11 @@ function find(id: string | undefined) {
 /** The theme `/theme-init.js` (or the last `applyTheme`) set on `<html>`. */
 export function currentTheme(): ThemeId {
   return find(document.documentElement.dataset['theme']).id;
+}
+
+/** The current theme's reminder icon tint. */
+export function notificationColor(): string {
+  return find(currentTheme()).notification;
 }
 
 /** Points the light and dark `<meta name="theme-color">` tags at the current theme's background. */

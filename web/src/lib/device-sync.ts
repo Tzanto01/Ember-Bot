@@ -5,13 +5,15 @@ import { browserTimeZone } from './local-date';
 import { navigate } from './navigation';
 import type { OfflineQueue } from './offline-queue';
 import { Store } from './store';
+import { themeApplied } from './theme';
 
 /**
  * Keeps the device in step with the account: replays queued offline day edits when the user is known, when an
  * edit is queued, when the browser comes back online and (native) when the app resumes; in the native build
  * (`reminders` set) it also re-reads `me` on resume and rebuilds the local reminders after every sync and
- * whenever `me` holds a new time zone. When a user is known whose zone was never set, it sends the device's zone
- * (not UTC) once per user on this device (a failure waits for the next app start).
+ * whenever `me` holds a new time zone or the theme changes (the reminder icon follows its colour). When a user
+ * is known whose zone was never set, it sends the device's zone (not UTC) once per user on this device (a failure
+ * waits for the next app start).
  */
 export class DeviceSync {
   private userId: string | null = null;
@@ -30,6 +32,7 @@ export class DeviceSync {
   ) {
     auth.me.subscribe(() => this.follow());
     queue.added.subscribe(() => void this.sync());
+    if (reminders) themeApplied.subscribe(() => this.rebuildReminders());
     this.follow();
   }
 
