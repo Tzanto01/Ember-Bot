@@ -22,7 +22,7 @@ import { openOnWeb } from '@/lib/native/browser';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
-import type { ThemeId } from '@/lib/theme';
+import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 
 type Section =
   | 'timezone'
@@ -253,7 +253,8 @@ export default function SettingsPage() {
   function saveTheme(theme: ThemeId): void {
     if (!auth.signedIn()) return;
     void patch('appearance', { theme }).then((error) => {
-      if (error && !error.handled) show('appearance', { tone: 'info', text: themeNotSavedText });
+      if (!error) rememberAccountTheme(theme);
+      else if (!error.handled) show('appearance', { tone: 'info', text: themeNotSavedText });
     });
   }
 

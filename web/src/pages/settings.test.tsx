@@ -84,6 +84,7 @@ describe('SettingsPage', () => {
     expect(patch.body).toEqual({ theme: 'fieldnotes' });
     patch.respond(200, { ...me, theme: 'fieldnotes' });
     await waitFor(() => expect(auth.me.get()?.theme).toBe('fieldnotes'));
+    expect(localStorage.getItem('ember.accountTheme')).toBe('fieldnotes');
     expect(screen.getByRole('radio', { name: 'Fieldnotes' })).toBeChecked();
   });
 

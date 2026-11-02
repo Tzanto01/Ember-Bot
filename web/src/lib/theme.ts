@@ -39,6 +39,7 @@ export const themes = [
 export type ThemeId = (typeof themes)[number]['id'];
 
 const storageKey = 'ember.theme';
+const accountKey = 'ember.accountTheme';
 
 /** Bumps whenever `applyTheme` runs, so a mounted picker re-reads `currentTheme()`. */
 export const themeApplied = new Store(0);
@@ -70,11 +71,61 @@ export function applyTheme(id: ThemeId): void {
   themeApplied.update((count) => count + 1);
 }
 
-/** Applies the account's theme from `/api/me` when it differs from this device's copy; null leaves the device as it is. */
-export function adoptAccountTheme(id: ThemeId | null): void {
-  let copy: string | null = null;
+function read(key: string): string | null {
   try {
-    copy = localStorage.getItem(storageKey);
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: string | null): void {
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
   } catch {}
-  if (id && id !== copy) applyTheme(id);
+}
+
+let picks = 0;
+
+/** How many themes were picked on this device so far; read it before `GET /api/me` for `adoptAccountTheme`. */
+export function themePicks(): number {
+  return picks;
+}
+
+/** Applies a theme the user picked on this device. */
+export function chooseTheme(id: ThemeId): void {
+  picks++;
+  applyTheme(id);
+}
+
+/** Records the account's theme as seen by this device, for example after a successful `PATCH /api/me`. */
+export function rememberAccountTheme(id: ThemeId | null): void {
+  write(accountKey, id);
+}
+
+/**
+ * Follows the account's theme from a `GET /api/me` that started when `themePicks()` was `picksBefore`. A new account
+ * value is applied (null keeps the device as it is); a pick made since the request started wins. Returns the local
+ * theme to send to the account when the account still holds the value this device last saw but the local pick
+ * differs (an earlier save failed), otherwise null.
+ */
+export function adoptAccountTheme(account: ThemeId | null, picksBefore: number): ThemeId | null {
+  if (picksBefore !== picks) return null;
+  if (account !== read(accountKey)) {
+    rememberAccountTheme(account);
+    if (account && account !== read(storageKey)) applyTheme(account);
+    return null;
+  }
+  const local = themes.find((theme) => theme.id === read(storageKey))?.id;
+  return local && local !== account ? local : null;
+}
+
+/** Forgets this device's theme and the account's, and shows the default (for sign-out). */
+export function resetTheme(): void {
+  write(storageKey, null);
+  write(accountKey, null);
+  document.documentElement.dataset['theme'] = themes[0].id;
+  syncThemeColor();
+  themeApplied.update((count) => count + 1);
 }
