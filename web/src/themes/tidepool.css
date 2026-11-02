@@ -1,0 +1,99 @@
+/* Tidepool: cool, quiet and spacious. Morning-mist blue, deep teal, one warm flame as the only hot colour, a reading-friendly font and generous spacing; a small bubble rises on check-in. */
+:root[data-theme="tidepool"],
+[data-theme="tidepool"] {
+  --background: oklch(0.968 0.009 225);
+  --foreground: oklch(0.27 0.03 238);
+  --card: oklch(0.995 0.003 225);
+  --card-foreground: oklch(0.27 0.03 238);
+  --popover: oklch(0.995 0.003 225);
+  --popover-foreground: oklch(0.27 0.03 238);
+  --primary: oklch(0.46 0.08 205);
+  --primary-foreground: oklch(0.99 0.004 225);
+  --secondary: oklch(0.93 0.025 210);
+  --secondary-foreground: oklch(0.29 0.045 215);
+  --muted: oklch(0.94 0.012 225);
+  --muted-foreground: oklch(0.47 0.03 238);
+  --accent: oklch(0.93 0.025 210);
+  --accent-foreground: oklch(0.27 0.03 238);
+  --border: oklch(0.9 0.014 225);
+  --input: oklch(0.6 0.035 235);
+  --ring: oklch(0.27 0.03 238);
+  --destructive: oklch(0.47 0.1 66);
+  --destructive-foreground: oklch(0.99 0.004 225);
+  --notice: oklch(0.95 0.04 85);
+  --notice-foreground: oklch(0.42 0.09 64);
+  --notice-border: oklch(0.6 0.1 72);
+  --success: oklch(0.47 0.075 160);
+  --success-foreground: oklch(0.99 0.004 225);
+  --done: oklch(0.51 0.085 200);
+  --done-foreground: oklch(0.995 0.003 225);
+  --lowday: oklch(0.93 0.03 285);
+  --lowday-foreground: oklch(0.44 0.09 285);
+  --paused: oklch(0.6 0.03 235);
+  --pending: oklch(0.51 0.085 200);
+  --empty: oklch(0.62 0.03 235);
+  --beforestart: oklch(0.51 0.025 238);
+  --flame: oklch(0.76 0.15 62);
+  --flame-core: oklch(0.91 0.1 85);
+  --chart-1: oklch(0.51 0.085 200);
+  --chart-2: oklch(0.55 0.1 285);
+  --chart-3: oklch(0.6 0.12 66);
+
+  --radius: 18px;
+  --cell-radius: 14px;
+  --border-width: 1px;
+  --shadow-card: 0 1px 3px oklch(0.4 0.04 235 / 0.07);
+  --space-unit: 5px;
+  --ember-font-sans: 'Lexend Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ember-font-display: 'Lexend Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ember-heading-weight: 500;
+  --ember-heading-tracking: -0.02em;
+  --ember-dur-fast: 140ms;
+  --ember-dur: 260ms;
+  --ember-dur-slow: 480ms;
+  --ember-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ember-reward: rise;
+}
+
+:root[data-theme="tidepool"].dark,
+.dark [data-theme="tidepool"] {
+  --background: oklch(0.195 0.025 238);
+  --foreground: oklch(0.94 0.01 225);
+  --card: oklch(0.24 0.028 238);
+  --card-foreground: oklch(0.94 0.01 225);
+  --popover: oklch(0.26 0.028 238);
+  --popover-foreground: oklch(0.94 0.01 225);
+  --primary: oklch(0.82 0.085 198);
+  --primary-foreground: oklch(0.195 0.025 238);
+  --secondary: oklch(0.3 0.04 215);
+  --secondary-foreground: oklch(0.94 0.01 225);
+  --muted: oklch(0.28 0.028 238);
+  --muted-foreground: oklch(0.77 0.025 225);
+  --accent: oklch(0.3 0.04 215);
+  --accent-foreground: oklch(0.94 0.01 225);
+  --border: oklch(0.32 0.03 238);
+  --input: oklch(0.6 0.035 230);
+  --ring: oklch(0.94 0.01 225);
+  --destructive: oklch(0.83 0.09 78);
+  --destructive-foreground: oklch(0.195 0.025 238);
+  --notice: oklch(0.29 0.035 80);
+  --notice-foreground: oklch(0.86 0.08 80);
+  --notice-border: oklch(0.6 0.08 76);
+  --success: oklch(0.78 0.08 160);
+  --success-foreground: oklch(0.195 0.025 238);
+  --done: oklch(0.75 0.095 195);
+  --done-foreground: oklch(0.195 0.025 238);
+  --lowday: oklch(0.31 0.045 285);
+  --lowday-foreground: oklch(0.82 0.07 285);
+  --paused: oklch(0.6 0.03 230);
+  --pending: oklch(0.82 0.085 198);
+  --empty: oklch(0.6 0.03 230);
+  --beforestart: oklch(0.69 0.025 228);
+  --flame: oklch(0.8 0.14 66);
+  --flame-core: oklch(0.93 0.08 88);
+  --chart-1: oklch(0.75 0.095 195);
+  --chart-2: oklch(0.75 0.08 285);
+  --chart-3: oklch(0.8 0.11 72);
+
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 0.4);
+}

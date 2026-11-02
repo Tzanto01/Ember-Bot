@@ -8,8 +8,12 @@ using Quartz;
 namespace Ember.Bot.Jobs;
 
 /// <summary>
-/// Runs every minute and sends every reminder whose <see cref="Habit.NextReminderUtc"/> is due,
-/// then advances it to the next local occurrence of the habit's ReminderTime.
+/// Runs every minute and sends every reminder whose <see cref="Habit.NextReminderUtc"/> is due once to each of the habit's
+/// <see cref="Habit.ReminderChannels"/> the user can receive (Discord: a Discord login and DM reminders not paused;
+/// web push: the channel is registered and the user has push subscriptions), then advances it once to the next local
+/// occurrence of the habit's ReminderTime. Only the Discord outcome counts towards the DM pause.
+/// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
+/// native app schedules those reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
 /// without sending, as are habits paused or already completed on the user's local day.
 /// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
@@ -26,14 +30,14 @@ public class ReminderDispatchJob : IJob
     public const int MaxConsecutiveDmFailures = 3;
 
     private readonly IServiceProvider _services;
-    private readonly IReminderChannel _channel;
+    private readonly IReadOnlyList<IReminderChannel> _channels;
     private readonly ILogger<ReminderDispatchJob> _logger;
     private readonly TimeProvider _time;
 
-    public ReminderDispatchJob(IServiceProvider services, IReminderChannel channel, ILogger<ReminderDispatchJob> logger, TimeProvider time)
+    public ReminderDispatchJob(IServiceProvider services, IEnumerable<IReminderChannel> channels, ILogger<ReminderDispatchJob> logger, TimeProvider time)
     {
         _services = services;
-        _channel  = channel;
+        _channels = channels.DistinctBy(c => c.Channel).ToList();
         _logger   = logger;
         _time     = time;
     }
@@ -80,8 +84,15 @@ public class ReminderDispatchJob : IJob
         var today = TimezoneHelper.LocalToday(habit.User.Timezone, _time);
 
         var user = habit.User;
-        var send = now - dueAt <= StaleAfter
-            && user.DmRemindersPausedAt is null
+        var discordId = user.DiscordId();
+        var targets = _channels.Where(c => habit.ReminderChannels.HasFlag(c.Channel) && c.Channel switch
+        {
+            ReminderChannels.Discord => discordId is not null && user.DmRemindersPausedAt is null,
+            ReminderChannels.WebPush => user.PushSubscriptions.Count > 0,
+            _ => false,
+        }).ToList();
+        var send = targets.Count > 0
+            && now - dueAt <= StaleAfter
             && !HabitService.IsPausedOn(habit, today)
             && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
 
@@ -91,17 +102,23 @@ public class ReminderDispatchJob : IJob
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, weekAgo, today, cancellationToken);
             var snoozed = habit.ReminderTime is not { } time
                 || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
+            var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed);
 
-            var outcome = await SendAsync(new Reminder((ulong)habit.UserId, habit.Id, habit.Name, recent, snoozed), cancellationToken);
-            if (outcome == DeliveryOutcome.Delivered)
+            foreach (var channel in targets)
             {
-                user.DmFailureCount = 0;
-            }
-            else if (outcome is not null && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
-            {
-                user.DmRemindersPausedAt = now;
-                _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
-                    user.DiscordUserId, user.DmFailureCount);
+                var outcome = await SendAsync(channel, reminder, cancellationToken);
+                if (channel.Channel != ReminderChannels.Discord) continue;
+
+                if (outcome == DeliveryOutcome.Delivered)
+                {
+                    user.DmFailureCount = 0;
+                }
+                else if (outcome is not null && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
+                {
+                    user.DmRemindersPausedAt = now;
+                    _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
+                        user.Id, user.DmFailureCount);
+                }
             }
         }
 
@@ -125,19 +142,20 @@ public class ReminderDispatchJob : IJob
         }
     }
 
-    private async Task<DeliveryOutcome?> SendAsync(Reminder reminder, CancellationToken cancellationToken)
+    private async Task<DeliveryOutcome?> SendAsync(IReminderChannel channel, Reminder reminder, CancellationToken cancellationToken)
     {
         try
         {
-            var outcome = await _channel.SendAsync(reminder, cancellationToken);
+            var outcome = await channel.SendAsync(reminder, cancellationToken);
             if (outcome != DeliveryOutcome.Delivered)
-                _logger.LogWarning("Reminder for habit {HabitId} to user {UserId} was not delivered: {Outcome}.",
-                    reminder.HabitId, reminder.UserId, outcome);
+                _logger.LogWarning("{Channel} reminder for habit {HabitId} to user {UserId} was not delivered: {Outcome}.",
+                    channel.Channel, reminder.HabitId, reminder.UserId, outcome);
             return outcome;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send reminder for habit {HabitId} to user {UserId}.", reminder.HabitId, reminder.UserId);
+            _logger.LogError(ex, "Failed to send {Channel} reminder for habit {HabitId} to user {UserId}.",
+                channel.Channel, reminder.HabitId, reminder.UserId);
             return null;
         }
     }

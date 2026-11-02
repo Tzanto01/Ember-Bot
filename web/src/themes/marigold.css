@@ -1,0 +1,99 @@
+/* Marigold: a cheerful sticker sheet. Butter paper, ink outlines with a hard offset shadow, chunky grotesque headings; check-ins land like a stamp. */
+:root[data-theme="marigold"],
+[data-theme="marigold"] {
+  --background: oklch(0.972 0.032 95);
+  --foreground: oklch(0.22 0.02 70);
+  --card: oklch(0.995 0.012 95);
+  --card-foreground: oklch(0.22 0.02 70);
+  --popover: oklch(0.995 0.012 95);
+  --popover-foreground: oklch(0.22 0.02 70);
+  --primary: oklch(0.25 0.022 70);
+  --primary-foreground: oklch(0.96 0.06 95);
+  --secondary: oklch(0.87 0.12 88);
+  --secondary-foreground: oklch(0.22 0.02 70);
+  --muted: oklch(0.945 0.035 95);
+  --muted-foreground: oklch(0.42 0.03 70);
+  --accent: oklch(0.91 0.08 90);
+  --accent-foreground: oklch(0.22 0.02 70);
+  --border: oklch(0.25 0.022 70);
+  --input: oklch(0.25 0.022 70);
+  --ring: oklch(0.48 0.16 265);
+  --destructive: oklch(0.46 0.1 62);
+  --destructive-foreground: oklch(0.98 0.03 95);
+  --notice: oklch(0.93 0.07 85);
+  --notice-foreground: oklch(0.38 0.08 60);
+  --notice-border: oklch(0.38 0.08 60);
+  --success: oklch(0.45 0.08 155);
+  --success-foreground: oklch(0.98 0.03 95);
+  --done: oklch(0.27 0.025 70);
+  --done-foreground: oklch(0.87 0.15 88);
+  --lowday: oklch(0.88 0.055 280);
+  --lowday-foreground: oklch(0.33 0.1 280);
+  --paused: oklch(0.45 0.025 70);
+  --pending: oklch(0.25 0.022 70);
+  --empty: oklch(0.5 0.025 70);
+  --beforestart: oklch(0.47 0.025 70);
+  --flame: oklch(0.74 0.17 58);
+  --flame-core: oklch(0.88 0.16 90);
+  --chart-1: oklch(0.27 0.025 70);
+  --chart-2: oklch(0.45 0.13 280);
+  --chart-3: oklch(0.6 0.13 70);
+
+  --radius: 12px;
+  --cell-radius: 6px;
+  --border-width: 2px;
+  --shadow-card: 3px 3px 0 0 oklch(0.25 0.022 70);
+  --space-unit: 4px;
+  --ember-font-sans: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ember-font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', system-ui, sans-serif;
+  --ember-heading-weight: 800;
+  --ember-heading-tracking: -0.03em;
+  --ember-dur-fast: 90ms;
+  --ember-dur: 160ms;
+  --ember-dur-slow: 300ms;
+  --ember-ease: cubic-bezier(0.3, 0.9, 0.3, 1);
+  --ember-reward: fill;
+}
+
+:root[data-theme="marigold"].dark,
+.dark [data-theme="marigold"] {
+  --background: oklch(0.19 0.016 70);
+  --foreground: oklch(0.95 0.04 95);
+  --card: oklch(0.24 0.02 70);
+  --card-foreground: oklch(0.95 0.04 95);
+  --popover: oklch(0.26 0.02 70);
+  --popover-foreground: oklch(0.95 0.04 95);
+  --primary: oklch(0.85 0.14 86);
+  --primary-foreground: oklch(0.19 0.016 70);
+  --secondary: oklch(0.34 0.05 80);
+  --secondary-foreground: oklch(0.95 0.04 95);
+  --muted: oklch(0.28 0.02 70);
+  --muted-foreground: oklch(0.78 0.04 90);
+  --accent: oklch(0.32 0.04 80);
+  --accent-foreground: oklch(0.95 0.04 95);
+  --border: oklch(0.6 0.07 85);
+  --input: oklch(0.7 0.07 88);
+  --ring: oklch(0.76 0.12 265);
+  --destructive: oklch(0.84 0.1 80);
+  --destructive-foreground: oklch(0.19 0.016 70);
+  --notice: oklch(0.3 0.05 80);
+  --notice-foreground: oklch(0.88 0.1 86);
+  --notice-border: oklch(0.7 0.1 82);
+  --success: oklch(0.78 0.09 155);
+  --success-foreground: oklch(0.19 0.016 70);
+  --done: oklch(0.84 0.15 86);
+  --done-foreground: oklch(0.19 0.016 70);
+  --lowday: oklch(0.33 0.06 280);
+  --lowday-foreground: oklch(0.85 0.07 280);
+  --paused: oklch(0.65 0.04 85);
+  --pending: oklch(0.85 0.14 86);
+  --empty: oklch(0.62 0.04 85);
+  --beforestart: oklch(0.72 0.04 88);
+  --flame: oklch(0.8 0.16 62);
+  --flame-core: oklch(0.92 0.13 92);
+  --chart-1: oklch(0.84 0.15 86);
+  --chart-2: oklch(0.75 0.1 280);
+  --chart-3: oklch(0.78 0.12 70);
+
+  --shadow-card: 3px 3px 0 0 oklch(0.08 0.01 70);
+}

@@ -92,8 +92,12 @@ public class LowDayServiceTests
     private static readonly DateTimeOffset Now = new(2027, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
     private static Task<List<DateOnly>> StoredLowDaysAsync(IntegrationTestHost host)
-        => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().DayMarks
-            .Where(m => m.UserId == (long)UserId && m.Kind == DayMarkKind.LowDay).OrderBy(m => m.Date).Select(m => m.Date).ToListAsync());
+        => host.WithScopeAsync(async sp =>
+        {
+            var userId = await TestUsers.UserIdAsync(sp, UserId);
+            return await sp.GetRequiredService<EmberDbContext>().DayMarks
+                .Where(m => m.UserId == userId && m.Kind == DayMarkKind.LowDay).OrderBy(m => m.Date).Select(m => m.Date).ToListAsync();
+        });
 
     [Fact]
     public async Task LowDays_CanBeSetForTodayAndPastDays_OnlyOnce_AndRemovedAgain_ButNotForTheFuture()

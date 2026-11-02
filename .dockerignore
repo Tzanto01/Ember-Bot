@@ -6,3 +6,5 @@ publish/
 *.md
 *.slnx
 **/appsettings*.json
+web/node_modules
+web/dist

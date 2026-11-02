@@ -34,8 +34,8 @@ public class ReminderDispatchTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            foreach (var userId in habits.Select(h => h.UserId).Distinct())
-                db.Users.Add(new User { DiscordUserId = userId, Timezone = Berlin });
+            foreach (var userId in habits.Select(h => TestUsers.DiscordIdOf(h.UserId)).Distinct())
+                db.Users.Add(new User { Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId), Timezone = Berlin });
             db.Habits.AddRange(habits);
             await db.SaveChangesAsync();
         });
@@ -45,7 +45,7 @@ public class ReminderDispatchTests
     private static Habit DueHabit(int id, long userId, DateTime? nextUtc = null) => new()
     {
         Id = id,
-        UserId = userId,
+        UserId = TestUsers.Id(userId),
         Name = $"Habit {id}",
         ReminderTime = Nine,
         NextReminderUtc = nextUtc ?? Now.UtcDateTime,
@@ -151,7 +151,7 @@ public class ReminderDispatchTests
     }
 
     private static Task<User> UserAsync(IntegrationTestHost host, long userId)
-        => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.SingleAsync(u => u.DiscordUserId == userId));
+        => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.SingleAsync(u => u.Id == TestUsers.Id(userId)));
 
     [Fact]
     public async Task ThreeUndeliverableReminders_PauseDmReminders_UntilTheUserIsReachableAgain()
@@ -181,6 +181,29 @@ public class ReminderDispatchTests
 
         host.Discord.Messages.Should().HaveCount(4);
         (await UserAsync(host, 10)).DmRemindersPausedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UserWithoutDiscordLogin_IsAdvancedWithoutSending_AndNeverCountsAsADmFailure()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
+        var webOnly = Guid.NewGuid();
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            db.Users.Add(new User { Id = webOnly, UserName = "web@example.com", Timezone = Berlin });
+            db.Habits.Add(new Habit { Id = 1, UserId = webOnly, Name = "Habit 1", ReminderTime = Nine, NextReminderUtc = Now.UtcDateTime, CreatedAt = Now.UtcDateTime.AddDays(-30) });
+            await db.SaveChangesAsync();
+        });
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().BeEmpty();
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+        var user = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.SingleAsync(u => u.Id == webOnly));
+        user.DmFailureCount.Should().Be(0);
+        user.DmRemindersPausedAt.Should().BeNull();
     }
 
     [Fact]
@@ -271,7 +294,7 @@ public class ReminderDispatchTests
         var habit = await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            db.Users.Add(new User { DiscordUserId = 10, Timezone = Berlin });
+            db.Users.Add(new User { Id = TestUsers.Id(10), Logins = TestUsers.Discord(10), Timezone = Berlin });
             await db.SaveChangesAsync();
             await sp.GetRequiredService<HabitService>().GiveHealthDataConsentAsync(10);
             return await sp.GetRequiredService<HabitService>().AddHabitAsync(10, "Stretch", new TimeOnly(10, 0));

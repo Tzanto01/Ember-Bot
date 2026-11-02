@@ -2,10 +2,22 @@ namespace Ember.Core.Models;
 
 public enum FrequencyType { Daily, Weekly }
 
+/// <summary>Where a habit's reminders go. None means no reminders even when a reminder time is set.</summary>
+[Flags]
+public enum ReminderChannels
+{
+    None = 0,
+    Discord = 1,
+    WebPush = 2,
+
+    /// <summary>Stored for the native app, which schedules local notifications on the device; the server never dispatches it.</summary>
+    Mobile = 4,
+}
+
 public class Habit
 {
     public int Id { get; set; }
-    public long UserId { get; set; }
+    public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Time of day to send the DM reminder, stored in the user's local time. Null means no reminder.</summary>
@@ -28,6 +40,9 @@ public class Habit
 
     /// <summary>Target number of check-ins per week when FrequencyType = Weekly. Null for daily habits.</summary>
     public int? WeeklyTarget { get; set; }
+
+    /// <summary>Channels the reminder is sent to. Bot-created habits default to Discord; channels the user can't receive are skipped.</summary>
+    public ReminderChannels ReminderChannels { get; set; } = ReminderChannels.Discord;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

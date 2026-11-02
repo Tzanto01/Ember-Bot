@@ -1,0 +1,123 @@
+using System.Security.Claims;
+using System.Text;
+using Ember.Core.Data;
+using Ember.Core.Models;
+using Ember.Core.Services;
+using Microsoft.AspNetCore.Identity;
+
+namespace Ember.Api;
+
+/// <summary>The signed-in account: settings, consent, export and deletion.</summary>
+internal static class MeEndpoints
+{
+    public sealed record DiscordDto(bool Linked, string? Id);
+    public sealed record ConsentDto(bool Given, string? PolicyVersion, string CurrentPolicyVersion);
+    public sealed record DmRemindersDto(bool Paused);
+
+    public sealed record MeDto(
+        Guid Id, string? Email, bool EmailConfirmed, bool HasPassword, DiscordDto Discord,
+        string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, bool LeaderboardOptIn,
+        ConsentDto Consent, DmRemindersDto DmReminders);
+
+    public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, bool? LeaderboardOptIn);
+    public sealed record ConsentRequest(string? PolicyVersion);
+    public sealed record DeleteRequest(string? Password, string? Confirm);
+
+    public static RouteGroupBuilder MapMe(this RouteGroupBuilder api)
+    {
+        api.MapGet("/me", async (ClaimsPrincipal principal, UserManager<User> users, HabitService habits, TimeProvider time) =>
+            await LoadMe(principal, users, habits, time) is { } me ? Results.Ok(me) : Problems.Unauthenticated());
+
+        api.MapPatch("/me", async (MePatch patch, ClaimsPrincipal principal, UserManager<User> users, HabitService habits,
+            EmberDbContext db, TimeProvider time) =>
+        {
+            var errors = new Dictionary<string, string[]>();
+            TimeZoneInfo? zone = null;
+            if (patch.Timezone is not null && (!TimeZoneInfo.TryFindSystemTimeZoneById(patch.Timezone, out zone) || !zone.HasIanaId))
+                errors["timezone"] = ["Unknown IANA timezone."];
+            if (patch.GraceDaysPerWeek is < 0 or > 3)
+                errors["graceDaysPerWeek"] = ["Must be between 0 and 3."];
+            if (errors.Count > 0) return Problems.Validation(errors);
+
+            var userId = principal.UserId();
+            db.ChangeTracker.Clear();
+            if (patch.GraceDaysPerWeek is { } grace) await habits.SetGraceDaysAsync(userId, grace);
+            if (patch.LeaderboardOptIn is { } optIn) await habits.SetLeaderboardOptInAsync(userId, optIn);
+            if (zone is not null)
+            {
+                await habits.SetTimezoneAsync(userId, zone.Id);
+                await habits.RescheduleRemindersAsync(userId);
+            }
+
+            return await LoadMe(principal, users, habits, time) is { } me ? Results.Ok(me) : Problems.Unauthenticated();
+        });
+
+        api.MapPost("/me/consent", async (ConsentRequest request, ClaimsPrincipal principal, HabitService habits) =>
+        {
+            if (request.PolicyVersion != HabitService.CurrentConsentPolicyVersion)
+                return Problems.Validation("policyVersion", "Not the current policy version.");
+
+            await habits.GiveHealthDataConsentAsync(principal.UserId());
+            return Results.NoContent();
+        });
+
+        api.MapPost("/me/dm-reminders/resume", async (ClaimsPrincipal principal, HabitService habits) =>
+        {
+            await habits.ResumeDmRemindersAsync(principal.UserId());
+            return Results.NoContent();
+        });
+
+        api.MapGet("/me/export", async (string? format, ClaimsPrincipal principal, HabitService habits, TimeProvider time) =>
+        {
+            if (format is not (null or "json" or "csv"))
+                return Problems.Validation("format", "Must be json or csv.");
+
+            var user = await habits.GetUserForExportAsync(principal.UserId());
+            if (user is null) return Problems.NotFound();
+
+            var (content, contentType, extension) = format == "csv"
+                ? (ExportBuilder.BuildCsv(user), "text/csv", "csv")
+                : (ExportBuilder.BuildJson(user), "application/json", "json");
+            return Results.File(Encoding.UTF8.GetBytes(content), contentType,
+                $"ember-export-{time.GetUtcNow():yyyy-MM-dd}.{extension}");
+        });
+
+        api.MapPost("/me/delete", async (DeleteRequest request, ClaimsPrincipal principal, UserManager<User> users,
+            SignInManager<User> signIn, HabitService habits) =>
+        {
+            var user = await users.GetUserAsync(principal);
+            if (user is null) return Problems.Unauthenticated();
+
+            if (await users.HasPasswordAsync(user))
+            {
+                if (!(await signIn.CheckPasswordSignInAsync(user, request.Password ?? "", lockoutOnFailure: true)).Succeeded)
+                    return Problems.Validation("password", "The password is not correct.");
+            }
+            else if (request.Confirm != "DELETE")
+            {
+                return Problems.Validation("confirm", "Type DELETE to confirm.");
+            }
+
+            await habits.DeleteUserDataAsync(user.Id);
+            await signIn.SignOutAsync();
+            return Results.NoContent();
+        });
+
+        return api;
+    }
+
+    private static async Task<MeDto?> LoadMe(ClaimsPrincipal principal, UserManager<User> users, HabitService habits, TimeProvider time)
+    {
+        var user = await users.GetUserAsync(principal);
+        if (user is null) return null;
+
+        var discordId = (await users.GetLoginsAsync(user)).FirstOrDefault(l => l.LoginProvider == DiscordLogin.Provider)?.ProviderKey;
+        return new MeDto(
+            user.Id, user.Email, user.EmailConfirmed, await users.HasPasswordAsync(user),
+            new DiscordDto(discordId is not null, discordId),
+            user.Timezone, await habits.HasTimezoneSetAsync(user.Id), TimezoneHelper.LocalToday(user.Timezone, time),
+            user.GraceDaysPerWeek, user.LeaderboardOptIn,
+            new ConsentDto(await habits.HasHealthDataConsentAsync(user.Id), user.ConsentPolicyVersion, HabitService.CurrentConsentPolicyVersion),
+            new DmRemindersDto(user.DmRemindersPausedAt is not null));
+    }
+}
