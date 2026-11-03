@@ -6,7 +6,7 @@ import { minLength, useField, useFocusHeadingOnChange, validateAll } from '@/com
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import type { ResetPasswordRequest } from '@/lib/models';
 import { type ApiError, asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
           hint="At least 10 characters. A short phrase you'll remember works well."
           error={newPassword.error ?? fields?.['password'] ?? fields?.['newPassword'] ?? null}
         >
-          {(field) => <Input {...field} {...newPassword.input} type="password" autoComplete="new-password" />}
+          {(field) => <PasswordInput {...field} {...newPassword.input} autoComplete="new-password" />}
         </FormField>
         {problem && (
           <Notice tone="notice">

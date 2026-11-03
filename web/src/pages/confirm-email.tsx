@@ -13,7 +13,7 @@ import { FlameMark } from '@/components/flame-mark';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
@@ -141,7 +141,7 @@ export default function ConfirmEmailPage() {
       )}
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Password" error={password.error}>
-          {(field) => <Input {...field} {...password.input} type="password" autoComplete="current-password" />}
+          {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
         <BusyButton type="submit" block busy={confirm.isPending} busyLabel="Confirming…">
           Confirm email

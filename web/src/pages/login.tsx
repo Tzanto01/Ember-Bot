@@ -7,7 +7,7 @@ import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
 import { Separator } from '@/components/ui/separator';
@@ -86,7 +86,7 @@ export default function LoginPage() {
           )}
         </FormField>
         <FormField label="Password" error={password.error}>
-          {(field) => <Input {...field} {...password.input} type="password" autoComplete="current-password" />}
+          {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-h-[44px] items-center gap-3">

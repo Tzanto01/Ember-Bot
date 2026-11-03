@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { NativeSelect } from '@/components/ui/select';
@@ -760,7 +760,7 @@ export default function SettingsPage() {
                     />
                     <FormField label="Your password" error={password.error ?? deleteErrors.password ?? null}>
                       {(field) => (
-                        <Input {...field} {...password.input} type="password" autoComplete="current-password" />
+                        <PasswordInput {...field} {...password.input} autoComplete="current-password" />
                       )}
                     </FormField>
                   </>
