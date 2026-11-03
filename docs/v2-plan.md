@@ -30,14 +30,14 @@ This file is the working plan for the agent that implements it. The phases run i
 | N4 | Fix the confirmed bugs before any new platform work. |
 | N5 | Accounts: normal email + password login, with Discord as an optional linked login. A bot-only user never needs a password. |
 | N6 | Backfill-first. A "low day" can be set after the fact and never requires input on the day itself. |
-| N7 | At public launch, Ember moves off the homeserver to a hosted server (VPS): API, web app, bot and database. |
+| N7 | Public launch stays on the homeserver for now (Nico, 2026-11-03); a VPS (Phase 8) only if the homeserver stops being enough. |
 | N8 | No DiGA, no body doubling, no AI features in v2. |
 
 ## Open decisions (defaults apply until Nico says otherwise)
 
 | # | Question | Default | Needed by |
 |---|---|---|---|
-| D1 | Keep the leaderboard at all? | Keep it opt-in through Phase 1, then **remove it before public launch** unless Nico wants it. It cuts against "no comparison, no guilt". | Start of Phase 1 |
+| D1 | Keep the leaderboard at all? | **Decided (Nico, 2026-11-03): remove it before public launch.** It cuts against "no comparison, no guilt". | Before launch |
 | D2 | License | Keep the current non-commercial license until a paid tier exists. Before taking any outside contribution or charging money, switch to proprietary or source-available. | Phase 10 |
 | D3 | Days that stay open for backfill before counting as missed | 2 local days (today + yesterday). Older days can still be backfilled; that heals the streak retroactively. | Phase 3 |
 | D4 | Desktop companion | No native app. The installed PWA covers desktop. Revisit only on the criteria in Phase 9. | Phase 9 |
