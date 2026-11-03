@@ -2,9 +2,17 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
-import { api, auth } from '@/lib/services';
+import { api, auth, localMode } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import LoginPage from './login';
+
+vi.mock('@/lib/services', async (original) => {
+  const { Store } = await import('@/lib/store');
+  return {
+    ...(await original<typeof import('@/lib/services')>()),
+    localMode: { mode: new Store('account'), evicted: new Store(false), cancelUpgrade: vi.fn(async () => {}) },
+  };
+});
 
 describe('LoginPage', () => {
   let mock: FetchMock;
@@ -16,6 +24,7 @@ describe('LoginPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     auth.clearSession();
+    localMode.mode.set('account');
   });
 
   async function signIn(password: string) {
@@ -137,5 +146,25 @@ describe('LoginPage', () => {
     renderPage('/login', LoginPage, '/login?reason=deleted');
 
     expect(screen.getByRole('status')).toHaveTextContent(/deleted/);
+  });
+
+  it('offers using Ember without an account and goes to /local', async () => {
+    const router = renderPage('/login', LoginPage, '/login');
+
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Use Ember without an account' }));
+
+    expect(router.state.location.pathname).toBe('/local');
+  });
+
+  it('while device data waits, says it comes along and can go back to no-account mode', async () => {
+    localMode.mode.set('upgrading');
+    const router = renderPage('/login', LoginPage, '/login');
+
+    expect(screen.getByText("Your habits from this device come along once you've signed in.")).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Use Ember without an account' })).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Keep using Ember without an account' }));
+
+    expect(localMode.cancelUpgrade).toHaveBeenCalledOnce();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
   });
 });

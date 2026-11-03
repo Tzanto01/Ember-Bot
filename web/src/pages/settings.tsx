@@ -5,6 +5,7 @@ import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { MoodManager } from '@/components/journal/mood-manager';
+import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
@@ -22,7 +23,7 @@ import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-dat
 import type { ExportFormat, MePatch } from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
-import { api, auth, push, reminders } from '@/lib/services';
+import { api, auth, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 
@@ -124,6 +125,7 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const me = useStore(auth.me);
+  const local = useStore(localMode.mode) === 'local';
   const pushAvailable = useStore(push.available);
   const pushSubscribed = useStore(push.subscribed);
 
@@ -158,7 +160,7 @@ export default function SettingsPage() {
     const params = new URLSearchParams(location.search);
     const linked = params.get('discord') === 'linked';
     void (linked ? auth.refreshAntiforgery() : Promise.resolve()).then(() => auth.loadMe(true)).catch(() => null);
-    void push.claim();
+    if (!local) void push.claim();
     if (env.native) void reminders?.exactAllowed().then(setExactAllowed, () => undefined);
     if (!discordNotice) return;
     params.delete('discord');
@@ -376,22 +378,27 @@ export default function SettingsPage() {
     await navigate('/login?reason=deleted');
   }
 
-  const showDm = !!me && (me.dmReminders.paused || message?.section === 'dm');
-  const showPush = !env.native && pushAvailable;
+  const showDm = !local && !!me && (me.dmReminders.paused || message?.section === 'dm');
+  const showPush = !local && !env.native && pushAvailable;
   const sections = [
+    ...(local ? [{ id: 'device', title: 'On this device' }] : []),
     { id: 'timezone', title: 'Timezone' },
     { id: 'grace', title: 'Grace days' },
-    { id: 'discord', title: 'Discord' },
-    { id: 'two-factor', title: 'Two-step sign-in' },
-    { id: 'journal', title: 'Private journal' },
+    ...(local
+      ? []
+      : [
+          { id: 'discord', title: 'Discord' },
+          { id: 'two-factor', title: 'Two-step sign-in' },
+          { id: 'journal', title: 'Private journal' },
+        ]),
     { id: 'moods', title: 'Moods' },
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
     { id: 'appearance', title: 'Appearance' },
-    { id: 'export', title: 'Your data' },
-    { id: 'account', title: 'Account' },
-    { id: 'delete', title: 'Delete your account' },
+    ...(local ? [] : [{ id: 'export', title: 'Your data' }]),
+    { id: 'account', title: local ? 'Legal' : 'Account' },
+    { id: 'delete', title: local ? 'Delete everything on this device' : 'Delete your account' },
   ];
   const title = (id: string) => sections.find((section) => section.id === id)?.title ?? '';
 
@@ -428,6 +435,12 @@ export default function SettingsPage() {
           </nav>
 
           <div className="flex min-w-0 flex-col gap-6">
+            {local && (
+              <SettingsCard id="device" title={title('device')}>
+                <DeviceDataSettings />
+              </SettingsCard>
+            )}
+
             <SettingsCard id="timezone" title={title('timezone')}>
               {me.timezoneSet ? (
                 <p>
@@ -516,53 +529,59 @@ export default function SettingsPage() {
               {outcome('grace')}
             </SettingsCard>
 
-            <SettingsCard id="discord" title={title('discord')}>
-              {me.discord.linked ? (
-                <>
-                  <p>Your Discord account is linked. You can sign in with it, and the Ember bot knows it's you.</p>
-                  <div>
-                    <BusyButton
-                      type="button"
-                      variant="secondary"
-                      busy={busy === 'discord'}
-                      busyLabel="Unlinking…"
-                      onClick={() => void unlinkDiscord()}
-                    >
-                      Unlink Discord
-                    </BusyButton>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p>Link your Discord account to sign in with it and to use the Ember bot with the same habits.</p>
-                  <div>
-                    {env.native ? (
-                      <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
-                        Link Discord on the web
-                      </Button>
-                    ) : (
-                      <Button asChild variant="secondary">
-                        <a href={api.discordLinkUrl()}>Link Discord</a>
-                      </Button>
+            {!local && (
+              <SettingsCard id="discord" title={title('discord')}>
+                {me.discord.linked ? (
+                  <>
+                    <p>Your Discord account is linked. You can sign in with it, and the Ember bot knows it's you.</p>
+                    <div>
+                      <BusyButton
+                        type="button"
+                        variant="secondary"
+                        busy={busy === 'discord'}
+                        busyLabel="Unlinking…"
+                        onClick={() => void unlinkDiscord()}
+                      >
+                        Unlink Discord
+                      </BusyButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>Link your Discord account to sign in with it and to use the Ember bot with the same habits.</p>
+                    <div>
+                      {env.native ? (
+                        <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
+                          Link Discord on the web
+                        </Button>
+                      ) : (
+                        <Button asChild variant="secondary">
+                          <a href={api.discordLinkUrl()}>Link Discord</a>
+                        </Button>
+                      )}
+                    </div>
+                    {env.native && (
+                      <p className="text-[14px] text-muted-foreground">
+                        Linking happens in your browser. Come back here afterwards and Ember picks it up.
+                      </p>
                     )}
-                  </div>
-                  {env.native && (
-                    <p className="text-[14px] text-muted-foreground">
-                      Linking happens in your browser. Come back here afterwards and Ember picks it up.
-                    </p>
-                  )}
-                </>
-              )}
-              {outcome('discord')}
-            </SettingsCard>
+                  </>
+                )}
+                {outcome('discord')}
+              </SettingsCard>
+            )}
 
-            <SettingsCard id="two-factor" title={title('two-factor')}>
-              <TwoFactorSettings me={me} />
-            </SettingsCard>
+            {!local && (
+              <SettingsCard id="two-factor" title={title('two-factor')}>
+                <TwoFactorSettings me={me} />
+              </SettingsCard>
+            )}
 
-            <SettingsCard id="journal" title={title('journal')}>
-              <JournalSettings me={me} />
-            </SettingsCard>
+            {!local && (
+              <SettingsCard id="journal" title={title('journal')}>
+                <JournalSettings me={me} />
+              </SettingsCard>
+            )}
 
             <SettingsCard id="moods" title={title('moods')}>
               <MoodManager />
@@ -657,38 +676,42 @@ export default function SettingsPage() {
             )}
 
             <SettingsCard id="appearance" title={title('appearance')}>
-              <p id="appearance-hint">Choose how Ember looks. Your choice follows you to your other devices.</p>
+              <p id="appearance-hint">
+                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your choice follows you to your other devices.'}
+              </p>
               <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
               {outcome('appearance')}
             </SettingsCard>
 
-            <SettingsCard id="export" title={title('export')}>
-              <p>
-                Download everything Ember keeps about you: your settings, every habit (paused ones too), all check-ins
-                and low days, your email and your Discord ID. JSON is handy for other apps, CSV opens in a spreadsheet.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {env.native ? (
-                  <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
-                    Download on the web
-                  </Button>
-                ) : (
-                  exportFormats.map((format) => (
-                    <BusyButton
-                      key={format}
-                      type="button"
-                      variant="secondary"
-                      busy={exporting === format}
-                      busyLabel="Preparing…"
-                      onClick={() => void exportAs(format)}
-                    >
-                      Download {format.toUpperCase()}
-                    </BusyButton>
-                  ))
-                )}
-              </div>
-              {outcome('export')}
-            </SettingsCard>
+            {!local && (
+              <SettingsCard id="export" title={title('export')}>
+                <p>
+                  Download everything Ember keeps about you: your settings, every habit (paused ones too), all check-ins
+                  and low days, your email and your Discord ID. JSON is handy for other apps, CSV opens in a spreadsheet.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {env.native ? (
+                    <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
+                      Download on the web
+                    </Button>
+                  ) : (
+                    exportFormats.map((format) => (
+                      <BusyButton
+                        key={format}
+                        type="button"
+                        variant="secondary"
+                        busy={exporting === format}
+                        busyLabel="Preparing…"
+                        onClick={() => void exportAs(format)}
+                      >
+                        Download {format.toUpperCase()}
+                      </BusyButton>
+                    ))
+                  )}
+                </div>
+                {outcome('export')}
+              </SettingsCard>
+            )}
 
             <SettingsCard id="account" title={title('account')}>
               <ul aria-label="Legal" className="flex flex-wrap gap-x-5">
@@ -708,69 +731,77 @@ export default function SettingsPage() {
                   </Link>
                 </li>
               </ul>
-              <div>
-                <BusyButton
-                  type="button"
-                  variant="secondary"
-                  busy={busy === 'signout'}
-                  busyLabel="Signing out…"
-                  onClick={() => void signOut()}
-                >
-                  Sign out
-                </BusyButton>
-              </div>
+              {!local && (
+                <div>
+                  <BusyButton
+                    type="button"
+                    variant="secondary"
+                    busy={busy === 'signout'}
+                    busyLabel="Signing out…"
+                    onClick={() => void signOut()}
+                  >
+                    Sign out
+                  </BusyButton>
+                </div>
+              )}
               {outcome('signout')}
             </SettingsCard>
 
             <SettingsCard id="delete" title={title('delete')} farewell>
-              <p>
-                This removes your account and everything in it: habits, check-ins, low days and settings. It can't be
-                undone. If you'd like to keep a copy, download your data first.
-              </p>
-              <form
-                ref={deleteForm}
-                noValidate
-                onSubmit={(event) => void deleteAccount(event)}
-                className="flex flex-col gap-3"
-              >
-                {me.hasPassword && (
-                  <>
-                    <input
-                      className="sr-only"
-                      type="email"
-                      name="username"
-                      autoComplete="username"
-                      value={me.email ?? ''}
-                      readOnly
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    />
-                    <FormField label="Your password" error={password.error ?? deleteErrors.password ?? null}>
+              {local ? (
+                <DeleteDeviceData />
+              ) : (
+                <>
+                  <p>
+                    This removes your account and everything in it: habits, check-ins, low days and settings. It can't be
+                    undone. If you'd like to keep a copy, download your data first.
+                  </p>
+                  <form
+                    ref={deleteForm}
+                    noValidate
+                    onSubmit={(event) => void deleteAccount(event)}
+                    className="flex flex-col gap-3"
+                  >
+                    {me.hasPassword && (
+                      <>
+                        <input
+                          className="sr-only"
+                          type="email"
+                          name="username"
+                          autoComplete="username"
+                          value={me.email ?? ''}
+                          readOnly
+                          tabIndex={-1}
+                          aria-hidden="true"
+                        />
+                        <FormField label="Your password" error={password.error ?? deleteErrors.password ?? null}>
+                          {(field) => (
+                            <PasswordInput {...field} {...password.input} autoComplete="current-password" />
+                          )}
+                        </FormField>
+                      </>
+                    )}
+                    <FormField label="Type DELETE to confirm" error={confirm.error ?? deleteErrors.confirm ?? null}>
                       {(field) => (
-                        <PasswordInput {...field} {...password.input} autoComplete="current-password" />
+                        <Input
+                          {...field}
+                          {...confirm.input}
+                          type="text"
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                        />
                       )}
                     </FormField>
-                  </>
-                )}
-                <FormField label="Type DELETE to confirm" error={confirm.error ?? deleteErrors.confirm ?? null}>
-                  {(field) => (
-                    <Input
-                      {...field}
-                      {...confirm.input}
-                      type="text"
-                      autoComplete="off"
-                      autoCapitalize="characters"
-                      spellCheck={false}
-                    />
-                  )}
-                </FormField>
-                {outcome('delete')}
-                <div>
-                  <BusyButton type="submit" variant="destructive" busy={busy === 'delete'} busyLabel="Deleting…">
-                    Delete my account
-                  </BusyButton>
-                </div>
-              </form>
+                    {outcome('delete')}
+                    <div>
+                      <BusyButton type="submit" variant="destructive" busy={busy === 'delete'} busyLabel="Deleting…">
+                        Delete my account
+                      </BusyButton>
+                    </div>
+                  </form>
+                </>
+              )}
             </SettingsCard>
           </div>
         </div>

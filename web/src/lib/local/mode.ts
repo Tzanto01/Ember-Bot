@@ -1,0 +1,116 @@
+import type { ApiClient } from '../api-client';
+import type { AuthService } from '../auth';
+import type { Http } from '../http';
+import { browserTimeZone } from '../local-date';
+import { Store } from '../store';
+import { currentTheme } from '../theme';
+import { newLocalData, type LocalBackend } from './backend';
+import type { LocalStore } from './store';
+import type { AppMode, LocalModeApi } from './types';
+
+const flagKey = 'ember.mode';
+
+function readFlag(): string | null {
+  try {
+    return localStorage.getItem(flagKey);
+  } catch {
+    return null;
+  }
+}
+
+function writeFlag(mode: AppMode): void {
+  try {
+    if (mode === 'account') localStorage.removeItem(flagKey);
+    else localStorage.setItem(flagKey, mode);
+  } catch {}
+}
+
+/**
+ * The app's data source (contract "No account (device only)"). `local` routes own `/api` requests to the device's
+ * {@link LocalBackend} through `Http.local`; `upgrading` talks to the server while the device data waits for import.
+ * The mode survives restarts in localStorage (`ember.mode`). Navigation is left to the screens.
+ */
+export class LocalMode implements LocalModeApi {
+  readonly mode = new Store<AppMode>('account');
+  readonly evicted = new Store(false);
+
+  constructor(
+    private readonly store: LocalStore,
+    private readonly backend: LocalBackend,
+    private readonly http: Http,
+    private readonly api: ApiClient,
+    private readonly auth: AuthService,
+    private readonly options: { native: boolean },
+  ) {}
+
+  /** Restores the mode at app start, before anything calls the API. Never throws. */
+  async init(): Promise<void> {
+    const flag = readFlag();
+    if (flag === 'upgrading') {
+      this.mode.set('upgrading');
+      return;
+    }
+    if (flag !== 'local') return;
+    if (!(await this.store.exists().catch(() => false))) {
+      this.evicted.set(true);
+      await this.store.replace(this.fresh()).catch(() => undefined);
+    }
+    this.enterLocal();
+  }
+
+  async start(): Promise<void> {
+    if (!(await this.store.exists())) await this.store.replace(this.fresh());
+    if (!this.options.native) await navigator.storage?.persist?.().catch(() => false);
+    this.enterLocal();
+    await this.auth.loadMe(true);
+  }
+
+  async beginUpgrade(): Promise<void> {
+    this.http.local = null;
+    writeFlag('upgrading');
+    this.mode.set('upgrading');
+    this.auth.clearSession();
+    await this.auth.refreshAntiforgery();
+  }
+
+  async cancelUpgrade(): Promise<void> {
+    if (this.auth.signedIn()) {
+      if (!this.options.native) await this.api.logout().catch(() => undefined);
+      await this.auth.wipeDevice();
+      this.auth.clearSession();
+    }
+    if (!(await this.store.exists())) await this.store.replace(this.fresh());
+    this.enterLocal();
+    await this.auth.loadMe(true);
+  }
+
+  async wipe(): Promise<void> {
+    await this.auth.wipeDevice();
+    await this.store.clear();
+    this.leave();
+    this.auth.clearSession();
+    await this.auth.refreshAntiforgery();
+  }
+
+  /** Back to the account mode after the device data moved into the account (the upgrade cleared it already). */
+  finishUpgrade(): void {
+    this.leave();
+  }
+
+  private fresh() {
+    return newLocalData({ timezone: browserTimeZone(), theme: currentTheme() }, new Date());
+  }
+
+  private enterLocal(): void {
+    writeFlag('local');
+    this.http.local = this.backend.handle;
+    this.mode.set('local');
+  }
+
+  private leave(): void {
+    writeFlag('account');
+    this.http.local = null;
+    this.evicted.set(false);
+    this.mode.set('account');
+  }
+}
