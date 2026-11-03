@@ -51,6 +51,7 @@ export type JournalSource = Pick<
   | 'getJournalKey'
   | 'putJournalKey'
   | 'deleteJournalKey'
+  | 'turnOffJournal'
   | 'listHabits'
 >;
 
@@ -99,6 +100,8 @@ const isEncrypted = <T extends object>(value: T): value is Extract<T, { encrypte
 export class JournalService implements JournalApi {
   readonly state = new Store<JournalState>('off');
   readonly changed = new Store(0);
+  readonly turningOff = new Store(false);
+  readonly remembered = new Store(false);
 
   private key: CryptoKey | null = null;
   private keyUser: string | null = null;
@@ -111,6 +114,7 @@ export class JournalService implements JournalApi {
     timer: ReturnType<typeof setTimeout>;
   } | null = null;
   private migrating: Promise<void> | null = null;
+  private reuploading: Promise<void> | null = null;
   private restoring: Promise<void> | null = null;
   private readonly iterations: number;
 
@@ -140,10 +144,8 @@ export class JournalService implements JournalApi {
     const text = entryText(entry.text);
     const mood = entry.mood ?? null;
     let body: DayNoteBody | null = text === null && mood === null ? null : { text, mood };
-    if (me.journal.encrypted) {
-      const key = this.requireKey();
-      if (body) body = { encrypted: await encryptNote(key, date, { text, mood }) };
-    }
+    const key = this.sealingKey(me);
+    if (key && body) body = { encrypted: await encryptNote(key, date, { text, mood }) };
     const { queued } = await this.api.saveDayNote(date, body);
     this.bump();
     return { queued };
@@ -166,7 +168,7 @@ export class JournalService implements JournalApi {
   async addMood(mood: { label: string; emoji: string | null }): Promise<OwnMood> {
     const me = this.requireMe();
     const plain = { label: moodLabel(mood.label), emoji: mood.emoji };
-    const key = me.journal.encrypted ? this.requireKey() : null;
+    const key = this.sealingKey(me);
     const stored = await this.api.createMood(
       key ? { encrypted: await encryptMood(key, plain) } : plain,
     );
@@ -180,7 +182,7 @@ export class JournalService implements JournalApi {
   ): Promise<OwnMood> {
     const me = this.requireMe();
     const label = patch.label === undefined ? undefined : moodLabel(patch.label);
-    const key = me.journal.encrypted ? this.requireKey() : null;
+    const key = this.sealingKey(me);
     let body: MoodPatchBody = { label, emoji: patch.emoji, archived: patch.archived };
     if (key) {
       let encrypted: EncryptedBlob | undefined;
@@ -225,9 +227,10 @@ export class JournalService implements JournalApi {
       this.epoch++;
       this.key = key;
       this.keyUser = me.id;
-      await this.keyring
-        .keep(me.id, { key, keyId: body.recovery.salt }, raw, remember)
-        .catch(() => undefined);
+      await this.keyring.keep(me.id, { key, keyId: body.recovery.salt }, raw, remember).then(
+        () => this.remembered.set(remember),
+        () => this.remembered.set(false),
+      );
       await this.session.loadMe(true).catch(() => null);
       this.refresh();
       this.bump();
@@ -258,9 +261,10 @@ export class JournalService implements JournalApi {
       const key = await importJournalKey(raw);
       if (epoch !== this.epoch || this.session.me.get()?.id !== me.id)
         throw new JournalLockedError();
-      await this.keyring
-        .keep(me.id, { key, keyId: stored.recovery.salt }, raw, remember)
-        .catch(() => undefined);
+      await this.keyring.keep(me.id, { key, keyId: stored.recovery.salt }, raw, remember).then(
+        () => this.remembered.set(remember),
+        () => this.remembered.set(false),
+      );
       this.key = key;
       this.keyUser = me.id;
       this.holdRewrap({ userId: me.id, raw, version: stored.version, recovery: stored.recovery });
@@ -270,7 +274,7 @@ export class JournalService implements JournalApi {
     }
     this.refresh();
     this.bump();
-    void this.finishMigration().catch(() => undefined);
+    this.resume(me);
     return { needsNewPassphrase: !('passphrase' in secret) };
   }
 
@@ -304,30 +308,25 @@ export class JournalService implements JournalApi {
     return this.migrating;
   }
 
+  /**
+   * Starts the switch-off (`POST .../turn-off`) unless one is under way, re-uploads everything as plaintext, then
+   * deletes the key. Also finishes an interrupted switch-off (`turningOff`); needs the key unlocked.
+   */
   async disable(password?: string): Promise<void> {
     const me = this.requireMe();
-    const key = this.requireKey();
-    const decryptAll = async () => {
-      for (const mood of await this.api.listMoods()) {
-        if (isEncrypted(mood))
-          await this.api.updateMood(mood.id, await decryptMood(key, mood.encrypted));
-      }
-      await this.scan(async (notes) => {
-        for (const note of notes) {
-          if (!isEncrypted(note)) continue;
-          const body = await decryptNote(key, note.date, note.encrypted);
-          await this.api.sendNoteEdit({ kind: 'note', date: note.date, body });
-        }
-        return false;
-      });
-    };
-    const body = { password: me.hasPassword ? password : undefined, discardEncrypted: false };
-    await decryptAll();
+    this.requireKey();
+    const pw = me.hasPassword ? password : undefined;
+    if (!me.journal.turningOff) {
+      await this.api.turnOffJournal({ password: pw });
+      await this.session.loadMe(true).catch(() => null);
+    }
+    const body = { password: pw, discardEncrypted: false };
+    await this.finishTurnOff();
     try {
       await this.api.deleteJournalKey(body);
     } catch (error) {
       if (asApiError(error).status !== 409) throw error;
-      await decryptAll();
+      await this.finishTurnOff();
       await this.api.deleteJournalKey(body);
     }
     await this.forget();
@@ -398,12 +397,61 @@ export class JournalService implements JournalApi {
       this.keyUser = null;
     }
     if (this.rewrap && this.rewrap.userId !== me?.id) this.dropRewrap();
+    if (!this.key) this.remembered.set(false);
+    this.turningOff.set(!!me?.journal.encrypted && me.journal.turningOff);
     this.state.set(!me?.journal.encrypted ? 'off' : this.key ? 'unlocked' : 'locked');
+  }
+
+  /** The key to encrypt writes with: null for a plain journal or while turning off; locked throws. */
+  private sealingKey(me: Me): CryptoKey | null {
+    return me.journal.encrypted && !me.journal.turningOff ? this.requireKey() : null;
+  }
+
+  /** Continues interrupted work in the background once the key is at hand. */
+  private resume(me: Me): void {
+    if (this.state.get() !== 'unlocked') return;
+    if (me.journal.turningOff) void this.finishTurnOff().catch(() => undefined);
+    else if (me.journal.plaintextLeft > 0) void this.finishMigration().catch(() => undefined);
+  }
+
+  private finishTurnOff(): Promise<void> {
+    this.reuploading ??= this.reupload().finally(() => (this.reuploading = null));
+    return this.reuploading;
+  }
+
+  /** Decrypts every encrypted mood and entry and writes it back as plaintext (switch-off under way). */
+  private async reupload(): Promise<void> {
+    const key = this.requireKey();
+    const userId = this.keyUser;
+    for (const mood of await this.api.listMoods()) {
+      if (isEncrypted(mood)) {
+        await this.api.updateMood(mood.id, await decryptMood(key, mood.encrypted));
+      }
+    }
+    await this.scan(async (notes) => {
+      for (const note of notes) {
+        if (!isEncrypted(note) || this.key !== key) continue;
+        const body = await decryptNote(key, note.date, note.encrypted);
+        await this.api.sendNoteEdit({ kind: 'note', date: note.date, body });
+      }
+      const me = await this.session.loadMe(true);
+      return (
+        this.key !== key ||
+        me?.id !== userId ||
+        !me.journal.turningOff ||
+        me.journal.encryptedLeft <= 0
+      );
+    });
+    this.bump();
   }
 
   private async runRestore(): Promise<void> {
     const me = this.session.me.get();
-    if (!me?.journal.encrypted || (this.key && this.keyUser === me.id)) return this.refresh();
+    if (!me?.journal.encrypted || (this.key && this.keyUser === me.id)) {
+      this.refresh();
+      if (me) this.resume(me);
+      return;
+    }
     const epoch = this.epoch;
     let entry = await this.keyring.get(me.id);
     if (entry) {
@@ -417,17 +465,22 @@ export class JournalService implements JournalApi {
     if (entry && epoch === this.epoch && this.session.me.get()?.id === me.id) {
       this.key = entry.key;
       this.keyUser = me.id;
+      this.remembered.set(entry.remembered);
     }
     this.refresh();
-    if (this.state.get() === 'unlocked' && me.journal.plaintextLeft > 0) {
-      void this.finishMigration().catch(() => undefined);
-    }
+    this.resume(me);
   }
 
   private async migrate(): Promise<void> {
     let me = await this.session.loadMe(true);
     const key = this.key;
-    if (!me?.journal.encrypted || !key || me.id !== this.keyUser || me.journal.plaintextLeft <= 0)
+    if (
+      !me?.journal.encrypted ||
+      me.journal.turningOff ||
+      !key ||
+      me.id !== this.keyUser ||
+      me.journal.plaintextLeft <= 0
+    )
       return;
     const userId = me.id;
     for (const mood of await this.api.listMoods()) {
@@ -446,6 +499,7 @@ export class JournalService implements JournalApi {
         this.key !== key ||
         me?.id !== userId ||
         !me.journal.encrypted ||
+        me.journal.turningOff ||
         me.journal.plaintextLeft <= 0
       );
     });

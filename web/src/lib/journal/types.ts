@@ -33,6 +33,13 @@ export interface JournalApi {
   readonly state: Store<JournalState>;
   /** Bumps after any journal or mood write, so screens can reload. */
   readonly changed: Store<number>;
+  /**
+   * True while a switch back to a plain journal is under way (`me.journal.turningOff`). Writes go as plaintext then;
+   * once unlocked, the re-upload resumes on its own, and `disable(password)` finishes it.
+   */
+  readonly turningOff: Store<boolean>;
+  /** True when this device keeps the unlocked key (remember on this device); false for memory only or locked. */
+  readonly remembered: Store<boolean>;
 
   /** Readable entries in the range, oldest first. `hidden` counts encrypted entries this device can't read (locked). */
   notes(from?: LocalDateString, to?: LocalDateString): Promise<{ notes: DayNote[]; hidden: number }>;
@@ -57,7 +64,10 @@ export interface JournalApi {
   setPassphrase(passphrase: string, password?: string): Promise<void>;
   /** Encrypts plaintext entries and moods left over while `me.journal.plaintextLeft > 0`. */
   finishMigration(): Promise<void>;
-  /** Back to a plain journal: decrypts and re-uploads everything, then deletes the key. */
+  /**
+   * Back to a plain journal: `turn-off` (unless already turning off), decrypts and re-uploads everything, then deletes
+   * the key. Also finishes an interrupted switch-off. Needs the key unlocked.
+   */
   disable(password?: string): Promise<void>;
   /** "Lost both": deletes every encrypted entry and mood with the key. */
   discard(password?: string): Promise<void>;

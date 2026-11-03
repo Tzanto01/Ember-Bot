@@ -24,19 +24,26 @@ function done<T>(request: IDBRequest<T>): Promise<T> {
  * bytes in secure storage, imported non-extractable for use. A key stored for another user is never returned.
  */
 export class Keyring {
-  private memory: (KeyEntry & { userId: string }) | null = null;
+  private memory: (KeyEntry & { userId: string; remembered: boolean }) | null = null;
   private db: Promise<IDBDatabase> | null = null;
 
   /** `secure`: the native build's secure storage; null on the web. */
   constructor(private readonly secure: SecureStore | null) {}
 
-  /** The key for `userId`: from memory, else from this device's storage, else null. Never throws. */
-  async get(userId: string): Promise<KeyEntry | null> {
-    if (this.memory?.userId === userId) return { key: this.memory.key, keyId: this.memory.keyId };
+  /**
+   * The key for `userId`: from memory, else from this device's storage, else null; `remembered` when this device
+   * keeps it. Never throws.
+   */
+  async get(userId: string): Promise<(KeyEntry & { remembered: boolean }) | null> {
+    if (this.memory?.userId === userId) {
+      const { key, keyId, remembered } = this.memory;
+      return { key, keyId, remembered };
+    }
     try {
       const entry = this.secure ? await this.readSecure(userId) : await this.readDb(userId);
-      if (entry) this.memory = { userId, ...entry };
-      return entry;
+      if (!entry) return null;
+      this.memory = { userId, ...entry, remembered: true };
+      return { ...entry, remembered: true };
     } catch {
       return null;
     }
@@ -47,7 +54,8 @@ export class Keyring {
    * removes what this device remembered. The caller wipes `raw` afterwards.
    */
   async keep(userId: string, entry: KeyEntry, raw: Uint8Array, remember: boolean): Promise<void> {
-    this.memory = { userId, key: entry.key, keyId: entry.keyId };
+    const memory = { userId, key: entry.key, keyId: entry.keyId, remembered: false };
+    this.memory = memory;
     if (this.secure) {
       if (remember) {
         await this.secure.set(
@@ -57,6 +65,7 @@ export class Keyring {
       } else {
         await this.secure.remove(secureKey);
       }
+      memory.remembered = remember;
       return;
     }
     const db = await this.open();
@@ -68,6 +77,7 @@ export class Keyring {
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
+    memory.remembered = remember;
   }
 
   /** Forgets every journal key: memory, IndexedDB and secure storage. Never throws. */
