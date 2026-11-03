@@ -155,7 +155,7 @@ describe('DeviceSync', () => {
       const queue = new OfflineQueue(device);
       const api = new ApiClient(http, queue);
       const reminders = new Reminders(api, device);
-      vi.spyOn(reminders, 'rebuild').mockResolvedValue();
+      const rebuild = vi.spyOn(reminders, 'rebuild').mockResolvedValue();
       vi.spyOn(reminders, 'wasIssued').mockImplementation((id) => issued && id === 1);
       const auth = new AuthService(api, queue, null, { tokens: new TokenStore(http, memorySecureStore().store), reminders });
       const sync = new DeviceSync(auth, api, queue, reminders);
@@ -164,7 +164,7 @@ describe('DeviceSync', () => {
       setNavigator((path) => paths.push(path));
       sync.start();
       await vi.waitFor(() => expect(native.listeners.has('widgetTap')).toBe(true));
-      return { fetch, sync, paths, device };
+      return { fetch, sync, paths, device, auth, rebuild };
     }
 
     afterEach(() => setNavigator(null));
@@ -207,6 +207,18 @@ describe('DeviceSync', () => {
       await vi.waitFor(() => expect(paths).toEqual(['/today']));
       expect(fetch.all.filter((call) => call.method === 'PUT')).toEqual([]);
       expect(sync.nativeCheckIn.get()).toBeNull();
+    });
+
+    it('forgets the confirmation and the dropped count when the user changes', async () => {
+      const { sync, auth, rebuild } = await setup();
+      sync.nativeCheckIn.set({ name: 'Walk' });
+      sync.dropped.set(2);
+
+      auth.setMe({ ...me, id: 'u2' });
+      await vi.waitFor(() => expect(rebuild).toHaveBeenCalledWith('u2', me.timezone));
+
+      expect(sync.nativeCheckIn.get()).toBeNull();
+      expect(sync.dropped.get()).toBe(0);
     });
 
     it('checks in a widget row the same way', async () => {

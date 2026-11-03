@@ -186,9 +186,11 @@ export class Reminders {
   ): Promise<{ habits: Habit[]; routines: Routine[] } | null> {
     try {
       const habits = await this.api.listHabits();
-      const routines = await this.api.listRoutines().catch(() => []);
+      const routines = await this.api
+        .listRoutines()
+        .catch(async () => (await this.store.habits(userId).catch(() => null))?.routines);
       await this.store.saveHabits({ userId, timeZone, habits, routines }).catch(() => undefined);
-      return { habits, routines };
+      return { habits, routines: routines ?? [] };
     } catch (error) {
       if (asApiError(error).status === 401) return null;
       const cached = await this.store.habits(userId).catch(() => null);
@@ -250,14 +252,21 @@ export class Reminders {
         schedule: { at: new Date(reminder.at), allowWhileIdle: true },
       };
     });
-    const recent = addDays(localDate(now, timeZone), -2);
-    const issued = notifications
-      .filter((n) => n.actionTypeId)
-      .map((n) => ({ id: n.id, ...(n.extra as Omit<Issued, 'id'>) }));
-    localStorage.setItem(
-      issuedKey,
-      JSON.stringify([...readIssued().filter((entry) => entry.date >= recent), ...issued]),
-    );
+    const recent = addDays(today, -2);
+    const issued = new Map<string, Issued>();
+    for (const entry of [
+      ...readIssued().filter((entry) => entry.date >= recent && entry.date <= today),
+      ...notifications
+        .filter((n) => n.actionTypeId)
+        .map((n) => ({ id: n.id, ...(n.extra as Omit<Issued, 'id'>) })),
+    ]) {
+      issued.set(`${entry.id}|${entry.userId}|${entry.habitId}|${entry.date}`, entry);
+    }
+    try {
+      localStorage.setItem(issuedKey, JSON.stringify([...issued.values()]));
+    } catch {
+      localStorage.removeItem(issuedKey);
+    }
     await plugin.schedule({ notifications });
   }
 

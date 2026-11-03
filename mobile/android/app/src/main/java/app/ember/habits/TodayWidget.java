@@ -1,5 +1,6 @@
 package app.ember.habits;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -13,6 +14,7 @@ import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Arrays;
@@ -33,6 +35,7 @@ public class TodayWidget extends AppWidgetProvider {
 
     static final String ACTION_CHECK_IN = "app.ember.habits.WIDGET_CHECK_IN";
     static final String ACTION_OPEN_TODAY = "app.ember.habits.WIDGET_OPEN_TODAY";
+    private static final String ACTION_MIDNIGHT = "app.ember.habits.WIDGET_MIDNIGHT";
     static final int MAX_ROWS = 6;
 
     private static final String PREFS = "ember_widget";
@@ -57,6 +60,13 @@ public class TodayWidget extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         render(context, manager, ids);
+    }
+
+    /** Redraws at the alarm set for the snapshot zone's next midnight, so yesterday's states never linger. */
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (ACTION_MIDNIGHT.equals(intent.getAction())) refresh(context);
+        else super.onReceive(context, intent);
     }
 
     /** Validates and stores a snapshot with a fresh tap token, then redraws every widget. */
@@ -170,6 +180,7 @@ public class TodayWidget extends AppWidgetProvider {
         Intent today = new Intent(context, MainActivity.class).setAction(ACTION_OPEN_TODAY);
         views.setOnClickPendingIntent(R.id.widget_root, open(context, 0, today));
         JSONObject snapshot = current(context);
+        if (snapshot != null) scheduleMidnight(context, snapshot.optString("timeZone"));
         JSONArray habits = snapshot == null ? null : snapshot.optJSONArray("habits");
         int shown = habits == null ? 0 : Math.min(habits.length(), MAX_ROWS);
         int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more"));
@@ -201,6 +212,25 @@ public class TodayWidget extends AppWidgetProvider {
         views.setViewVisibility(R.id.widget_more, more > 0 ? View.VISIBLE : View.GONE);
         views.setTextViewText(R.id.widget_more, context.getString(R.string.widget_more, more));
         manager.updateAppWidget(ids, views);
+    }
+
+    private static void scheduleMidnight(Context context, String timeZone) {
+        AlarmManager alarms = context.getSystemService(AlarmManager.class);
+        if (alarms == null) return;
+        Calendar midnight = Calendar.getInstance(TimeZone.getTimeZone(timeZone));
+        midnight.add(Calendar.DAY_OF_MONTH, 1);
+        midnight.set(Calendar.HOUR_OF_DAY, 0);
+        midnight.set(Calendar.MINUTE, 0);
+        midnight.set(Calendar.SECOND, 5);
+        midnight.set(Calendar.MILLISECOND, 0);
+        Intent intent = new Intent(context, TodayWidget.class).setAction(ACTION_MIDNIGHT);
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        alarms.set(AlarmManager.RTC, midnight.getTimeInMillis(), pending);
     }
 
     private static String stateLabel(Context context, JSONObject habit) {
