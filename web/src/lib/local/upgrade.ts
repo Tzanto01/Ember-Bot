@@ -50,7 +50,7 @@ function customId(mood: MoodKey | null): number | null {
 export class UpgradeService implements UpgradeApi {
   constructor(
     private readonly store: LocalStore,
-    private readonly api: Pick<ApiClient, 'importData' | 'updateMe'>,
+    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'updateMe'>,
     private readonly auth: Pick<AuthService, 'me'>,
     private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'moods' | 'addMood' | 'updateMood' | 'save'>,
     private readonly device: Pick<DeviceStore, 'clearUser'>,
@@ -109,22 +109,29 @@ export class UpgradeService implements UpgradeApi {
     try {
       if (!progress.imported) {
         const sentBefore = progress.importSent;
-        const omit = sentBefore ? progress.journalOmitted : !!secret;
-        const { profile } = data;
-        await this.api.updateMe({
-          timezone: profile.timezone,
-          graceDaysPerWeek: profile.graceDaysPerWeek,
-          ...(profile.theme ? { theme: profile.theme } : {}),
-        });
-        await save({ importSent: true, journalOmitted: omit });
-        try {
-          await this.api.importData(importDocument(data, !omit));
-        } catch (error) {
-          const apiError = asApiError(error);
-          if (!(sentBefore && isNotEmpty(apiError))) {
+        const omit = sentBefore ? progress.journalOmitted || !!secret : !!secret;
+        const names = (await this.api.listHabits()).map((h) => h.name).sort();
+        const local = data.habits.map((h) => h.name).sort();
+        const landed =
+          sentBefore && names.length > 0 && names.length === local.length && names.every((name, i) => name === local[i]);
+        if (!landed) {
+          if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy };
+          const { profile } = data;
+          await this.api.updateMe({
+            timezone: profile.timezone,
+            graceDaysPerWeek: profile.graceDaysPerWeek,
+            ...(profile.theme ? { theme: profile.theme } : {}),
+          });
+          await save({ importSent: true, journalOmitted: omit });
+          try {
+            await this.api.importData(importDocument(data, !omit));
+          } catch (error) {
+            const apiError = asApiError(error);
             if (apiError.status >= 400 && apiError.status < 500 && apiError.status !== 429) await save({ importSent: false });
             throw error;
           }
+        } else if (omit !== progress.journalOmitted) {
+          await save({ journalOmitted: omit });
         }
         await save({ imported: true });
       }

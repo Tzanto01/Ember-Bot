@@ -31,6 +31,7 @@ class FakeServer {
   loseImportAnswer = false;
   loseMoodAnswers = 0;
   rateLimitImports = 0;
+  failImports = 0;
   importRejection: string | null = null;
   patches: unknown[] = [];
   private nextMood = 100;
@@ -53,6 +54,10 @@ class FakeServer {
       return call.respond(200, this.me);
     }
     if (route === 'POST /api/me/import') {
+      if (this.failImports > 0) {
+        this.failImports--;
+        return call.fail();
+      }
       if (this.rateLimitImports > 0) {
         this.rateLimitImports--;
         return call.respond(429, { type: 'rate_limited' });
@@ -205,6 +210,8 @@ describe('UpgradeService', () => {
       message: "This account already has habits, so nothing was moved. Your device data is still here.",
     });
     expect((await store.load())?.habits).toHaveLength(1);
+    expect(server.patches).toEqual([]);
+    expect(server.imports).toEqual([]);
     expect(finishUpgrade).not.toHaveBeenCalled();
   });
 
@@ -267,14 +274,16 @@ describe('UpgradeService', () => {
     expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 2, theme: 'tidepool' }]);
   });
 
-  it('does not treat another 409 after a lost answer as an import that went through', async () => {
-    server.loseImportAnswer = true;
+  it('keeps the device data when the account got other habits after a send that never landed', async () => {
+    server.failImports = 1;
     await upgrade.run();
-    server.importRejection = 'The file has more than 10 routines.';
+    server.habitNames = ['Someone else'];
 
     const result = await upgrade.run();
 
-    expect(result).toEqual({ ok: false, reason: 'failed', message: expect.stringContaining('more than 10 routines') });
+    expect(result).toMatchObject({ ok: false, reason: 'conflict' });
+    expect(server.imports).toEqual([]);
+    expect(server.patches).toHaveLength(1);
     expect(await store.exists()).toBe(true);
     expect(finishUpgrade).not.toHaveBeenCalled();
   });
@@ -339,18 +348,36 @@ describe('UpgradeService', () => {
     expect((await upgrade.summary())?.leftOut).toEqual({ notes: 2, lowDays: 1 });
   });
 
-  it('still counts the import as sent after a rate-limited retry', async () => {
-    server.loseImportAnswer = true;
+  it('keeps the import marked as sent after a rate-limited retry, so matching account habits count as imported', async () => {
+    server.failImports = 1;
     await upgrade.run();
     server.rateLimitImports = 1;
-
     const limited = await upgrade.run();
+    server.habitNames = ['Walk'];
+
     const third = await upgrade.run();
 
     expect(limited.ok).toBe(false);
     expect(third.ok).toBe(true);
-    expect(server.imports).toHaveLength(1);
+    expect(server.imports).toEqual([]);
     expect(await store.exists()).toBe(false);
+  });
+
+  it('sends the journal encrypted when a retry picks the private journal after a send that never landed', async () => {
+    server.failImports = 1;
+    await upgrade.run();
+    const firstCalls = mock.all.length;
+
+    const second = await upgrade.run({ privateJournal: secret });
+
+    expect(second.ok).toBe(true);
+    expect(server.imports).toHaveLength(1);
+    expect(server.imports[0]).toMatchObject({ moods: [], day_notes: [] });
+    expect(server.notes.size).toBe(2);
+    for (const call of mock.all.slice(firstCalls)) {
+      const sent = JSON.stringify(call.body ?? null);
+      for (const plain of [noteText, moodLabel, 'Synthetic rest day', 'Synthetic old']) expect(sent).not.toContain(plain);
+    }
   });
 
   it('returns the saved recovery code when a retry without the private journal choice finishes', async () => {
