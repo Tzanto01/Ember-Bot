@@ -161,6 +161,7 @@ public static class ApiApp
 
         var signedIn = api.MapGroup("").RequireAuthorization();
         signedIn.MapMe();
+        signedIn.MapImport();
         signedIn.MapTwoFactor();
         signedIn.MapDiscordUnlink();
         signedIn.MapMerge();

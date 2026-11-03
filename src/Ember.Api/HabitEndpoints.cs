@@ -181,7 +181,7 @@ internal static class HabitEndpoints
         return api;
     }
 
-    private const string FrequencyMessage = "Must be daily, weekly or weekdays.";
+    internal const string FrequencyMessage = "Must be daily, weekly or weekdays.";
 
     private static async Task<IResult> HabitResult(HabitService habits, Guid userId, int id)
         => await habits.GetHabitAsync(userId, id) is { } habit
@@ -247,7 +247,7 @@ internal static class HabitEndpoints
         return channels;
     }
 
-    private static FrequencyType? ParseFrequency(string? value) => value switch
+    internal static FrequencyType? ParseFrequency(string? value) => value switch
     {
         "daily" => FrequencyType.Daily,
         "weekly" => FrequencyType.Weekly,
@@ -259,7 +259,7 @@ internal static class HabitEndpoints
     /// The days for <paramref name="frequency"/>: the parsed <paramref name="values"/> (1–6 distinct names, weekdays habits only),
     /// else <paramref name="current"/> for a weekdays habit. Null for daily and weekly habits.
     /// </summary>
-    private static ScheduleDays? ValidateDays(string?[]? values, FrequencyType? frequency, ScheduleDays? current,
+    internal static ScheduleDays? ValidateDays(string?[]? values, FrequencyType? frequency, ScheduleDays? current,
         Dictionary<string, string[]> errors)
     {
         if (frequency is null) return null;
@@ -279,14 +279,14 @@ internal static class HabitEndpoints
         return null;
     }
 
-    private static int ValidateTimesPerDay(int timesPerDay, FrequencyType? frequency, Dictionary<string, string[]> errors)
+    internal static int ValidateTimesPerDay(int timesPerDay, FrequencyType? frequency, Dictionary<string, string[]> errors)
     {
         if (frequency == FrequencyType.Weekly && timesPerDay != 1) errors["timesPerDay"] = ["Always 1 for weekly habits."];
         else if (timesPerDay is < 1 or > HabitService.MaxTimesPerDay) errors["timesPerDay"] = [$"Must be between 1 and {HabitService.MaxTimesPerDay}."];
         return timesPerDay;
     }
 
-    private static void ValidateWeeklyTarget(int? weeklyTarget, FrequencyType? frequency, Dictionary<string, string[]> errors)
+    internal static void ValidateWeeklyTarget(int? weeklyTarget, FrequencyType? frequency, Dictionary<string, string[]> errors)
     {
         if (weeklyTarget is null) return;
         if (frequency != FrequencyType.Weekly) errors["weeklyTarget"] = ["Only for weekly habits."];

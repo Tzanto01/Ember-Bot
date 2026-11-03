@@ -2,6 +2,7 @@ using Ember.Core.Models;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ember.Core.Services;
 
@@ -17,7 +18,7 @@ public static class ExportBuilder
     /// <summary>
     /// Column header of the CSV export. One row per record, discriminated by <c>record_type</c>. Columns after <c>discord_id</c>:
     /// <c>two_factor_enabled</c> (settings); <c>days</c> (habit weekdays joined with <c>;</c>), <c>times_per_day</c>, <c>routine_id</c> (habit, routine);
-    /// <c>count</c> (log); <c>habit_ids</c> (routine members in order, joined with <c>;</c>); <c>text</c>, <c>mood</c> (day_note);
+    /// <c>count</c> (log); <c>routine_position</c> (habit, its order inside its routine); <c>text</c>, <c>mood</c> (day_note);
     /// <c>mood_id</c>, <c>label</c>, <c>emoji</c>, <c>archived</c> (mood); <c>cipher_version</c>, <c>cipher_iv</c>, <c>cipher_text</c>
     /// (encrypted day_note or mood); <c>version</c>, <c>turning_off</c>, <c>passphrase_salt</c>, <c>passphrase_iterations</c>,
     /// <c>passphrase_iv</c>, <c>passphrase_wrapped</c>, <c>recovery_salt</c>, <c>recovery_iv</c>, <c>recovery_wrapped</c> (journal_key).
@@ -28,13 +29,17 @@ public static class ExportBuilder
         "health_data_consent_at,consent_policy_version,consent_prompted_on," +
         "habit_id,name,frequency,weekly_target,reminder_time,paused_until,paused_from,created_at,next_reminder_utc," +
         "date,completed,guild_id,kind,reminder_channels,endpoint,email,discord_id," +
-        "two_factor_enabled,days,times_per_day,routine_id,count,habit_ids,text,mood,mood_id,label,emoji,archived," +
+        "two_factor_enabled,days,times_per_day,routine_id,count,routine_position,text,mood,mood_id,label,emoji,archived," +
         "cipher_version,cipher_iv,cipher_text,version,turning_off," +
         "passphrase_salt,passphrase_iterations,passphrase_iv,passphrase_wrapped,recovery_salt,recovery_iv,recovery_wrapped";
 
     private static readonly string[] CsvColumns = CsvHeader.Split(',');
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    /// <summary>The version written to <see cref="ExportDocument.FormatVersion"/>; import accepts only this one.</summary>
+    public const int CurrentFormatVersion = 2;
+
+    /// <summary>The JSON options of the export (snake_case), also used to read an import.</summary>
+    public static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
@@ -52,16 +57,16 @@ public static class ExportBuilder
     /// <summary>
     /// One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds any of <c>discord</c>, <c>webpush</c> and <c>mobile</c>.
     /// <c>Days</c> lists the weekdays (<c>mon</c> … <c>sun</c>, Monday first) of a <c>weekdays</c> habit, null otherwise.
+    /// <c>RoutinePosition</c> is the habit's order inside its routine, null when it has none.
     /// </summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
         TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc,
-        List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId);
+        List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId, int? RoutinePosition);
 
-    /// <summary>One routine. <c>HabitIds</c> are its member habits in routine order; timestamps are UTC.</summary>
+    /// <summary>One routine; its members are the habits with its <c>RoutineId</c>. Timestamps are UTC.</summary>
     public sealed record RoutineRecord(
-        int Id, string Name, TimeOnly? ReminderTime, DateTime? NextReminderUtc, List<string> ReminderChannels,
-        DateTime CreatedAt, List<int> HabitIds);
+        int Id, string Name, TimeOnly? ReminderTime, DateTime? NextReminderUtc, List<string> ReminderChannels, DateTime CreatedAt);
 
     /// <summary>A client-side AES-GCM ciphertext as stored (<c>V</c> format version, base64 <c>Iv</c> and <c>Ct</c>).</summary>
     public sealed record EncryptedRecord(int V, string Iv, string Ct);
@@ -100,7 +105,12 @@ public static class ExportBuilder
     public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks,
         AccountRecord? Account = null, List<PushSubscriptionRecord>? PushSubscriptions = null,
         List<RoutineRecord>? Routines = null, List<DayNoteRecord>? DayNotes = null, List<MoodRecord>? Moods = null,
-        JournalKeyRecord? JournalKey = null);
+        JournalKeyRecord? JournalKey = null)
+    {
+        /// <summary>The export format version (<see cref="CurrentFormatVersion"/>), written first.</summary>
+        [JsonPropertyOrder(-1)]
+        public int FormatVersion { get; init; } = CurrentFormatVersion;
+    }
 
     /// <summary>
     /// Builds the export. <see cref="ExportDocument.Account"/> needs <see cref="User.Logins"/> loaded for the Discord ID,
@@ -117,7 +127,8 @@ public static class ExportBuilder
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
                 AsUtc(h.NextReminderUtc), HabitService.ReminderChannelNames(h.ReminderChannels),
-                h.Days is { } days ? ScheduleDayNames.ToNames(days) : null, h.TimesPerDay, h.RoutineId)).ToList(),
+                h.Days is { } days ? ScheduleDayNames.ToNames(days) : null, h.TimesPerDay, h.RoutineId,
+                h.RoutineId is null ? null : h.RoutinePosition)).ToList(),
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture), l.Count))).ToList(),
             user.DayMarks.OrderBy(m => m.Date).ThenBy(m => m.Kind)
@@ -127,8 +138,7 @@ public static class ExportBuilder
                 .Select(p => new PushSubscriptionRecord(p.Endpoint, DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc))).ToList(),
             user.Routines.OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).Select(r => new RoutineRecord(
                 r.Id, r.Name, r.ReminderTime, AsUtc(r.NextReminderUtc), HabitService.ReminderChannelNames(r.ReminderChannels),
-                DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc),
-                habits.Where(h => h.RoutineId == r.Id).OrderBy(h => h.RoutinePosition).ThenBy(h => h.Id).Select(h => h.Id).ToList())).ToList(),
+                DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc))).ToList(),
             user.DayNotes.OrderBy(n => n.Date).Select(n => new DayNoteRecord(
                 n.Date, n.Text, n.Mood, Encrypted(n.CipherVersion, n.CipherIv, n.CipherText))).ToList(),
             user.Moods.OrderBy(m => m.Id).Select(m => new MoodRecord(
@@ -173,7 +183,8 @@ public static class ExportBuilder
                 ("paused_until", Date(h.PausedUntil)), ("paused_from", Date(h.PausedFrom)),
                 ("created_at", Utc(h.CreatedAt)), ("next_reminder_utc", Utc(h.NextReminderUtc)),
                 ("reminder_channels", string.Join(';', h.ReminderChannels)), ("days", string.Join(';', h.Days ?? [])),
-                ("times_per_day", Num(h.TimesPerDay)), ("routine_id", h.RoutineId is { } r ? Num(r) : ""));
+                ("times_per_day", Num(h.TimesPerDay)), ("routine_id", h.RoutineId is { } r ? Num(r) : ""),
+                ("routine_position", h.RoutinePosition is { } p ? Num(p) : ""));
 
         foreach (var l in doc.Logs)
             AppendRow(csv, "log", ("habit_id", Num(l.HabitId)), ("date", Date(l.Date)), ("completed", Bool(l.Completed)),
@@ -188,7 +199,7 @@ public static class ExportBuilder
         foreach (var r in doc.Routines ?? [])
             AppendRow(csv, "routine", ("routine_id", Num(r.Id)), ("name", r.Name), ("reminder_time", Time(r.ReminderTime)),
                 ("next_reminder_utc", Utc(r.NextReminderUtc)), ("reminder_channels", string.Join(';', r.ReminderChannels)),
-                ("created_at", Utc(r.CreatedAt)), ("habit_ids", string.Join(';', r.HabitIds.Select(Num))));
+                ("created_at", Utc(r.CreatedAt)));
 
         foreach (var n in doc.DayNotes ?? [])
             AppendRow(csv, "day_note", [("date", Date(n.Date)), ("text", n.Text ?? ""), ("mood", n.Mood ?? ""), .. Cipher(n.Encrypted)]);

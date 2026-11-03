@@ -19,7 +19,7 @@ internal static class JournalEndpoints
     public const int MaxCipherTextLength = 16384;
     public const int MaxRangeDays = 366;
 
-    private static readonly HashSet<string> BuiltInMoods = ["low", "meh", "okay", "good", "great"];
+    internal static readonly HashSet<string> BuiltInMoods = ["low", "meh", "okay", "good", "great"];
 
     public sealed record EncryptedDto(int? V, string? Iv, string? Ct);
     public sealed record DayNoteRequest(string? Text, string? Mood, EncryptedDto? Encrypted);
@@ -62,8 +62,7 @@ internal static class JournalEndpoints
             string? text = null, mood = null;
             if (request.Encrypted is null)
             {
-                text = request.Text?.Trim() is { Length: > 0 } trimmed ? trimmed : null;
-                if (text?.Length > MaxTextLength) errors["text"] = [$"Must be at most {MaxTextLength} characters."];
+                text = ValidText(request.Text, errors);
                 mood = request.Mood;
                 if (mood is not null && !await IsAllowedMoodAsync(userId, day, mood, habits))
                     errors["mood"] = ["Must be low, meh, okay, good, great or one of your own active moods."];
@@ -201,7 +200,7 @@ internal static class JournalEndpoints
     /// The validated blob of an encrypted write, or null for a plaintext one. Adds an error when the form isn't allowed now:
     /// encrypted needs a key, plaintext (<paramref name="plaintextWrite"/>) is refused while a key exists and isn't turning off.
     /// </summary>
-    private static JournalCipher? WriteForm(EncryptedDto? encrypted, bool plaintextGiven, bool plaintextWrite, JournalKey? key,
+    internal static JournalCipher? WriteForm(EncryptedDto? encrypted, bool plaintextGiven, bool plaintextWrite, JournalKey? key,
         Dictionary<string, string[]> errors)
     {
         if (encrypted is null)
@@ -227,15 +226,29 @@ internal static class JournalEndpoints
     private static async Task<bool> IsAllowedMoodAsync(Guid userId, DateOnly day, string mood, HabitService habits)
     {
         if (BuiltInMoods.Contains(mood)) return true;
-        if (!mood.StartsWith("custom:", StringComparison.Ordinal)
-            || !int.TryParse(mood.AsSpan(7), NumberStyles.None, CultureInfo.InvariantCulture, out var id)
-            || mood != $"custom:{id}")
-            return false;
+        if (!TryParseCustomMood(mood, out var id)) return false;
         if ((await habits.GetDayNoteAsync(userId, day))?.Mood == mood) return true;
         return await habits.GetMoodAsync(userId, id) is { Archived: false, CipherVersion: null };
     }
 
-    private static string? ValidLabel(string? label, Dictionary<string, string[]> errors)
+    /// <summary>The id of a <c>custom:&lt;id&gt;</c> mood key in its canonical form.</summary>
+    internal static bool TryParseCustomMood(string mood, out int id)
+    {
+        id = 0;
+        return mood.StartsWith("custom:", StringComparison.Ordinal)
+            && int.TryParse(mood.AsSpan(7), NumberStyles.None, CultureInfo.InvariantCulture, out id)
+            && mood == $"custom:{id}";
+    }
+
+    /// <summary>The trimmed journal text, null when empty; adds an error when it is too long.</summary>
+    internal static string? ValidText(string? text, Dictionary<string, string[]> errors)
+    {
+        var trimmed = text?.Trim() is { Length: > 0 } t ? t : null;
+        if (trimmed?.Length > MaxTextLength) errors["text"] = [$"Must be at most {MaxTextLength} characters."];
+        return trimmed;
+    }
+
+    internal static string? ValidLabel(string? label, Dictionary<string, string[]> errors)
     {
         var trimmed = label?.Trim();
         if (trimmed is { Length: >= 1 and <= MaxLabelLength }) return trimmed;
@@ -243,7 +256,7 @@ internal static class JournalEndpoints
         return null;
     }
 
-    private static string? ValidEmoji(string? emoji, Dictionary<string, string[]> errors)
+    internal static string? ValidEmoji(string? emoji, Dictionary<string, string[]> errors)
     {
         if (emoji is null || IsEmoji(emoji)) return emoji;
         errors["emoji"] = ["Must be a single emoji."];
@@ -258,7 +271,7 @@ internal static class JournalEndpoints
             && Rune.GetUnicodeCategory(first) is UnicodeCategory.OtherSymbol or UnicodeCategory.ModifierSymbol;
     }
 
-    private static JournalKey? ValidKey(JournalKeyRequest request, Dictionary<string, string[]> errors)
+    internal static JournalKey? ValidKey(JournalKeyRequest request, Dictionary<string, string[]> errors)
     {
         var passphrase = request.Passphrase;
         var recovery = request.Recovery;

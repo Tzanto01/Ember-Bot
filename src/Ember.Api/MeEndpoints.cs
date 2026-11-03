@@ -35,10 +35,7 @@ internal static class MeEndpoints
             TimeZoneInfo? zone = null;
             if (patch.Timezone is not null && (!TimeZoneInfo.TryFindSystemTimeZoneById(patch.Timezone, out zone) || !zone.HasIanaId))
                 errors["timezone"] = ["Unknown IANA timezone."];
-            if (patch.GraceDaysPerWeek is < 0 or > 3)
-                errors["graceDaysPerWeek"] = ["Must be between 0 and 3."];
-            if (patch.Theme is not null && !User.Themes.Contains(patch.Theme))
-                errors["theme"] = ["Unknown theme."];
+            ValidateGraceAndTheme(patch.GraceDaysPerWeek, patch.Theme, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
             var userId = principal.UserId();
@@ -106,6 +103,14 @@ internal static class MeEndpoints
         });
 
         return api;
+    }
+
+    internal static void ValidateGraceAndTheme(int? graceDaysPerWeek, string? theme, Dictionary<string, string[]> errors)
+    {
+        if (graceDaysPerWeek is < 0 or > 3)
+            errors["graceDaysPerWeek"] = ["Must be between 0 and 3."];
+        if (theme is not null && !User.Themes.Contains(theme))
+            errors["theme"] = ["Unknown theme."];
     }
 
     private static async Task<MeDto?> LoadMe(ClaimsPrincipal principal, UserManager<User> users, HabitService habits, TimeProvider time)

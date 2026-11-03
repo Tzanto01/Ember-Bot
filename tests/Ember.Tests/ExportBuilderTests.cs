@@ -162,14 +162,15 @@ public class ExportBuilderTests
         doc.Settings.TwoFactorEnabled.Should().BeTrue();
         var read = doc.Habits.Single(h => h.Id == 10);
         read.Days.Should().Equal("mon", "wed", "sun");
-        (read.TimesPerDay, read.RoutineId, read.Frequency).Should().Be((3, 7, "weekdays"));
-        doc.Habits.Single(h => h.Id == 11).Days.Should().BeNull();
+        (read.TimesPerDay, read.RoutineId, read.RoutinePosition, read.Frequency).Should().Be((3, 7, 1, "weekdays"));
+        var stretch = doc.Habits.Single(h => h.Id == 11);
+        (stretch.Days, stretch.RoutinePosition).Should().Be((null, 0));
         doc.Logs.Single(l => l.HabitId == 10 && l.GuildId != null).Count.Should().Be(2);
 
         var routine = doc.Routines.Should().ContainSingle().Subject;
         routine.Should().BeEquivalentTo(new ExportBuilder.RoutineRecord(7, "Morning", new TimeOnly(7, 30),
             new DateTime(2025, 6, 19, 5, 30, 0, DateTimeKind.Utc), ["webpush", "mobile"],
-            new DateTime(2025, 6, 1, 8, 0, 0, DateTimeKind.Utc), [11, 10]), o => o.WithStrictOrdering());
+            new DateTime(2025, 6, 1, 8, 0, 0, DateTimeKind.Utc)), o => o.WithStrictOrdering());
 
         doc.DayNotes.Should().BeEquivalentTo(new[]
         {
@@ -184,6 +185,7 @@ public class ExportBuilderTests
         }, o => o.WithStrictOrdering());
         doc.JournalKey.Should().BeEquivalentTo(new ExportBuilder.JournalKeyRecord(3, true,
             new ExportBuilder.PassphraseWrapRecord("cHM=", 600000, "cGl2", "cHc="), new ExportBuilder.RecoveryWrapRecord("cnM=", "cml2", "cnc=")));
+        json.Should().StartWith("{\n  \"format_version\": 2,").And.NotContain("habit_ids");
         json.Should().Contain("\"journal_key\"").And.Contain("\"turning_off\"").And.Contain("\"ct\"").And.Contain("\"times_per_day\"");
     }
 
@@ -194,7 +196,31 @@ public class ExportBuilderTests
 
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("journal_key").ValueKind.Should().Be(JsonValueKind.Null);
+        doc.RootElement.GetProperty("habits")[0].GetProperty("routine_position").ValueKind.Should().Be(JsonValueKind.Null);
         doc.RootElement.GetProperty("routines").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public void Json_UsesTheFormatV2Names()
+    {
+        using var doc = JsonDocument.Parse(ExportBuilder.BuildJson(UserWithV17Data()));
+        var root = doc.RootElement;
+        static IEnumerable<string> Names(JsonElement e) => e.EnumerateObject().Select(p => p.Name);
+        JsonElement First(string section, Func<JsonElement, bool>? where = null)
+            => root.GetProperty(section).EnumerateArray().First(where ?? (_ => true));
+
+        Names(root).First().Should().Be("format_version");
+        Names(First("habits")).Should().Contain(["id", "days", "times_per_day", "routine_id", "routine_position"]).And.NotContain("habit_ids");
+        Names(First("logs")).Should().Contain(["habit_id", "date", "completed", "count"]);
+        Names(First("routines")).Should().Contain(["id", "name", "reminder_time", "reminder_channels"]).And.NotContain("habit_ids");
+        Names(First("moods", m => m.GetProperty("label").ValueKind == JsonValueKind.String)).Should().Contain(["id", "label", "emoji", "archived"]);
+        var encryptedMood = First("moods", m => m.GetProperty("encrypted").ValueKind == JsonValueKind.Object);
+        Names(encryptedMood).Should().Contain(["id", "encrypted", "archived"]);
+        Names(encryptedMood.GetProperty("encrypted")).Should().Equal("v", "iv", "ct");
+        Names(First("day_notes")).Should().Contain(["date", "text", "mood", "encrypted"]);
+        var key = root.GetProperty("journal_key");
+        Names(key.GetProperty("passphrase")).Should().Equal("salt", "iterations", "iv", "wrapped");
+        Names(key.GetProperty("recovery")).Should().Equal("salt", "iv", "wrapped");
     }
 
     [Fact]
@@ -207,10 +233,10 @@ public class ExportBuilderTests
 
         rows.Should().ContainSingle(r => r["record_type"] == "settings" && r["two_factor_enabled"] == "true");
         rows.Should().ContainSingle(r => r["record_type"] == "habit" && r["habit_id"] == "10"
-            && r["days"] == "mon;wed;sun" && r["times_per_day"] == "3" && r["routine_id"] == "7");
+            && r["days"] == "mon;wed;sun" && r["times_per_day"] == "3" && r["routine_id"] == "7" && r["routine_position"] == "1");
         rows.Should().ContainSingle(r => r["record_type"] == "log" && r["guild_id"] == "123456789012345678" && r["count"] == "2");
         rows.Should().ContainSingle(r => r["record_type"] == "routine" && r["routine_id"] == "7" && r["name"] == "Morning"
-            && r["reminder_time"] == "07:30" && r["reminder_channels"] == "webpush;mobile" && r["habit_ids"] == "11;10"
+            && r["reminder_time"] == "07:30" && r["reminder_channels"] == "webpush;mobile" && r["routine_position"] == ""
             && r["created_at"] == "2025-06-01T08:00:00Z");
         rows.Should().ContainSingle(r => r["record_type"] == "day_note" && r["date"] == "2025-06-18"
             && r["text"] == "" && r["cipher_version"] == "1" && r["cipher_iv"] == "aXY=" && r["cipher_text"] == "Y3Q=");
