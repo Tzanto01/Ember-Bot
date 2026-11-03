@@ -55,6 +55,84 @@ describe('LoginPage', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
   });
 
+  async function reachCodeStep() {
+    renderPage('/login', LoginPage, '/login');
+    await signIn('a long passphrase');
+    const first = await mock.next('POST', '/api/auth/login?useCookies=true');
+    expect(first.body).toEqual({ email: 'a@example.test', password: 'a long passphrase' });
+    first.respond(401, { status: 401, title: 'Unauthorized', detail: 'RequiresTwoFactor' });
+    return screen.findByLabelText('Authenticator code');
+  }
+
+  it('asks for the authenticator code after RequiresTwoFactor and repeats the login with it', async () => {
+    const user = userEvent.setup();
+    const code = await reachCodeStep();
+
+    expect(code).toHaveAttribute('inputmode', 'numeric');
+    await user.type(code, '123 456');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    const second = await mock.next('POST', '/api/auth/login?useCookies=true');
+    expect(second.body).toEqual({
+      email: 'a@example.test',
+      password: 'a long passphrase',
+      twoFactorCode: '123456',
+    });
+    second.respond(200);
+    (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+    (await mock.next('GET', '/api/me')).respond(200, me);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('/today'),
+    );
+  });
+
+  it('shows a turned-down code as a field error on the code step', async () => {
+    const user = userEvent.setup();
+    await user.type(await reachCodeStep(), '000000');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    (await mock.next('POST', '/api/auth/login?useCookies=true')).respond(401, {
+      status: 401,
+      detail: 'Failed',
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Authenticator code')).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(screen.getByText(/That code didn't work/)).toBeInTheDocument();
+  });
+
+  it('sends a recovery code instead when the user switches to it', async () => {
+    const user = userEvent.setup();
+    await reachCodeStep();
+
+    await user.click(screen.getByRole('button', { name: 'Use a recovery code instead' }));
+    await user.type(screen.getByLabelText('Recovery code'), 'rc1-synthetic');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    const second = await mock.next('POST', '/api/auth/login?useCookies=true');
+    expect(second.body).toEqual({
+      email: 'a@example.test',
+      password: 'a long passphrase',
+      twoFactorRecoveryCode: 'rc1-synthetic',
+    });
+  });
+
+  it('finishes a Discord sign-in on /login?step=2fa through the Discord 2FA endpoint', async () => {
+    const user = userEvent.setup();
+    const router = renderPage('/login', LoginPage, '/login?step=2fa');
+
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    await user.type(screen.getByLabelText('Authenticator code'), '246810');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    const finish = await mock.next('POST', '/api/auth/discord/2fa');
+    expect(finish.body).toEqual({ code: '246810' });
+    finish.respond(204);
+    (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+    (await mock.next('GET', '/api/me')).respond(200, me);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+  });
+
   it('announces a deleted account as a status', () => {
     renderPage('/login', LoginPage, '/login?reason=deleted');
 

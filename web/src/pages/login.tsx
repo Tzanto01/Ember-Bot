@@ -1,10 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { email as emailRule, required, useField, validateAll } from '@/components/auth/use-field';
-import { FormField } from '@/components/form-field';
+import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
+import { CodeInput, cleanCode, codeRule, recoveryRule, wrongCodeText } from '@/components/settings/two-factor-code';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input, PasswordInput } from '@/components/ui/input';
@@ -14,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { env } from '@/lib/env';
 import { openOnWeb } from '@/lib/native/browser';
 import { queryString } from '@/lib/navigation';
-import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
+import { asApiError, type FriendlyProblem, problemToMessage, requiresTwoFactor } from '@/lib/problem';
 import { safeReturnUrl } from '@/lib/return-url';
 import { api, auth } from '@/lib/services';
 
@@ -24,26 +26,146 @@ interface Credentials {
   staySignedIn: boolean;
 }
 
-/** `/login`: email and password sign-in, Discord sign-in (web) or the "Open Ember on the web" hand-off (native). */
+type SecondFactor = { code: string } | { recoveryCode: string };
+
+/**
+ * The second sign-in step: an authenticator code, or a recovery code instead. A 400 or 401 answer is a wrong code
+ * and shows as a field error.
+ */
+function TwoFactorStep({
+  onSubmit,
+  onBack,
+  backLabel,
+}: {
+  onSubmit: (secret: SecondFactor) => Promise<unknown>;
+  onBack: () => void;
+  backLabel: string;
+}) {
+  const form = useRef<HTMLFormElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const [useRecovery, setUseRecovery] = useState(false);
+  const code = useField(codeRule);
+  const recovery = useField(recoveryRule);
+  const [busy, setBusy] = useState(false);
+  const [wrong, setWrong] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const field = useRecovery ? recovery : code;
+
+  useEffect(() => input.current?.focus(), [useRecovery]);
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (busy || !validateAll(form.current, [field])) return;
+    setBusy(true);
+    setWrong(false);
+    setProblem(null);
+    try {
+      await onSubmit(useRecovery ? { recoveryCode: recovery.value.trim() } : { code: cleanCode(code.value) });
+      return;
+    } catch (error) {
+      const apiError = asApiError(error);
+      if (apiError.status === 400 || apiError.status === 401) {
+        flushSync(() => setWrong(true));
+        focusFirstInvalid(form.current);
+      } else if (!apiError.handled) {
+        setProblem(problemToMessage(apiError, 'login').message);
+      }
+    }
+    setBusy(false);
+  }
+
+  function toggle(): void {
+    setUseRecovery((value) => !value);
+    setWrong(false);
+    setProblem(null);
+  }
+
+  const error =
+    field.error ??
+    (wrong ? (useRecovery ? "That recovery code didn't work. Check it and try again." : wrongCodeText) : null);
+  return (
+    <>
+      <PageHeader
+        title="Two-step sign-in"
+        lede={
+          useRecovery
+            ? 'Enter one of your recovery codes. Each one works once.'
+            : 'Enter the 6-digit code from your authenticator app.'
+        }
+      />
+      <form ref={form} noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+        {useRecovery ? (
+          <FormField key="recovery" label="Recovery code" error={error}>
+            {(control) => (
+              <Input
+                {...control}
+                {...recovery.input}
+                ref={input}
+                type="text"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                className="font-mono"
+              />
+            )}
+          </FormField>
+        ) : (
+          <FormField key="code" label="Authenticator code" error={error}>
+            {(control) => <CodeInput ref={input} field={code} control={control} />}
+          </FormField>
+        )}
+        <div>
+          <Button type="button" variant="link" className="px-0" onClick={toggle}>
+            {useRecovery ? 'Use my authenticator app instead' : 'Use a recovery code instead'}
+          </Button>
+        </div>
+        {problem && (
+          <Notice tone="notice">
+            <p>{problem}</p>
+          </Notice>
+        )}
+        <BusyButton type="submit" block busy={busy} busyLabel="Signing in…">
+          Sign in
+        </BusyButton>
+        <Button type="button" variant="secondary" block onClick={onBack}>
+          {backLabel}
+        </Button>
+      </form>
+    </>
+  );
+}
+
+/**
+ * `/login`: email and password sign-in, Discord sign-in (web) or the "Open Ember on the web" hand-off (native).
+ * After a `RequiresTwoFactor` answer it asks for the second factor on the same page, keeping the email and password
+ * in memory only for that step; `/login?step=2fa` is that step for a Discord sign-in.
+ */
 export default function LoginPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const returnUrl = safeReturnUrl(params.get('returnUrl'));
   const reason = params.get('reason');
   const discordFailed = params.get('discord') === 'error';
+  const discordStep = params.get('step') === '2fa';
 
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const password = useField(required);
   const [staySignedIn, setStaySignedIn] = useState(true);
   const [problem, setProblem] = useState<FriendlyProblem | null>(null);
+  const [pending, setPending] = useState<Credentials | null>(null);
+
+  function signedIn(): void {
+    void navigate(auth.needsConsent() ? `/consent?${queryString({ returnUrl })}` : returnUrl);
+  }
 
   const login = useMutation({
     mutationFn: (body: Credentials) => auth.login(body.email, body.password, body.staySignedIn),
-    onSuccess: () => {
-      void navigate(auth.needsConsent() ? `/consent?${queryString({ returnUrl })}` : returnUrl);
+    onSuccess: signedIn,
+    onError: (error, body) => {
+      if (requiresTwoFactor(error)) setPending(body);
+      else setProblem(problemToMessage(asApiError(error), 'login'));
     },
-    onError: (error) => setProblem(problemToMessage(asApiError(error), 'login')),
   });
 
   const resend = useMutation({
@@ -58,6 +180,28 @@ export default function LoginPage() {
     setProblem(null);
     resend.reset();
     login.mutate({ email: email.value.trim(), password: password.value, staySignedIn });
+  }
+
+  async function secondFactor(secret: SecondFactor): Promise<void> {
+    if (pending) {
+      await auth.login(pending.email, pending.password, pending.staySignedIn, secret);
+    } else {
+      await auth.completeDiscordTwoFactor(secret);
+    }
+    signedIn();
+  }
+
+  if (pending || discordStep) {
+    return (
+      <TwoFactorStep
+        onSubmit={secondFactor}
+        onBack={() => {
+          if (pending) setPending(null);
+          else void navigate({ search: '' }, { replace: true });
+        }}
+        backLabel={pending ? 'Back' : 'Back to sign-in'}
+      />
+    );
   }
 
   return (
