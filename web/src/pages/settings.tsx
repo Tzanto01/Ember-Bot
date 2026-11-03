@@ -4,7 +4,11 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
+import { MoodManager } from '@/components/journal/mood-manager';
 import { PageHeader } from '@/components/page-header';
+import { JournalSettings } from '@/components/settings/journal-settings';
+import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
+import { TwoFactorSettings } from '@/components/settings/two-factor-settings';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
@@ -113,8 +117,8 @@ function SettingsCard({
 }
 
 /**
- * `/settings`: timezone, grace days, Discord, reminders, push on this device, appearance, export, sign out and
- * account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
+ * `/settings`: timezone, grace days, Discord, two-step sign-in, private journal and moods, reminders, push on this
+ * device, appearance, export, sign out and account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
  */
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -378,6 +382,9 @@ export default function SettingsPage() {
     { id: 'timezone', title: 'Timezone' },
     { id: 'grace', title: 'Grace days' },
     { id: 'discord', title: 'Discord' },
+    { id: 'two-factor', title: 'Two-step sign-in' },
+    { id: 'journal', title: 'Private journal' },
+    { id: 'moods', title: 'Moods' },
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
@@ -549,6 +556,18 @@ export default function SettingsPage() {
               {outcome('discord')}
             </SettingsCard>
 
+            <SettingsCard id="two-factor" title={title('two-factor')}>
+              <TwoFactorSettings me={me} />
+            </SettingsCard>
+
+            <SettingsCard id="journal" title={title('journal')}>
+              <JournalSettings me={me} />
+            </SettingsCard>
+
+            <SettingsCard id="moods" title={title('moods')}>
+              <MoodManager />
+            </SettingsCard>
+
             {showDm && (
               <SettingsCard id="dm-reminders" title={title('dm-reminders')}>
                 {me.dmReminders.paused && (
@@ -620,6 +639,7 @@ export default function SettingsPage() {
                   Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
                   they arrive even without a connection.
                 </p>
+                <ReminderNamesSetting />
                 {exactAllowed === false && (
                   <>
                     <p className="text-[14px] text-muted-foreground">

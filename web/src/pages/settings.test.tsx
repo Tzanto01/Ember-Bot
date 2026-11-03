@@ -1,10 +1,14 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
+import { env } from '@/lib/env';
+import { reminderNames } from '@/lib/native/reminder-names';
 import { auth } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SettingsPage from './settings';
+
+vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
 
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
 
@@ -28,6 +32,33 @@ describe('SettingsPage', () => {
     auth.clearSession();
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
+    env.native = false;
+    reminderNames.set(false);
+  });
+
+  it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {
+    env.native = true;
+    const user = userEvent.setup();
+    await open();
+
+    const names = screen.getByRole('switch', { name: 'Show habit names in reminders' });
+    expect(names).not.toBeChecked();
+    expect(names).toHaveAccessibleDescription(/lock screen/);
+    await user.click(names);
+
+    expect(reminderNames.get()).toBe(true);
+    expect(localStorage.getItem('ember.reminderNames')).toBe('1');
+    expect(names).toBeChecked();
+  });
+
+  it('lists the two-step sign-in, private journal and moods sections in the side nav', async () => {
+    await open();
+
+    const nav = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(within(nav).getByRole('link', { name: 'Private journal' })).toHaveAttribute('href', '#journal');
+    expect(within(nav).getByRole('link', { name: 'Two-step sign-in' })).toHaveAttribute('href', '#two-factor');
+    expect(document.getElementById('journal')).toHaveAccessibleName('Private journal');
+    expect(screen.getByRole('heading', { name: 'Moods' })).toBeInTheDocument();
   });
 
   it('sends quick successive grace changes one PATCH at a time, in order', async () => {
