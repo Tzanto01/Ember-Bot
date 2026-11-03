@@ -13,7 +13,7 @@ import {
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import type { Credentials } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
@@ -102,7 +102,7 @@ export default function SignupPage() {
           )}
         </FormField>
         <FormField label="Password" hint={passwordHint} error={password.error ?? problem?.fields['password'] ?? null}>
-          {(field) => <Input {...field} {...password.input} type="password" autoComplete="new-password" />}
+          {(field) => <PasswordInput {...field} {...password.input} autoComplete="new-password" />}
         </FormField>
 
         {problem && <Notice tone="notice">{problem.message}</Notice>}
