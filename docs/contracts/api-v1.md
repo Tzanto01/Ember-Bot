@@ -290,3 +290,16 @@ Client only (team `local`), except the import endpoint below.
 - The rules (day states including `offday` and `partial`, streaks, grace days, weekly progress, routines, day stats) run in the client (`web/src/lib/local/`), matching Core. Parity tests use shared fixtures in `docs/contracts/fixtures/rules-v1.json` (produced by team `backend` from Core: inputs plus expected states and stats).
 - The app warns clearly, once and in settings: the data exists only on this device; browsers may delete site data (Safari after 7 days without a visit; installing the PWA helps); uninstalling the app deletes it. It offers "Export backup" and "Import backup" (the server's JSON export format, v1.7) and a gentle backup reminder every 30 days.
 - "Create an account and keep my data": after sign-up, the client uploads the device data with `POST /api/me/import` (body: the JSON export format; only into an account with no habits, else 409 `conflict`; 25-habit limit applies; needs consent; validated like the individual endpoints; all or nothing). The local copy is removed after a successful import. With the private journal chosen at sign-up, the journal is encrypted before upload.
+
+### Export format v2 (JSON export, backup files and `POST /api/me/import`)
+
+snake_case like today, plus `"format_version": 2` at the top level (an export without it is the old format; import accepts only 2). Existing sections (`settings`, `habits`, `logs`, `day_marks`, `account`, push data) keep their names. Additions:
+
+- `habits[]`: `days` (`["mon",…]` or null), `times_per_day`, `routine_id` (or null), `routine_position` (or null).
+- `logs[]`: `count`.
+- `routines`: `[{ id, name, reminder_time, reminder_channels }]` (membership lives on the habits).
+- `moods`: `[{ id, label, emoji, archived }]` or, when encrypted, `[{ id, encrypted: { v, iv, ct }, archived }]`.
+- `day_notes`: `[{ date, text, mood }]` or, when encrypted, `[{ date, encrypted: { v, iv, ct } }]`.
+- `journal_key`: `{ passphrase: { salt, iterations, iv, wrapped }, recovery: { salt, iv, wrapped } }` or null.
+- Ids in a file are only references inside that file; import assigns new ids and remaps `routine_id`, log `habit_id` and `custom:<id>` moods inside plaintext notes. `account`, push subscriptions, DM state and consent fields are ignored on import.
+- The CSV export gets the matching columns and record types; import is JSON only.
