@@ -1,4 +1,4 @@
-import type { DayNoteBody, DayState, Habit } from './models';
+import type { DayNoteBody, DayState, Habit, Routine } from './models';
 
 /**
  * One day edit made while offline: `completed` null means "clear the day"; `count` (v1.6) sends the absolute
@@ -43,6 +43,8 @@ export interface CachedHabits {
   userId: string;
   timeZone: string;
   habits: Habit[];
+  /** The user's routines (v1.6); missing in entries cached before. */
+  routines?: Routine[];
 }
 
 /** The habit with `edit` applied to its `today` entry when the edit is for that day (optimistic view). */

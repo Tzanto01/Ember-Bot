@@ -2,4 +2,9 @@
 <resources>
     <color name="ember_background">#FBF5EC</color>
     <bool name="ember_light_bars">true</bool>
+    <color name="ember_widget_background">#FFFCF8</color>
+    <color name="ember_widget_text">#2C2019</color>
+    <color name="ember_widget_muted">#665448</color>
+    <color name="ember_widget_accent">#944E12</color>
+    <color name="ember_widget_border">#E7DCD0</color>
 </resources>
