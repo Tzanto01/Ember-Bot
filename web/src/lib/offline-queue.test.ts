@@ -84,7 +84,7 @@ describe('OfflineQueue', () => {
     expect(run.sent).toHaveLength(2);
   });
 
-  it('drops a journal edit refused with 400 but keeps a day edit refused with 400', async () => {
+  it('drops a journal edit and a day edit refused with 400 validation, so nothing blocks the queue', async () => {
     await queue.add({ kind: 'note', date: '2026-11-01', body: { text: 'Queued before the journal went private.' } });
     await queue.add(edit(2));
     const refused = async (_e: QueueEdit) => {
@@ -93,8 +93,8 @@ describe('OfflineQueue', () => {
 
     const result = await queue.replay('user-a', refused);
 
-    expect(result).toEqual({ sent: 0, dropped: 1, remaining: 1 });
-    expect(queue.pending.get()).toBe(1);
+    expect(result).toEqual({ sent: 0, dropped: 2, remaining: 0 });
+    expect(queue.pending.get()).toBe(0);
     expect(queue.droppedNotes.get()).toEqual([
       { date: '2026-11-01', text: 'Queued before the journal went private.' },
     ]);
@@ -138,6 +138,7 @@ describe('OfflineQueue', () => {
     ['500', new ApiError(500, null)],
     ['network failure', new ApiError(0, null)],
     ['422 with another type', new ApiError(422, { type: 'out_of_range' })],
+    ['400 without the validation type', new ApiError(400, null)],
   ])('keeps the edit and stops the replay on %s', async (_name, error) => {
     for (const id of [1, 2, 3]) await queue.add(edit(id));
     const run = recorder({ 2: error });

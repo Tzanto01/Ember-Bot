@@ -52,9 +52,10 @@ describe('TwoFactorSettings', () => {
     await startSetup(fetch);
 
     await user.type(await screen.findByLabelText('Code from your authenticator app'), '123 456');
+    await user.type(screen.getByLabelText('Your password'), 'synthetic-login-pw');
     await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
     const enable = await fetch.next('POST', '/api/me/2fa/enable');
-    expect(enable.body).toEqual({ code: '123456' });
+    expect(enable.body).toEqual({ code: '123456', password: 'synthetic-login-pw' });
     enable.respond(200, { recoveryCodes: codes });
 
     const list = await screen.findByRole('list', { name: 'Recovery codes' });
@@ -72,6 +73,7 @@ describe('TwoFactorSettings', () => {
     await startSetup(fetch);
 
     await user.type(await screen.findByLabelText('Code from your authenticator app'), '000000');
+    await user.type(screen.getByLabelText('Your password'), 'synthetic-login-pw');
     await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
     (await fetch.next('POST', '/api/me/2fa/enable')).respond(400, {
       status: 400,
@@ -85,6 +87,50 @@ describe('TwoFactorSettings', () => {
       ),
     );
     expect(screen.getByText(/That code didn't work/)).toBeInTheDocument();
+  });
+
+  it('asks for the login password before enabling and shows a turned-down one on that field', async () => {
+    const user = userEvent.setup();
+    const fetch = await open({ enabled: false, recoveryCodesLeft: 0 });
+    await startSetup(fetch);
+
+    await user.type(await screen.findByLabelText('Code from your authenticator app'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
+    expect(screen.getByLabelText('Your password')).toHaveAttribute('aria-invalid', 'true');
+    expect(fetch.pending.some((c) => c.url === '/api/me/2fa/enable')).toBe(false);
+
+    await user.type(screen.getByLabelText('Your password'), 'wrong-synthetic-pw');
+    await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
+    (await fetch.next('POST', '/api/me/2fa/enable')).respond(400, {
+      status: 400,
+      errors: { password: ['The password is not correct.'] },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Your password')).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(screen.getByText(/That password doesn't match/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Code from your authenticator app')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  it('enables with the code alone for an account without a password', async () => {
+    const user = userEvent.setup();
+    const fetch = await open(
+      { enabled: false, recoveryCodesLeft: 0 },
+      { ...me, hasPassword: false, email: null },
+    );
+    await startSetup(fetch);
+
+    expect(screen.queryByLabelText('Your password')).toBeNull();
+    await user.type(await screen.findByLabelText('Code from your authenticator app'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
+    const enable = await fetch.next('POST', '/api/me/2fa/enable');
+    expect(enable.body).toEqual({ code: '123456' });
+    enable.respond(200, { recoveryCodes: codes });
+    expect(await screen.findByRole('list', { name: 'Recovery codes' })).toBeInTheDocument();
   });
 
   it('turns off with a current code for an account without a password', async () => {

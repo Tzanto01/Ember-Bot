@@ -10,13 +10,14 @@ export interface ReplayResult {
 }
 
 /**
- * Contract "Offline day edits": a failed replay is dropped only on 404 or 422 `before_habit_start` /
- * `in_future`; everything else (consent_required, 401, 429, 5xx, network) stays queued for a later try.
- * A journal edit refused with 400 goes to {@link OfflineQueue.resealNote} instead.
+ * Contract "Offline day edits": a failed replay is dropped only on 404, 422 `before_habit_start` /
+ * `in_future` or 400 `validation`; everything else (consent_required, 401, 429, 5xx, network) stays queued for a
+ * later try. A journal edit refused with 400 goes to {@link OfflineQueue.resealNote} instead.
  */
 export function shouldDrop(error: ApiError): boolean {
   return (
     error.status === 404 ||
+    (error.status === 400 && error.type === 'validation') ||
     (error.status === 422 && (error.type === 'before_habit_start' || error.type === 'in_future'))
   );
 }
