@@ -13,7 +13,7 @@ import { JournalLockedError } from '@/lib/journal/types';
 import { formatDate } from '@/lib/local-date';
 import type { DayNote, LocalDateString, MoodKey } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
-import { auth } from '@/lib/services';
+import { auth, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useJournal } from './journal-context';
@@ -80,6 +80,12 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   const [problem, setProblem] = useState<string | null>(null);
   const [tooLong, setTooLong] = useState(false);
   const [busy, setBusy] = useState(false);
+  const pending = useStore(offlineQueue.pending);
+  const [seenPending, setSeenPending] = useState(pending);
+  if (pending !== seenPending) {
+    setSeenPending(pending);
+    if (pending === 0 && status === 'queued') setStatus('saved');
+  }
   if (forDate !== date) {
     setForDate(date);
     setDraft(null);
