@@ -145,9 +145,6 @@ public partial class HabitService
     public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays)
         => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), graceDays);
 
-    public async Task SetLeaderboardOptInAsync(ulong discordUserId, bool optIn)
-        => await SetLeaderboardOptInAsync(optIn ? await ResolveOrCreateDiscordUserAsync(discordUserId) : await FindDiscordUserAsync(discordUserId), optIn);
-
     public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
         => await GetUserTzAsync(await FindDiscordUserAsync(discordUserId));
 

@@ -8,7 +8,7 @@ namespace Ember.Api;
 /// <summary>Confirming or cancelling the merge of a bot-only account found while linking Discord.</summary>
 internal static class MergeEndpoints
 {
-    public sealed record KeptDto(string Timezone, int GraceDaysPerWeek, bool LeaderboardOptIn);
+    public sealed record KeptDto(string Timezone, int GraceDaysPerWeek);
     public sealed record MergePreviewDto(int Habits, int Logs, int DayMarks, IReadOnlyList<string> HabitNames, KeptDto Kept);
 
     public static RouteGroupBuilder MapMerge(this RouteGroupBuilder api)
@@ -23,7 +23,7 @@ internal static class MergeEndpoints
                 return Problems.NotFound();
 
             return Results.Ok(new MergePreviewDto(preview.Habits, preview.Logs, preview.DayMarks, preview.HabitNames,
-                new KeptDto(user.Timezone, user.GraceDaysPerWeek, user.LeaderboardOptIn)));
+                new KeptDto(user.Timezone, user.GraceDaysPerWeek)));
         });
 
         api.MapPost("/account/merge", async (HttpContext http, UserManager<User> users, SignInManager<User> signIn,

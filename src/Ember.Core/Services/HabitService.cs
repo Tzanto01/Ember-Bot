@@ -24,7 +24,7 @@ public partial class HabitService
 
     public HabitService(EmberDbContext db, TimeProvider time)
     {
-        _db   = db;
+        _db = db;
         _time = time;
     }
 
@@ -342,6 +342,11 @@ public partial class HabitService
         => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value
             && (habit.PausedFrom is null || date >= habit.PausedFrom.Value);
 
+    /// <summary>Returns whether the habit is scheduled on the given date: always, unless it is a <see cref="FrequencyType.Weekdays"/> habit and the date's weekday isn't in <see cref="Habit.Days"/>.</summary>
+    public static bool IsScheduledOn(Habit habit, DateOnly date)
+        => habit.FrequencyType != FrequencyType.Weekdays
+            || (habit.Days.GetValueOrDefault() & (ScheduleDays)(1 << (((int)date.DayOfWeek + 6) % 7))) != 0;
+
     private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed, IReadOnlySet<DateOnly>? lowDays)
         => IsPausedOn(habit, date) || lowDays?.Contains(date) == true
             || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
@@ -429,7 +434,7 @@ public partial class HabitService
         if (habit is null) return null;
 
         habit.FrequencyType = type;
-        habit.WeeklyTarget  = type == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null;
+        habit.WeeklyTarget = type == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null;
         await _db.SaveChangesAsync();
         return habit;
     }
@@ -598,13 +603,6 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.GraceDaysPerWeek, graceDays));
     }
 
-    public async Task SetLeaderboardOptInAsync(Guid userId, bool optIn)
-    {
-        await _db.Users
-            .Where(u => u.Id == userId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LeaderboardOptIn, optIn));
-    }
-
     public async Task SetThemeAsync(Guid userId, string theme)
     {
         await _db.Users
@@ -612,32 +610,6 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Theme, theme));
     }
 
-    /// <summary>
-    /// Returns the top N opted-in users in a guild by completed check-ins over the
-    /// rolling last 7 days. Users who have not opted in are never included.
-    /// </summary>
-    public async Task<List<(ulong DiscordUserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
-    {
-        var weekAgo = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-6);
-        var guildIdLong = (long)guildId;
-
-        var rows = await _db.HabitLogs
-            .Where(l => l.GuildId == guildIdLong && l.Completed && l.Date >= weekAgo && l.Habit.User.LeaderboardOptIn)
-            .GroupBy(l => l.Habit.UserId)
-            .Select(g => new { UserId = g.Key, CheckIns = g.Count() })
-            .OrderByDescending(x => x.CheckIns)
-            .Take(top)
-            .ToListAsync();
-
-        // A guild check-in always comes from Discord, so every ranked user has a Discord login.
-        var userIds = rows.Select(r => r.UserId).ToList();
-        var discordIds = await _db.UserLogins
-            .Where(l => l.LoginProvider == DiscordLogin.Provider && userIds.Contains(l.UserId))
-            .ToDictionaryAsync(l => l.UserId, l => ulong.Parse(l.ProviderKey, CultureInfo.InvariantCulture));
-
-        return rows.Where(r => discordIds.ContainsKey(r.UserId))
-            .Select(r => (discordIds[r.UserId], r.CheckIns)).ToList();
-    }
 
     public async Task<TimeZoneInfo> GetUserTzAsync(Guid userId)
     {

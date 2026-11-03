@@ -72,7 +72,6 @@ public class PostgresIdentityMigrationTests(PostgresFixture postgres)
         var alice = users.Single(u => u.DiscordId() == Alice);
         alice.Timezone.Should().Be("Europe/Berlin");
         alice.GraceDaysPerWeek.Should().Be(2);
-        alice.LeaderboardOptIn.Should().BeTrue();
         alice.ConsentPolicyVersion.Should().Be("2026-10");
         alice.Habits.Select(h => h.Name).Should().BeEquivalentTo("Stretch", "Read");
         alice.Habits.Single(h => h.Name == "Stretch").Logs.Should().HaveCount(2).And.Contain(l => l.GuildId == 99 && l.Completed);
