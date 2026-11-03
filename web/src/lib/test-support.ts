@@ -110,10 +110,10 @@ export const me: Me = {
   timezoneSet: true,
   localToday: '2026-11-01',
   graceDaysPerWeek: 1,
-  leaderboardOptIn: false,
   theme: null,
   consent: { given: true, policyVersion: '1', currentPolicyVersion: '1' },
   dmReminders: { paused: false },
+  journal: { encrypted: false, plaintextLeft: 0 },
 };
 
 /** Synthetic habit, pending today (2026-11-01). */
@@ -122,12 +122,15 @@ export const habit: Habit = {
   name: 'Walk',
   frequency: 'daily',
   weeklyTarget: null,
+  days: null,
+  timesPerDay: 1,
+  routineId: null,
   reminderTime: null,
   pausedFrom: null,
   pausedUntil: null,
   pausedToday: false,
   createdAt: '2026-01-01T00:00:00Z',
   startDate: '2026-01-01',
-  today: { date: '2026-11-01', state: 'pending', completed: null },
+  today: { date: '2026-11-01', state: 'pending', completed: null, count: 0 },
   stats: { streak: 0, graceUsed: 0, bestStreak: 0, last7: 0, week: null },
 };

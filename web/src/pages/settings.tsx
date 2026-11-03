@@ -9,11 +9,9 @@ import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
 import { Input, PasswordInput } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { NativeSelect } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { saveFile } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
@@ -27,7 +25,6 @@ import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 type Section =
   | 'timezone'
   | 'grace'
-  | 'leaderboard'
   | 'discord'
   | 'dm'
   | 'push'
@@ -116,7 +113,7 @@ function SettingsCard({
 }
 
 /**
- * `/settings`: timezone, grace days, leaderboards, Discord, reminders, push on this device, appearance, export, sign out and
+ * `/settings`: timezone, grace days, Discord, reminders, push on this device, appearance, export, sign out and
  * account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
  */
 export default function SettingsPage() {
@@ -129,7 +126,6 @@ export default function SettingsPage() {
   const busyRef = useRef<Section | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
-  const leaderboardRef = useRef<boolean | null>(null);
   const scrolled = useRef(false);
   const tzForm = useRef<HTMLFormElement>(null);
   const deleteForm = useRef<HTMLFormElement>(null);
@@ -139,7 +135,6 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<(Message & { section: Section }) | null>(null);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<boolean | null>(null);
   const [zone, setZone] = useState('');
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
@@ -236,17 +231,6 @@ export default function SettingsPage() {
       graceRef.current = null;
       setGrace(null);
       if (error) fail('grace', error);
-    });
-  }
-
-  function changeLeaderboard(value: boolean): void {
-    leaderboardRef.current = value;
-    setLeaderboard(value);
-    void patch('leaderboard', { leaderboardOptIn: value }).then((error) => {
-      if (leaderboardRef.current !== value) return;
-      leaderboardRef.current = null;
-      setLeaderboard(null);
-      if (error) fail('leaderboard', error);
     });
   }
 
@@ -393,7 +377,6 @@ export default function SettingsPage() {
   const sections = [
     { id: 'timezone', title: 'Timezone' },
     { id: 'grace', title: 'Grace days' },
-    { id: 'leaderboard', title: 'Leaderboards' },
     { id: 'discord', title: 'Discord' },
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
@@ -408,7 +391,6 @@ export default function SettingsPage() {
   const zoneMessage = (zoneTouched ? zoneError(zone) : null) ?? zoneServerError;
   const suggestZone = !!me && isValidTimeZone(browserZone) && (!me.timezoneSet || me.timezone !== browserZone);
   const graceShown = grace ?? me?.graceDaysPerWeek ?? 0;
-  const leaderboardShown = leaderboard ?? me?.leaderboardOptIn ?? false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -525,21 +507,6 @@ export default function SettingsPage() {
               </FormField>
               {savedStatus('grace')}
               {outcome('grace')}
-            </SettingsCard>
-
-            <SettingsCard id="leaderboard" title={title('leaderboard')}>
-              <p>
-                You're off leaderboards by default, so your progress stays private. Turn this on if you'd like your
-                streaks to show up there. You can switch it off again any time.
-              </p>
-              <div className="flex min-h-[44px] items-center gap-3">
-                <Switch id="leaderboard-opt-in" checked={leaderboardShown} onCheckedChange={changeLeaderboard} />
-                <Label htmlFor="leaderboard-opt-in" className="cursor-pointer font-normal">
-                  Show me on leaderboards
-                </Label>
-              </div>
-              {savedStatus('leaderboard')}
-              {outcome('leaderboard')}
             </SettingsCard>
 
             <SettingsCard id="discord" title={title('discord')}>

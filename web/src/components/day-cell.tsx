@@ -44,6 +44,9 @@ const stateClass: Record<DayState | 'future', string> = {
   paused:
     'border-[1.5px] border-dashed border-paused bg-[repeating-linear-gradient(45deg,color-mix(in_oklch,var(--paused)_22%,transparent)_0_4px,transparent_4px_8px)] text-foreground',
   beforestart: 'text-beforestart',
+  offday: 'text-muted-foreground',
+  partial:
+    'border-2 border-done bg-[linear-gradient(to_top,color-mix(in_oklch,var(--done)_45%,transparent)_50%,transparent_50%)] text-foreground',
   future: 'text-beforestart',
 };
 

@@ -8,13 +8,16 @@ function habit(overrides: Partial<Habit> = {}): Habit {
     name: 'Walk',
     frequency: 'daily',
     weeklyTarget: null,
+    days: null,
+    timesPerDay: 1,
+    routineId: null,
     reminderTime: '20:00',
     pausedFrom: null,
     pausedUntil: null,
     pausedToday: false,
     createdAt: '2026-01-01T00:00:00Z',
     startDate: '2026-01-01',
-    today: { date: '2026-11-02', state: 'pending', completed: null },
+    today: { date: '2026-11-02', state: 'pending', completed: null, count: 0 },
     stats: { streak: 0, graceUsed: 0, bestStreak: 0, last7: 0, week: null },
     reminderChannels: ['mobile'],
     ...overrides,
@@ -102,7 +105,7 @@ describe('planReminders', () => {
   });
 
   it('skips today when it is already done but keeps tomorrow', () => {
-    const done = habit({ today: { date: '2026-11-02', state: 'done', completed: true } });
+    const done = habit({ today: { date: '2026-11-02', state: 'done', completed: true, count: 1 } });
 
     expect(dates([done]).slice(0, 2)).toEqual(['2026-11-03', '2026-11-04']);
   });
@@ -112,7 +115,7 @@ describe('planReminders', () => {
       [
         habit({
           reminderTime: '09:00',
-          today: { date: '2026-10-23', state: 'pending', completed: null },
+          today: { date: '2026-10-23', state: 'pending', completed: null, count: 0 },
         }),
       ],
       'Europe/Berlin',

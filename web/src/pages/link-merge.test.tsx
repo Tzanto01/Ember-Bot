@@ -12,7 +12,7 @@ const preview: MergePreview = {
   logs: 5,
   dayMarks: 1,
   habitNames: ['Stretch', 'Read a page'],
-  kept: { timezone: 'Europe/Berlin', graceDaysPerWeek: 1, leaderboardOptIn: false },
+  kept: { timezone: 'Europe/Berlin', graceDaysPerWeek: 1 },
 };
 
 describe('LinkMergePage', () => {

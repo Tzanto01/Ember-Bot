@@ -52,12 +52,12 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Saved.')).toBeInTheDocument();
   });
 
-  it('waits for the grace PATCH before sending the leaderboard one', async () => {
+  it('waits for the grace PATCH before sending the theme one', async () => {
     const user = userEvent.setup();
     const { fetch } = await open();
 
     await user.selectOptions(screen.getByLabelText('Grace days per week'), '2 days a week');
-    await user.click(screen.getByRole('switch', { name: 'Show me on leaderboards' }));
+    await user.click(screen.getByRole('radio', { name: 'Fieldnotes' }));
 
     const first = await fetch.next('PATCH', '/api/me');
     expect(first.body).toEqual({ graceDaysPerWeek: 2 });
@@ -66,10 +66,11 @@ describe('SettingsPage', () => {
     first.respond(200, { ...me, graceDaysPerWeek: 2 });
 
     const second = await fetch.next('PATCH', '/api/me');
-    expect(second.body).toEqual({ leaderboardOptIn: true });
-    second.respond(200, { ...me, graceDaysPerWeek: 2, leaderboardOptIn: true });
+    expect(second.body).toEqual({ theme: 'fieldnotes' });
+    second.respond(200, { ...me, graceDaysPerWeek: 2, theme: 'fieldnotes' });
 
-    await waitFor(() => expect(screen.getByRole('switch', { name: 'Show me on leaderboards' })).toBeChecked());
+    await waitFor(() => expect(screen.getByLabelText('Grace days per week')).toHaveDisplayValue('2 days a week'));
+    expect(screen.queryByText(/leaderboard/i)).not.toBeInTheDocument();
   });
 
   it('applies a chosen theme at once and saves it to the account', async () => {

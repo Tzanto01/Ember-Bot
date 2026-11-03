@@ -98,7 +98,7 @@ describe('HistoryPage', () => {
     expect(put.body).toEqual({ completed: true });
     put.respond(200, habit);
     await answerMonth(f, 1, '2026-11-01', '2026-11-04', [
-      { date: '2026-11-03', state: 'done', completed: true },
+      { date: '2026-11-03', state: 'done', completed: true, count: 1 },
     ]);
 
     await waitFor(() => expect(day).toHaveAttribute('data-state', 'done'));

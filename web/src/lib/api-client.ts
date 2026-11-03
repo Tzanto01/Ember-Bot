@@ -1,20 +1,33 @@
-import { type DayEdit, withDayEdit } from './device-store';
+import { type DayEdit, type NoteEdit, withDayEdit } from './device-store';
 import type { Http } from './http';
 import type {
   Credentials,
   DayEntry,
+  DayNoteBody,
+  DayStat,
   DeleteAccountRequest,
   ExportFormat,
   Habit,
   HabitPatch,
   HabitTemplate,
+  JournalKey,
+  JournalKeyPut,
   LocalDateString,
   Me,
   MePatch,
   MergePreview,
+  MoodPatchBody,
   NewHabit,
+  NewMoodBody,
+  NewRoutine,
   PushSubscriptionRequest,
   ResetPasswordRequest,
+  Routine,
+  RoutinePatch,
+  StoredDayNote,
+  StoredMood,
+  TwoFactorSetup,
+  TwoFactorStatus,
   WeeklyStats,
 } from './models';
 import type { OfflineQueue } from './offline-queue';
@@ -67,7 +80,11 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/register', { body });
   }
 
-  /** `POST /api/auth/login` with `useCookies` (stay signed in) or `useSessionCookies`. Prefer `AuthService.login()`. */
+  /**
+   * `POST /api/auth/login` with `useCookies` (stay signed in) or `useSessionCookies`. Prefer `AuthService.login()`.
+   * A right password without a needed code answers 401 `RequiresTwoFactor`; send `twoFactorCode` or
+   * `twoFactorRecoveryCode` in `body` then.
+   */
   login(body: Credentials, staySignedIn: boolean): Promise<void> {
     const params = { [staySignedIn ? 'useCookies' : 'useSessionCookies']: 'true' };
     return this.http.request('POST', '/api/auth/login', { body, params });
@@ -103,6 +120,11 @@ export class ApiClient {
   /** URL for a full-page navigation to Discord sign-in. `returnUrl` must already be a safe local path. */
   discordLoginUrl(returnUrl: string): string {
     return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}`;
+  }
+
+  /** `POST /api/auth/discord/2fa`: finishes a Discord sign-in that ended on `/login?step=2fa`. */
+  discordTwoFactor(body: { code?: string; recoveryCode?: string }): Promise<void> {
+    return this.http.request('POST', '/api/auth/discord/2fa', { body });
   }
 
   /** URL for a full-page navigation that links Discord to the signed-in account. */
@@ -200,6 +222,14 @@ export class ApiClient {
     return this.http.request('GET', `/api/habits/${id}/days`, { params: range(from, to) });
   }
 
+  /**
+   * `PUT /api/habits/{id}/days/{date}` `{ count }` (v1.6, absolute, 0 to `timesPerDay`): sets a multi-count day.
+   * Offline, the edit is queued and answered optimistically.
+   */
+  setDayCount(id: number, date: LocalDateString, count: number): Promise<Habit> {
+    return this.dayEdit({ habitId: id, date, completed: null, count });
+  }
+
   /** `PUT /api/habits/{id}/days/{date}`: check-in or backfill. Offline, the edit is queued and answered optimistically. */
   setDay(id: number, date: LocalDateString, completed: boolean): Promise<Habit> {
     return this.dayEdit({ habitId: id, date, completed });
@@ -214,12 +244,14 @@ export class ApiClient {
   async sendDayEdit(edit: DayEdit, replay = false): Promise<Habit> {
     const url = `/api/habits/${edit.habitId}/days/${seg(edit.date)}`;
     const habit =
-      edit.completed === null
-        ? await this.http.request<Habit>('DELETE', url, { replay })
-        : await this.http.request<Habit>('PUT', url, {
-            body: { completed: edit.completed },
-            replay,
-          });
+      edit.count !== undefined
+        ? await this.http.request<Habit>('PUT', url, { body: { count: edit.count }, replay })
+        : edit.completed === null
+          ? await this.http.request<Habit>('DELETE', url, { replay })
+          : await this.http.request<Habit>('PUT', url, {
+              body: { completed: edit.completed },
+              replay,
+            });
     return this.remember(habit);
   }
 
@@ -234,6 +266,122 @@ export class ApiClient {
       if (!unreachable(error) || !known || !(await this.offline.add(edit))) throw error;
       return this.remember(withDayEdit(known, edit));
     }
+  }
+
+  /** `GET /api/routines`. */
+  listRoutines(): Promise<Routine[]> {
+    return this.http.request('GET', '/api/routines');
+  }
+
+  /** `POST /api/routines`: 409 `conflict` at 10 routines; listing a habit moves it from its old routine. */
+  createRoutine(body: NewRoutine): Promise<Routine> {
+    return this.http.request('POST', '/api/routines', { body });
+  }
+
+  /** `PATCH /api/routines/{id}`. */
+  updateRoutine(id: number, patch: RoutinePatch): Promise<Routine> {
+    return this.http.request('PATCH', `/api/routines/${id}`, { body: patch });
+  }
+
+  /** `DELETE /api/routines/{id}`: its habits stay, ungrouped. */
+  deleteRoutine(id: number): Promise<void> {
+    return this.http.request('DELETE', `/api/routines/${id}`);
+  }
+
+  /** `GET /api/day-notes`, oldest first (default and maximum: 366 days). Entries may be encrypted. */
+  listDayNotes(from?: LocalDateString, to?: LocalDateString): Promise<StoredDayNote[]> {
+    return this.http.request('GET', '/api/day-notes', { params: range(from, to) });
+  }
+
+  /**
+   * `PUT /api/day-notes/{date}` (body null: `DELETE`). Offline, the edit is queued and resolves `queued: true`;
+   * pass an already encrypted body while the private journal is on.
+   */
+  async saveDayNote(
+    date: LocalDateString,
+    body: DayNoteBody | null,
+  ): Promise<{ note: StoredDayNote | null; queued: boolean }> {
+    const edit: NoteEdit = { kind: 'note', date, body };
+    if (this.offline.pending.get() > 0 && (await this.offline.add(edit))) return { note: null, queued: true };
+    try {
+      return { note: await this.sendNoteEdit(edit), queued: false };
+    } catch (error) {
+      if (!unreachable(error) || !(await this.offline.add(edit))) throw error;
+      return { note: null, queued: true };
+    }
+  }
+
+  /** Sends one journal edit without the offline fallback; `replay` marks queue replays. */
+  async sendNoteEdit(edit: NoteEdit, replay = false): Promise<StoredDayNote | null> {
+    const url = `/api/day-notes/${seg(edit.date)}`;
+    if (edit.body === null) {
+      await this.http.request('DELETE', url, { replay });
+      return null;
+    }
+    return this.http.request<StoredDayNote>('PUT', url, { body: edit.body, replay });
+  }
+
+  /** `GET /api/moods`: the user's own moods, archived ones included. Moods may be encrypted. */
+  listMoods(): Promise<StoredMood[]> {
+    return this.http.request('GET', '/api/moods');
+  }
+
+  /** `POST /api/moods`: 409 `conflict` at 20 non-archived moods. */
+  createMood(body: NewMoodBody): Promise<StoredMood> {
+    return this.http.request('POST', '/api/moods', { body });
+  }
+
+  /** `PATCH /api/moods/{id}` (archive instead of delete). */
+  updateMood(id: number, patch: MoodPatchBody): Promise<StoredMood> {
+    return this.http.request('PATCH', `/api/moods/${id}`, { body: patch });
+  }
+
+  /** `GET /api/stats/days`, oldest first (default: the 366 days ending today; at most 366). */
+  dayStats(from?: LocalDateString, to?: LocalDateString): Promise<DayStat[]> {
+    return this.http.request('GET', '/api/stats/days', { params: range(from, to) });
+  }
+
+  /** `GET /api/me/journal-key`: 404 while the private journal is off. */
+  getJournalKey(): Promise<JournalKey> {
+    return this.http.request('GET', '/api/me/journal-key');
+  }
+
+  /** `PUT /api/me/journal-key`: create (no `ifVersion`) or replace (409 `conflict` on a version mismatch). */
+  putJournalKey(body: JournalKeyPut): Promise<JournalKey> {
+    return this.http.request('PUT', '/api/me/journal-key', { body });
+  }
+
+  /** `DELETE /api/me/journal-key`: 409 `conflict` while encrypted data remains, unless `discardEncrypted`. */
+  deleteJournalKey(body: { password?: string; discardEncrypted: boolean }): Promise<void> {
+    return this.http.request('DELETE', '/api/me/journal-key', { body });
+  }
+
+  /** `GET /api/me/2fa`. */
+  twoFactorStatus(): Promise<TwoFactorStatus> {
+    return this.http.request('GET', '/api/me/2fa');
+  }
+
+  /** `POST /api/me/2fa/setup`: a new unconfirmed key (replaces an earlier unconfirmed one). */
+  setupTwoFactor(): Promise<TwoFactorSetup> {
+    return this.http.request('POST', '/api/me/2fa/setup');
+  }
+
+  /** `POST /api/me/2fa/enable`: the ten recovery codes, shown once; wrong code → 400 `validation`. */
+  async enableTwoFactor(code: string): Promise<string[]> {
+    return (await this.http.request<{ recoveryCodes: string[] }>('POST', '/api/me/2fa/enable', { body: { code } }))
+      .recoveryCodes;
+  }
+
+  /** `POST /api/me/2fa/disable`: the login password, or for Discord-only accounts a current code. */
+  disableTwoFactor(body: { password?: string; code?: string }): Promise<void> {
+    return this.http.request('POST', '/api/me/2fa/disable', { body });
+  }
+
+  /** `POST /api/me/2fa/recovery-codes`: ten new recovery codes, replacing the old ones. */
+  async regenerateRecoveryCodes(code: string): Promise<string[]> {
+    return (
+      await this.http.request<{ recoveryCodes: string[] }>('POST', '/api/me/2fa/recovery-codes', { body: { code } })
+    ).recoveryCodes;
   }
 
   /** `GET /api/habit-templates`. */

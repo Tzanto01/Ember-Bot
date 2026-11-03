@@ -43,7 +43,7 @@ describe('ApiClient offline day edits', () => {
       const result = api.setDay(1, today, true);
       (await mock.next('PUT', `/api/habits/1/days/${today}`)).fail();
 
-      expect((await result).today).toEqual({ date: today, state: 'done', completed: true });
+      expect((await result).today).toEqual({ date: today, state: 'done', completed: true, count: 1 });
       expect(await device.edits('user-a')).toMatchObject([{ habitId: 1, date: today, completed: true }]);
       expect(queue.pending.get()).toBe(1);
     },
@@ -55,7 +55,7 @@ describe('ApiClient offline day edits', () => {
     const result = api.clearDay(1, today);
     (await mock.next('DELETE', `/api/habits/1/days/${today}`)).fail();
 
-    expect((await result).today).toEqual({ date: today, state: 'pending', completed: null });
+    expect((await result).today).toEqual({ date: today, state: 'pending', completed: null, count: 0 });
     expect(await device.edits('user-a')).toMatchObject([{ habitId: 1, completed: null }]);
   });
 
@@ -103,7 +103,7 @@ describe('ApiClient offline day edits', () => {
 
     const result = await api.clearDay(1, today);
 
-    expect(result.today).toEqual({ date: today, state: 'pending', completed: null });
+    expect(result.today).toEqual({ date: today, state: 'pending', completed: null, count: 0 });
     expect(mock.all.filter((c) => c.method !== 'GET')).toEqual([]);
     expect((await device.edits('user-a')).map((e) => e.date)).toEqual(['2026-10-31', today]);
   });

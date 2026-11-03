@@ -21,6 +21,8 @@ export const dayStateWords: Record<DayState, string> = {
   lowday: 'low day, resting',
   paused: 'paused',
   beforestart: 'before this habit started',
+  offday: 'rest day, nothing planned',
+  partial: 'partly done',
 };
 
 /** Accessible state text for a cell, for example "today, done" or "not yet". */
