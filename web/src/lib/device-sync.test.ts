@@ -146,7 +146,7 @@ describe('DeviceSync', () => {
     const today = { userId: 'u1', habitId: 1, date: '2026-11-01' };
     const twice = { ...habit, timesPerDay: 2, today: { ...habit.today, count: 1, state: 'partial' as const } };
 
-    async function setup() {
+    async function setup(issued = true) {
       (globalThis as unknown as { indexedDB: unknown }).indexedDB = new IDBFactory();
       native.listeners.clear();
       const fetch = mockFetch();
@@ -156,6 +156,7 @@ describe('DeviceSync', () => {
       const api = new ApiClient(http, queue);
       const reminders = new Reminders(api, device);
       vi.spyOn(reminders, 'rebuild').mockResolvedValue();
+      vi.spyOn(reminders, 'wasIssued').mockImplementation((id) => issued && id === 1);
       const auth = new AuthService(api, queue, null, { tokens: new TokenStore(http, memorySecureStore().store), reminders });
       const sync = new DeviceSync(auth, api, queue, reminders);
       auth.setMe(me);
@@ -163,7 +164,7 @@ describe('DeviceSync', () => {
       setNavigator((path) => paths.push(path));
       sync.start();
       await vi.waitFor(() => expect(native.listeners.has('widgetTap')).toBe(true));
-      return { fetch, sync, paths };
+      return { fetch, sync, paths, device };
     }
 
     afterEach(() => setNavigator(null));
@@ -183,6 +184,29 @@ describe('DeviceSync', () => {
 
       await vi.waitFor(() => expect(paths).toEqual(['/today']));
       expect(sync.nativeCheckIn.get()).toEqual({ name: 'Walk' });
+    });
+
+    it('offline, finds the habit in the cache and queues the absolute count', async () => {
+      const { fetch, sync, paths, device } = await setup();
+      await device.saveHabits({ userId: 'u1', timeZone: 'Europe/Berlin', habits: [twice] });
+
+      done(today);
+      (await fetch.next('GET', '/api/habits')).fail();
+      (await fetch.next('PUT', '/api/habits/1/days/2026-11-01')).fail();
+
+      await vi.waitFor(() => expect(paths).toEqual(['/today']));
+      expect(await device.edits('u1')).toMatchObject([{ habitId: 1, date: '2026-11-01', count: 2 }]);
+      expect(sync.nativeCheckIn.get()).toEqual({ name: 'Walk' });
+    });
+
+    it('only opens Today for a "Done" this app never issued (forged by another app)', async () => {
+      const { fetch, sync, paths } = await setup(false);
+
+      done(today);
+
+      await vi.waitFor(() => expect(paths).toEqual(['/today']));
+      expect(fetch.all.filter((call) => call.method === 'PUT')).toEqual([]);
+      expect(sync.nativeCheckIn.get()).toBeNull();
     });
 
     it('checks in a widget row the same way', async () => {
