@@ -3,21 +3,32 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { fakeJournal, renderWithJournal } from '@/components/journal/fake-journal';
 import { type JournalApi, type JournalState, WrongSecretError } from '@/lib/journal/types';
+import { Store } from '@/lib/store';
 import { me } from '@/lib/test-support';
 import { JournalSettings } from './journal-settings';
 
 const recoveryCode = 'ABCD-EFGH-JKMN-PQRS-TVWX-YZ01-2345-6789';
 
-function setup(state: JournalState) {
+function setup(
+  state: JournalState,
+  { turningOff = false, remembered = false, encryptedLeft = 0 } = {},
+) {
   const journal = {
     ...fakeJournal({ state }),
+    turningOff: new Store(turningOff),
+    remembered: new Store(remembered),
     enable: vi.fn<JournalApi['enable']>(),
     unlock: vi.fn<JournalApi['unlock']>(),
     setPassphrase: vi.fn<JournalApi['setPassphrase']>(),
     disable: vi.fn<JournalApi['disable']>(),
   };
   renderWithJournal(
-    <JournalSettings me={{ ...me, journal: { ...me.journal, encrypted: state !== 'off' } }} />,
+    <JournalSettings
+      me={{
+        ...me,
+        journal: { ...me.journal, encrypted: state !== 'off', turningOff, encryptedLeft },
+      }}
+    />,
     journal,
   );
   return { journal, user: userEvent.setup() };
@@ -116,5 +127,42 @@ describe('JournalSettings', () => {
 
     expect(journal.disable).toHaveBeenCalledWith('synthetic-login-1');
     expect(await screen.findByText(/The private journal is off/)).toBeInTheDocument();
+  });
+
+  it('while turning off on a locked device, asks to unlock first, then finishes with the login password', async () => {
+    const { journal, user } = setup('locked', { turningOff: true, encryptedLeft: 3 });
+    journal.unlock.mockImplementation(async () => {
+      journal.state.set('unlocked');
+      return { needsNewPassphrase: false };
+    });
+    journal.disable.mockImplementation(async () => {
+      journal.turningOff.set(false);
+      journal.state.set('off');
+    });
+
+    expect(await screen.findByText(/Unlock it on this device to carry on/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finish turning off' })).toBeNull();
+    await user.type(screen.getByLabelText('Journal passphrase'), 'quiet evening lamp');
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+
+    expect(
+      await screen.findByText('Decrypting your journal: 3 entries and moods to go.'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Finish turning off' }));
+    expect(screen.getByText('Please enter your login password.')).toBeInTheDocument();
+    expect(journal.disable).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText('Your login password'), 'synthetic-login-1');
+    await user.click(screen.getByRole('button', { name: 'Finish turning off' }));
+
+    expect(journal.disable).toHaveBeenCalledWith('synthetic-login-1');
+    expect(await screen.findByText(/The private journal is off/)).toBeInTheDocument();
+  });
+
+  it('change passphrase starts "Remember on this device" from what this device does now', async () => {
+    const { user } = setup('unlocked', { remembered: true });
+
+    await user.click(await screen.findByRole('button', { name: 'Change passphrase' }));
+
+    expect(screen.getByRole('checkbox', { name: 'Remember on this device' })).toBeChecked();
   });
 });

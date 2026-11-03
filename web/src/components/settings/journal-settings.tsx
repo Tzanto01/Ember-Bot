@@ -1,6 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { BusyButton } from '@/components/auth/busy-button';
+import { journalKey } from '@/components/journal/day-journal';
 import { useJournal } from '@/components/journal/journal-context';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -36,12 +38,15 @@ function leftText(left: number): string {
 /**
  * Settings body for the private journal (contract "Private journal"), following `journal.state`: turn it on (with
  * the one-time recovery code), unlock this device (passphrase or recovery code, then a new passphrase), "lost
- * both", change passphrase, lock this device, decrypted export (web) and turning it off. Secrets stay in the forms'
+ * both", change passphrase, lock this device, decrypted export (web) and turning it off, including finishing a
+ * switch-off that is under way (`journal.turningOff`). Secrets stay in the forms'
  * state and go when they close.
  */
 export function JournalSettings({ me }: { me: Me }) {
   const journal = useJournal();
+  const queryClient = useQueryClient();
   const state = useStore(journal.state);
+  const turningOff = useStore(journal.turningOff);
   const [flow, setFlow] = useState<Flow>(null);
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState<'lock' | 'export' | null>(null);
@@ -91,6 +96,7 @@ export function JournalSettings({ me }: { me: Me }) {
     if (busy) return;
     setBusy('lock');
     await journal.forget();
+    queryClient.removeQueries({ queryKey: journalKey });
     setBusy(null);
     announce('Locked on this device. Unlock it with your passphrase whenever you like.');
   }
@@ -111,6 +117,15 @@ export function JournalSettings({ me }: { me: Me }) {
   const progress = (
     <p role="status" className="text-muted-foreground">
       {left > 0 ? `Encrypting your journal: ${leftText(left)}` : 'Setting up encryption…'}
+    </p>
+  );
+
+  const encryptedLeft = turningOff ? me.journal.encryptedLeft : 0;
+  const decrypting = encryptedLeft > 0 && (
+    <p role="status" className="text-muted-foreground">
+      {encryptedLeft === 1
+        ? 'Decrypting your journal: 1 entry or mood to go.'
+        : `Decrypting your journal: ${encryptedLeft} entries and moods to go.`}
     </p>
   );
 
@@ -167,7 +182,9 @@ export function JournalSettings({ me }: { me: Me }) {
     body = (
       <>
         <p>
-          Your private journal is locked on this device. Unlock it to read and write entries here.
+          {turningOff
+            ? 'Ember is turning your private journal back into a plain one. Unlock it on this device to carry on.'
+            : 'Your private journal is locked on this device. Unlock it to read and write entries here.'}
         </p>
         {panel === 'discard' ? (
           <>
@@ -195,7 +212,7 @@ export function JournalSettings({ me }: { me: Me }) {
           <>
             <UnlockForm
               onUnlocked={(needsNewPassphrase) =>
-                needsNewPassphrase
+                needsNewPassphrase && !turningOff
                   ? setFlow({ step: 'new-passphrase' })
                   : announce('Unlocked on this device.')
               }
@@ -207,6 +224,27 @@ export function JournalSettings({ me }: { me: Me }) {
             </div>
           </>
         )}
+      </>
+    );
+  } else if (turningOff && panel !== 'disable') {
+    body = (
+      <>
+        <Notice tone="info" heading="Turning your private journal off">
+          <p>
+            Your entries and own moods are being decrypted on this device and saved to your account
+            readable again. Confirm to finish.
+          </p>
+        </Notice>
+        {decrypting}
+        <ConfirmJournalForm
+          me={me}
+          submitLabel="Finish turning off"
+          busyLabel="Turning off…"
+          onSubmit={async (password) => {
+            await journal.disable(password);
+            announce('The private journal is off. Your entries are back to normal.');
+          }}
+        />
       </>
     );
   } else {
@@ -231,6 +269,7 @@ export function JournalSettings({ me }: { me: Me }) {
               Your entries and own moods are decrypted on this device and saved to your account
               readable again, like before.
             </p>
+            {decrypting}
             <ConfirmJournalForm
               me={me}
               submitLabel="Turn off the private journal"

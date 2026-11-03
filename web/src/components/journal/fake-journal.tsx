@@ -18,6 +18,8 @@ export function fakeJournal({
   const fake = {
     state: new Store<JournalState>(state),
     changed: new Store(0),
+    turningOff: new Store(false),
+    remembered: new Store(false),
     notes: vi.fn(async (from?: string, to?: string) => ({
       notes: notes.filter((n) => (!from || n.date >= from) && (!to || n.date <= to)),
       hidden: 0,

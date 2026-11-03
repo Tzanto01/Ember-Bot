@@ -385,7 +385,7 @@ export function PassphraseForm({
   const old = useField(current ? requiredPassphrase : noRule);
   const { passphrase, confirm } = useNewPassphrase();
   const password = useField(me.hasPassword ? loginPasswordRule : noRule);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => journal.remembered.get());
   const [busy, setBusy] = useState(false);
   const [wrong, setWrong] = useState<'old' | 'password' | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -478,7 +478,7 @@ export function ConfirmJournalForm({
   submitLabel: string;
   busyLabel: string;
   onSubmit: (password?: string) => Promise<void>;
-  onCancel: () => void;
+  onCancel?: () => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const password = useField(me.hasPassword ? loginPasswordRule : noRule);
@@ -543,9 +543,11 @@ export function ConfirmJournalForm({
         >
           {submitLabel}
         </BusyButton>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );
