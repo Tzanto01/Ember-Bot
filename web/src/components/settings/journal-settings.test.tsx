@@ -17,7 +17,7 @@ function setup(state: JournalState) {
     disable: vi.fn<JournalApi['disable']>(),
   };
   renderWithJournal(
-    <JournalSettings me={{ ...me, journal: { encrypted: state !== 'off', plaintextLeft: 0 } }} />,
+    <JournalSettings me={{ ...me, journal: { ...me.journal, encrypted: state !== 'off' } }} />,
     journal,
   );
   return { journal, user: userEvent.setup() };

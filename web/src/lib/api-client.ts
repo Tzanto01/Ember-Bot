@@ -351,6 +351,11 @@ export class ApiClient {
     return this.http.request('PUT', '/api/me/journal-key', { body });
   }
 
+  /** `POST /api/me/journal-key/turn-off`: keeps the key, accepts plaintext writes again until the key is deleted. */
+  turnOffJournal(body: { password?: string }): Promise<void> {
+    return this.http.request('POST', '/api/me/journal-key/turn-off', { body });
+  }
+
   /** `DELETE /api/me/journal-key`: 409 `conflict` while encrypted data remains, unless `discardEncrypted`. */
   deleteJournalKey(body: { password?: string; discardEncrypted: boolean }): Promise<void> {
     return this.http.request('DELETE', '/api/me/journal-key', { body });
