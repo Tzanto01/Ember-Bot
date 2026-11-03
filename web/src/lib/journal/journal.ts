@@ -410,8 +410,7 @@ export class JournalService implements JournalApi {
   /** Continues interrupted work in the background once the key is at hand. */
   private resume(me: Me): void {
     if (this.state.get() !== 'unlocked') return;
-    if (me.journal.turningOff) void this.finishTurnOff().catch(() => undefined);
-    else if (me.journal.plaintextLeft > 0) void this.finishMigration().catch(() => undefined);
+    if (!me.journal.turningOff && me.journal.plaintextLeft > 0) void this.finishMigration().catch(() => undefined);
   }
 
   private finishTurnOff(): Promise<void> {

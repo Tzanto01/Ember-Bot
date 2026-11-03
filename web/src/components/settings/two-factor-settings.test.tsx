@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeJournal, renderWithJournal } from '@/components/journal/fake-journal';
+import { Store } from '@/lib/store';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import { TwoFactorSettings } from './two-factor-settings';
 
@@ -9,7 +10,11 @@ const codes = Array.from({ length: 10 }, (_, i) => `rc${i}-synthetic`);
 
 async function open(status: { enabled: boolean; recoveryCodesLeft: number }, account = me) {
   const fetch = mockFetch();
-  renderWithJournal(<TwoFactorSettings me={account} />, fakeJournal());
+  renderWithJournal(<TwoFactorSettings me={account} />, {
+    ...fakeJournal(),
+    turningOff: new Store(false),
+    remembered: new Store(false),
+  });
   (await fetch.next('GET', '/api/me/2fa')).respond(200, status);
   return fetch;
 }

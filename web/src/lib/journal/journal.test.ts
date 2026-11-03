@@ -468,7 +468,7 @@ describe('JournalService', () => {
     expect(await new Keyring(null).get(baseMe.id)).toBeNull();
   });
 
-  it('writes plaintext while turning off, even locked, and any device finishes an interrupted switch-off', async () => {
+  it('writes plaintext while turning off, even locked, and another device finishes the switch-off only when asked', async () => {
     const first = await device();
     await first.journal.enable(passphrase, false, loginPassword);
     await first.journal.save('2026-10-31', { text: 'Encrypted once.', mood: null });
@@ -486,16 +486,16 @@ describe('JournalService', () => {
     });
 
     await journal.unlock({ passphrase }, false);
-    await vi.waitFor(() => {
-      expect(
-        [...server.notes.values(), ...server.moods.values()].some((v) => 'encrypted' in v),
-      ).toBe(false);
-    });
-    expect(server.notes.get('2026-10-31')).toMatchObject({ text: 'Encrypted once.' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(server.notes.get('2026-10-31')).toHaveProperty('encrypted');
     const mood = await journal.addMood({ label: 'Bright', emoji: null });
     expect(server.moods.get(mood.id)).toMatchObject({ label: 'Bright' });
 
     await journal.disable(loginPassword);
+    expect(
+      [...server.notes.values(), ...server.moods.values()].some((v) => 'encrypted' in v),
+    ).toBe(false);
+    expect(server.notes.get('2026-10-31')).toMatchObject({ text: 'Encrypted once.' });
     expect(mock.all.filter((c) => c.url === '/api/me/journal-key/turn-off')).toHaveLength(0);
     expect(server.key).toBeNull();
     expect(journal.state.get()).toBe('off');

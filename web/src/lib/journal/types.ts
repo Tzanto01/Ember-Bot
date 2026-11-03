@@ -35,7 +35,7 @@ export interface JournalApi {
   readonly changed: Store<number>;
   /**
    * True while a switch back to a plain journal is under way (`me.journal.turningOff`). Writes go as plaintext then;
-   * once unlocked, the re-upload resumes on its own, and `disable(password)` finishes it.
+   * the re-upload happens only when the user confirms with `disable(password)`.
    */
   readonly turningOff: Store<boolean>;
   /** True when this device keeps the unlocked key (remember on this device); false for memory only or locked. */
