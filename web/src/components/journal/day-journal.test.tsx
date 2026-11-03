@@ -1,7 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { auth } from '@/lib/services';
+import { auth, offlineQueue } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { DayJournal } from './day-journal';
 import { fakeJournal, renderWithJournal } from './fake-journal';
@@ -60,6 +60,22 @@ describe('DayJournal', { timeout: 15_000 }, () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText("Saved on this device, it'll sync when you're back online.")).toBeInTheDocument();
+  });
+
+  it('says saved once the queued entry has synced', async () => {
+    const user = userEvent.setup();
+    const journal = fakeJournal();
+    journal.save.mockResolvedValue({ queued: true });
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+
+    await user.click(await screen.findByRole('radio', { name: 'Low' }));
+    act(() => offlineQueue.pending.set(1));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/Saved on this device/)).toBeInTheDocument();
+
+    act(() => offlineQueue.pending.set(0));
+    expect(screen.queryByText(/Saved on this device/)).toBeNull();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
   });
 
   it('shows only the way to unlock while the private journal is locked', async () => {

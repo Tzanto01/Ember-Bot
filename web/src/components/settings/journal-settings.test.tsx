@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fakeJournal, renderWithJournal } from '@/components/journal/fake-journal';
 import { type JournalApi, type JournalState, WrongSecretError } from '@/lib/journal/types';
 import { Store } from '@/lib/store';
+import { ApiError } from '@/lib/problem';
 import { me } from '@/lib/test-support';
 import { JournalSettings } from './journal-settings';
 
@@ -127,6 +128,25 @@ describe('JournalSettings', () => {
 
     expect(journal.disable).toHaveBeenCalledWith('synthetic-login-1');
     expect(await screen.findByText(/The private journal is off/)).toBeInTheDocument();
+  });
+
+  it('while turning off, tells a wrong login password apart from an entry the server turned down', async () => {
+    const { journal, user } = setup('unlocked');
+    journal.disable
+      .mockRejectedValueOnce(new ApiError(400, { status: 400, errors: { password: ['Wrong'] } }))
+      .mockRejectedValueOnce(new ApiError(400, { status: 400, errors: { text: ['Too long'] } }));
+
+    await user.click(await screen.findByRole('button', { name: 'Turn off the private journal' }));
+    await user.type(screen.getByLabelText('Your login password'), 'synthetic-login-1');
+    await user.click(screen.getByRole('button', { name: 'Turn off the private journal' }));
+    expect(await screen.findByText("That login password doesn't match. Try again.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Turn off the private journal' }));
+    await waitFor(() => expect(journal.disable).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByText("That login password doesn't match. Try again.")).toBeNull(),
+    );
+    expect(screen.getByLabelText('Your login password')).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   it('while turning off on a locked device, asks to unlock first, then finishes with the login password', async () => {
