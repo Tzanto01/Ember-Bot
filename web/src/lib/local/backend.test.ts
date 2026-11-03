@@ -194,7 +194,7 @@ describe('LocalBackend through ApiClient', () => {
     await api.antiforgery();
   });
 
-  it('exports the device data as a format v2 backup file', async () => {
+  it('exports the device data as a format v2 backup file without recording the backup time', async () => {
     await store.replace(seed([localHabit(1)]));
 
     const file = await api.exportData('json');
@@ -203,7 +203,17 @@ describe('LocalBackend through ApiClient', () => {
     const doc = JSON.parse(await file.blob.text());
     expect(doc.format_version).toBe(2);
     expect(doc.habits[0]).toMatchObject({ id: 1, name: 'Habit 1', times_per_day: 1, routine_id: null });
-    expect((await store.load())?.profile.lastBackupAt).toBe(now.toISOString());
+    expect((await store.load())?.profile.lastBackupAt).toBeNull();
+  });
+
+  it('clamps exported check-in counts to the times per day', async () => {
+    const data = seed([localHabit(1, { timesPerDay: 2 })]);
+    data.logs = [{ habitId: 1, date: '2026-10-25', completed: true, count: 5 }];
+    await store.replace(data);
+
+    const doc = JSON.parse(await (await api.exportData('json')).blob.text());
+
+    expect(doc.logs).toEqual([{ habit_id: 1, date: '2026-10-25', completed: true, count: 2 }]);
   });
 
   it.each([

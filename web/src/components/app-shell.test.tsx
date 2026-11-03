@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deviceSync, offlineQueue } from '@/lib/services';
+import { deviceSync, localMode, offlineQueue } from '@/lib/services';
 import { mockFetch } from '@/lib/test-support';
 import { AppShell } from './app-shell';
 
@@ -20,6 +20,7 @@ describe('AppShell', () => {
     vi.unstubAllGlobals();
     offlineQueue.pending.set(0);
     deviceSync.dropped.set(0);
+    localMode.mode.set('account');
   });
 
   it('says it could not sign out and stays when the server cannot end the session', async () => {
@@ -33,6 +34,17 @@ describe('AppShell', () => {
       await screen.findByText("Ember couldn't sign you out. Check your connection and try again."),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('offers "Sign out" with an account or mid-upgrade but not in no-account mode', async () => {
+    await renderShell();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+
+    act(() => localMode.mode.set('local'));
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+
+    act(() => localMode.mode.set('upgrading'));
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 

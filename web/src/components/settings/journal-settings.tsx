@@ -6,10 +6,8 @@ import { journalKey } from '@/components/journal/day-journal';
 import { useJournal } from '@/components/journal/journal-context';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { saveFile } from '@/lib/api-client';
-import { env } from '@/lib/env';
 import type { Me } from '@/lib/models';
-import { openOnWeb } from '@/lib/native/browser';
+import { saveExport } from '@/lib/native/save-file';
 import { useStore } from '@/lib/store';
 import {
   ConfirmJournalForm,
@@ -106,7 +104,7 @@ export function JournalSettings({ me }: { me: Me }) {
     setBusy('export');
     setProblem(null);
     try {
-      saveFile(await journal.exportDecrypted());
+      await saveExport(await journal.exportDecrypted());
     } catch (error) {
       setProblem(journalProblem(error));
     } finally {
@@ -297,35 +295,20 @@ export function JournalSettings({ me }: { me: Me }) {
                 Lock on this device
               </BusyButton>
             </div>
-            {env.native ? (
-              <div className="flex flex-col items-start gap-2">
-                <p className="text-muted-foreground">
-                  Exporting your decrypted journal works on the web.
-                </p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void openOnWeb('/settings#journal')}
-                >
-                  Export on the web
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-start gap-2">
-                <BusyButton
-                  type="button"
-                  variant="secondary"
-                  busy={busy === 'export'}
-                  busyLabel="Preparing…"
-                  onClick={() => void exportJournal()}
-                >
-                  Export my journal (decrypted)
-                </BusyButton>
-                <p className="text-[14px] text-muted-foreground">
-                  The file isn't encrypted, so keep it somewhere private.
-                </p>
-              </div>
-            )}
+            <div className="flex flex-col items-start gap-2">
+              <BusyButton
+                type="button"
+                variant="secondary"
+                busy={busy === 'export'}
+                busyLabel="Preparing…"
+                onClick={() => void exportJournal()}
+              >
+                Export my journal (decrypted)
+              </BusyButton>
+              <p className="text-[14px] text-muted-foreground">
+                The file isn't encrypted, so keep it somewhere private.
+              </p>
+            </div>
             <div>
               <Button type="button" variant="link" className="px-0" onClick={() => open('disable')}>
                 Turn off the private journal

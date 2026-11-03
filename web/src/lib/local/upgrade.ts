@@ -2,14 +2,37 @@ import type { ApiClient } from '../api-client';
 import type { AuthService } from '../auth';
 import type { DeviceStore } from '../device-store';
 import { type JournalApi, JournalLockedError } from '../journal/types';
-import type { MoodKey } from '../models';
+import type { MoodKey, OwnMood } from '../models';
 import { ApiError, asApiError, problemToMessage } from '../problem';
-import { exportDocument } from './backend';
+import { earliestStart, exportDocument } from './backend';
 import type { LocalMode } from './mode';
 import type { LocalStore } from './store';
 import type { LocalData, LocalMood, LocalNote, UpgradeApi, UpgradeProgress, UpgradeResult, UpgradeSummary } from './types';
 
 const conflictCopy = 'This account already has habits, so nothing was moved. Your device data is still here.';
+
+/** The `detail` of the API's 409 `conflict` when the account isn't empty (`ImportEndpoints.NotEmptyMessage`). */
+export const notEmptyDetail = 'Import only works into an account without habits, routines, moods or journal entries.';
+
+function isNotEmpty(error: ApiError): boolean {
+  return error.status === 409 && error.type === 'conflict' && error.problem?.detail === notEmptyDetail;
+}
+
+/** Day notes and low days the account can't take: dated before the earliest habit start, or all of them without habits. */
+function leftOut(data: LocalData): { notes: LocalNote[]; lowDays: string[] } {
+  const start = earliestStart(data);
+  const before = (date: string) => start === null || date < start;
+  return { notes: data.notes.filter((n) => before(n.date)), lowDays: data.lowDays.filter(before) };
+}
+
+/** The import body: the export document without what the account can't take, and without the journal when `journal` is false. */
+function importDocument(data: LocalData, journal: boolean): Record<string, unknown> {
+  const out = leftOut(data);
+  return exportDocument(
+    { ...data, notes: data.notes.filter((n) => !out.notes.includes(n)), lowDays: data.lowDays.filter((d) => !out.lowDays.includes(d)) },
+    journal,
+  );
+}
 
 function failed(message: string): UpgradeResult {
   return { ok: false, reason: 'failed', message };
@@ -27,9 +50,9 @@ function customId(mood: MoodKey | null): number | null {
 export class UpgradeService implements UpgradeApi {
   constructor(
     private readonly store: LocalStore,
-    private readonly api: Pick<ApiClient, 'importData' | 'listHabits'>,
+    private readonly api: Pick<ApiClient, 'importData' | 'updateMe'>,
     private readonly auth: Pick<AuthService, 'me'>,
-    private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'addMood' | 'updateMood' | 'save'>,
+    private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'moods' | 'addMood' | 'updateMood' | 'save'>,
     private readonly device: Pick<DeviceStore, 'clearUser'>,
     private readonly localMode: Pick<LocalMode, 'mode' | 'finishUpgrade'>,
   ) {}
@@ -37,7 +60,14 @@ export class UpgradeService implements UpgradeApi {
   async summary(): Promise<UpgradeSummary | null> {
     const data = await this.store.load().catch(() => null);
     if (!data) return null;
-    return { habits: data.habits.length, checkIns: data.logs.length, notes: data.notes.length, moods: data.moods.length };
+    const out = leftOut(data);
+    return {
+      habits: data.habits.length,
+      checkIns: data.logs.length,
+      notes: data.notes.length,
+      moods: data.moods.length,
+      leftOut: { notes: out.notes.length, lowDays: out.lowDays.length },
+    };
   }
 
   async run(
@@ -62,6 +92,7 @@ export class UpgradeService implements UpgradeApi {
             userId: me.id,
             importSent: false,
             imported: false,
+            journalOmitted: false,
             journalEnabled: false,
             recoveryCode: null,
             moodIds: {},
@@ -78,31 +109,44 @@ export class UpgradeService implements UpgradeApi {
     try {
       if (!progress.imported) {
         const sentBefore = progress.importSent;
-        await save({ importSent: true });
+        const omit = sentBefore ? progress.journalOmitted : !!secret;
+        const { profile } = data;
+        await this.api.updateMe({
+          timezone: profile.timezone,
+          graceDaysPerWeek: profile.graceDaysPerWeek,
+          ...(profile.theme ? { theme: profile.theme } : {}),
+        });
+        await save({ importSent: true, journalOmitted: omit });
         try {
-          await this.api.importData(exportDocument(data, !secret));
+          await this.api.importData(importDocument(data, !omit));
         } catch (error) {
           const apiError = asApiError(error);
-          const ours = apiError.status === 409 && sentBefore && (await this.alreadyImported(data));
-          if (!ours) {
-            if (apiError.status >= 400 && apiError.status < 500) await save({ importSent: false });
+          if (!(sentBefore && isNotEmpty(apiError))) {
+            if (apiError.status >= 400 && apiError.status < 500 && apiError.status !== 429) await save({ importSent: false });
             throw error;
           }
         }
         await save({ imported: true });
       }
       importing = false;
-      if (secret) await this.moveJournal(data, secret, () => progress, save);
+      if (secret && !progress.journalEnabled) {
+        let recoveryCode: string | null = null;
+        if (!this.auth.me.get()?.journal.encrypted) {
+          ({ recoveryCode } = await this.journal.enable(secret.passphrase, secret.remember, secret.password));
+        }
+        await save({ journalEnabled: true, recoveryCode });
+      }
+      if (progress.journalOmitted) await this.moveJournal(data, !!secret, () => progress, save);
 
       await this.store.clear();
       await this.device.clearUser(data.profile.userId).catch(() => undefined);
       this.localMode.finishUpgrade();
-      return { ok: true, recoveryCode: secret ? progress.recoveryCode : null };
+      return { ok: true, recoveryCode: progress.recoveryCode };
     } catch (error) {
       if (error instanceof JournalLockedError) return failed('Unlock your private journal on this device, then try again.');
       if (error instanceof RangeError) return failed(error.message);
       const apiError = asApiError(error);
-      if (importing && apiError.status === 409) return { ok: false, reason: 'conflict', message: conflictCopy };
+      if (importing && isNotEmpty(apiError)) return { ok: false, reason: 'conflict', message: conflictCopy };
       if (apiError.status === 403 && apiError.type === 'consent_required') {
         return { ok: false, reason: 'consent', message: problemToMessage(apiError).message };
       }
@@ -110,37 +154,30 @@ export class UpgradeService implements UpgradeApi {
     }
   }
 
-  /** True when the account's habits are exactly the device's (an earlier import went through but its answer was lost). */
-  private async alreadyImported(data: LocalData): Promise<boolean> {
-    const names = (await this.api.listHabits()).map((h) => h.name).sort();
-    const local = data.habits.map((h) => h.name).sort();
-    return names.length === local.length && names.every((name, i) => name === local[i]);
-  }
-
   private async moveJournal(
     data: LocalData,
-    secret: { passphrase: string; remember: boolean; password?: string },
+    encrypted: boolean,
     progress: () => UpgradeProgress,
     save: (change: Partial<UpgradeProgress>) => Promise<void>,
   ): Promise<void> {
-    if (!progress().journalEnabled) {
-      let recoveryCode: string | null = null;
-      if (!this.auth.me.get()?.journal.encrypted) {
-        ({ recoveryCode } = await this.journal.enable(secret.passphrase, secret.remember, secret.password));
-      }
-      await save({ journalEnabled: true, recoveryCode });
+    if ((encrypted || this.auth.me.get()?.journal.encrypted) && this.journal.state.get() !== 'unlocked') {
+      throw new JournalLockedError();
     }
-    if (this.journal.state.get() !== 'unlocked') throw new JournalLockedError();
 
+    let existing: OwnMood[] | null = null;
     const accountMood = async (mood: LocalMood): Promise<number> => {
       const mapped = progress().moodIds[mood.id];
       if (mapped !== undefined) return mapped;
-      const created = await this.journal.addMood({ label: mood.label, emoji: mood.emoji });
-      await save({ moodIds: { ...progress().moodIds, [mood.id]: created.id } });
-      return created.id;
+      existing ??= await this.journal.moods();
+      const taken = new Set(Object.values(progress().moodIds));
+      const match = existing.find((m) => !taken.has(m.id) && m.label === mood.label && m.emoji === mood.emoji);
+      const id = match?.id ?? (await this.journal.addMood({ label: mood.label, emoji: mood.emoji })).id;
+      await save({ moodIds: { ...progress().moodIds, [mood.id]: id } });
+      return id;
     };
+    const skipped = new Set(leftOut(data).notes.map((n) => n.date));
     const saveNote = async (note: LocalNote) => {
-      if (progress().notesDone.includes(note.date)) return;
+      if (skipped.has(note.date) || progress().notesDone.includes(note.date)) return;
       const local = customId(note.mood);
       const mapped = local === null ? undefined : progress().moodIds[local];
       const mood: MoodKey | null = local === null ? note.mood : mapped === undefined ? null : `custom:${mapped}`;
