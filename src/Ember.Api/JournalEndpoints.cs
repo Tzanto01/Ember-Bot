@@ -190,7 +190,8 @@ internal static class JournalEndpoints
     private static IResult MoodLimit()
         => Problems.Conflict($"You already have {HabitService.MaxActiveMoodsPerUser} active moods. Archive one to add another.");
 
-    private static async Task<IResult?> PasswordProblem(User user, string? password, UserManager<User> users, SignInManager<User> signIn)
+    /// <summary>A 400 on <c>password</c> when the account has a login password and <paramref name="password"/> isn't it (counts toward lockout), else null.</summary>
+    internal static async Task<IResult?> PasswordProblem(User user, string? password, UserManager<User> users, SignInManager<User> signIn)
         => await users.HasPasswordAsync(user)
             && !(await signIn.CheckPasswordSignInAsync(user, password ?? "", lockoutOnFailure: true)).Succeeded
                 ? Problems.Validation("password", "The password is not correct.")

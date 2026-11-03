@@ -24,7 +24,7 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     private static async Task<(string Key, string[] RecoveryCodes)> EnableAsync(ApiClient client)
     {
         var key = (await (await client.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
-        var enabled = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key) })).ExpectJson();
+        var enabled = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key), password = ApiClient.Passphrase })).ExpectJson();
         return (key, enabled.GetProperty("recoveryCodes").EnumerateArray().Select(c => c.GetString()!).ToArray());
     }
 
@@ -47,17 +47,17 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     {
         var client = await Host.SignedInAsync(consent: false);
         (await State(client)).GetProperty("enabled").GetBoolean().Should().BeFalse();
-        await (await client.Post("/api/me/2fa/enable", new { code = "123456" })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        await (await client.Post("/api/me/2fa/enable", new { code = "123456", password = ApiClient.Passphrase })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
 
         var setup = await (await client.Post("/api/me/2fa/setup")).ExpectJson();
         var key = setup.GetProperty("sharedKey").GetString()!;
         setup.GetProperty("authenticatorUri").GetString().Should()
             .Be($"otpauth://totp/{Uri.EscapeDataString("Ember:" + client.Email)}?secret={key}&issuer=Ember&digits=6");
-        var wrong = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key, 10) }))
+        var wrong = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key, 10), password = ApiClient.Passphrase }))
             .ExpectProblem(HttpStatusCode.BadRequest, "validation");
         wrong.GetProperty("errors").Has("code").Should().BeTrue();
 
-        var enabled = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key) })).ExpectJson();
+        var enabled = await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key), password = ApiClient.Passphrase })).ExpectJson();
 
         enabled.GetProperty("recoveryCodes").GetArrayLength().Should().Be(10);
         var state = await State(client);
@@ -74,8 +74,8 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var first = (await (await client.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
         var second = (await (await client.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
         second.Should().NotBe(first);
-        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(first) })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
-        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(second) })).Expect(HttpStatusCode.OK);
+        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(first), password = ApiClient.Passphrase })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(second), password = ApiClient.Passphrase })).Expect(HttpStatusCode.OK);
 
         await (await client.Post("/api/me/2fa/setup")).ExpectProblem(HttpStatusCode.Conflict, "conflict");
 
@@ -176,6 +176,19 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Enabling_2fa_needs_the_login_password_so_a_stolen_session_cant_lock_the_owner_out()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        var key = (await (await client.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
+
+        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key) })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        await (await client.Post("/api/me/2fa/enable", new { code = Totp.Code(key), password = "not-the-password-1" }))
+            .ExpectProblem(HttpStatusCode.BadRequest, "validation");
+
+        (await State(client)).GetProperty("enabled").GetBoolean().Should().BeFalse();
+    }
+
+    [DockerFact]
     public async Task Discord_sign_in_with_2fa_stops_at_the_code_step_and_completes_with_a_code()
     {
         var discordId = ApiHost.NewDiscordId();
@@ -185,7 +198,7 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var setup = await (await owner.Post("/api/me/2fa/setup")).ExpectJson();
         setup.GetProperty("authenticatorUri").GetString().Should().StartWith("otpauth://totp/Ember%3AEmber%20account?");
         var key = setup.GetProperty("sharedKey").GetString()!;
-        await (await owner.Post("/api/me/2fa/enable", new { code = Totp.Code(key) })).Expect(HttpStatusCode.OK);
+        await (await owner.Post("/api/me/2fa/enable", new { code = Totp.Code(key), password = ApiClient.Passphrase })).Expect(HttpStatusCode.OK);
 
         var client = Host.NewClient();
         (await Detail(await client.Post("/api/auth/discord/2fa", new { code = Totp.Code(key) }))).Should().Be("Failed");

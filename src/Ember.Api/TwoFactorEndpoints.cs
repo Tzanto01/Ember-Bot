@@ -13,6 +13,7 @@ internal static class TwoFactorEndpoints
     public sealed record TwoFactorState(bool Enabled, int RecoveryCodesLeft);
     public sealed record SetupDto(string SharedKey, string AuthenticatorUri);
     public sealed record CodeRequest(string? Code);
+    public sealed record EnableRequest(string? Code, string? Password);
     public sealed record DisableRequest(string? Password, string? Code);
     public sealed record RecoveryCodesDto(string[] RecoveryCodes);
 
@@ -40,11 +41,12 @@ internal static class TwoFactorEndpoints
             return Results.Ok(new SetupDto(key, $"otpauth://totp/{label}?secret={key}&issuer=Ember&digits=6"));
         }).RequireRateLimiting(RateLimits.AuthPolicy);
 
-        api.MapPost("/me/2fa/enable", async (CodeRequest request, ClaimsPrincipal principal, UserManager<User> users, SignInManager<User> signIn) =>
+        api.MapPost("/me/2fa/enable", async (EnableRequest request, ClaimsPrincipal principal, UserManager<User> users, SignInManager<User> signIn) =>
         {
             var user = await users.GetUserAsync(principal);
             if (user is null) return Problems.Unauthenticated();
             if (user.TwoFactorEnabled) return Problems.Conflict("Two-factor sign-in is already on.");
+            if (await JournalEndpoints.PasswordProblem(user, request.Password, users, signIn) is { } passwordProblem) return passwordProblem;
             if (await users.GetAuthenticatorKeyAsync(user) is null || !await CheckCodeAsync(users, user, request.Code))
                 return Problems.Validation("code", WrongCode);
 
