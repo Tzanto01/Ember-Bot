@@ -102,6 +102,11 @@ export default function TodayPage() {
     if (synced !== firstSynced.current) void refetch();
   }, [synced, refetch]);
 
+  const nativeCheckIn = useStore(deviceSync.nativeCheckIn);
+  useEffect(() => {
+    if (nativeCheckIn) void refetch();
+  }, [nativeCheckIn, refetch]);
+
   const setData = (fn: (data: TodayData) => TodayData) =>
     queryClient.setQueryData<TodayData>(todayKey, (current) => current && fn(current));
   const updateHabit = (id: number, fn: (current: Habit) => Habit) =>
