@@ -49,11 +49,24 @@ export class TokenStore implements BearerTokens {
     return this.access;
   }
 
-  /** `POST /api/auth/login` without cookie flags. Rejects with the login's `ApiError` (401 `Failed`/`NotAllowed`). */
-  async signIn(email: string, password: string, persist: boolean): Promise<void> {
+  /**
+   * `POST /api/auth/login` without cookie flags, with the two-factor code when given. Rejects with the login's
+   * `ApiError` (401 `Failed`/`NotAllowed`/`RequiresTwoFactor`).
+   */
+  async signIn(
+    email: string,
+    password: string,
+    persist: boolean,
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<void> {
     await this.clear();
     const epoch = this.epoch;
-    const tokens = await this.post('/api/auth/login', { email, password });
+    const tokens = await this.post('/api/auth/login', {
+      email,
+      password,
+      twoFactorCode: twoFactor?.code,
+      twoFactorRecoveryCode: twoFactor?.recoveryCode,
+    });
     if (epoch === this.epoch) await this.keep(tokens, persist);
   }
 

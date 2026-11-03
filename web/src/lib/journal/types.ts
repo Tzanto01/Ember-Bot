@@ -50,7 +50,10 @@ export interface JournalApi {
   enable(passphrase: string, remember: boolean, password?: string): Promise<{ recoveryCode: string }>;
   /** Unlocks this device. After a recovery code `needsNewPassphrase` is true and `setPassphrase` must follow. */
   unlock(secret: JournalSecret, remember: boolean): Promise<{ needsNewPassphrase: boolean }>;
-  /** Re-wraps the key with a new passphrase (`PUT` with `ifVersion`). Needs the key unlocked. */
+  /**
+   * Re-wraps the key with a new passphrase (`PUT` with `ifVersion`). Needs a passphrase or recovery-code `unlock`
+   * shortly before (a key remembered on this device can't be re-wrapped); `JournalLockedError` otherwise.
+   */
   setPassphrase(passphrase: string, password?: string): Promise<void>;
   /** Encrypts plaintext entries and moods left over while `me.journal.plaintextLeft > 0`. */
   finishMigration(): Promise<void>;

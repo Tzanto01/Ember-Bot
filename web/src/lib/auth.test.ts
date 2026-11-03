@@ -10,6 +10,7 @@ import { Reminders } from './native/reminders';
 import { TokenStore } from './native/token-store';
 import { setNavigator } from './navigation';
 import { OfflineQueue } from './offline-queue';
+import { requiresTwoFactor } from './problem';
 import { PushService } from './push';
 import { type FetchMock, me, memorySecureStore, mockFetch } from './test-support';
 import { chooseTheme } from './theme';
@@ -70,6 +71,44 @@ describe('AuthService', () => {
       },
     );
 
+    it('sends the authenticator code or a recovery code with the login after RequiresTwoFactor', async () => {
+      const auth = setup();
+      const done = auth.login('a@example.test', 'pw', true, { code: '123456' });
+      const login = await mock.next('POST', '/api/auth/login?useCookies=true');
+      expect(login.body).toEqual({
+        email: 'a@example.test',
+        password: 'pw',
+        twoFactorCode: '123456',
+      });
+      login.respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await done;
+
+      const again = auth.login('a@example.test', 'pw', false, { recoveryCode: 'ABCD-EFGH' });
+      const second = await mock.next('POST', '/api/auth/login?useSessionCookies=true');
+      expect(second.body).toEqual({
+        email: 'a@example.test',
+        password: 'pw',
+        twoFactorRecoveryCode: 'ABCD-EFGH',
+      });
+      second.respond(401, { detail: 'RequiresTwoFactor' });
+      await expect(again).rejects.toSatisfy(requiresTwoFactor);
+    });
+
+    it('finishes a Discord sign-in with the second factor, then refreshes antiforgery and loads me', async () => {
+      const auth = setup();
+      const done = auth.completeDiscordTwoFactor({ code: '654321' });
+
+      const post = await mock.next('POST', '/api/auth/discord/2fa');
+      expect(post.body).toEqual({ code: '654321' });
+      post.respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+
+      await expect(done).resolves.toEqual(me);
+    });
+
     it('still loads me when the antiforgery refresh fails', async () => {
       const auth = setup();
       const done = auth.login('a@example.test', 'pw', true);
@@ -94,6 +133,46 @@ describe('AuthService', () => {
       await expect(loading).resolves.toBeNull();
       expect(auth.me.get()).toBeNull();
       expect(auth.signedIn()).toBe(false);
+    });
+  });
+
+  describe('journal key', () => {
+    function withJournal() {
+      const auth = setup();
+      const journal = {
+        forget: vi.fn(async () => undefined),
+        restore: vi.fn(async () => undefined),
+      };
+      auth.journal = journal;
+      return { auth, journal };
+    }
+
+    it('restores the journal key after me loads', async () => {
+      const { auth, journal } = withJournal();
+      const loading = auth.loadMe(true);
+      expect(journal.restore).not.toHaveBeenCalled();
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await loading;
+
+      expect(journal.restore).toHaveBeenCalledOnce();
+    });
+
+    it('forgets it when the session ends, on account delete (wipeDevice) and on logout', async () => {
+      const { auth, journal } = withJournal();
+      auth.setMe(me);
+      auth.clearSession();
+      expect(journal.forget).toHaveBeenCalledTimes(1);
+
+      auth.setMe(me);
+      await auth.wipeDevice();
+      expect(journal.forget).toHaveBeenCalledTimes(2);
+
+      auth.setMe(me);
+      const out = auth.logout();
+      (await mock.next('POST', '/api/auth/logout')).respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      await expect(out).resolves.toBe(true);
+      expect(journal.forget).toHaveBeenCalledTimes(4);
     });
   });
 
