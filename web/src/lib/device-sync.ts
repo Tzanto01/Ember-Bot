@@ -25,7 +25,7 @@ export class DeviceSync {
 
   /** Bumps after a replay sent or dropped something, so screens can reload. */
   readonly synced = new Store(0);
-  /** Queued edits dropped since the app started (404 or a day outside the editable range). */
+  /** Queued edits dropped since the app started (404, a day outside the editable range, or a body the server refused). */
   readonly dropped = new Store(0);
   /** The habit just checked in from a reminder or the widget (native), for a short confirmation; null when none. */
   readonly nativeCheckIn = new Store<{ name: string } | null>(null);
