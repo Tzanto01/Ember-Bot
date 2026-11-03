@@ -1,4 +1,6 @@
-# Ember API contract v1.6
+# Ember API contract v1.7
+
+v1.7 (2026-11-03, Nico: "I still want all of them to exist"): three levels of privacy. No account (data only on the device), an account (synced, the default), and an account with an end-to-end encrypted private journal (opt-in). Two-factor sign-in (TOTP). Importing device data into a new account. See "Privacy levels v1.7".
 
 v1.6 (2026-11-03, Nico: "do all 5"): the leaderboard is gone; flexible schedules (set weekdays, several times a day); routines; a journal for the day with moods; day stats for the year view; native "Done" from a reminder and an Android home-screen widget. See "Features v1.6". Defaults marked *(default)* are the department lead's until Nico says otherwise.
 
@@ -251,3 +253,38 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 - *(default)* A per-device setting "Show habit names in reminders", off by default. Off: reminders keep the generic body and only open the app. On: the title names the habit (or routine), and single-habit reminders get a "Done" action.
 - Local notification `extra`: `{ "userId", "habitId" | "routineId", "date" }`. "Done" opens the app, which adds one to that habit's count for `date` (absolute `PUT { count }` through the offline queue) and shows a short confirmation. A stale or foreign `extra` (other user, deleted habit) just opens Today.
 - Android widget "Today in Ember": today's scheduled habits for the signed-in user with their state (up to 6, then "+N more"). Tapping a habit opens the app and adds one, like "Done"; tapping elsewhere opens Today. The app pushes a snapshot to the widget after every habit change and clears it on sign-out, session end and account delete. The widget receives only explicit, immutable intents; extras are validated (numeric habit id, ISO date, matching user) before anything is written.
+
+## Privacy levels v1.7
+
+### Private journal (end-to-end encrypted, opt-in)
+
+Encryption happens only in the client (WebCrypto, available in the browser and the Android WebView). The server stores and returns opaque blobs and never sees a key, passphrase or recovery code.
+
+- **Keys.** Enabling the private journal makes a random 256-bit journal key (AES-GCM). It is wrapped twice: by a key derived from a **journal passphrase** the user chooses (PBKDF2-SHA256, 600,000 iterations, 16-byte random salt; the UI recommends a passphrase different from the login password), and by a key derived from a **recovery code** shown once (128 random bits, shown as 8 groups of 4 Crockford base32 characters; HKDF-SHA256 with its own salt). A login password change or reset never touches the journal key.
+- `GET /api/me/journal-key` → 404 when the private journal is off, else `{ "version": 3, "passphrase": { "salt", "iterations", "iv", "wrapped" }, "recovery": { "salt", "iv", "wrapped" } }` (all binary fields base64). `version` increments on every change.
+- `PUT /api/me/journal-key` with that shape (without `version`) plus `{ "password"?: string, "ifVersion"?: int }` → 200 with the stored shape. Creating needs no `ifVersion`; replacing (new passphrase, new recovery code) needs the current `ifVersion` (mismatch → 409 `conflict`). Accounts with a login password must send it on create and replace (wrong → 400 `validation`). Discord-only accounts can't be locked out of their own data this way because replacing needs the same session plus `ifVersion`.
+- `DELETE /api/me/journal-key` `{ password?, discardEncrypted: bool }` → 204. Turning the journal back to normal: the client first re-uploads every entry and own mood as plaintext, then deletes the key (`discardEncrypted: false`, 409 `conflict` while any encrypted entry or mood remains). "I lost both passphrase and recovery code": `discardEncrypted: true` deletes every encrypted entry and own mood with the key. Both need the login password when the account has one.
+- **Encrypted entries.** While a journal key exists, `PUT /api/day-notes/{date}` must be `{ "encrypted": { "v": 1, "iv", "ct" } }` (base64; `ct` is AES-GCM over the UTF-8 JSON `{ "text", "mood" }`; at most 16 KiB base64); a plaintext body → 400 `validation`. Own moods likewise: `POST`/`PATCH /api/moods` take `{ "encrypted": {...}, "archived"? }` with `ct` over `{ "label", "emoji" }`. Reads return entries and moods in whichever form they're stored. Built-in mood keys only ever appear inside the ciphertext then.
+- **Switching on.** `Me` gains `journal: { "encrypted": bool, "plaintextLeft": int }`. After creating the key, the client encrypts every existing plaintext entry and own mood (PUT/PATCH each); if it's interrupted, the next unlock on any device finishes the job while `plaintextLeft > 0`.
+- **Unlocking.** Each device unlocks once with the passphrase or the recovery code. The native app keeps the unwrapped key in secure storage (Android Keystore); the web app keeps it as a non-extractable `CryptoKey` in IndexedDB when "remember on this device" is ticked, otherwise in memory. Sign-out, session end and account delete forget it. Using the recovery code makes the user choose a new passphrase (re-wrap, `PUT` with `ifVersion`).
+- **Export and merge.** Server export includes the encrypted blobs and the wrapped key as stored; the app offers "Export my journal (decrypted)" built on the client. Account merge moves encrypted entries and moods unchanged; if both accounts have a journal key the merge is refused with 409 `conflict` and a short reason.
+- What stays readable to the server, by design: email, Discord ID, habit and routine names (the bot and reminders need them), check-ins and their times, low days.
+
+### Two-factor sign-in (TOTP)
+
+- `GET /api/me/2fa` → `{ "enabled": bool, "recoveryCodesLeft": int }`.
+- `POST /api/me/2fa/setup` → `{ "sharedKey", "authenticatorUri" }` (otpauth URI, issuer `Ember`); repeating it replaces an unconfirmed key.
+- `POST /api/me/2fa/enable` `{ "code" }` → `{ "recoveryCodes": string[10] }` shown once; wrong code → 400 `validation`.
+- `POST /api/me/2fa/disable` `{ "password"?, "code"? }` → 204 (the login password, or for Discord-only accounts a current code).
+- `POST /api/me/2fa/recovery-codes` `{ "code" }` → `{ "recoveryCodes": string[10] }`, replacing the old ones.
+- Sign-in: `POST /api/auth/login` accepts `twoFactorCode` or `twoFactorRecoveryCode`. A correct password without a code answers 401 with `detail: "RequiresTwoFactor"` (only after the password was right, so it reveals nothing new); a wrong code counts toward lockout like a wrong password. Discord sign-in for an account with 2FA ends on `/login?step=2fa` and needs the code too (`POST /api/auth/discord/2fa` `{ code? , recoveryCode? }`). Native bearer sign-in sends the code in the same login call.
+- 2FA is independent of the private journal: it protects the login, not the content.
+
+### No account (device only)
+
+Client only (team `local`), except the import endpoint below.
+
+- The welcome screen offers "Use Ember without an account". Everything (habits, check-ins, low days, routines, journal, moods, settings) lives on the device: IndexedDB on the web, the same in the Android WebView. Nothing is sent to the server; no Discord, no sync, no web push. The native app's local reminders, "Done" action and widget work as with an account.
+- The rules (day states including `offday` and `partial`, streaks, grace days, weekly progress, routines, day stats) run in the client (`web/src/lib/local/`), matching Core. Parity tests use shared fixtures in `docs/contracts/fixtures/rules-v1.json` (produced by team `backend` from Core: inputs plus expected states and stats).
+- The app warns clearly, once and in settings: the data exists only on this device; browsers may delete site data (Safari after 7 days without a visit; installing the PWA helps); uninstalling the app deletes it. It offers "Export backup" and "Import backup" (the server's JSON export format, v1.7) and a gentle backup reminder every 30 days.
+- "Create an account and keep my data": after sign-up, the client uploads the device data with `POST /api/me/import` (body: the JSON export format; only into an account with no habits, else 409 `conflict`; 25-habit limit applies; needs consent; validated like the individual endpoints; all or nothing). The local copy is removed after a successful import. With the private journal chosen at sign-up, the journal is encrypted before upload.
