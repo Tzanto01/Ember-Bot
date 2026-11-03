@@ -3,6 +3,7 @@ using Ember.Api.Email;
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Ember.Core.Services;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -26,6 +27,7 @@ public static class ApiApp
     public static WebApplicationBuilder CreateBuilder(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 64 * 1024);
         var services = builder.Services;
         var config = builder.Configuration;
 
@@ -54,6 +56,7 @@ public static class ApiApp
             .AddEntityFrameworkStores<EmberDbContext>()
             .AddSignInManager<EmberSignInManager>();
         services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
+        services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options => options.BearerTokenExpiration = TimeSpan.FromMinutes(15));
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
         services.ConfigureApplicationCookie(options =>
         {

@@ -1,4 +1,6 @@
-# Ember API contract v1.4
+# Ember API contract v1.5
+
+v1.5 (2026-11-03): bearer access tokens live 15 minutes; a password reset lifts a lockout; mail limits per client IP, per address across clients and per day; request bodies are capped at 64 KiB.
 
 v1.4 (2026-11-02, Nico): the theme is an account setting synced across devices; an account without a chosen timezone takes the device's zone automatically.
 
@@ -43,7 +45,7 @@ Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and
 
 - The Capacitor app runs the same Angular build from the origins `https://localhost` (Android) and `capacitor://localhost` (iOS). CORS allows these in addition to `Ember__WebOrigin`, configurable as `Ember__NativeOrigins` (comma-separated, exact origins only, `*` rejected), with `Authorization` and `Content-Type` headers and without credentials; only the web origin gets credentials. These origins identify nothing (every Capacitor Android app is `https://localhost`); auth is the bearer token alone.
 - The native app uses bearer tokens only: `POST /api/auth/login` without cookie flags, then `POST /api/auth/refresh`. It sends `Authorization: Bearer`, never cookies, so antiforgery doesn't apply. The access token lives in memory only; the refresh token only in the platform's secure storage (Android Keystore-backed, iOS Keychain), never in `localStorage` or Preferences. On a 401 the app refreshes once (single flight) and retries. The native build calls the absolute `{WebOrigin}` API base; the web build stays relative and same-origin.
-- Bearer sessions aren't revoked server-side by logout: the refresh token stays valid until it expires or the security stamp changes (password reset, link, unlink, merge, delete). Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
+- Bearer sessions aren't revoked server-side by logout: the refresh token stays valid until it expires or the security stamp changes (password reset, link, unlink, merge, delete). The access token lives 15 minutes and isn't checked against the security stamp, so only refresh is revoked on a stamp change. Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
 - Discord sign-in, link and merge are browser-only in v2. The app's Settings shows the Discord state and opens `{WebOrigin}/settings` in the system browser to link, and re-reads `GET /api/me` when the app resumes. A Discord-only account can't sign in to the app; the login screen says to create an email login on the web and link Discord there (which merges the accounts).
 - Sign-up, confirm and reset links open the web app (`{WebOrigin}`); the user then signs in in the app.
 
@@ -70,11 +72,11 @@ Custom:
 
 - `POST /api/auth/logout` → 204, clears the cookie.
 
-Identity options: confirmed email required to sign in, unique emails, lockout after 5 failures for 15 minutes. Security stamp changes on password reset, Discord link, unlink and merge; cookies revalidate the stamp every 5 minutes.
+Identity options: confirmed email required to sign in, unique emails, lockout after 5 failures for 15 minutes; a successful password reset lifts the lockout. Security stamp changes on password reset, Discord link, unlink and merge; cookies revalidate the stamp every 5 minutes.
 
 Emails link to the web app, built from the configured `Ember__WebOrigin` (never the request host), with URL-encoded values: `{WebOrigin}/confirm-email?userId=…&code=…` and `{WebOrigin}/reset-password?email=…&code=…`. The web pages call the API and then remove `code` from the address bar.
 
-Rate limits: per client IP (after forwarded headers) on the credential endpoints only (register, login, refresh, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword), plus per email address on the mail-sending ones (register, resendConfirmationEmail, forgotPassword). Every other `/api/auth` request (antiforgery, logout, the Discord redirect steps, and any endpoint added later) falls under a loose per-IP cap of 300 per minute instead.
+Rate limits: per client IP (after forwarded headers) on the credential endpoints only (register, login, refresh, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword), plus on the mail-sending ones (register, resendConfirmationEmail, forgotPassword): per endpoint, email address and client IP (5 per hour), per email address across clients (20 per hour), per client IP (10 per hour) and in total (200 per day), each answering 429 `rate_limited`. Every other `/api/auth` request (antiforgery, logout, the Discord redirect steps, and any endpoint added later) falls under a loose per-IP cap of 300 per minute instead.
 
 ### Discord
 

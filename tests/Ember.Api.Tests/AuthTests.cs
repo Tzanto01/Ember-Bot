@@ -197,6 +197,21 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task A_password_reset_lifts_the_lockout_so_the_new_password_signs_in_at_once()
+    {
+        var client = await Host.ConfirmedUserAsync();
+        const string newPassphrase = "another-long-passphrase";
+        for (var i = 0; i < 5; i++)
+            (await client.Post(LoginUrl, new Credentials(client.Email, "wrong-passphrase-1"))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        await (await client.Post("/api/auth/forgotPassword", new { email = client.Email })).Expect(HttpStatusCode.OK);
+        var code = QueryHelpers.ParseQuery(new Uri((await Host.Mail.WaitForAsync(client.Email, 2))[1].Link()).Query)["code"].ToString();
+        await (await client.Post("/api/auth/resetPassword", new ResetRequest(client.Email, code, newPassphrase))).Expect(HttpStatusCode.OK);
+
+        await (await client.Post(LoginUrl, new Credentials(client.Email, newPassphrase))).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
     public async Task Reset_password_failures_are_400_with_the_same_invalid_token_shape_for_unknown_emails_and_bad_codes()
     {
         var client = await Host.ConfirmedUserAsync();
