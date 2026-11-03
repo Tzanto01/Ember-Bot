@@ -41,6 +41,13 @@ export interface ExportFile {
 
 const seg = encodeURIComponent;
 
+/** `me` with a plain-journal `journal` when an API before v1.7 left it out. */
+function withJournal(me: Me): Me {
+  return me && !me.journal
+    ? { ...me, journal: { encrypted: false, turningOff: false, plaintextLeft: 0, encryptedLeft: 0 } }
+    : me;
+}
+
 /** No answer from the API: a network error (status 0), or the service worker's own 504 without a problem body. */
 function unreachable(error: unknown): boolean {
   const apiError = asApiError(error);
@@ -153,13 +160,13 @@ export class ApiClient {
   }
 
   /** `GET /api/me`. Prefer `AuthService.me` for the cached value. */
-  getMe(): Promise<Me> {
-    return this.http.request('GET', '/api/me');
+  async getMe(): Promise<Me> {
+    return withJournal(await this.http.request<Me>('GET', '/api/me'));
   }
 
   /** `PATCH /api/me`. Call `AuthService.setMe()` with the result. */
-  updateMe(patch: MePatch): Promise<Me> {
-    return this.http.request('PATCH', '/api/me', { body: patch });
+  async updateMe(patch: MePatch): Promise<Me> {
+    return withJournal(await this.http.request<Me>('PATCH', '/api/me', { body: patch }));
   }
 
   /** `POST /api/me/consent`: 400 unless `policyVersion` is the current one. */

@@ -51,12 +51,14 @@ export interface CachedHabits {
 export function withDayEdit(habit: Habit, edit: QueueEdit): Habit {
   if (!isDayEdit(edit) || edit.habitId !== habit.id || habit.today.date !== edit.date) return habit;
   const target = habit.timesPerDay ?? 1;
+  const resting = habit.today.state === 'offday' || habit.today.state === 'lowday' ? habit.today.state : null;
   if (edit.count !== undefined) {
-    const state = stateForCount(edit.count, target);
+    const state = edit.count === 0 && resting ? resting : stateForCount(edit.count, target);
     const completed = state === 'done' ? true : null;
     return { ...habit, today: { date: edit.date, state, completed, count: edit.count } };
   }
-  const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
+  const state =
+    edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : (resting ?? 'pending');
   const count = edit.completed === true ? target : 0;
   return { ...habit, today: { date: edit.date, state, completed: edit.completed, count } };
 }

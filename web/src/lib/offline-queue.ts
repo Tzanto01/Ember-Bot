@@ -12,6 +12,7 @@ export interface ReplayResult {
 /**
  * Contract "Offline day edits": a failed replay is dropped only on 404 or 422 `before_habit_start` /
  * `in_future`; everything else (consent_required, 401, 429, 5xx, network) stays queued for a later try.
+ * A journal edit is also dropped on 400: the private journal was switched on or off since it was queued.
  */
 export function shouldDrop(error: ApiError): boolean {
   return (
@@ -89,7 +90,8 @@ export class OfflineQueue {
           await send(sent as QueueEdit);
           result.sent++;
         } catch (error) {
-          if (!shouldDrop(asApiError(error))) {
+          const apiError = asApiError(error);
+          if (!shouldDrop(apiError) && !(edit.kind === 'note' && apiError.status === 400)) {
             result.remaining = queued.length - index;
             break;
           }
