@@ -143,6 +143,6 @@ public partial class HabitService
     }
 
     private async Task<bool> IsMergeableSourceAsync(Guid sourceUserId, ulong discordUserId, CancellationToken cancellationToken)
-        => await _db.Users.AnyAsync(u => u.Id == sourceUserId && u.PasswordHash == null && u.Email == null, cancellationToken)
+        => await _db.Users.AnyAsync(u => u.Id == sourceUserId && u.PasswordHash == null && u.Email == null && !u.TwoFactorEnabled, cancellationToken)
            && await FindDiscordUserAsync(discordUserId, cancellationToken) == sourceUserId;
 }

@@ -161,7 +161,8 @@ public static class ExportBuilder
     /// one <c>log</c> row per log, one <c>day_mark</c> row per day mark, one <c>push_subscription</c> row per push subscription,
     /// one <c>routine</c> row per routine, one <c>day_note</c> row per journal entry, one <c>mood</c> row per own mood and a
     /// <c>journal_key</c> row when the private journal is on (reminder channels are joined with <c>;</c>); columns that don't apply to a record type are empty.
-    /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them.
+    /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them, except the base64
+    /// cipher and journal key columns, which are written verbatim.
     /// </summary>
     public static string BuildCsv(User user)
     {
@@ -240,14 +241,18 @@ public static class ExportBuilder
             if (index < 0) throw new ArgumentException($"Unknown CSV column {column}.", nameof(cells));
             row[index] = value;
         }
-        csv.AppendJoin(',', row.Select(Cell));
+        csv.AppendJoin(',', row.Select((value, i) => Cell(value, !IsBase64Column(CsvColumns[i]))));
         csv.Append("\r\n");
     }
 
-    private static string Cell(string value)
+    private static bool IsBase64Column(string column)
+        => column is "cipher_iv" or "cipher_text" || column.StartsWith("passphrase_", StringComparison.Ordinal)
+           || column.StartsWith("recovery_", StringComparison.Ordinal);
+
+    private static string Cell(string value, bool formulaGuard)
     {
         var trimmed = value.TrimStart(' ', '\t', '\r', '\n');
-        if ((trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@') || (value.Length > 0 && value[0] is '\t' or '\r'))
+        if (formulaGuard && ((trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@') || (value.Length > 0 && value[0] is '\t' or '\r')))
             value = "'" + value;
 
         return value.IndexOfAny([',', '"', '\r', '\n']) >= 0

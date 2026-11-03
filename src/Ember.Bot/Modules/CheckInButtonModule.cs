@@ -33,7 +33,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(sentUnix), await habits.GetUserTzAsync(userId)).DateTime)
             : await habits.GetLocalTodayAsync(userId);
 
-        if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) == true)
+        if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && (l.Completed || l.Count > 0)) == true)
             return (DayEditResult.Saved, day, true);
 
         return (completed
@@ -68,7 +68,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         var isToday = day == await _habits.GetLocalTodayAsync(Context.User.Id);
         var dayLabel = day.ToString("dddd d MMM", CultureInfo.InvariantCulture);
         var text = keptDone
-            ? "You already logged that day as done, so I've left it that way. ✅"
+            ? "You already checked in that day, so I've left it as it is. ✅"
             : isToday ? todayText : string.Format(earlierText, dayLabel);
         var habit = completed ? await _habits.GetHabitAsync(Context.User.Id, habitId) : null;
         if (completed)

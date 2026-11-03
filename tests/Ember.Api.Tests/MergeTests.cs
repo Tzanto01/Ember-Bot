@@ -189,6 +189,20 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         (await (await user.Get("/api/habits")).ExpectJson()).GetArrayLength().Should().Be(0);
     }
 
+    [DockerFact]
+    public async Task A_source_that_enabled_two_factor_after_the_preview_is_a_conflict_and_nothing_moves()
+    {
+        var user = await Host.SignedInAsync();
+        var bot = await BotOnlyAsync(["Water"]);
+        await StartMergeAsync(user, bot.DiscordId);
+        await Host.Db(db => db.Users.Where(u => u.Id == bot.UserId).ExecuteUpdateAsync(s => s.SetProperty(u => u.TwoFactorEnabled, true)));
+
+        await (await user.Post(MergeUrl)).ExpectProblem(HttpStatusCode.Conflict, "conflict");
+
+        (await UserExists(bot.UserId)).Should().BeTrue();
+        (await (await user.Get("/api/habits")).ExpectJson()).GetArrayLength().Should().Be(0);
+    }
+
     private Task<T> Seed<T>(T entity) where T : class => Host.Db(async db =>
     {
         db.Add(entity);

@@ -160,7 +160,7 @@ internal static class JournalEndpoints
             return await habits.PutJournalKeyAsync(user.Id, material!, request.IfVersion) is { } key
                 ? Results.Ok(ToDto(key))
                 : Problems.Conflict("The journal key was changed meanwhile. Reload and try again.");
-        });
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         api.MapPost("/me/journal-key/turn-off", async (PasswordRequest? request, ClaimsPrincipal principal, UserManager<User> users,
             SignInManager<User> signIn, HabitService habits) =>
@@ -170,7 +170,7 @@ internal static class JournalEndpoints
             if (await PasswordProblem(user, request?.Password, users, signIn) is { } problem) return problem;
 
             return await habits.TurnOffJournalAsync(user.Id) is { } key ? Results.Ok(ToDto(key)) : Problems.NotFound();
-        });
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         api.MapDelete("/me/journal-key", async ([FromBody] DeleteJournalKeyRequest? request, ClaimsPrincipal principal,
             UserManager<User> users, SignInManager<User> signIn, HabitService habits) =>
@@ -182,7 +182,7 @@ internal static class JournalEndpoints
             return await habits.DeleteJournalKeyAsync(user.Id, request?.DiscardEncrypted == true)
                 ? Results.NoContent()
                 : Problems.Conflict("Some journal entries or moods are still encrypted. Finish turning the private journal off first.");
-        });
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         return api;
     }
@@ -227,8 +227,9 @@ internal static class JournalEndpoints
     {
         if (BuiltInMoods.Contains(mood)) return true;
         if (!TryParseCustomMood(mood, out var id)) return false;
-        if ((await habits.GetDayNoteAsync(userId, day))?.Mood == mood) return true;
-        return await habits.GetMoodAsync(userId, id) is { Archived: false, CipherVersion: null };
+        var stored = await habits.GetDayNoteAsync(userId, day);
+        if (stored?.Mood == mood) return true;
+        return await habits.GetMoodAsync(userId, id) is { CipherVersion: null } own && (!own.Archived || stored?.CipherVersion is not null);
     }
 
     /// <summary>The id of a <c>custom:&lt;id&gt;</c> mood key in its canonical form.</summary>

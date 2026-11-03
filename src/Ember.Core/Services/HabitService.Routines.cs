@@ -112,16 +112,19 @@ public partial class HabitService
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// The routine (tracked) with its member habits and their logs, and its user with logins and push subscriptions, regardless of owner.
-    /// Persist edits with <see cref="SaveChangesAsync"/>.
+    /// The routine (tracked) with its member habits and their logs of the last two UTC days onward (enough for any local today),
+    /// and its user with logins and push subscriptions, regardless of owner. Persist edits with <see cref="SaveChangesAsync"/>.
     /// </summary>
     public Task<Routine?> GetRoutineWithUserAsync(int routineId, CancellationToken cancellationToken = default)
-        => _db.Routines
-            .Include(r => r.Habits).ThenInclude(h => h.Logs)
+    {
+        var since = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-2);
+        return _db.Routines
+            .Include(r => r.Habits).ThenInclude(h => h.Logs.Where(l => l.Date >= since))
             .Include(r => r.User).ThenInclude(u => u.Logins)
             .Include(r => r.User).ThenInclude(u => u.PushSubscriptions)
             .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == routineId, cancellationToken);
+    }
 
     /// <summary>Sets the routine's next reminder to <paramref name="untilUtc"/> directly in the database.</summary>
     public Task DeferRoutineReminderAsync(int routineId, DateTime untilUtc, CancellationToken cancellationToken = default)

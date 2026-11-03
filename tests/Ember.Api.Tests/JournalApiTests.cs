@@ -293,6 +293,25 @@ public class JournalApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Turning_an_encrypted_entry_back_to_plaintext_may_use_an_own_archived_mood_but_not_a_foreign_one()
+    {
+        var user = await WithHabitAsync(Host);
+        var other = await Host.SignedInAsync();
+        var foreignMood = await CreateMoodAsync(other, "Foreign");
+        var today = (await TodayAsync(user)).Iso();
+        var plainMood = await CreateMoodAsync(user, "Plain");
+        await (await user.Put("/api/me/journal-key", KeyBody())).Expect(HttpStatusCode.OK);
+        await (await user.Put($"/api/day-notes/{today}", new { encrypted = Blob })).Expect(HttpStatusCode.OK);
+        await (await user.Post("/api/me/journal-key/turn-off", new TurnOffRequest(ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+        await (await user.Patch($"/api/moods/{plainMood}", new { archived = true })).Expect(HttpStatusCode.OK);
+
+        await ExpectFieldError(await user.Put($"/api/day-notes/{today}", new { text = "Decrypted", mood = $"custom:{foreignMood}" }), "mood");
+        var note = await (await user.Put($"/api/day-notes/{today}", new { text = "Decrypted", mood = $"custom:{plainMood}" })).ExpectJson();
+        note.GetProperty("mood").GetString().Should().Be($"custom:{plainMood}");
+        await (await DeleteKey(user, discardEncrypted: false)).Expect(HttpStatusCode.NoContent);
+    }
+
+    [DockerFact]
     public async Task Discarding_deletes_only_encrypted_entries_and_moods_with_the_key()
     {
         var user = await WithHabitAsync(Host);
