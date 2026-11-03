@@ -147,9 +147,7 @@ public class ReminderDispatchJob : IJob
         if (targets.Count > 0 && now - dueAt <= StaleAfter)
         {
             var lowDays = await habits.GetLowDaysAsync(user.Id);
-            pending = routine.Habits
-                .OrderBy(h => h.RoutinePosition)
-                .Where(h => HabitService.DayOn(h, today, today, tz, lowDays).State is DayState.Pending or DayState.Partial)
+            pending = HabitService.PendingRoutineHabits(routine.Habits, today, tz, lowDays)
                 .Select(h => new RoutineHabit(h.Id, h.Name))
                 .ToList();
         }

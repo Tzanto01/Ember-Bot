@@ -186,7 +186,7 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var account = json.GetProperty("account");
         account.GetProperty("email").GetString().Should().Be(user.Email);
         account.GetProperty("discord_id").GetString().Should().Be(discordId.ToString());
-        csv.Split('\n')[0].Trim().Should().EndWith("email,discord_id");
+        csv.Split('\n')[0].Trim().Should().Contain(",email,discord_id,");
         csv.Should().Contain(user.Email).And.Contain(discordId.ToString());
     }
 

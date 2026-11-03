@@ -11,6 +11,9 @@ public enum AccountMergeResult
     /// or already has a Discord login.
     /// </summary>
     Conflict,
+
+    /// <summary>Nothing changed: both accounts have a private-journal key.</summary>
+    JournalConflict,
 }
 
 /// <summary>What a merge of a bot-only account would move.</summary>

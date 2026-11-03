@@ -194,18 +194,8 @@ internal static class HabitEndpoints
 
     private static HabitDto ToDto(Habit habit, UserDays user)
     {
-        var last7 = HabitService.FlexibleStreak(habit, user.Today, 7, user.LowDays, user.Tz);
-        StatsDto stats;
-        if (habit.FrequencyType == FrequencyType.Weekly)
-        {
-            var (done, target) = HabitService.WeeklyProgress(habit, user.Today);
-            stats = new StatsDto(null, null, null, last7, new WeekDto(done, target));
-        }
-        else
-        {
-            var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, user.Today, user.GraceDays, user.LowDays);
-            stats = new StatsDto(streak, graceUsed, HabitService.BestStreak(habit, user.Today, user.GraceDays, user.LowDays), last7, null);
-        }
+        var s = HabitService.StatsOn(habit, user.Today, user.GraceDays, user.LowDays, user.Tz);
+        var stats = new StatsDto(s.Streak, s.GraceUsed, s.BestStreak, s.Last7, s.Week is { } week ? new WeekDto(week.Done, week.Target) : null);
 
         return new HabitDto(
             habit.Id, habit.Name, Lower(habit.FrequencyType), habit.WeeklyTarget,
