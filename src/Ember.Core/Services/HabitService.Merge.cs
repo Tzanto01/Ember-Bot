@@ -30,9 +30,14 @@ public partial class HabitService
     /// <summary>
     /// In one transaction, after locking both user rows and re-checking that the source is still a bot-only account
     /// owning the Discord login and the target still has no Discord login: moves the source's habits (with their logs),
-    /// day marks (one per day and kind when both have it), push subscriptions and Discord login to the target, deletes the source and gives
-    /// the target a new security stamp. The habit limit does not apply. Then reschedules the target's reminders in the
-    /// target's timezone. The target's settings are kept.
+    /// routines, day marks (one per day and kind when both have it), journal entries (the target's wins on a date both have),
+    /// own moods, journal key, push subscriptions and Discord login to the target, deletes the source and gives
+    /// the target a new security stamp. A plaintext source mood whose trimmed label matches a plaintext target mood
+    /// (ignoring case) is combined into it: the source's entries pointing at it point at the target's mood and the source mood
+    /// is dropped (skipped when the source has encrypted entries, which may reference it inside the ciphertext).
+    /// The habit and routine limits do not apply. Then reschedules the target's reminders in the
+    /// target's timezone. The target's settings are kept. Returns <see cref="AccountMergeResult.JournalConflict"/>
+    /// without changes when both accounts have a journal key.
     /// </summary>
     public async Task<AccountMergeResult> MergeBotOnlyAccountAsync(Guid targetUserId, Guid sourceUserId, ulong discordUserId,
         CancellationToken cancellationToken = default)
@@ -50,9 +55,29 @@ public partial class HabitService
                 || !await IsMergeableSourceAsync(sourceUserId, discordUserId, cancellationToken))
                 return AccountMergeResult.Conflict;
 
+            if (await _db.JournalKeys.CountAsync(k => k.UserId == targetUserId || k.UserId == sourceUserId, cancellationToken) == 2)
+                return AccountMergeResult.JournalConflict;
+
             await _db.Habits
                 .Where(h => h.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(h => h.UserId, targetUserId), cancellationToken);
+
+            await _db.Routines
+                .Where(r => r.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.UserId, targetUserId), cancellationToken);
+
+            await MergeMoodsAsync(targetUserId, sourceUserId, cancellationToken);
+
+            await _db.DayNotes
+                .Where(n => n.UserId == sourceUserId && _db.DayNotes.Any(t => t.UserId == targetUserId && t.Date == n.Date))
+                .ExecuteDeleteAsync(cancellationToken);
+            await _db.DayNotes
+                .Where(n => n.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.UserId, targetUserId), cancellationToken);
+
+            await _db.JournalKeys
+                .Where(k => k.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(k => k.UserId, targetUserId), cancellationToken);
 
             await _db.DayMarks
                 .Where(m => m.UserId == sourceUserId
@@ -87,6 +112,34 @@ public partial class HabitService
 
         await RescheduleRemindersAsync(targetUserId);
         return AccountMergeResult.Merged;
+    }
+
+    private async Task MergeMoodsAsync(Guid targetUserId, Guid sourceUserId, CancellationToken cancellationToken)
+    {
+        if (!await _db.DayNotes.AnyAsync(n => n.UserId == sourceUserId && n.CipherVersion != null, cancellationToken))
+        {
+            var plaintext = await _db.Moods
+                .Where(m => (m.UserId == targetUserId || m.UserId == sourceUserId) && m.CipherVersion == null && m.Label != null)
+                .OrderBy(m => m.Id)
+                .Select(m => new { m.Id, m.UserId, m.Label })
+                .ToListAsync(cancellationToken);
+            foreach (var source in plaintext.Where(m => m.UserId == sourceUserId))
+            {
+                var target = plaintext.FirstOrDefault(m => m.UserId == targetUserId
+                    && string.Equals(m.Label!.Trim(), source.Label!.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (target is null) continue;
+
+                var (from, to) = ($"custom:{source.Id}", $"custom:{target.Id}");
+                await _db.DayNotes
+                    .Where(n => n.UserId == sourceUserId && n.Mood == from)
+                    .ExecuteUpdateAsync(s => s.SetProperty(n => n.Mood, to), cancellationToken);
+                await _db.Moods.Where(m => m.Id == source.Id).ExecuteDeleteAsync(cancellationToken);
+            }
+        }
+
+        await _db.Moods
+            .Where(m => m.UserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, targetUserId), cancellationToken);
     }
 
     private async Task<bool> IsMergeableSourceAsync(Guid sourceUserId, ulong discordUserId, CancellationToken cancellationToken)

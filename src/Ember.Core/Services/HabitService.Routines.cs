@@ -21,6 +21,17 @@ public partial class HabitService
     /// <summary>Most routines a single user can have.</summary>
     public const int MaxRoutinesPerUser = 10;
 
+    /// <summary>
+    /// The routine members a reminder on the user's local <paramref name="today"/> is for: those whose day (<see cref="DayOn"/>)
+    /// is pending or partial, in <see cref="Habit.RoutinePosition"/> order. Done, offday, paused, low and not-started days are left out.
+    /// Needs each habit's log of <paramref name="today"/> loaded, if there is one.
+    /// </summary>
+    public static List<Habit> PendingRoutineHabits(IEnumerable<Habit> members, DateOnly today, TimeZoneInfo tz, IReadOnlySet<DateOnly> lowDays)
+        => members
+            .OrderBy(h => h.RoutinePosition)
+            .Where(h => DayOn(h, today, today, tz, lowDays).State is DayState.Pending or DayState.Partial)
+            .ToList();
+
     /// <summary>The user's routines (oldest first) with their member habits ordered by <see cref="Habit.RoutinePosition"/>.</summary>
     public Task<List<Routine>> GetRoutinesAsync(Guid userId)
         => _db.Routines

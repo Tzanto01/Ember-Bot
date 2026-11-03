@@ -485,6 +485,20 @@ public partial class HabitService
         return (done, target);
     }
 
+    /// <summary>
+    /// The habit's stats on the user's local <paramref name="today"/>: <see cref="FlexibleStreak"/> over the last 7 days, plus
+    /// <see cref="WeeklyProgress"/> for weekly habits, or <see cref="ConsecutiveStreak"/> and <see cref="BestStreak"/> for the others.
+    /// </summary>
+    public static HabitStats StatsOn(Habit habit, DateOnly today, int graceDays, IReadOnlySet<DateOnly> lowDays, TimeZoneInfo tz)
+    {
+        var last7 = FlexibleStreak(habit, today, 7, lowDays, tz);
+        if (habit.FrequencyType == FrequencyType.Weekly)
+            return new HabitStats(null, null, null, last7, WeeklyProgress(habit, today));
+
+        var (streak, graceUsed) = ConsecutiveStreak(habit, today, graceDays, lowDays);
+        return new HabitStats(streak, graceUsed, BestStreak(habit, today, graceDays, lowDays), last7, null);
+    }
+
     /// <summary>Returns the Monday of the Monday–Sunday week containing <paramref name="day"/>.</summary>
     public static DateOnly WeekStart(DateOnly day)
         => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
@@ -633,7 +647,7 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
-    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs and day marks (reminders live on the habits).</summary>
+    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods and journal key (reminders live on the habits and routines).</summary>
     public async Task DeleteUserDataAsync(Guid userId)
     {
         await _db.Users
@@ -745,7 +759,10 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezoneId));
     }
 
-    /// <summary>The user with their logins, push subscriptions and every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
+    /// <summary>
+    /// The user with their logins, push subscriptions, every habit, log, day mark, routine, journal entry and own mood, and the
+    /// journal key (untracked), or null when Ember stores nothing about them.
+    /// </summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
             .AsNoTracking()
@@ -753,6 +770,10 @@ public partial class HabitService
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .Include(u => u.PushSubscriptions)
+            .Include(u => u.Routines)
+            .Include(u => u.DayNotes)
+            .Include(u => u.Moods)
+            .Include(u => u.JournalKey)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.Id == userId);
 
