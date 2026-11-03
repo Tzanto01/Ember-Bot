@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Habit } from '../models';
+import type { Habit, Routine } from '../models';
 import { planReminders, zonedToUtc } from './reminder-plan';
 
 function habit(overrides: Partial<Habit> = {}): Habit {
@@ -108,6 +108,70 @@ describe('planReminders', () => {
     const done = habit({ today: { date: '2026-11-02', state: 'done', completed: true, count: 1 } });
 
     expect(dates([done]).slice(0, 2)).toEqual(['2026-11-03', '2026-11-04']);
+  });
+
+  it('fires a weekdays habit only on its scheduled days', () => {
+    expect(dates([habit({ frequency: 'weekdays', days: ['mon', 'wed'] })])).toEqual([
+      '2026-11-02',
+      '2026-11-04',
+    ]);
+  });
+
+  it('skips today once a multi-count habit reaches its count, but keeps a partial day', () => {
+    const done = habit({
+      timesPerDay: 3,
+      today: { date: '2026-11-02', state: 'partial', completed: null, count: 3 },
+    });
+    const partial = habit({
+      timesPerDay: 3,
+      today: { date: '2026-11-02', state: 'partial', completed: null, count: 1 },
+    });
+
+    expect(dates([done])[0]).toBe('2026-11-03');
+    expect(dates([partial])[0]).toBe('2026-11-02');
+  });
+
+  it("plans a routine's reminder instead of its members' own, once a day while a member is pending", () => {
+    const routine: Routine = {
+      id: 7,
+      name: 'Evening',
+      reminderTime: '18:00',
+      reminderChannels: ['mobile'],
+      habitIds: [1, 2],
+    };
+    const plan = planReminders(
+      [habit({ id: 1 }), habit({ id: 2, reminderTime: null }), habit({ id: 3 })],
+      'Europe/Berlin',
+      berlinMorning,
+      [routine],
+    );
+
+    expect(plan.filter((r) => r.habitId === 1)).toEqual([]);
+    expect(plan.filter((r) => r.routineId === 7).map((r) => r.date)).toHaveLength(7);
+    expect(plan.find((r) => r.routineId === 7)?.at).toBe(Date.parse('2026-11-02T17:00:00Z'));
+    expect(plan.filter((r) => r.habitId === 3)).toHaveLength(7);
+  });
+
+  it('plans no routine reminder today when none of its habits is still pending', () => {
+    const routine: Routine = {
+      id: 7,
+      name: 'Evening',
+      reminderTime: '18:00',
+      reminderChannels: ['mobile'],
+      habitIds: [1, 2],
+    };
+    const done = { date: '2026-11-02', state: 'done' as const, completed: true, count: 1 };
+    const rest = { date: '2026-11-02', state: 'offday' as const, completed: null, count: 0 };
+
+    const plan = planReminders(
+      [habit({ id: 1, today: done }), habit({ id: 2, today: rest })],
+      'Europe/Berlin',
+      berlinMorning,
+      [routine],
+    );
+
+    expect(plan[0]).toMatchObject({ routineId: 7, date: '2026-11-03' });
+    expect(plan.some((r) => r.habitId !== undefined)).toBe(false);
   });
 
   it('keeps the local reminder time on both sides of a DST change', () => {

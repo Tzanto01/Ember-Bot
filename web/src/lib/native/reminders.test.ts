@@ -9,7 +9,9 @@ import type { Habit } from '../models';
 import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
 import { applyTheme } from '../theme';
-import { Reminders } from './reminders';
+import { reminderNames } from './reminder-names';
+import { doneActionType, Reminders, reminderBody } from './reminders';
+import type { EmberWidgetPlugin } from './widget';
 
 const zone = 'Europe/Berlin';
 const reminded: Habit = { ...habit, reminderTime: '20:00', reminderChannels: ['mobile'] };
@@ -34,17 +36,36 @@ describe('Reminders', () => {
       getPending,
       cancel: async () => undefined,
       checkPermissions: async () => ({ display: 'granted' }),
+      registerActionTypes: async () => undefined,
       schedule,
     } as unknown as LocalNotificationsPlugin;
+    const widget = {
+      update: async () => undefined,
+      clear: async () => undefined,
+    } as unknown as EmberWidgetPlugin;
     const api = new ApiClient(new Http({ native: true, apiBase: '' }), new OfflineQueue(device));
-    reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
+    reminders = new Reminders(
+      api,
+      device,
+      async () => ({ LocalNotifications: plugin }),
+      async () => ({ EmberWidget: widget }),
+    );
     await device.saveHabits({ userId: 'u1', timeZone: zone, habits: [reminded] });
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    reminderNames.set(false);
   });
+
+  async function rebuildOnline(habits: Habit[], routines: unknown[] = []) {
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, habits);
+    (await mock.next('GET', '/api/routines')).respond(200, routines);
+    await done;
+    return schedule.mock.calls[0][0].notifications;
+  }
 
   const scheduledAt = () =>
     schedule.mock.calls[0][0].notifications.map((n) => n.schedule?.at?.toISOString());
@@ -73,6 +94,7 @@ describe('Reminders', () => {
   it('plans from the live habit list and caches it', async () => {
     const done = reminders.rebuild('u1', 'Asia/Tokyo');
     (await mock.next('GET', '/api/habits')).respond(200, [{ ...reminded, name: 'Read' }]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
     await done;
 
     expect(scheduledAt()[0]).toBe('2026-11-01T11:00:00.000Z');
@@ -84,13 +106,61 @@ describe('Reminders', () => {
 
   it("tints the reminder icon with the current theme's colour", async () => {
     applyTheme('tidepool');
+    const notifications = await rebuildOnline([reminded]);
+
+    expect(new Set(notifications.map((n) => n.iconColor))).toEqual(new Set(['#7DD5D8']));
+  });
+
+  it('names no habit and offers no action while "Show habit names" is off', async () => {
+    const [first] = await rebuildOnline([reminded]);
+
+    expect(first).toMatchObject({ title: 'Ember', body: reminderBody });
+    expect(first.actionTypeId).toBeUndefined();
+    expect(first.extra).toEqual({ userId: 'u1', habitId: 1, date: '2026-11-01' });
+  });
+
+  it('names the habit with a Done action, and the routine without one, while "Show habit names" is on', async () => {
+    reminderNames.set(true);
+    const routine = {
+      id: 4,
+      name: 'Evening',
+      reminderTime: '19:00',
+      reminderChannels: ['mobile'],
+      habitIds: [2],
+    };
+    const notifications = await rebuildOnline([reminded, { ...reminded, id: 2, name: 'Read' }], [routine]);
+
+    expect(notifications[0]).toMatchObject({
+      title: 'Evening',
+      body: reminderBody,
+      extra: { userId: 'u1', routineId: 4, date: '2026-11-01' },
+    });
+    expect(notifications[0].actionTypeId).toBeUndefined();
+    expect(notifications[1]).toMatchObject({
+      title: 'Walk',
+      actionTypeId: doneActionType,
+      extra: { userId: 'u1', habitId: 1, date: '2026-11-01' },
+    });
+    expect(JSON.stringify(notifications)).not.toContain('Read');
+  });
+
+  it('offline, plans the cached routines too', async () => {
+    await device.saveHabits({
+      userId: 'u1',
+      timeZone: zone,
+      habits: [reminded],
+      routines: [{ id: 4, name: 'Evening', reminderTime: '19:00', reminderChannels: ['mobile'], habitIds: [1] }],
+    });
+
     const done = reminders.rebuild('u1', zone);
-    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/habits')).fail();
     await done;
 
-    expect(new Set(schedule.mock.calls[0][0].notifications.map((n) => n.iconColor))).toEqual(
-      new Set(['#7DD5D8']),
-    );
+    expect(schedule.mock.calls[0][0].notifications[0].extra).toEqual({
+      userId: 'u1',
+      routineId: 4,
+      date: '2026-11-01',
+    });
   });
 
   it('calls the native notifications plugin without awaiting the proxy itself', async () => {

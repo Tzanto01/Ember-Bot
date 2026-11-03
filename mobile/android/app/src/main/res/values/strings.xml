@@ -4,4 +4,14 @@
     <string name="title_activity_main">Ember</string>
     <string name="package_name">app.ember.habits</string>
     <string name="custom_url_scheme">app.ember.habits</string>
+    <string name="widget_name">Today in Ember</string>
+    <string name="widget_description">Today\'s habits at a glance. Tap one to check in.</string>
+    <string name="widget_signed_out">Open Ember to see today</string>
+    <string name="widget_nothing_today">Nothing planned today. Enjoy the rest.</string>
+    <string name="widget_state_done">Done</string>
+    <string name="widget_state_partial">%1$d of %2$d</string>
+    <string name="widget_state_open">Open</string>
+    <string name="widget_state_rest">Rest</string>
+    <string name="widget_row_description">%1$s, %2$s</string>
+    <string name="widget_more">+%1$d more</string>
 </resources>
