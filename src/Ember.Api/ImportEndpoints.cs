@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Ember.Core.Models;
 using Ember.Core.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ember.Api;
@@ -26,7 +27,8 @@ internal static class ImportEndpoints
 
     public static RouteGroupBuilder MapImport(this RouteGroupBuilder api)
     {
-        api.MapPost("/me/import", async (JsonElement body, ClaimsPrincipal principal, HabitService habits, TimeProvider time) =>
+        api.MapPost("/me/import", async (JsonElement body, ClaimsPrincipal principal, HabitService habits, TimeProvider time,
+            UserManager<User> users, SignInManager<User> signIn) =>
         {
             var userId = principal.UserId();
             if (!await habits.HasHealthDataConsentAsync(userId)) return Problems.ConsentRequired();
@@ -44,6 +46,10 @@ internal static class ImportEndpoints
             if (doc is null) return Problems.Validation("body", "Must be a JSON export.");
             if (doc.FormatVersion != ExportBuilder.CurrentFormatVersion)
                 return Problems.Validation("format_version", $"Must be {ExportBuilder.CurrentFormatVersion}.");
+
+            if (doc.JournalKey is not null && await users.GetUserAsync(principal) is { } user
+                && await JournalEndpoints.PasswordProblem(user, doc.JournalKey.Password, users, signIn) is { } passwordProblem)
+                return passwordProblem;
 
             if (doc.Habits?.Count > HabitService.MaxHabitsPerUser) return Problems.HabitLimit();
             if (doc.Routines?.Count > HabitService.MaxRoutinesPerUser)

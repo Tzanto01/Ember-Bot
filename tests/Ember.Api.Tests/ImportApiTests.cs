@@ -24,6 +24,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         turning_off = true,
         passphrase = new { salt = B64(16), iterations = 600_000, iv = B64(12), wrapped = B64(48) },
         recovery = new { salt = B64(16), iv = B64(12), wrapped = B64(48) },
+        password = ApiClient.Passphrase,
     };
 
     private static readonly string[] IgnoredSettings =
@@ -228,6 +229,20 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var notes = await (await user.Get("/api/day-notes?from=2026-10-20")).ExpectJson();
         notes.EnumerateArray().Single().GetProperty("encrypted").GetProperty("ct").GetString().Should().Be(B64(32));
         (await (await user.Get("/api/moods")).ExpectJson()).EnumerateArray().Single().Has("encrypted").Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task A_journal_key_imports_only_with_the_login_password()
+    {
+        var user = await Host.SignedInAsync();
+        var keyWithoutPassword = new
+        {
+            passphrase = new { salt = B64(16), iterations = 600_000, iv = B64(12), wrapped = B64(48) },
+            recovery = new { salt = B64(16), iv = B64(12), wrapped = B64(48) },
+        };
+
+        (await ErrorsAsync(await Import(user, Doc(journalKey: keyWithoutPassword)))).Has("password").Should().BeTrue();
+        await (await user.Get("/api/me/journal-key")).Expect(HttpStatusCode.NotFound);
     }
 
     [DockerFact]
