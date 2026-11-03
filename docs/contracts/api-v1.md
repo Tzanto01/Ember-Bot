@@ -190,7 +190,8 @@ A runnable host in the test tree, never in `src/` or the Docker image: `dotnet r
 
 - The client queues `PUT`/`DELETE /api/habits/{id}/days/{date}` made while offline (keyed by user ID) and replays them in order once online. The server needs no change and replays are idempotent. "Last write wins" means last replayed: an older offline edit can overwrite a newer edit made elsewhere, accepted for v2.
 - Dates are computed in the account's timezone (`me.timezone`), not the device's.
-- A replay is dropped (with a gentle notice) only on 404 or 422 `before_habit_start`/`in_future`. On `consent_required` it stays queued and the app shows the consent step. On 401, 429, 5xx or network failure it stays queued and is retried.
+- A replay is dropped (with a gentle notice) only on 404 or 422 `before_habit_start`/`in_future`.
+- Day notes: a queued day-note edit refused with 400 because the journal changed form in between (queued as plaintext, journal now private, or the reverse) is never silently lost. The client converts it to the journal's current form (encrypts it with the unlocked key, or decrypts it while turning off) and replays it; if it can't right now (journal locked on this device), it moves out of the queue into a held list that doesn't block later edits and is replayed after the next unlock. Any other 400 drops it with the gentle notice, which shows the text so the user can copy it. On `consent_required` it stays queued and the app shows the consent step. On 401, 429, 5xx or network failure it stays queued and is retried.
 
 ## Features v1.6
 
