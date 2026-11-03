@@ -169,6 +169,7 @@ export function DeviceDataSettings() {
           accept="application/json,.json"
           aria-label="Choose a backup file"
           className="sr-only"
+          aria-hidden="true"
           tabIndex={-1}
           onChange={(event) => void chooseFile(event)}
         />

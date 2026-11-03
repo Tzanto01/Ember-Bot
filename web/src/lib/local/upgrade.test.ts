@@ -14,7 +14,7 @@ import { type FakeCall, type FetchMock, habit, me as baseMe, mockFetch } from '.
 import { newLocalData } from './backend';
 import { LocalStore } from './store';
 import type { AppMode, LocalData } from './types';
-import { UpgradeService } from './upgrade';
+import { UpgradeService, notEmptyDetail } from './upgrade';
 
 const noteText = 'Synthetic walk by the river';
 const moodLabel = 'Synthetic calm';
@@ -29,6 +29,10 @@ class FakeServer {
   notes = new Map<string, unknown>();
   failMoodPosts = 0;
   loseImportAnswer = false;
+  loseMoodAnswers = 0;
+  rateLimitImports = 0;
+  importRejection: string | null = null;
+  patches: unknown[] = [];
   private nextMood = 100;
   private timer = setInterval(() => {
     for (const call of this.mock.pending.splice(0)) this.handle(call);
@@ -44,8 +48,17 @@ class FakeServer {
     const path = new URL(call.url, 'http://ember.test').pathname;
     const body = (call.body ?? {}) as Record<string, unknown>;
     const route = `${call.method} ${path}`;
+    if (route === 'PATCH /api/me') {
+      this.patches.push(body);
+      return call.respond(200, this.me);
+    }
     if (route === 'POST /api/me/import') {
-      if (this.habitNames.length) return call.respond(409, { type: 'conflict', detail: 'Has habits' });
+      if (this.rateLimitImports > 0) {
+        this.rateLimitImports--;
+        return call.respond(429, { type: 'rate_limited' });
+      }
+      if (this.importRejection) return call.respond(409, { type: 'conflict', detail: this.importRejection });
+      if (this.habitNames.length) return call.respond(409, { type: 'conflict', detail: notEmptyDetail });
       this.imports.push(body);
       this.habitNames = (body['habits'] as { name: string }[]).map((h) => h.name);
       return this.loseImportAnswer ? call.fail() : call.respond(204);
@@ -70,8 +83,12 @@ class FakeServer {
         this.failMoodPosts--;
         return call.respond(500, { type: 'internal' });
       }
-      const mood = { id: this.nextMood++, encrypted: body['encrypted'], archived: false };
+      const mood = { ...body, id: this.nextMood++, archived: false };
       this.moods.set(mood.id, mood);
+      if (this.loseMoodAnswers > 0) {
+        this.loseMoodAnswers--;
+        return call.fail();
+      }
       return call.respond(201, mood);
     }
     const moodPatch = /^PATCH \/api\/moods\/(\d+)$/.exec(route);
@@ -82,7 +99,7 @@ class FakeServer {
     }
     const notePut = /^PUT \/api\/day-notes\/(.+)$/.exec(route);
     if (notePut) {
-      const note = { date: decodeURIComponent(notePut[1]), encrypted: body['encrypted'] };
+      const note = { ...body, date: decodeURIComponent(notePut[1]) };
       this.notes.set(note.date, note);
       return call.respond(200, note);
     }
@@ -230,5 +247,119 @@ describe('UpgradeService', () => {
       expect(sent).not.toContain('Synthetic old');
     }
     expect(await store.exists()).toBe(false);
+  });
+
+  const callIndex = (route: string) => mock.all.findIndex((c) => `${c.method} ${new URL(c.url, 'http://ember.test').pathname}` === route);
+  const secret = { passphrase: 'synthetic harbour lantern', remember: false, password: 'synthetic-pw' };
+
+  it('sends the device settings to the account before the import, leaving the theme out when unset', async () => {
+    await upgrade.run();
+
+    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 1 }]);
+    expect(callIndex('PATCH /api/me')).toBeLessThan(callIndex('POST /api/me/import'));
+  });
+
+  it('sends the chosen theme with the device settings', async () => {
+    await store.update((d) => ({ ...d, profile: { ...d.profile, theme: 'tidepool', graceDaysPerWeek: 2 } }));
+
+    await upgrade.run();
+
+    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 2, theme: 'tidepool' }]);
+  });
+
+  it('does not treat another 409 after a lost answer as an import that went through', async () => {
+    server.loseImportAnswer = true;
+    await upgrade.run();
+    server.importRejection = 'The file has more than 10 routines.';
+
+    const result = await upgrade.run();
+
+    expect(result).toEqual({ ok: false, reason: 'failed', message: expect.stringContaining('more than 10 routines') });
+    expect(await store.exists()).toBe(true);
+    expect(finishUpgrade).not.toHaveBeenCalled();
+  });
+
+  it('still moves the journal in plaintext when a retry drops the private journal after a lost import answer', async () => {
+    server.loseImportAnswer = true;
+    const first = await upgrade.run({ privateJournal: secret });
+    server.loseImportAnswer = false;
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true, recoveryCode: null });
+    expect(server.imports).toHaveLength(1);
+    expect(server.imports[0]).toMatchObject({ moods: [], day_notes: [] });
+    expect([...server.notes.values()].sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))).toMatchObject([
+      { date: '2026-10-02', text: noteText },
+      { date: '2026-10-03', text: 'Synthetic rest day' },
+    ]);
+    expect([...server.moods.values()].map((m) => (m as { label: string }).label).sort()).toEqual(['Synthetic calm', 'Synthetic old']);
+    expect(await store.exists()).toBe(false);
+  });
+
+  it('reuses the account mood whose creation answer was lost instead of creating a second one', async () => {
+    server.loseMoodAnswers = 1;
+    const first = await upgrade.run({ privateJournal: secret });
+
+    const second = await upgrade.run({ privateJournal: secret });
+
+    expect(first.ok).toBe(false);
+    expect(second.ok).toBe(true);
+    expect(server.moods.size).toBe(2);
+    expect(await store.exists()).toBe(false);
+  });
+
+  it('reports and leaves out notes and low days dated before the earliest habit start', async () => {
+    await store.update((d) => ({
+      ...d,
+      lowDays: ['2026-09-25', '2026-10-05'],
+      notes: [...d.notes, { date: '2026-09-20', text: 'Synthetic early note', mood: null }],
+    }));
+
+    expect((await upgrade.summary())?.leftOut).toEqual({ notes: 1, lowDays: 1 });
+    await upgrade.run();
+
+    expect(server.imports[0]).toMatchObject({ day_marks: [{ date: '2026-10-05' }] });
+    expect((server.imports[0] as { day_notes: { date: string }[] }).day_notes.map((n) => n.date)).toEqual(['2026-10-02', '2026-10-03']);
+  });
+
+  it('leaves early notes out of the private journal upload too', async () => {
+    await store.update((d) => ({ ...d, notes: [...d.notes, { date: '2026-09-20', text: 'Synthetic early note', mood: null }] }));
+
+    const result = await upgrade.run({ privateJournal: secret });
+
+    expect(result.ok).toBe(true);
+    expect([...server.notes.keys()].sort()).toEqual(['2026-10-02', '2026-10-03']);
+  });
+
+  it('counts every note and low day as left out when there are no habits', async () => {
+    await store.update((d) => ({ ...d, habits: [], logs: [], lowDays: ['2026-10-05'] }));
+
+    expect((await upgrade.summary())?.leftOut).toEqual({ notes: 2, lowDays: 1 });
+  });
+
+  it('still counts the import as sent after a rate-limited retry', async () => {
+    server.loseImportAnswer = true;
+    await upgrade.run();
+    server.rateLimitImports = 1;
+
+    const limited = await upgrade.run();
+    const third = await upgrade.run();
+
+    expect(limited.ok).toBe(false);
+    expect(third.ok).toBe(true);
+    expect(server.imports).toHaveLength(1);
+    expect(await store.exists()).toBe(false);
+  });
+
+  it('returns the saved recovery code when a retry without the private journal choice finishes', async () => {
+    server.failMoodPosts = 1;
+    const first = await upgrade.run({ privateJournal: secret });
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second.ok && second.recoveryCode).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
   });
 });

@@ -110,6 +110,19 @@ describe('DeviceDataSettings', () => {
     expect(backup.parseBackup).not.toHaveBeenCalled();
   });
 
+  it('keeps the file input out of the accessibility tree and opens it from "Import backup"', async () => {
+    renderCard();
+    const input = screen.getByLabelText<HTMLInputElement>('Choose a backup file');
+    const click = vi.spyOn(input, 'click');
+
+    expect(input).toHaveAttribute('aria-hidden', 'true');
+    expect(input).toHaveAttribute('tabindex', '-1');
+    expect(screen.queryByRole('button', { name: 'Choose a backup file' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Import backup' }));
+    expect(click).toHaveBeenCalledOnce();
+  });
+
   it('records the backup only after the file was saved, not when the picker is cancelled', async () => {
     vi.mocked(saveExport).mockResolvedValueOnce(false);
     const user = userEvent.setup();

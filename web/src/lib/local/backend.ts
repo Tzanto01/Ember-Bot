@@ -112,6 +112,7 @@ export function parseChannels(value: unknown): ReminderChannel[] | null {
 /** The JSON export format v2 document (`format_version: 2`) of the device data; `journal` false leaves moods and entries out. */
 export function exportDocument(data: LocalData, journal = true): Record<string, unknown> {
   const order = new Map(data.habits.map((habit, index) => [habit.id, index]));
+  const timesPerDay = new Map(data.habits.map((habit) => [habit.id, habit.timesPerDay]));
   return {
     format_version: 2,
     settings: {
@@ -137,7 +138,12 @@ export function exportDocument(data: LocalData, journal = true): Record<string, 
     logs: data.logs
       .filter((log) => order.has(log.habitId))
       .sort((a, b) => order.get(a.habitId)! - order.get(b.habitId)! || a.date.localeCompare(b.date))
-      .map((log) => ({ habit_id: log.habitId, date: log.date, completed: log.completed, count: log.count })),
+      .map((log) => ({
+        habit_id: log.habitId,
+        date: log.date,
+        completed: log.completed,
+        count: Math.min(log.count, timesPerDay.get(log.habitId)!),
+      })),
     day_marks: [...data.lowDays].sort().map((date) => ({ date, kind: 'low_day' })),
     routines: data.routines.map((r) => ({
       id: r.id,
