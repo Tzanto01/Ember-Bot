@@ -109,8 +109,9 @@ describe('dayLabel', () => {
     inMonth: true,
     isToday,
     lowDay: false,
+    count: 0,
   });
-  const states: DayState[] = ['beforestart', 'done', 'notdone', 'pending', 'lowday', 'paused'];
+  const states: DayState[] = ['beforestart', 'done', 'notdone', 'pending', 'lowday', 'paused', 'offday', 'partial'];
 
   it('never says "missed" for any state', () => {
     for (const state of states) {

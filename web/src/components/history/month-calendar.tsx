@@ -27,6 +27,8 @@ export interface MonthCalendarProps {
   onRewardEnd: () => void;
   /** Replaces the grid, for example the "These days didn't load" notice. */
   problem?: ReactNode;
+  /** The habit's check-ins a day; partly done days show "2 of 3" when above 1. */
+  timesPerDay?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function MonthCalendar({
   reward,
   onRewardEnd,
   problem,
+  timesPerDay = 1,
 }: MonthCalendarProps) {
   return (
     <section aria-labelledby="month-heading" className={cn(cardVariants(), 'px-0 md:px-5')}>
@@ -102,6 +105,7 @@ export function MonthCalendar({
                           onSelect={day.editable ? () => onSelect(day.date) : undefined}
                           expanded={openDate === day.date}
                           runToNext={next?.inMonth === true && joinsRun(day.state, next.state)}
+                          progress={{ count: day.count, target: timesPerDay }}
                           className={cn('align-middle', keyword && `ember-cell-reward-${keyword}`)}
                         />
                       )}

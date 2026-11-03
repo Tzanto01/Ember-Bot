@@ -176,6 +176,23 @@ export default function HistoryPage() {
     );
   }
 
+  function setCount(count: number) {
+    const habit = selected;
+    const date = openDate;
+    if (!habit || !date) return;
+    const keyword = count >= habit.timesPerDay ? readReward(reduceMotion) : null;
+    void runEdit(
+      async () => {
+        const updated = await api.setDayCount(habit.id, date, count);
+        queryClient.setQueryData<Habit[]>(habitsKey, (list) =>
+          list?.map((h) => (h.id === updated.id ? updated : h)),
+        );
+        return `${formatDate(date, longDate)}: ${count} of ${habit.timesPerDay}.`;
+      },
+      keyword ? { date, keyword } : null,
+    );
+  }
+
   function toggleLowDay() {
     const day = openDay;
     if (!day) return;
@@ -274,6 +291,7 @@ export default function HistoryPage() {
             onSelect={toggleDay}
             reward={reward}
             onRewardEnd={() => setReward(null)}
+            timesPerDay={selected.timesPerDay}
             problem={
               monthError && (
                 <div className="px-4 md:px-0">
@@ -296,6 +314,8 @@ export default function HistoryPage() {
               busy={busy}
               problem={dayProblem}
               onEdit={editDay}
+              timesPerDay={selected.timesPerDay}
+              onSetCount={setCount}
               onToggleLowDay={toggleLowDay}
               onClose={closeDay}
             />
