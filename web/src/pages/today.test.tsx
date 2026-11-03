@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Habit, WeeklyStats } from '@/lib/models';
+import type { Habit, Routine, WeeklyStats } from '@/lib/models';
 import { auth, deviceSync } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import TodayPage from './today';
@@ -31,12 +31,17 @@ function renderToday() {
 async function answerLoad(
   f: FetchMock,
   habits: Habit[],
-  { localToday = '2026-11-01', stats = weekly }: { localToday?: string; stats?: WeeklyStats } = {},
+  {
+    localToday = '2026-11-01',
+    stats = weekly,
+    routines = [],
+  }: { localToday?: string; stats?: WeeklyStats; routines?: Routine[] } = {},
 ) {
   (await f.next('GET', '/api/me')).respond(200, { ...me, localToday });
   (await f.next('GET', '/api/habits')).respond(200, habits);
   (await f.next('GET', `/api/low-days?from=${localToday}&to=${localToday}`)).respond(200, []);
   (await f.next('GET', '/api/stats/weekly')).respond(200, stats);
+  (await f.next('GET', '/api/routines')).respond(200, routines);
 }
 
 const checkButton = () => screen.findByRole('button', { name: 'Check in Walk for today' });
@@ -65,6 +70,7 @@ describe('TodayPage', () => {
     (await f.next('GET', '/api/low-days?from=2026-11-02&to=2026-11-02')).respond(200, []);
     (await f.next('GET', '/api/habits')).respond(200, []);
     (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
 
     expect(await screen.findByText(/2 November|November 2/)).toBeInTheDocument();
     expect(f.all.some((c) => c.url.includes('2026-11-01'))).toBe(false);
@@ -114,6 +120,18 @@ describe('TodayPage', () => {
     expect(await checkButton()).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('shows a check-in made from a reminder or the widget', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+    expect(await checkButton()).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => deviceSync.nativeCheckIn.set({ name: 'Walk' }));
+    await answerLoad(f, [doneHabit]);
+
+    await waitFor(async () => expect(await checkButton()).toHaveAttribute('aria-pressed', 'true'));
+    act(() => deviceSync.nativeCheckIn.set(null));
+  });
+
   it("plays the theme's reward only after the user's own tap, never on first render", async () => {
     document.documentElement.style.setProperty('--ember-reward', 'glow');
     const read = { ...habit, id: 2, name: 'Read', today: { ...doneHabit.today } };
@@ -152,6 +170,7 @@ describe('TodayPage', () => {
     (await f.next('GET', '/api/habits')).respond(200, [habit]);
     (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, ['2026-11-01']);
     (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Clear low day' }));
     (await f.next('DELETE', '/api/low-days/2026-11-01')).respond(204);
@@ -178,11 +197,68 @@ describe('TodayPage', () => {
           if (call.url === '/api/habits') call.respond(200, [doneHabit, read]);
           else if (call.url.startsWith('/api/low-days')) call.respond(200, []);
           else if (call.url === '/api/stats/weekly') call.respond(200, weekly);
+          else if (call.url === '/api/routines') call.respond(200, []);
           else if (call.url === '/api/me') call.respond(200, { ...me, localToday: '2026-11-01' });
         }
         expect(screen.getByRole('heading', { name: 'Read' })).toBeInTheDocument();
       },
       { timeout: 2000, interval: 20 },
     );
+  });
+  it('adds one to a multi-count habit with an absolute count and shows the new progress', async () => {
+    const water = { ...habit, name: 'Water', timesPerDay: 3, today: { ...habit.today, state: 'partial' as const, count: 1 } };
+    renderToday();
+    await answerLoad(f, [water]);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Check in Water for today (1 of 3)' }));
+    const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
+    expect(put.body).toEqual({ count: 2 });
+    expect(screen.getByRole('button', { name: 'Check in Water for today (2 of 3)' })).toHaveAttribute('aria-pressed', 'false');
+
+    put.respond(200, { ...water, today: { ...water.today, count: 2 } });
+    expect(await screen.findByText('Water: 2 of 3 for today.')).toBeInTheDocument();
+    expect(screen.getByText('2 of 3 today')).toBeInTheDocument();
+  });
+
+  it('shows a rest day as rest, not as open, and returns to rest when its check-in is cleared', async () => {
+    const restDone = {
+      ...habit,
+      frequency: 'weekdays' as const,
+      days: ['mon' as const],
+      today: { ...habit.today, state: 'done' as const, completed: true, count: 1 },
+    };
+    renderToday();
+    await answerLoad(f, [restDone]);
+
+    await userEvent.click(await checkButton());
+    await f.next('DELETE', '/api/habits/1/days/2026-11-01');
+
+    expect(screen.getByText(/Rest day, nothing planned/)).toBeInTheDocument();
+    expect(await checkButton()).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it("groups habits under their routines in the routine's order, then the rest", async () => {
+    const water = { ...habit, id: 3, name: 'Water' };
+    const read = { ...habit, id: 2, name: 'Read' };
+    renderToday();
+    await answerLoad(f, [habit, read, water], {
+      routines: [{ id: 5, name: 'Morning', reminderTime: null, reminderChannels: [], habitIds: [3, 1] }],
+    });
+
+    await screen.findByRole('heading', { name: 'Morning' });
+    const headings = screen.getAllByRole('heading').map((h) => `${h.tagName} ${h.textContent}`);
+    expect(headings.slice(1)).toEqual(['H2 Morning', 'H3 Water', 'H3 Walk', 'H2 Other habits', 'H3 Read', 'H2 Your week', 'H2 How was today?']);
+    expect(screen.getByRole('link', { name: 'Edit Morning routine' })).toHaveAttribute('href', '/routines/5/edit');
+  });
+
+  it('shows habits ungrouped when routines fail to load', async () => {
+    renderToday();
+    (await f.next('GET', '/api/me')).respond(200, me);
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+    (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, []);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(500);
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Walk' })).toBeInTheDocument();
   });
 });

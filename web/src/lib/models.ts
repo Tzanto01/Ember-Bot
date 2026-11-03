@@ -22,11 +22,15 @@ export interface Me {
   /** The user's local today. Use this, never the browser clock, for data. */
   localToday: LocalDateString;
   graceDaysPerWeek: number;
-  leaderboardOptIn: boolean;
   /** The account's theme id; null when never chosen (the app shows the default). */
   theme: ThemeId | null;
   consent: { given: boolean; policyVersion: string | null; currentPolicyVersion: string };
   dmReminders: { paused: boolean };
+  /**
+   * v1.7 private journal: `encrypted` once a journal key exists; `turningOff` while a switch-off is under way;
+   * `plaintextLeft` / `encryptedLeft` entries and moods still to encrypt / decrypt.
+   */
+  journal: { encrypted: boolean; turningOff: boolean; plaintextLeft: number; encryptedLeft: number };
 }
 
 /** `PATCH /api/me` body. */
@@ -34,14 +38,30 @@ export interface MePatch {
   timezone?: string;
   /** 0 to 3. */
   graceDaysPerWeek?: number;
-  leaderboardOptIn?: boolean;
   theme?: ThemeId;
 }
 
-export type Frequency = 'daily' | 'weekly';
+export type Frequency = 'daily' | 'weekly' | 'weekdays';
 
-/** Core `DayState`. `notdone` is just an empty day, never "missed". */
-export type DayState = 'beforestart' | 'done' | 'notdone' | 'pending' | 'lowday' | 'paused';
+/** A weekday key, Monday first. */
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+/** Every weekday, Monday first (the order the API returns `days` in). */
+export const weekdays: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+/**
+ * Core `DayState`. `notdone` is just an empty day, never "missed". `offday` is a day outside a `weekdays`
+ * schedule (rest, never missed); `partial` is a multi-count day with `0 < count < timesPerDay`.
+ */
+export type DayState =
+  | 'beforestart'
+  | 'done'
+  | 'notdone'
+  | 'pending'
+  | 'lowday'
+  | 'paused'
+  | 'offday'
+  | 'partial';
 
 export type ReminderChannel = 'discord' | 'webpush' | 'mobile';
 
@@ -49,6 +69,8 @@ export interface DayEntry {
   date: LocalDateString;
   state: DayState;
   completed: boolean | null;
+  /** Check-ins that day, 0 to `timesPerDay`. */
+  count: number;
 }
 
 export interface HabitStats {
@@ -67,6 +89,12 @@ export interface Habit {
   frequency: Frequency;
   /** 1 to 6 for weekly habits, else null. */
   weeklyTarget: number | null;
+  /** 1 to 6 distinct weekdays, Monday first, for `weekdays` habits; else null. */
+  days: Weekday[] | null;
+  /** 1 to 10 check-ins a day for `daily` and `weekdays`; always 1 for `weekly`. */
+  timesPerDay: number;
+  /** The routine this habit belongs to, or null. */
+  routineId: number | null;
   reminderTime: TimeOfDay | null;
   pausedFrom: LocalDateString | null;
   pausedUntil: LocalDateString | null;
@@ -86,6 +114,8 @@ export interface NewHabit {
   reminderTime?: TimeOfDay | null;
   frequency: Frequency;
   weeklyTarget?: number | null;
+  days?: Weekday[] | null;
+  timesPerDay?: number;
 }
 
 /** `PATCH /api/habits/{id}` body. */
@@ -95,6 +125,8 @@ export interface HabitPatch {
   clearReminder?: boolean;
   frequency?: Frequency;
   weeklyTarget?: number | null;
+  days?: Weekday[] | null;
+  timesPerDay?: number;
   reminderChannels?: ReminderChannel[];
 }
 
@@ -114,7 +146,7 @@ export interface MergePreview {
   logs: number;
   dayMarks: number;
   habitNames: string[];
-  kept: { timezone: string; graceDaysPerWeek: number; leaderboardOptIn: boolean };
+  kept: { timezone: string; graceDaysPerWeek: number };
 }
 
 /** `GET /api/stats/weekly`, the 7 days ending yesterday. */
@@ -135,6 +167,126 @@ export interface WeeklyStats {
 export interface Credentials {
   email: string;
   password: string;
+  /** v1.7: the authenticator code, after a `RequiresTwoFactor` answer. */
+  twoFactorCode?: string;
+  /** v1.7: one of the recovery codes instead of `twoFactorCode`. */
+  twoFactorRecoveryCode?: string;
+}
+
+/** `Routine` (v1.6). `habitIds` is ordered and sets membership. */
+export interface Routine {
+  id: number;
+  name: string;
+  reminderTime: TimeOfDay | null;
+  reminderChannels: ReminderChannel[];
+  habitIds: number[];
+}
+
+/** `POST /api/routines` body. */
+export interface NewRoutine {
+  /** 1 to 50 characters after trimming. */
+  name: string;
+  reminderTime?: TimeOfDay | null;
+  reminderChannels?: ReminderChannel[];
+  habitIds?: number[];
+}
+
+/** `PATCH /api/routines/{id}` body. */
+export interface RoutinePatch {
+  name?: string;
+  reminderTime?: TimeOfDay | null;
+  clearReminder?: boolean;
+  reminderChannels?: ReminderChannel[];
+  habitIds?: number[];
+}
+
+/** The five built-in moods, lowest first. */
+export type BuiltinMood = 'low' | 'meh' | 'okay' | 'good' | 'great';
+
+export const builtinMoods: readonly BuiltinMood[] = ['low', 'meh', 'okay', 'good', 'great'];
+
+/** A built-in mood key or `custom:<id>` for one of the user's own moods. */
+export type MoodKey = BuiltinMood | `custom:${number}`;
+
+/** v1.7 ciphertext (all base64): AES-GCM `ct` with its 12-byte `iv`. */
+export interface EncryptedBlob {
+  v: 1;
+  iv: string;
+  ct: string;
+}
+
+/** The journal for one local day, as plaintext. `text` 1 to 2000 characters after trimming, line breaks kept. */
+export interface DayNote {
+  date: LocalDateString;
+  text: string | null;
+  mood: MoodKey | null;
+}
+
+/** A day note as the API returns it: plaintext, or (private journal) only the ciphertext. */
+export type StoredDayNote = DayNote | { date: LocalDateString; encrypted: EncryptedBlob };
+
+/** `PUT /api/day-notes/{date}` body: plaintext, or `{ encrypted }` while a journal key exists. */
+export type DayNoteBody = { text?: string | null; mood?: MoodKey | null } | { encrypted: EncryptedBlob };
+
+/** One of the user's own moods, as plaintext. Archived moods leave the picker but past days keep them. */
+export interface OwnMood {
+  id: number;
+  /** 1 to 24 characters after trimming. */
+  label: string;
+  /** One emoji grapheme, or null. */
+  emoji: string | null;
+  archived: boolean;
+}
+
+/** An own mood as the API returns it: plaintext, or (private journal) only the ciphertext. */
+export type StoredMood = OwnMood | { id: number; encrypted: EncryptedBlob; archived: boolean };
+
+/** `POST /api/moods` body. */
+export type NewMoodBody = { label: string; emoji?: string | null } | { encrypted: EncryptedBlob };
+
+/** `PATCH /api/moods/{id}` body. */
+export type MoodPatchBody =
+  | { label?: string; emoji?: string | null; archived?: boolean }
+  | { encrypted?: EncryptedBlob; archived?: boolean };
+
+/** `GET /api/stats/days` item: one local day across all habits. */
+export interface DayStat {
+  date: LocalDateString;
+  scheduled: number;
+  done: number;
+  partial: number;
+  /** Any check-in that day (offdays included). */
+  showedUp: boolean;
+}
+
+/** `GET /api/me/journal-key` (binary fields base64). */
+export interface JournalKey {
+  version: number;
+  /** True after `POST /api/me/journal-key/turn-off`: plaintext writes are accepted again until the key is deleted. */
+  turningOff?: boolean;
+  passphrase: { salt: string; iterations: number; iv: string; wrapped: string };
+  recovery: { salt: string; iv: string; wrapped: string };
+}
+
+/** `PUT /api/me/journal-key` body. `ifVersion` when replacing; `password` when the account has one. */
+export interface JournalKeyPut {
+  passphrase: JournalKey['passphrase'];
+  recovery: JournalKey['recovery'];
+  password?: string;
+  ifVersion?: number;
+}
+
+/** `GET /api/me/2fa`. */
+export interface TwoFactorStatus {
+  enabled: boolean;
+  recoveryCodesLeft: number;
+}
+
+/** `POST /api/me/2fa/setup`. */
+export interface TwoFactorSetup {
+  sharedKey: string;
+  /** `otpauth://` URI, issuer `Ember`. */
+  authenticatorUri: string;
 }
 
 export interface ResetPasswordRequest {

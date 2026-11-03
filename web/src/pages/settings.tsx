@@ -4,16 +4,18 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
+import { MoodManager } from '@/components/journal/mood-manager';
 import { PageHeader } from '@/components/page-header';
+import { JournalSettings } from '@/components/settings/journal-settings';
+import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
+import { TwoFactorSettings } from '@/components/settings/two-factor-settings';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
 import { Input, PasswordInput } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { NativeSelect } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { saveFile } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
@@ -27,7 +29,6 @@ import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 type Section =
   | 'timezone'
   | 'grace'
-  | 'leaderboard'
   | 'discord'
   | 'dm'
   | 'push'
@@ -116,8 +117,8 @@ function SettingsCard({
 }
 
 /**
- * `/settings`: timezone, grace days, leaderboards, Discord, reminders, push on this device, appearance, export, sign out and
- * account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
+ * `/settings`: timezone, grace days, Discord, two-step sign-in, private journal and moods, reminders, push on this
+ * device, appearance, export, sign out and account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
  */
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -129,7 +130,6 @@ export default function SettingsPage() {
   const busyRef = useRef<Section | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
-  const leaderboardRef = useRef<boolean | null>(null);
   const scrolled = useRef(false);
   const tzForm = useRef<HTMLFormElement>(null);
   const deleteForm = useRef<HTMLFormElement>(null);
@@ -139,7 +139,6 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<(Message & { section: Section }) | null>(null);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<boolean | null>(null);
   const [zone, setZone] = useState('');
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
@@ -236,17 +235,6 @@ export default function SettingsPage() {
       graceRef.current = null;
       setGrace(null);
       if (error) fail('grace', error);
-    });
-  }
-
-  function changeLeaderboard(value: boolean): void {
-    leaderboardRef.current = value;
-    setLeaderboard(value);
-    void patch('leaderboard', { leaderboardOptIn: value }).then((error) => {
-      if (leaderboardRef.current !== value) return;
-      leaderboardRef.current = null;
-      setLeaderboard(null);
-      if (error) fail('leaderboard', error);
     });
   }
 
@@ -393,8 +381,10 @@ export default function SettingsPage() {
   const sections = [
     { id: 'timezone', title: 'Timezone' },
     { id: 'grace', title: 'Grace days' },
-    { id: 'leaderboard', title: 'Leaderboards' },
     { id: 'discord', title: 'Discord' },
+    { id: 'two-factor', title: 'Two-step sign-in' },
+    { id: 'journal', title: 'Private journal' },
+    { id: 'moods', title: 'Moods' },
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
@@ -408,7 +398,6 @@ export default function SettingsPage() {
   const zoneMessage = (zoneTouched ? zoneError(zone) : null) ?? zoneServerError;
   const suggestZone = !!me && isValidTimeZone(browserZone) && (!me.timezoneSet || me.timezone !== browserZone);
   const graceShown = grace ?? me?.graceDaysPerWeek ?? 0;
-  const leaderboardShown = leaderboard ?? me?.leaderboardOptIn ?? false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -527,21 +516,6 @@ export default function SettingsPage() {
               {outcome('grace')}
             </SettingsCard>
 
-            <SettingsCard id="leaderboard" title={title('leaderboard')}>
-              <p>
-                You're off leaderboards by default, so your progress stays private. Turn this on if you'd like your
-                streaks to show up there. You can switch it off again any time.
-              </p>
-              <div className="flex min-h-[44px] items-center gap-3">
-                <Switch id="leaderboard-opt-in" checked={leaderboardShown} onCheckedChange={changeLeaderboard} />
-                <Label htmlFor="leaderboard-opt-in" className="cursor-pointer font-normal">
-                  Show me on leaderboards
-                </Label>
-              </div>
-              {savedStatus('leaderboard')}
-              {outcome('leaderboard')}
-            </SettingsCard>
-
             <SettingsCard id="discord" title={title('discord')}>
               {me.discord.linked ? (
                 <>
@@ -580,6 +554,18 @@ export default function SettingsPage() {
                 </>
               )}
               {outcome('discord')}
+            </SettingsCard>
+
+            <SettingsCard id="two-factor" title={title('two-factor')}>
+              <TwoFactorSettings me={me} />
+            </SettingsCard>
+
+            <SettingsCard id="journal" title={title('journal')}>
+              <JournalSettings me={me} />
+            </SettingsCard>
+
+            <SettingsCard id="moods" title={title('moods')}>
+              <MoodManager />
             </SettingsCard>
 
             {showDm && (
@@ -653,6 +639,7 @@ export default function SettingsPage() {
                   Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
                   they arrive even without a connection.
                 </p>
+                <ReminderNamesSetting />
                 {exactAllowed === false && (
                   <>
                     <p className="text-[14px] text-muted-foreground">

@@ -41,7 +41,7 @@ export interface BearerTokens {
   refresh(): Promise<boolean>;
 }
 
-const reminderInputs = /\/api\/habits(\/|\?|$)/;
+const reminderInputs = /\/api\/(habits|routines)(\/|\?|$)/;
 const mutating = new Set<Method>(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function isSameOrigin(url: string): boolean {

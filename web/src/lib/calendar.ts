@@ -1,5 +1,5 @@
 import { addDays, addMonths, isSameMonth, monthWeeks, startOfMonth } from './local-date';
-import type { DayEntry, DayState, LocalDateString } from './models';
+import { type DayEntry, type DayState, type Habit, type LocalDateString, weekdays } from './models';
 
 /** One cell of the month grid. `state` is null for days that haven't happened yet. */
 export interface CalendarDay {
@@ -11,6 +11,8 @@ export interface CalendarDay {
   isToday: boolean;
   /** True when the account marked this day as a low day. */
   lowDay: boolean;
+  /** Check-ins that day (0 when nothing is recorded). */
+  count: number;
 }
 
 /** Words for a day state, used in accessible names and the legend. Never "missed". */
@@ -21,13 +23,27 @@ export const dayStateWords: Record<DayState, string> = {
   lowday: 'low day, resting',
   paused: 'paused',
   beforestart: 'before this habit started',
+  offday: 'rest day, nothing planned',
+  partial: 'partly done',
 };
 
-/** Accessible state text for a cell, for example "today, done" or "not yet". */
-export function dayLabel(day: CalendarDay): string {
+/** The state words, with "2 of 3 done" for a partial day when the habit's `timesPerDay` is known. */
+export function stateWords(state: DayState, count = 0, timesPerDay = 1): string {
+  return state === 'partial' && timesPerDay > 1 ? `${count} of ${timesPerDay} done` : dayStateWords[state];
+}
+
+/** Accessible state text for a cell, for example "today, done", "2 of 3 done" or "not yet". */
+export function dayLabel(day: CalendarDay, timesPerDay = 1): string {
   if (day.state === null) return 'not yet';
-  const words = dayStateWords[day.state];
+  const words = stateWords(day.state, day.count, timesPerDay);
   return day.isToday ? `today, ${words}` : words;
+}
+
+/** True when `date` is outside a set-weekdays habit's schedule (a rest day). */
+export function isOffday(habit: Pick<Habit, 'frequency' | 'days'>, date: LocalDateString): boolean {
+  if (habit.frequency !== 'weekdays' || !habit.days) return false;
+  const weekday = weekdays[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7];
+  return !habit.days.includes(weekday);
 }
 
 /**
@@ -67,14 +83,15 @@ export function buildMonth(
   startDate: LocalDateString,
   localToday: LocalDateString,
 ): CalendarDay[][] {
-  const byDate = new Map(days.map((d) => [d.date, d.state]));
+  const byDate = new Map(days.map((d) => [d.date, d]));
   const low = new Set(lowDays);
   return monthWeeks(month).map((week) =>
     week.map((date) => {
       const inMonth = isSameMonth(date, month);
       const future = date > localToday;
       const beforeStart = date < startDate;
-      let state: DayState | null = byDate.get(date) ?? null;
+      const entry = byDate.get(date);
+      let state: DayState | null = entry?.state ?? null;
       if (state === null && !future) {
         state = beforeStart
           ? 'beforestart'
@@ -91,6 +108,7 @@ export function buildMonth(
         inMonth,
         isToday: date === localToday,
         lowDay: low.has(date),
+        count: entry?.count ?? 0,
       };
     }),
   );
