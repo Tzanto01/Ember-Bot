@@ -1,11 +1,18 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { fakeJournal, renderWithJournal } from '@/components/journal/fake-journal';
+import { env } from '@/lib/env';
 import { type JournalApi, type JournalState, WrongSecretError } from '@/lib/journal/types';
+import { saveExport } from '@/lib/native/save-file';
 import { Store } from '@/lib/store';
 import { me } from '@/lib/test-support';
 import { JournalSettings } from './journal-settings';
+
+vi.mock('@/lib/env', async (original) => ({
+  env: { ...(await original<typeof import('@/lib/env')>()).env },
+}));
+vi.mock('@/lib/native/save-file', () => ({ saveExport: vi.fn(async () => true) }));
 
 const recoveryCode = 'ABCD-EFGH-JKMN-PQRS-TVWX-YZ01-2345-6789';
 
@@ -21,6 +28,7 @@ function setup(
     unlock: vi.fn<JournalApi['unlock']>(),
     setPassphrase: vi.fn<JournalApi['setPassphrase']>(),
     disable: vi.fn<JournalApi['disable']>(),
+    exportDecrypted: vi.fn<JournalApi['exportDecrypted']>(),
   };
   renderWithJournal(
     <JournalSettings
@@ -164,5 +172,22 @@ describe('JournalSettings', () => {
     await user.click(await screen.findByRole('button', { name: 'Change passphrase' }));
 
     expect(screen.getByRole('checkbox', { name: 'Remember on this device' })).toBeChecked();
+  });
+
+  it('offers the decrypted export in the app and saves it through the native-aware save helper', async () => {
+    env.native = true;
+    onTestFinished(() => {
+      env.native = false;
+    });
+    const { journal, user } = setup('unlocked');
+    const file = {
+      blob: new Blob(['{}'], { type: 'application/json' }),
+      fileName: 'ember-journal.json',
+    };
+    journal.exportDecrypted.mockResolvedValue(file);
+
+    await user.click(await screen.findByRole('button', { name: 'Export my journal (decrypted)' }));
+
+    await waitFor(() => expect(saveExport).toHaveBeenCalledWith(file));
   });
 });

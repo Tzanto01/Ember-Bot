@@ -4,9 +4,24 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Habit, Routine, WeeklyStats } from '@/lib/models';
-import { auth, deviceSync } from '@/lib/services';
+import { auth, backup, deviceSync, localMode } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import TodayPage from './today';
+
+vi.mock('@/lib/services', async (original) => {
+  const { Store } = await import('@/lib/store');
+  return {
+    ...(await original<typeof import('@/lib/services')>()),
+    localMode: { mode: new Store('account'), evicted: new Store(false) },
+    backup: {
+      backupReminderDue: vi.fn(async () => false),
+      snoozeBackupReminder: vi.fn(async () => {}),
+      exportBackup: vi.fn(async () => ({})),
+      markBackedUp: vi.fn(async () => {}),
+    },
+  };
+});
+vi.mock('@/lib/native/save-file', () => ({ saveExport: vi.fn(async () => true) }));
 
 const weekly: WeeklyStats = {
   totalDone: 0,
@@ -58,6 +73,7 @@ describe('TodayPage', () => {
     vi.unstubAllGlobals();
     auth.clearSession();
     document.documentElement.style.removeProperty('--ember-reward');
+    localMode.mode.set('account');
   });
 
   it('looks up low days for the local day reloaded from the server, not the stale cached one', async () => {
@@ -260,5 +276,33 @@ describe('TodayPage', () => {
     (await f.next('GET', '/api/routines')).respond(500);
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Walk' })).toBeInTheDocument();
+  });
+
+  it('without an account, shows the backup reminder when one is due and "Not now" snoozes it', async () => {
+    localMode.mode.set('local');
+    vi.mocked(backup.backupReminderDue).mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    const reminder = await screen.findByText(/It's been a while since your last backup/);
+    expect(screen.getByRole('button', { name: 'Export backup' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+
+    expect(backup.snoozeBackupReminder).toHaveBeenCalledOnce();
+    await waitFor(() => expect(reminder).not.toBeInTheDocument());
+  });
+
+  it('without an account, exporting from the reminder records the backup once it was saved', async () => {
+    localMode.mode.set('local');
+    vi.mocked(backup.backupReminderDue).mockResolvedValue(true);
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Export backup' }));
+
+    expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
+    expect(backup.markBackedUp).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/It's been a while since your last backup/)).toBeNull();
   });
 });

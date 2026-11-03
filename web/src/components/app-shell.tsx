@@ -7,7 +7,7 @@ import { NativeConfirmation } from '@/components/native-confirmation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { formatDate } from '@/lib/local-date';
-import { auth, deviceSync, offlineQueue } from '@/lib/services';
+import { auth, deviceSync, localMode, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +28,7 @@ export function AppShell() {
   const pending = useStore(offlineQueue.pending);
   const dropped = useStore(deviceSync.dropped);
   const droppedNotes = useStore(offlineQueue.droppedNotes);
+  const local = useStore(localMode.mode) === 'local';
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
   const busy = useRef(false);
@@ -75,14 +76,16 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <Button
-            variant="ghost"
-            className="ml-auto"
-            aria-disabled={signingOut || undefined}
-            onClick={() => void signOut()}
-          >
-            {signingOut ? 'Signing out…' : 'Sign out'}
-          </Button>
+          {!local && (
+            <Button
+              variant="ghost"
+              className="ml-auto"
+              aria-disabled={signingOut || undefined}
+              onClick={() => void signOut()}
+            >
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </Button>
+          )}
         </div>
       </header>
       <main

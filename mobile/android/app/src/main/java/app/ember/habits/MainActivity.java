@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(EmberWidgetPlugin.class);
+        registerPlugin(BackupFilePlugin.class);
         restoring = savedInstanceState != null;
         super.onCreate(savedInstanceState);
         restoring = false;
