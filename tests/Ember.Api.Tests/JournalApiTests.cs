@@ -140,6 +140,20 @@ public class JournalApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task An_existing_entry_can_be_rewritten_after_its_habits_are_gone_so_turning_the_journal_off_can_finish()
+    {
+        var user = await WithHabitAsync(Host);
+        var today = (await TodayAsync(user)).Iso();
+        await (await user.Put($"/api/day-notes/{today}", new { text = "Hi" })).Expect(HttpStatusCode.OK);
+        foreach (var habit in (await (await user.Get("/api/habits")).ExpectJson()).EnumerateArray())
+            await (await user.Delete($"/api/habits/{habit.GetProperty("id").GetInt32()}")).Expect(HttpStatusCode.NoContent);
+
+        await (await user.Put($"/api/day-notes/{today}", new { text = "Hello" })).Expect(HttpStatusCode.OK);
+        await (await user.Put($"/api/day-notes/{(await TodayAsync(user)).AddDays(-1).Iso()}", new { text = "New" }))
+            .ExpectProblem(HttpStatusCode.UnprocessableEntity, "before_habit_start");
+    }
+
+    [DockerFact]
     public async Task Range_is_at_most_366_days_and_from_not_after_to()
     {
         var user = await Host.SignedInAsync();
