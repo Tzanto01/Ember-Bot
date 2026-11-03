@@ -222,6 +222,9 @@ namespace Ember.Core.Data.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<bool>("TurningOff")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 

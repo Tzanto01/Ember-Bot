@@ -17,7 +17,7 @@ internal static class MeEndpoints
     public sealed record MeDto(
         Guid Id, string? Email, bool EmailConfirmed, bool HasPassword, DiscordDto Discord,
         string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, string? Theme,
-        ConsentDto Consent, DmRemindersDto DmReminders);
+        ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal);
 
     public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, string? Theme);
     public sealed record ConsentRequest(string? PolicyVersion);
@@ -120,6 +120,7 @@ internal static class MeEndpoints
             user.Timezone, await habits.HasTimezoneSetAsync(user.Id), TimezoneHelper.LocalToday(user.Timezone, time),
             user.GraceDaysPerWeek, user.Theme,
             new ConsentDto(await habits.HasHealthDataConsentAsync(user.Id), user.ConsentPolicyVersion, HabitService.CurrentConsentPolicyVersion),
-            new DmRemindersDto(user.DmRemindersPausedAt is not null));
+            new DmRemindersDto(user.DmRemindersPausedAt is not null),
+            await habits.GetJournalStateAsync(user.Id));
     }
 }
