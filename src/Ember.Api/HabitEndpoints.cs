@@ -154,8 +154,8 @@ internal static class HabitEndpoints
                     ?? await HabitResult(habits, userId, id);
 
             if (await habits.GetHabitAsync(userId, id) is not { } habit) return Problems.NotFound();
-            if (count < 0 || count > habit.TimesPerDay) return Problems.Validation("count", $"Must be between 0 and {habit.TimesPerDay}.");
-            return Problems.DayEdit(await habits.SetCountAsync(userId, id, day, count))
+            if (count < 0) return Problems.Validation("count", "Can't be negative.");
+            return Problems.DayEdit(await habits.SetCountAsync(userId, id, day, Math.Min(count, habit.TimesPerDay)))
                 ?? await HabitResult(habits, userId, id);
         });
 

@@ -56,6 +56,18 @@ public class ScheduleApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task A_count_above_the_target_is_clamped_so_a_queued_offline_edit_still_lands()
+    {
+        var user = await Host.SignedInAsync();
+        var id = (await (await user.Post("/api/habits", new { name = "Water", frequency = "daily", timesPerDay = 3 }))
+            .ExpectJson(HttpStatusCode.Created)).GetProperty("id").GetInt32();
+
+        var today = (await (await user.Put($"/api/habits/{id}/days/{Host.Today.Iso()}", new { count = 5 })).ExpectJson()).GetProperty("today");
+
+        (today.GetProperty("count").GetInt32(), today.GetProperty("state").GetString()).Should().Be((3, "done"));
+    }
+
+    [DockerFact]
     public async Task Put_day_sets_an_absolute_count_and_rejects_bad_bodies()
     {
         var user = await Host.SignedInAsync();
@@ -69,7 +81,6 @@ public class ScheduleApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         today.GetProperty("count").GetInt32().Should().Be(2);
         today.GetProperty("completed").ValueKind.Should().Be(JsonValueKind.Null);
 
-        await ExpectFieldError(await user.Put(url, new { count = 4 }), "count");
         await ExpectFieldError(await user.Put(url, new { count = -1 }), "count");
         await ExpectFieldError(await user.Put(url, new { count = 1, completed = true }), "count");
         await ExpectFieldError(await user.Put(url, new { }), "completed");
