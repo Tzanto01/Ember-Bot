@@ -119,7 +119,7 @@ export function YearHeatmap({
       >
         <thead>
           <tr>
-            <td />
+            <td className="sticky left-0 z-[1] bg-card shadow-[-8px_0_0_var(--card)]" />
             {weeks.map((monday, w) => {
               const label = w === 0 && !monthStarts[1] ? monday : w < yearWeeks - 1 ? monthStarts[w] : null;
               return (
@@ -137,7 +137,7 @@ export function YearHeatmap({
         <tbody>
           {rowNames.map((name, row) => (
             <tr key={name}>
-              <th scope="row" className="p-0 pr-1 text-left text-[13px] font-normal text-muted-foreground">
+              <th scope="row" className="sticky left-0 z-[1] bg-card shadow-[-8px_0_0_var(--card)] p-0 pr-1 text-left text-[13px] font-normal text-muted-foreground">
                 <span aria-hidden="true" className={row % 2 === 0 ? undefined : 'invisible'}>
                   {rowShort[row]}
                 </span>

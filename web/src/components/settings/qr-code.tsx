@@ -7,7 +7,7 @@ import { encode } from 'uqr';
  */
 export function QrCode({ value, label }: { value: string; label: string }) {
   const { size, path } = useMemo(() => {
-    const qr = encode(value, { ecc: 'M', border: 2 });
+    const qr = encode(value, { ecc: 'M', border: 4 });
     let d = '';
     qr.data.forEach((row, y) =>
       row.forEach((dark, x) => {
