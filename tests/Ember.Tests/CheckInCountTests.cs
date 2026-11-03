@@ -9,7 +9,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Ember.Tests;
 
-/// <summary>Times per day: every write keeps <c>Completed == (Count >= TimesPerDay)</c>.</summary>
+/// <summary>Times per day: a count reaching the target marks the day done, and a done day stays done when the target rises.</summary>
 [Collection("Integration")]
 public class CheckInCountTests
 {
@@ -78,9 +78,37 @@ public class CheckInCountTests
     }
 
     [Fact]
-    public async Task ChangingTimesPerDay_RecomputesDoneFromTheUnchangedCounts()
+    public async Task RaisingTimesPerDay_KeepsPastDoneDaysAndTheStreak_AndRecomputesOnlyToday()
     {
-        var (host, habitId) = await CreateAsync(timesPerDay: 2);
+        var (host, habitId) = await CreateAsync(timesPerDay: 1);
+        await using var _ = host;
+        var days = Enumerable.Range(1, 3).Select(i => Today.AddDays(-i)).ToList();
+        await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            foreach (var day in days) await service.AddCheckInAsync(UserId, habitId, day);
+            await service.AddCheckInAsync(UserId, habitId, Today);
+        });
+        var streak = () => host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            var userId = await service.FindDiscordUserAsync(UserId);
+            return HabitService.ConsecutiveStreak((await service.GetHabitAsync(userId, habitId))!, Today, 0).streak;
+        });
+        (await streak()).Should().Be(4);
+
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SetScheduleAsync(UserId, habitId, FrequencyType.Daily, null, null, 3));
+
+        (await LogsAsync(host, habitId)).Should().Equal((days[2], 1, true), (days[1], 1, true), (days[0], 1, true), (Today, 1, false));
+        (await streak()).Should().Be(3);
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().AddCheckInAsync(UserId, habitId, days[0]));
+        (await LogsAsync(host, habitId)).Should().Contain((days[0], 2, true));
+    }
+
+    [Fact]
+    public async Task LoweringTimesPerDay_MakesPastCountsThatReachTheTargetDone()
+    {
+        var (host, habitId) = await CreateAsync(timesPerDay: 3);
         await using var _ = host;
         var yesterday = Today.AddDays(-1);
         await host.WithScopeAsync(async sp =>
@@ -91,8 +119,8 @@ public class CheckInCountTests
             await service.AddCheckInAsync(UserId, habitId, Today);
         });
 
-        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SetScheduleAsync(UserId, habitId, FrequencyType.Daily, null, null, 3));
-        (await LogsAsync(host, habitId)).Should().Equal((yesterday, 2, false), (Today, 1, false));
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SetScheduleAsync(UserId, habitId, FrequencyType.Daily, null, null, 2));
+        (await LogsAsync(host, habitId)).Should().Equal((yesterday, 2, true), (Today, 1, false));
 
         var weekly = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SetScheduleAsync(UserId, habitId, FrequencyType.Weekly, 2, null, 3));
         weekly!.TimesPerDay.Should().Be(1);

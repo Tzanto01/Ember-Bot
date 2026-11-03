@@ -188,8 +188,8 @@ public partial class HabitService
 
     private static void ApplyCount(HabitLog log, int count, Habit habit)
     {
+        log.Completed = count >= habit.TimesPerDay || (log.Completed && count > 0 && count >= log.Count);
         log.Count = count;
-        log.Completed = count >= habit.TimesPerDay;
     }
 
     /// <summary>
@@ -505,7 +505,8 @@ public partial class HabitService
     /// <summary>
     /// Sets the habit's schedule: <paramref name="weeklyTarget"/> (default 3) is kept for weekly habits only, <paramref name="days"/>
     /// for <see cref="FrequencyType.Weekdays"/> habits only, and weekly habits always get <paramref name="timesPerDay"/> 1.
-    /// Counts are never rewritten; when the target per day changes, every log's done flag is recomputed from its count.
+    /// Counts are never rewritten and a day that was done stays done: when the target per day changes, days whose count reaches the
+    /// new target become done and only the user's local today is recomputed against it.
     /// Null when the habit isn't the user's.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="timesPerDay"/> is outside 1 to <see cref="MaxTimesPerDay"/>.</exception>
@@ -533,9 +534,12 @@ public partial class HabitService
         await using var transaction = await _db.Database.BeginTransactionAsync();
         await _db.SaveChangesAsync();
         if (recompute)
+        {
+            var today = await GetLocalTodayAsync(userId);
             await _db.HabitLogs
-                .Where(l => l.HabitId == habitId)
+                .Where(l => l.HabitId == habitId && (l.Date == today || l.Count >= target))
                 .ExecuteUpdateAsync(s => s.SetProperty(l => l.Completed, l => l.Count >= target));
+        }
         await transaction.CommitAsync();
         return habit;
     }
