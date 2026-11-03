@@ -77,6 +77,8 @@ export class DeviceSync {
     if (id !== this.userId) {
       this.userId = id;
       this.queue.userId.set(id);
+      this.nativeCheckIn.set(null);
+      this.dropped.set(0);
       if (id) void this.queue.refreshCount(id).then(() => this.sync());
       if (id && !me?.timezoneSet) void this.claimTimeZone(id);
     }

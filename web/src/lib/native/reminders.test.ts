@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import { ApiClient } from '../api-client';
 import { DeviceStore } from '../device-store';
 import { Http } from '../http';
-import type { Habit } from '../models';
+import type { Habit, Routine } from '../models';
 import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
 import { applyTheme } from '../theme';
@@ -157,6 +157,53 @@ describe('Reminders', () => {
     reminderNames.set(false);
     await reminders.clearAll();
     expect(reminders.wasIssued(first.id, extra)).toBe(false);
+  });
+
+  it('keeps one record per issued "Done", dropping stale future ones, and still schedules when storage is full', async () => {
+    reminderNames.set(true);
+    const stale = { id: 99, userId: 'u1', habitId: 1, date: '2026-11-05' };
+    localStorage.setItem('ember.reminderIssued', JSON.stringify([stale]));
+    await rebuildOnline([reminded]);
+    const once = localStorage.getItem('ember.reminderIssued');
+
+    const again = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await again;
+
+    expect(localStorage.getItem('ember.reminderIssued')).toBe(once);
+    expect(JSON.parse(once ?? '[]')).toHaveLength(7);
+    expect(reminders.wasIssued(99, stale)).toBe(false);
+
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+    const full = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await full;
+    vi.restoreAllMocks();
+
+    expect(schedule).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps planning the cached routines when only the routine list fails', async () => {
+    const routine: Routine = {
+      id: 4,
+      name: 'Evening',
+      reminderTime: '19:00',
+      reminderChannels: ['mobile'],
+      habitIds: [1],
+    };
+    await device.saveHabits({ userId: 'u1', timeZone: zone, habits: [reminded], routines: [routine] });
+
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(500);
+    await done;
+
+    expect(schedule.mock.calls[0][0].notifications[0].extra).toMatchObject({ routineId: 4 });
+    expect((await device.habits('u1'))?.routines).toEqual([routine]);
   });
 
   it('issues no "Done" while names are off', async () => {
