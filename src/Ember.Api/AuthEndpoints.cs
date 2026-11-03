@@ -109,7 +109,7 @@ internal static class AuthEndpoints
 
     /// <summary>
     /// Hides Identity's GET endpoints (confirmEmail, manage/info), whatever the path spelling. Rate-limits each mail-sending
-    /// endpoint per email address. A registration with
+    /// endpoint (see <see cref="RateLimits.MailKeys"/>). A registration with
     /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
     /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
     /// forgotPassword also mails a reset code to an unconfirmed account, and resetPassword works for one and confirms its email.
@@ -134,9 +134,13 @@ internal static class AuthEndpoints
         };
         if (request is not null && email is not null)
         {
-            using var lease = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>()
-                .AttemptAcquire($"{request.GetType().Name}:{http.RequestServices.GetRequiredService<ILookupNormalizer>().NormalizeEmail(email.Trim())}");
-            if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
+            var limiter = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>();
+            var normalized = http.RequestServices.GetRequiredService<ILookupNormalizer>().NormalizeEmail(email.Trim());
+            foreach (var key in RateLimits.MailKeys(request.GetType().Name, normalized, http.Connection.RemoteIpAddress))
+            {
+                using var lease = limiter.AttemptAcquire(key);
+                if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
+            }
         }
 
         var result = await next(context);
@@ -176,7 +180,10 @@ internal static class AuthEndpoints
         return result;
     }
 
-    /// <summary>Identity's resetPassword (same request and error shapes) that also accepts an unconfirmed account and confirms it.</summary>
+    /// <summary>
+    /// Identity's resetPassword (same request and error shapes) that also accepts an unconfirmed account and confirms it, and
+    /// lifts a lockout once the password is reset.
+    /// </summary>
     private static async Task<IResult> ResetPasswordAsync(UserManager<User> users, ResetPasswordRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email ?? "");
@@ -186,6 +193,9 @@ internal static class AuthEndpoints
 
         var result = await users.ResetPasswordAsync(user, code, request.NewPassword ?? "");
         if (!result.Succeeded) return IdentityValidation(result);
+
+        await users.SetLockoutEndDateAsync(user, null);
+        await users.ResetAccessFailedCountAsync(user);
 
         if (!user.EmailConfirmed)
         {
