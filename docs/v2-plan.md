@@ -42,7 +42,7 @@ This file is the working plan for the agent that implements it. The phases run i
 | D3 | Days that stay open for backfill before counting as missed | 2 local days (today + yesterday). Older days can still be backfilled; that heals the streak retroactively. | Phase 3 |
 | D4 | Desktop companion | No native app. The installed PWA covers desktop. Revisit only on the criteria in Phase 9. | Phase 9 |
 | D5 | Ember+ price and payment provider | Free at launch. Later around €2–3/month via Stripe Billing on the web only. | Phase 10 |
-| D6 | Domain name and VPS provider | Nico picks and pays. Default suggestion: Hetzner (EU, AVV/DPA available). | Phase 8 |
+| D6 | Domain name and VPS provider | Domain: `ember-glow.app` (Nico, 2026-11-03; Cloudflare). VPS: Nico picks and pays. Default suggestion: Hetzner (EU, AVV/DPA available). | Phase 8 |
 
 Escalate to Nico only for these, or for a genuinely new product, security or money decision. Everything else follows this plan.
 
@@ -237,6 +237,7 @@ Acceptance: reminders fire with the phone in airplane mode, and a check-in made 
 6. **Launch checklist:**
    - Phases 1–7 accepted, and the security review done;
    - legal texts published, and a support contact (an email or a small Discord server);
+   - account email moved off Brevo to a transactional-only provider (for example Resend or Postmark; Nico, 2026-11-03). Brevo forces a `List-Unsubscribe` header on every email, so mail clients show Ember's confirmation and reset mail as a mailing list, and one tap on "Unsubscribe" blocks all of Ember's mail to that address. Only the SMTP settings change; the sender domain needs that provider's DNS records;
    - bot profile with description and links;
    - Discord verification and privileged-intent review are needed only at Discord's thresholds. Ember uses no privileged intents, so check the current thresholds at the time.
 
