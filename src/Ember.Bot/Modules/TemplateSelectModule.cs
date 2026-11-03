@@ -96,6 +96,7 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
                 .WithButton("No reminder", $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
         }
 
+        components.WithButton("Days & times per day", $"freq:menu:{habit.Id}", ButtonStyle.Secondary, new Emoji("📅"), row: 1);
         await RespondAsync(embed: embed, components: components.Build(), ephemeral: true);
     }
 }

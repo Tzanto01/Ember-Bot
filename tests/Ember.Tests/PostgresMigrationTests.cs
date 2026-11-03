@@ -54,22 +54,32 @@ public class PostgresMigrationTests(PostgresFixture postgres)
     }
 
     [DockerFact]
-    public async Task LeaderboardOptInMigration_LeavesEveryExistingUserNotOptedIn()
+    public async Task FeaturesV16Migration_KeepsHabitsAndLogs_AndCountsCompletedDaysOnce()
     {
         var connectionString = await postgres.CreateDatabaseAsync();
         var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
         await using var db = new EmberDbContext(options);
         var migrator = db.GetService<IMigrator>();
 
-        await migrator.MigrateAsync("20260428021004_AddFrequencyPauseLeaderboard");
+        await migrator.MigrateAsync("20261102120000_AddUserTheme");
         await db.Database.ExecuteSqlRawAsync(
-            "INSERT INTO \"Users\" (\"DiscordUserId\", \"Timezone\", \"GraceDaysPerWeek\", \"LeaderboardOptOut\") " +
-            "VALUES (1, 'UTC', 1, FALSE), (2, 'UTC', 1, TRUE)");
+            "INSERT INTO \"AspNetUsers\" (\"Id\", \"Timezone\", \"GraceDaysPerWeek\", \"LeaderboardOptIn\", \"DmFailureCount\", " +
+            "\"EmailConfirmed\", \"PhoneNumberConfirmed\", \"TwoFactorEnabled\", \"LockoutEnabled\", \"AccessFailedCount\") " +
+            "VALUES ('00000000-0000-0000-0000-000000000001', 'Europe/Berlin', 1, TRUE, 0, FALSE, FALSE, FALSE, FALSE, 0);" +
+            "INSERT INTO \"Habits\" (\"Id\", \"UserId\", \"Name\", \"CreatedAt\", \"FrequencyType\", \"WeeklyTarget\", \"ReminderChannels\") VALUES " +
+            "(1, '00000000-0000-0000-0000-000000000001', 'Stretch', now(), 0, NULL, 1), " +
+            "(2, '00000000-0000-0000-0000-000000000001', 'Read', now(), 1, 3, 1);" +
+            "INSERT INTO \"HabitLogs\" (\"HabitId\", \"Date\", \"Completed\") VALUES " +
+            "(1, '2026-10-01', TRUE), (1, '2026-10-02', FALSE), (2, '2026-10-01', TRUE)");
 
         await migrator.MigrateAsync();
 
-        var users = await db.Users.AsNoTracking().ToListAsync();
-        users.Should().HaveCount(2).And.OnlyContain(u => !u.LeaderboardOptIn);
+        var habits = await db.Habits.AsNoTracking().Include(h => h.Logs).OrderBy(h => h.Id).ToListAsync();
+        habits.Select(h => h.FrequencyType).Should().Equal(FrequencyType.Daily, FrequencyType.Weekly);
+        habits[1].WeeklyTarget.Should().Be(3);
+        habits.Should().OnlyContain(h => h.TimesPerDay == 1 && h.Days == null && h.RoutineId == null);
+        habits[0].Logs.OrderBy(l => l.Date).Select(l => (l.Completed, l.Count)).Should().Equal((true, 1), (false, 0));
+        habits[1].Logs.Should().ContainSingle(l => l.Completed && l.Count == 1);
     }
 
     [DockerFact]

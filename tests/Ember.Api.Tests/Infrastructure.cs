@@ -370,6 +370,7 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
     {
         if (_host is not null)
             await _host.DisposeAsync();
+        NpgsqlConnection.ClearAllPools();
     }
 }
 

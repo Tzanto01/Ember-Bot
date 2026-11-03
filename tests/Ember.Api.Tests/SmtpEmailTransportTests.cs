@@ -17,7 +17,7 @@ public class SmtpEmailTransportTests
     {
         var message = Message();
 
-        message.Body.ContentType.MimeType.Should().Be("multipart/alternative");
+        message.Body!.ContentType.MimeType.Should().Be("multipart/alternative");
         message.TextBody.Should().Contain(Link);
         message.HtmlBody.Should().Contain($"<a href=\"{Link.Replace("&", "&amp;")}\"")
             .And.Contain("Welcome &lt;to&gt; Ember.")

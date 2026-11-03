@@ -114,6 +114,30 @@ public class ReminderDispatchTests
     }
 
     [Fact]
+    public async Task WeekdaysAndMultiCountHabits_RemindOnlyOnScheduledDaysThatAreNotDone()
+    {
+        var offday = DueHabit(1, 10);
+        offday.FrequencyType = FrequencyType.Weekdays;
+        offday.Days = ScheduleDays.Mon | ScheduleDays.Thu;
+        var partial = DueHabit(2, 10);
+        partial.TimesPerDay = 3;
+        partial.Logs.Add(new HabitLog { Date = Today, Count = 2, Completed = false });
+        var done = DueHabit(3, 10);
+        done.FrequencyType = FrequencyType.Weekdays;
+        done.Days = ScheduleDays.Fri;
+        done.TimesPerDay = 2;
+        done.Logs.Add(new HabitLog { Date = Today, Count = 2, Completed = true });
+
+        await using var host = await CreateHostAsync(new FakeTimeProvider(Now), offday, partial, done);
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle().Which.Text.Should().Contain("Habit 2");
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+        (await NextReminderAsync(host, 3)).Should().Be(TomorrowNineBerlin);
+    }
+
+    [Fact]
     public async Task Snooze_SendsAgainAfterAnHour_ThenReturnsToTheDailyTime()
     {
         var time = new FakeTimeProvider(Now);

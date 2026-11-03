@@ -1,5 +1,7 @@
 # Ember API contract v1.7
 
+v1.7 follow-up (2026-11-03): enabling 2FA and importing a journal key need the login password; import, merge and body details pinned from team backend's defaults.
+
 v1.7 (2026-11-03, Nico: "I still want all of them to exist"): three levels of privacy. No account (data only on the device), an account (synced, the default), and an account with an end-to-end encrypted private journal (opt-in). Two-factor sign-in (TOTP). Importing device data into a new account. See "Privacy levels v1.7".
 
 v1.6 (2026-11-03, Nico: "do all 5"): the leaderboard is gone; flexible schedules (set weekdays, several times a day); routines; a journal for the day with moods; day stats for the year view; native "Done" from a reminder and an Android home-screen widget. See "Features v1.6". Defaults marked *(default)* are the department lead's until Nico says otherwise.
@@ -39,6 +41,7 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 
 - Every endpoint acts only on the signed-in user. Another user's habit ID behaves exactly like a missing one (404).
 - Consent gating follows Core exactly: an endpoint returns `consent_required` where the Core call does (`AddHabitAsync` throws `ConsentRequiredException`; any `DayEditResult.ConsentRequired`), and also for `POST /api/account/merge`. Reads, settings, export and delete never need consent.
+- `POST` and `DELETE` endpoints that take a JSON body need at least `{}` even when every field is optional (for example `journal-key/turn-off`); without a body they answer 404.
 - Every `/api` response has `Cache-Control: no-store`. The app sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy` with `default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'`, and HSTS outside Development.
 
 ## Auth
@@ -228,7 +231,7 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 - `habitIds` is ordered and sets membership: a habit belongs to at most one routine; listing it moves it from its old routine. Unknown or foreign ids → 404. `Habit` gains `routineId: int | null`.
 - *(default)* While a habit is in a routine with a reminder, the routine's reminder replaces the habit's own (the habit keeps its `reminderTime` for when it leaves the routine; the UI shows it as overridden). A routine reminder fires once per scheduled day for the member habits that are still `pending` or `partial`, and not at all when none are.
 - Channels work as for habits (`discord`, `webpush` dispatched by the server; `mobile` scheduled by the app). A routine created without `reminderChannels` gets `webpush`, like a habit created on the web; the native app sends `["mobile"]` when the user picks "Remind me on this phone". The Discord DM may list the pending habit names with check-in buttons (DMs are private). Web push uses the generic body.
-- Routines are in the export and merge; the bot doesn't manage routines (web and app only) *(default)*.
+- Routines are in the export and merge; the bot doesn't manage routines (web and app only). Routine writes need no consent.
 
 ### Journal for the day (Nico: free text, five moods plus your own)
 
@@ -240,7 +243,7 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 - `mood` is one of the five built-ins `low`, `meh`, `okay`, `good`, `great`, or `custom:<id>` for one of the user's own moods.
 - Own moods: `GET /api/moods` → `[{ id, label, emoji, archived }]`; `POST /api/moods` `{ label (1–24 chars after trimming), emoji? (one emoji grapheme or null) }` → 201; `PATCH /api/moods/{id}` `{ label?, emoji?, archived? }` → 200. At most 20 non-archived moods → 409 `conflict`. There is no hard delete: archiving hides a mood from the picker while past days keep showing it. A day can't be set to an archived or foreign mood → 400 `validation`.
 - `GET /api/day-notes?from&to` → `DayNote[]` oldest first (default and maximum: 366 days). `PUT /api/day-notes/{date}` `{ text?, mood? }` → 200 `DayNote` (absolute, so offline replays are idempotent). `DELETE /api/day-notes/{date}` → 204.
-- Same date rules as low days (`in_future`, `before_habit_start`); writes need consent (`consent_required`), reads don't.
+- Same date rules as low days (`in_future`, `before_habit_start`); writes need consent (`consent_required`), reads don't. A `PUT` with both `text` and `mood` null deletes the entry and answers 200 `{ date, text: null, mood: null }`.
 - Never shown by the bot, in any notification, or in the weekly summary. Entries and own moods are included in export, delete and merge (on merge, own moods with the same label are combined).
 - Offline: the client queues `PUT`/`DELETE /api/day-notes/{date}` exactly like day edits (moods are edited online only).
 
@@ -276,10 +279,10 @@ Encryption happens only in the client (WebCrypto, available in the browser and t
 
 - `GET /api/me/2fa` → `{ "enabled": bool, "recoveryCodesLeft": int }`.
 - `POST /api/me/2fa/setup` → `{ "sharedKey", "authenticatorUri" }` (otpauth URI, issuer `Ember`); repeating it replaces an unconfirmed key.
-- `POST /api/me/2fa/enable` `{ "code" }` → `{ "recoveryCodes": string[10] }` shown once; wrong code → 400 `validation`.
+- `POST /api/me/2fa/enable` `{ "code", "password"? }` → `{ "recoveryCodes": string[10] }` shown once; wrong code → 400 `validation`. Accounts with a login password must send it (wrong or missing → 400 on `password`), so a stolen session alone can't turn 2FA on and lock the owner out. Discord-only accounts enable with the code alone (no password exists; accepted risk until Nico decides otherwise).
 - `POST /api/me/2fa/disable` `{ "password"?, "code"? }` → 204 (the login password, or for Discord-only accounts a current code).
 - `POST /api/me/2fa/recovery-codes` `{ "code" }` → `{ "recoveryCodes": string[10] }`, replacing the old ones.
-- Sign-in: `POST /api/auth/login` accepts `twoFactorCode` or `twoFactorRecoveryCode`. A correct password without a code answers 401 with `detail: "RequiresTwoFactor"` (only after the password was right, so it reveals nothing new); a wrong code counts toward lockout like a wrong password. Discord sign-in for an account with 2FA ends on `/login?step=2fa` and needs the code too (`POST /api/auth/discord/2fa` `{ code? , recoveryCode? }`). Native bearer sign-in sends the code in the same login call.
+- Sign-in: `POST /api/auth/login` accepts `twoFactorCode` or `twoFactorRecoveryCode`. A correct password without a code answers 401 with `detail: "RequiresTwoFactor"` (only after the password was right, so it reveals nothing new); a wrong code counts toward lockout like a wrong password. Discord sign-in for an account with 2FA ends on `/login?step=2fa` (keeping a safe `returnUrl`: `/login?step=2fa&returnUrl=…`) and needs the code too (`POST /api/auth/discord/2fa` `{ code? , recoveryCode? }`). Native bearer sign-in sends the code in the same login call.
 - 2FA is independent of the private journal: it protects the login, not the content.
 
 ### No account (device only)
@@ -303,5 +306,8 @@ snake_case like today, plus `"format_version": 2` at the top level (an export wi
 - `journal_key`: `{ passphrase: { salt, iterations, iv, wrapped }, recovery: { salt, iv, wrapped } }` or null.
 - Ids in a file are only references inside that file; import assigns new ids and remaps `routine_id`, log `habit_id` and `custom:<id>` moods inside plaintext notes. `account`, push subscriptions, DM state and consent fields are ignored on import.
 - The CSV export gets the matching columns and record types; import is JSON only.
+- A `journal_key` in an import needs the login password inside it (`journal_key.password`) on accounts that have one, like `PUT /api/me/journal-key` (wrong or missing → 400 on `password`).
+- Before importing, the client sends `PATCH /api/me { timezone }` with the device's zone (as for any new account); otherwise a first-day log can fall before a habit's start and the whole import is refused.
+- Import answers 204. On account merge, the signed-in account's day note wins when both accounts have one for the same date, and same-label plaintext moods are combined.
 - `POST /api/me/import` alone accepts bodies up to 5 MiB (signed-in callers only; every other endpoint keeps the 64 KiB cap). Larger → 413.
 - Upgrading with the private journal chosen: the client imports everything except `moods` and `day_notes` (sent empty, since the server can't remap mood ids inside ciphertext), then creates the journal key and uploads encrypted moods and entries through the journal endpoints. No plaintext journal data is ever sent. The local copy stays until every step succeeded, and a retry resumes where it stopped.

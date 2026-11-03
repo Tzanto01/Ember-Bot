@@ -1,6 +1,6 @@
 namespace Ember.Core.Models;
 
-public enum FrequencyType { Daily, Weekly }
+public enum FrequencyType { Daily, Weekly, Weekdays }
 
 /// <summary>Where a habit's reminders go. None means no reminders even when a reminder time is set.</summary>
 [Flags]
@@ -35,11 +35,23 @@ public class Habit
     /// <summary>First local day of the pause. Null with a <see cref="PausedUntil"/> means every day up to it is paused (pauses from before this field existed).</summary>
     public DateOnly? PausedFrom { get; set; }
 
-    /// <summary>Daily = check in every day. Weekly = check in WeeklyTarget times per week.</summary>
+    /// <summary>Daily = check in every day. Weekly = check in WeeklyTarget times per week. Weekdays = check in on the <see cref="Days"/> only.</summary>
     public FrequencyType FrequencyType { get; set; } = FrequencyType.Daily;
 
     /// <summary>Target number of check-ins per week when FrequencyType = Weekly. Null for daily habits.</summary>
     public int? WeeklyTarget { get; set; }
+
+    /// <summary>The weekdays a <see cref="FrequencyType.Weekdays"/> habit is scheduled on. Null for daily and weekly habits.</summary>
+    public ScheduleDays? Days { get; set; }
+
+    /// <summary>Check-ins needed for a day to be done (always 1 for weekly habits).</summary>
+    public int TimesPerDay { get; set; } = 1;
+
+    /// <summary>The routine this habit belongs to, if any.</summary>
+    public int? RoutineId { get; set; }
+
+    /// <summary>Order of this habit inside its routine.</summary>
+    public int RoutinePosition { get; set; }
 
     /// <summary>Channels the reminder is sent to. Bot-created habits default to Discord; channels the user can't receive are skipped.</summary>
     public ReminderChannels ReminderChannels { get; set; } = ReminderChannels.Discord;
@@ -47,5 +59,6 @@ public class Habit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User User { get; set; } = null!;
+    public Routine? Routine { get; set; }
     public ICollection<HabitLog> Logs { get; set; } = new List<HabitLog>();
 }

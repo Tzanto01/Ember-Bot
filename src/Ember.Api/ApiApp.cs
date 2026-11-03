@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 
 namespace Ember.Api;
@@ -55,6 +56,7 @@ public static class ApiApp
             })
             .AddEntityFrameworkStores<EmberDbContext>()
             .AddSignInManager<EmberSignInManager>();
+        services.Replace(ServiceDescriptor.Scoped<IUserValidator<User>, EmberUserValidator>());
         services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
         services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options => options.BearerTokenExpiration = TimeSpan.FromMinutes(15));
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
@@ -159,10 +161,14 @@ public static class ApiApp
 
         var signedIn = api.MapGroup("").RequireAuthorization();
         signedIn.MapMe();
+        signedIn.MapImport();
+        signedIn.MapTwoFactor();
         signedIn.MapDiscordUnlink();
         signedIn.MapMerge();
         signedIn.MapHabits();
+        signedIn.MapRoutines();
         signedIn.MapLowDays();
+        signedIn.MapJournal();
         signedIn.MapStats();
 
         api.MapHabitTemplates();

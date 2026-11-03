@@ -42,6 +42,32 @@ public class AuthRateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres
         await (await client.Get("/api/auth/antiforgery")).Expect(HttpStatusCode.NoContent);
         (await client.Get("/api/auth/discord/login?returnUrl=/today")).StatusCode.Should().Be(HttpStatusCode.Redirect);
     }
+
+    [DockerFact]
+    public async Task Two_factor_code_endpoints_share_the_credential_limit()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        while ((await WrongLogin(client)).StatusCode != (HttpStatusCode)429) { }
+
+        await (await client.Post("/api/me/2fa/setup")).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/enable", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/disable", new { password = ApiClient.Passphrase })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/recovery-codes", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await Host.NewClient().Post("/api/auth/discord/2fa", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Get("/api/me/2fa")).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
+    public async Task Journal_key_and_import_endpoints_share_the_credential_limit()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        while ((await WrongLogin(client)).StatusCode != (HttpStatusCode)429) { }
+
+        await (await client.Put("/api/me/journal-key", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/journal-key/turn-off", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Send(HttpMethod.Delete, "/api/me/journal-key", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/import", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+    }
 }
 
 [Collection("Postgres")]

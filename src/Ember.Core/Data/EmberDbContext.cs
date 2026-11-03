@@ -16,6 +16,10 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<HabitLog> HabitLogs => Set<HabitLog>();
     public DbSet<DayMark> DayMarks => Set<DayMark>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<Routine> Routines => Set<Routine>();
+    public DbSet<DayNote> DayNotes => Set<DayNote>();
+    public DbSet<Mood> Moods => Set<Mood>();
+    public DbSet<JournalKey> JournalKeys => Set<JournalKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,9 +41,68 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasKey(h => h.Id);
             entity.Property(h => h.Name).HasMaxLength(100).IsRequired();
             entity.HasIndex(h => h.NextReminderUtc);
+            entity.Property(h => h.TimesPerDay).HasDefaultValue(1);
             entity.HasOne(h => h.User)
                   .WithMany(u => u.Habits)
                   .HasForeignKey(h => h.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(h => h.Routine)
+                  .WithMany(r => r.Habits)
+                  .HasForeignKey(h => h.RoutineId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Routine>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Name).HasMaxLength(50).IsRequired();
+            entity.HasIndex(r => r.NextReminderUtc);
+            entity.HasOne(r => r.User)
+                  .WithMany(u => u.Routines)
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DayNote>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.Text).HasMaxLength(2000);
+            entity.Property(n => n.Mood).HasMaxLength(32);
+            entity.Property(n => n.CipherIv).HasMaxLength(64);
+            entity.Property(n => n.CipherText).HasMaxLength(16384);
+            entity.HasIndex(n => new { n.UserId, n.Date }).IsUnique();
+            entity.HasOne(n => n.User)
+                  .WithMany(u => u.DayNotes)
+                  .HasForeignKey(n => n.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Mood>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Label).HasMaxLength(24);
+            entity.Property(m => m.Emoji).HasMaxLength(32);
+            entity.Property(m => m.CipherIv).HasMaxLength(64);
+            entity.Property(m => m.CipherText).HasMaxLength(16384);
+            entity.HasIndex(m => m.UserId);
+            entity.HasOne(m => m.User)
+                  .WithMany(u => u.Moods)
+                  .HasForeignKey(m => m.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<JournalKey>(entity =>
+        {
+            entity.HasKey(k => k.UserId);
+            entity.Property(k => k.PassphraseSalt).HasMaxLength(512).IsRequired();
+            entity.Property(k => k.PassphraseIv).HasMaxLength(512).IsRequired();
+            entity.Property(k => k.PassphraseWrapped).HasMaxLength(512).IsRequired();
+            entity.Property(k => k.RecoverySalt).HasMaxLength(512).IsRequired();
+            entity.Property(k => k.RecoveryIv).HasMaxLength(512).IsRequired();
+            entity.Property(k => k.RecoveryWrapped).HasMaxLength(512).IsRequired();
+            entity.HasOne(k => k.User)
+                  .WithOne(u => u.JournalKey)
+                  .HasForeignKey<JournalKey>(k => k.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

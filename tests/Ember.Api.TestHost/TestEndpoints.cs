@@ -1,7 +1,9 @@
 using System.Globalization;
 using Ember.Core.Data;
+using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -13,6 +15,7 @@ public static class TestEndpoints
     public sealed record OutboxDto(string To, string Subject, IReadOnlyList<string> Links);
     public sealed record BotOnlyRequest(string? DiscordId, string? HabitStartDate);
     public sealed record BotOnlyDto(Guid UserId, int HabitId);
+    public sealed record TotpDto(string Code);
 
     public static WebApplication MapEmberTestEndpoints(this WebApplication app)
     {
@@ -37,6 +40,11 @@ public static class TestEndpoints
         test.MapGet("/outbox", (string email, OutboxEmailTransport outbox) =>
             outbox.Latest(email) is { } latest
                 ? Results.Ok(new OutboxDto(latest.To, latest.Subject, latest.Links))
+                : Results.NotFound());
+
+        test.MapGet("/users/totp", async (string email, UserManager<User> users) =>
+            await users.FindByEmailAsync(email) is { } user && await users.GetAuthenticatorKeyAsync(user) is { } key
+                ? Results.Ok(new TotpDto(Totp.Code(key)))
                 : Results.NotFound());
 
         test.MapPost("/users/bot-only", async (BotOnlyRequest request, HabitService habits, EmberDbContext db, TimeProvider time) =>

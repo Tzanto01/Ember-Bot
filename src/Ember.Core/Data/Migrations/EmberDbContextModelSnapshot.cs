@@ -47,6 +47,47 @@ namespace Ember.Core.Data.Migrations
                     b.ToTable("DayMarks");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.DayNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CipherIv")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CipherText")
+                        .HasMaxLength(16384)
+                        .HasColumnType("character varying(16384)");
+
+                    b.Property<int?>("CipherVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Mood")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("DayNotes");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.Habit", b =>
                 {
                     b.Property<int>("Id")
@@ -57,6 +98,9 @@ namespace Ember.Core.Data.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Days")
+                        .HasColumnType("integer");
 
                     b.Property<int>("FrequencyType")
                         .HasColumnType("integer");
@@ -81,6 +125,17 @@ namespace Ember.Core.Data.Migrations
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<int?>("RoutineId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RoutinePosition")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TimesPerDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -90,6 +145,8 @@ namespace Ember.Core.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NextReminderUtc");
+
+                    b.HasIndex("RoutineId");
 
                     b.HasIndex("UserId");
 
@@ -107,6 +164,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<bool>("Completed")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
@@ -122,6 +182,98 @@ namespace Ember.Core.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("HabitLogs");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.JournalKey", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PassphraseIterations")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PassphraseIv")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PassphraseSalt")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PassphraseWrapped")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RecoveryIv")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RecoverySalt")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RecoveryWrapped")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<bool>("TurningOff")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("JournalKeys");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.Mood", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("CipherIv")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CipherText")
+                        .HasMaxLength(16384)
+                        .HasColumnType("character varying(16384)");
+
+                    b.Property<int?>("CipherVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Moods");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
@@ -161,6 +313,43 @@ namespace Ember.Core.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("PushSubscriptions");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.Routine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("NextReminderUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReminderChannels")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly?>("ReminderTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextReminderUtc");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Routines");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.User", b =>
@@ -204,9 +393,6 @@ namespace Ember.Core.Data.Migrations
 
                     b.Property<DateTime?>("HealthDataConsentAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("LeaderboardOptIn")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -337,13 +523,31 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.DayNote", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithMany("DayNotes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.Habit", b =>
                 {
+                    b.HasOne("Ember.Core.Models.Routine", "Routine")
+                        .WithMany("Habits")
+                        .HasForeignKey("RoutineId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Ember.Core.Models.User", "User")
                         .WithMany("Habits")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Routine");
 
                     b.Navigation("User");
                 });
@@ -359,10 +563,43 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("Habit");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.JournalKey", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithOne("JournalKey")
+                        .HasForeignKey("Ember.Core.Models.JournalKey", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.Mood", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithMany("Moods")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
                 {
                     b.HasOne("Ember.Core.Models.User", "User")
                         .WithMany("PushSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.Routine", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithMany("Routines")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -402,15 +639,28 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("Logs");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.Routine", b =>
+                {
+                    b.Navigation("Habits");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.User", b =>
                 {
                     b.Navigation("DayMarks");
 
+                    b.Navigation("DayNotes");
+
                     b.Navigation("Habits");
+
+                    b.Navigation("JournalKey");
 
                     b.Navigation("Logins");
 
+                    b.Navigation("Moods");
+
                     b.Navigation("PushSubscriptions");
+
+                    b.Navigation("Routines");
                 });
 #pragma warning restore 612, 618
         }

@@ -26,6 +26,9 @@ internal static class DiscordEndpoints
     private const string Linked = "/settings?discord=linked";
     private const string LinkConflict = "/settings?discord=conflict";
     private const string MergePage = "/link/merge";
+    private const string TwoFactorStep = "/login?step=2fa";
+
+    public sealed record TwoFactorRequest(string? Code, string? RecoveryCode);
 
     /// <summary>
     /// The Discord OAuth handler under <see cref="DiscordLogin.Provider"/>: scope <c>identify</c>, signing into Identity's
@@ -71,9 +74,39 @@ internal static class DiscordEndpoints
             var user = await users.FindByIdAsync(userId.ToString());
             if (user is null) return Results.Redirect(LoginError);
 
+            if (user.TwoFactorEnabled)
+            {
+                await http.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Name, user.Id.ToString()), new Claim(ClaimTypes.AuthenticationMethod, DiscordLogin.Provider)],
+                    IdentityConstants.TwoFactorUserIdScheme)));
+                return Results.Redirect(LocalOrToday(returnUrl) is var local && local == returnUrl
+                    ? $"{TwoFactorStep}&returnUrl={Uri.EscapeDataString(local)}"
+                    : TwoFactorStep);
+            }
+
             await signIn.SignInAsync(user, isPersistent: true, authenticationMethod: DiscordLogin.Provider);
             return Results.Redirect(LocalOrToday(returnUrl));
         });
+
+        auth.MapPost("/discord/2fa", async (TwoFactorRequest request, HttpContext http, SignInManager<User> signIn, UserManager<User> users) =>
+        {
+            var user = await signIn.GetTwoFactorAuthenticationUserAsync();
+            if (user is null || !user.TwoFactorEnabled || await users.IsLockedOutAsync(user)) return Failed();
+
+            var passed = request.Code is { Length: > 0 }
+                ? await TwoFactorEndpoints.CheckCodeAsync(users, user, request.Code)
+                : request.RecoveryCode is { Length: > 0 } recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, recoveryCode)).Succeeded;
+            if (!passed)
+            {
+                if (request.Code is not { Length: > 0 }) await users.AccessFailedAsync(user);
+                return Failed();
+            }
+
+            await users.ResetAccessFailedCountAsync(user);
+            await http.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
+            await signIn.SignInAsync(user, isPersistent: true, authenticationMethod: DiscordLogin.Provider);
+            return Results.NoContent();
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         auth.MapGet("/discord/link", (ClaimsPrincipal principal, SignInManager<User> signIn, UserManager<User> users) =>
                 Results.Challenge(Properties(signIn, LinkFlow, "/api/auth/discord/link/complete", users.GetUserId(principal)), [DiscordLogin.Provider]))
@@ -107,7 +140,7 @@ internal static class DiscordEndpoints
                 return Results.Redirect(Linked);
             }
 
-            if (owner.PasswordHash is not null || owner.Email is not null) return Results.Redirect(LinkConflict);
+            if (owner.PasswordHash is not null || owner.Email is not null || owner.TwoFactorEnabled) return Results.Redirect(LinkConflict);
 
             PendingMerge.Store(http, user, owner.Id, discordId);
             return Results.Redirect(MergePage);
@@ -138,6 +171,8 @@ internal static class DiscordEndpoints
 
         return api;
     }
+
+    private static IResult Failed() => TypedResults.Problem("Failed", statusCode: StatusCodes.Status401Unauthorized);
 
     /// <summary>
     /// A local ASCII path (a single leading <c>/</c>, no <c>//</c>, <c>/\</c> or control characters, also after percent-decoding),
