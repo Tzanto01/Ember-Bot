@@ -147,7 +147,7 @@ export class JournalService implements JournalApi {
     const key = this.sealingKey(me);
     if (key && body) body = { encrypted: await encryptNote(key, date, { text, mood }) };
     const { queued } = await this.api.saveDayNote(date, body);
-    this.bump();
+    if (!queued) this.bump();
     return { queued };
   }
 
