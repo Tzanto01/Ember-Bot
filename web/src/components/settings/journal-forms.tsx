@@ -179,7 +179,7 @@ export function EnableForm({
     try {
       await onSubmit(passphrase.value, remember, me.hasPassword ? password.value : undefined);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 400 && me.hasPassword) {
+      if (error instanceof ApiError && error.status === 400 && me.hasPassword && error.problem?.errors?.['password']) {
         flushSync(() => setMismatch(true));
         focusFirstInvalid(form.current);
       } else {
@@ -411,7 +411,7 @@ export function PassphraseForm({
       if (error instanceof WrongSecretError) {
         flushSync(() => setWrong('old'));
         focusFirstInvalid(form.current);
-      } else if (error instanceof ApiError && error.status === 400 && me.hasPassword) {
+      } else if (error instanceof ApiError && error.status === 400 && me.hasPassword && error.problem?.errors?.['password']) {
         flushSync(() => setWrong('password'));
         focusFirstInvalid(form.current);
       } else if (error instanceof JournalLockedError && onExpired) {
@@ -497,7 +497,7 @@ export function ConfirmJournalForm({
       await onSubmit(me.hasPassword ? password.value : undefined);
       return;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 400 && me.hasPassword) {
+      if (error instanceof ApiError && error.status === 400 && me.hasPassword && error.problem?.errors?.['password']) {
         flushSync(() => setMismatch(true));
         focusFirstInvalid(form.current);
       } else {
