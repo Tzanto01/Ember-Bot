@@ -13,9 +13,15 @@ vi.mock('@/lib/services', async (original) => {
   return {
     ...(await original<typeof import('@/lib/services')>()),
     localMode: { mode: new Store('account'), evicted: new Store(false) },
-    backup: { backupReminderDue: vi.fn(async () => false), snoozeBackupReminder: vi.fn(async () => {}) },
+    backup: {
+      backupReminderDue: vi.fn(async () => false),
+      snoozeBackupReminder: vi.fn(async () => {}),
+      exportBackup: vi.fn(async () => ({})),
+      markBackedUp: vi.fn(async () => {}),
+    },
   };
 });
+vi.mock('@/lib/native/save-file', () => ({ saveExport: vi.fn(async () => true) }));
 
 const weekly: WeeklyStats = {
   totalDone: 0,
@@ -285,5 +291,18 @@ describe('TodayPage', () => {
 
     expect(backup.snoozeBackupReminder).toHaveBeenCalledOnce();
     await waitFor(() => expect(reminder).not.toBeInTheDocument());
+  });
+
+  it('without an account, exporting from the reminder records the backup once it was saved', async () => {
+    localMode.mode.set('local');
+    vi.mocked(backup.backupReminderDue).mockResolvedValue(true);
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Export backup' }));
+
+    expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
+    expect(backup.markBackedUp).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/It's been a while since your last backup/)).toBeNull();
   });
 });
