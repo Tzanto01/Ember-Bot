@@ -1,4 +1,6 @@
-# Ember API contract v1.5
+# Ember API contract v1.6
+
+v1.6 (2026-11-03, Nico: "do all 5"): the leaderboard is gone; flexible schedules (set weekdays, several times a day); routines; a word for the day; day stats for the year view; native "Done" from a reminder and an Android home-screen widget. See "Features v1.6". Defaults marked *(default)* are the department lead's until Nico says otherwise.
 
 v1.5 (2026-11-03): bearer access tokens live 15 minutes; a password reset lifts a lockout; mail limits per client IP, per address across clients and per day; request bodies are capped at 64 KiB.
 
@@ -110,13 +112,13 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
     "id": "guid", "email": "a@b.c", "emailConfirmed": true, "hasPassword": true,
     "discord": { "linked": true, "id": "123" },
     "timezone": "Europe/Berlin", "timezoneSet": true, "localToday": "2026-11-01",
-    "graceDaysPerWeek": 1, "leaderboardOptIn": false, "theme": null,
+    "graceDaysPerWeek": 1, "theme": null,
     "consent": { "given": true, "policyVersion": "2026-10", "currentPolicyVersion": "2026-10" },
     "dmReminders": { "paused": false }
   }
   ```
   `email` is null for accounts created through Discord. `discord.id` is null when not linked.
-- `PATCH /api/me` `{ timezone?, graceDaysPerWeek? (0–3), leaderboardOptIn?, theme? }` → 200 `Me`. Unknown IANA zone → 400.
+- `PATCH /api/me` `{ timezone?, graceDaysPerWeek? (0–3), theme? }` → 200 `Me`. Unknown IANA zone → 400. (`leaderboardOptIn` was removed in v1.6; a PATCH that still sends it is not an error, the field is ignored.)
 - `theme` is the account's theme id: `hearthlight`, `fieldnotes`, `tidepool`, `marigold`, or null (never chosen; the app shows the default, Hearthlight). A PATCH sets it to one of those ids; any other value → 400 `validation`. A PATCH without `theme` leaves it unchanged. The bot ignores it; export includes it.
 - Clients (web and native): after sign-in, when `timezoneSet` is false, the app sends `PATCH /api/me { timezone }` once with the device's IANA zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) if the server knows it; a failure is ignored and retried on the next app start. A zone the user picked (`timezoneSet: true`) is never changed automatically.
 - `POST /api/me/consent` `{ policyVersion }` → 204. 400 when it isn't the current version.
@@ -187,3 +189,63 @@ A runnable host in the test tree, never in `src/` or the Docker image: `dotnet r
 - The client queues `PUT`/`DELETE /api/habits/{id}/days/{date}` made while offline (keyed by user ID) and replays them in order once online. The server needs no change and replays are idempotent. "Last write wins" means last replayed: an older offline edit can overwrite a newer edit made elsewhere, accepted for v2.
 - Dates are computed in the account's timezone (`me.timezone`), not the device's.
 - A replay is dropped (with a gentle notice) only on 404 or 422 `before_habit_start`/`in_future`. On `consent_required` it stays queued and the app shows the consent step. On 401, 429, 5xx or network failure it stays queued and is retried.
+
+## Features v1.6
+
+Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, migrations, `tests/`). Consumer: team `clients` (`web/`, `mobile/`). Every new user-data table cascades on account delete, is included in both export formats (JSON and CSV), and is merged by account merge like habits are.
+
+### Leaderboard removal
+
+- The bot's `/leaderboard` command, its help text and `User.LeaderboardOptIn` are removed; a migration drops the column. Export no longer has `leaderboard_opt_in` / `leaderboardOptIn`. The web settings toggle and the merge page's leaderboard mention go. Privacy texts (`docs/legal`, the bot's privacy module) drop the leaderboard.
+
+### Schedules
+
+`Habit` gains:
+
+```json
+{ "frequency": "daily" | "weekly" | "weekdays", "days": ["mon","wed","fri"] | null, "timesPerDay": 1 }
+```
+
+- `weekdays`: `days` lists 1–6 distinct weekdays (`mon`…`sun`, any order in, Monday-first order out); all seven is rejected (use `daily`). `days` is null for `daily` and `weekly`.
+- A day that isn't in `days` has the new state `offday`: nothing is expected, it can still be checked in (it then counts as `done`), it is never `pending` or `notdone`, and streaks step over it (it neither extends nor breaks a streak). Grace days apply to scheduled days only.
+- `timesPerDay` 1–10 for `daily` and `weekdays` (always 1 for `weekly`). A day carries `count` (0…timesPerDay). The day is `done` when `count >= timesPerDay`; a day with `0 < count < timesPerDay` has the new state `partial`. Streaks count `done` days only; `partial` days count as "showed up" in day stats.
+- Day objects (`today` and `GET .../days`) gain `count`: `{ date, state, completed, count }`. `completed` stays (true when done, false when explicitly not done, null otherwise).
+- `PUT /api/habits/{id}/days/{date}` accepts `{ completed: bool }` (unchanged: true sets `count = timesPerDay`, false sets `count = 0` and marks not done) or `{ count: int }` (absolute, 0…timesPerDay; out of range → 400). Absolute values keep offline replays idempotent. `DELETE` clears the day as before.
+- `POST`/`PATCH /api/habits` accept `frequency`, `days`, `timesPerDay`, `weeklyTarget` with the rules above; an invalid combination → 400 `validation` naming the field. Lowering `timesPerDay` never rewrites history: past counts above the new target simply count as done.
+- Bot: shows `2/3` style progress for multi-count habits, its check-in button adds one (capped), and the habit setup offers weekdays and times per day. Offdays show as rest, never as missed. Weekly summary and DM reminders skip offdays.
+- Reminders (all channels) fire only on scheduled days, and not once the day is `done`.
+
+### Routines
+
+```json
+{ "id": 1, "name": "Morning", "reminderTime": "07:30" | null, "reminderChannels": ["mobile"], "habitIds": [3, 1] }
+```
+
+- `GET /api/routines` → `Routine[]`. `POST /api/routines` `{ name (1–50 after trimming), reminderTime?, reminderChannels?, habitIds? }` → 201. `PATCH /api/routines/{id}` (any of those, `clearReminder?`) → 200. `DELETE /api/routines/{id}` → 204 (its habits stay, ungrouped). At most 10 routines per user → 409 `conflict`.
+- `habitIds` is ordered and sets membership: a habit belongs to at most one routine; listing it moves it from its old routine. Unknown or foreign ids → 404. `Habit` gains `routineId: int | null`.
+- *(default)* While a habit is in a routine with a reminder, the routine's reminder replaces the habit's own (the habit keeps its `reminderTime` for when it leaves the routine; the UI shows it as overridden). A routine reminder fires once per scheduled day for the member habits that are still `pending` or `partial`, and not at all when none are.
+- Channels work as for habits (`discord`, `webpush` dispatched by the server; `mobile` scheduled by the app). The Discord DM may list the pending habit names with check-in buttons (DMs are private). Web push uses the generic body.
+- Routines are in the export and merge; the bot doesn't manage routines (web and app only) *(default)*.
+
+### Word for the day
+
+```json
+{ "date": "2026-11-03", "text": "tired but ok" | null, "mood": "low" | "meh" | "okay" | "good" | "great" | null }
+```
+
+- *(default)* One per account per local day, not per habit. `text` 1–60 chars after trimming, or null. At least one of `text`/`mood` is set; a PUT with both null deletes it.
+- `GET /api/day-notes?from&to` → `DayNote[]` oldest first (default and maximum: 366 days). `PUT /api/day-notes/{date}` `{ text?, mood? }` → 200 `DayNote` (absolute, so offline replays are idempotent). `DELETE /api/day-notes/{date}` → 204.
+- Same date rules as low days (`in_future`, `before_habit_start`); writes need consent (`consent_required`), reads don't.
+- Never shown by the bot, in any notification, or in the weekly summary. Included in export, delete and merge.
+- Offline: the client queues `PUT`/`DELETE /api/day-notes/{date}` exactly like day edits.
+
+### Day stats (year view)
+
+- `GET /api/stats/days?from&to` → `[{ date, scheduled, done, partial, showedUp }]` oldest first (default: the 366 days ending today; maximum 366). Per local day across all habits: `scheduled` = habits expected that day (started, not paused, not offday), `done` / `partial` = how many reached each state, `showedUp` = true when any habit has a check-in that day (any `count > 0` or `completed: true`, offdays included).
+- The client words it gently ("you showed up 18 of the last 30 days"); never "missed", never red.
+
+### Native: check in from a reminder, home-screen widget (clients only)
+
+- *(default)* A per-device setting "Show habit names in reminders", off by default. Off: reminders keep the generic body and only open the app. On: the title names the habit (or routine), and single-habit reminders get a "Done" action.
+- Local notification `extra`: `{ "userId", "habitId" | "routineId", "date" }`. "Done" opens the app, which adds one to that habit's count for `date` (absolute `PUT { count }` through the offline queue) and shows a short confirmation. A stale or foreign `extra` (other user, deleted habit) just opens Today.
+- Android widget "Today in Ember": today's scheduled habits for the signed-in user with their state (up to 6, then "+N more"). Tapping a habit opens the app and adds one, like "Done"; tapping elsewhere opens Today. The app pushes a snapshot to the widget after every habit change and clears it on sign-out, session end and account delete. The widget receives only explicit, immutable intents; extras are validated (numeric habit id, ISO date, matching user) before anything is written.
