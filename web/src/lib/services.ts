@@ -36,6 +36,8 @@ export const journal = new JournalService(
   new Keyring(env.native ? capacitorSecureStore : null),
 );
 auth.journal = journal;
+offlineQueue.resealNote = (edit) => journal.resealNote(edit);
+journal.onDroppedNote = (note) => offlineQueue.droppedNotes.update((notes) => [...notes, note]);
 export const deviceSync = new DeviceSync(auth, api, offlineQueue, reminders);
 
 http.session = auth;

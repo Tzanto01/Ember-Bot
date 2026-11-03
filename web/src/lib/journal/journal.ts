@@ -1,4 +1,5 @@
 import type { ApiClient, ExportFile } from '../api-client';
+import type { NoteEdit } from '../device-store';
 import { addDays } from '../local-date';
 import type {
   DayNote,
@@ -13,6 +14,7 @@ import type {
   StoredDayNote,
   StoredMood,
 } from '../models';
+import type { DroppedNote, ResealResult } from '../offline-queue';
 import { ApiError, asApiError } from '../problem';
 import { Store } from '../store';
 import {
@@ -115,6 +117,10 @@ export class JournalService implements JournalApi {
   } | null = null;
   private migrating: Promise<void> | null = null;
   private reuploading: Promise<void> | null = null;
+  private replayingHeld: Promise<void> | null = null;
+
+  /** Set by the composition root: a held journal edit the server refused on replay, for the gentle notice. */
+  onDroppedNote: ((note: DroppedNote) => void) | null = null;
   private restoring: Promise<void> | null = null;
   private readonly iterations: number;
 
@@ -407,10 +413,76 @@ export class JournalService implements JournalApi {
     return me.journal.encrypted && !me.journal.turningOff ? this.requireKey() : null;
   }
 
+  /**
+   * Converts a queued journal edit refused with 400 to the journal's current form (contract "Offline day edits"):
+   * encrypted while private, plaintext while turning off or off. Locked with a form it can't produce, it holds the
+   * edit on this device for the next unlock. An edit already in the current form (another 400) is dropped.
+   */
+  async resealNote(edit: NoteEdit): Promise<ResealResult> {
+    const me = (await this.session.loadMe(true).catch(() => null)) ?? this.session.me.get();
+    const body = edit.body;
+    if (!me || !body) return { dropText: null };
+    const key = this.key && this.keyUser === me.id ? this.key : null;
+    const sealed = me.journal.encrypted && !me.journal.turningOff;
+    let plain: { text: string | null; mood: MoodKey | null };
+    if (isEncrypted(body)) {
+      if (!key) return me.journal.turningOff ? this.holdNote(me.id, edit) : { dropText: null };
+      try {
+        plain = await decryptNote(key, edit.date, body.encrypted);
+      } catch {
+        return { dropText: null };
+      }
+      if (sealed) return { dropText: plain.text };
+      return { edit: { ...edit, body: plain } };
+    }
+    plain = { text: body.text ?? null, mood: body.mood ?? null };
+    if (!sealed) return { dropText: plain.text };
+    if (!key) return this.holdNote(me.id, edit);
+    return { edit: { ...edit, body: { encrypted: await encryptNote(key, edit.date, plain) } } };
+  }
+
+  private async holdNote(userId: string, edit: NoteEdit): Promise<'hold'> {
+    await this.keyring.hold(userId, edit);
+    return 'hold';
+  }
+
+  private replayHeld(): Promise<void> {
+    this.replayingHeld ??= this.runHeld().finally(() => (this.replayingHeld = null));
+    return this.replayingHeld;
+  }
+
+  /** Saves held journal edits in the journal's current form; a refused one is dropped and reported. */
+  private async runHeld(): Promise<void> {
+    const me = this.session.me.get();
+    const key = this.key;
+    if (!me || !key || this.keyUser !== me.id) return;
+    for (const { id, edit } of await this.keyring.held(me.id)) {
+      if (this.key !== key) return;
+      let text: string | null = null;
+      try {
+        const body = edit.body;
+        if (body) {
+          const plain = isEncrypted(body)
+            ? await decryptNote(key, edit.date, body.encrypted)
+            : { text: body.text ?? null, mood: body.mood ?? null };
+          text = plain.text;
+          await this.save(edit.date, plain);
+        }
+      } catch (error) {
+        const status = error instanceof ApiError ? error.status : 400;
+        if (status !== 400 && status !== 404 && status !== 422) continue;
+        this.onDroppedNote?.({ date: edit.date, text });
+      }
+      await this.keyring.release(id).catch(() => undefined);
+    }
+  }
+
   /** Continues interrupted work in the background once the key is at hand. */
   private resume(me: Me): void {
     if (this.state.get() !== 'unlocked') return;
-    if (!me.journal.turningOff && me.journal.plaintextLeft > 0) void this.finishMigration().catch(() => undefined);
+    void this.replayHeld().catch(() => undefined);
+    if (!me.journal.turningOff && me.journal.plaintextLeft > 0)
+      void this.finishMigration().catch(() => undefined);
   }
 
   private finishTurnOff(): Promise<void> {

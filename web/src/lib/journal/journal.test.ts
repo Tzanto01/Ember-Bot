@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient } from '../api-client';
 import { AuthService } from '../auth';
-import { DeviceStore } from '../device-store';
+import { DeviceStore, isDayEdit } from '../device-store';
 import { Http } from '../http';
 import type { EncryptedBlob, JournalKey, Me, StoredDayNote, StoredMood } from '../models';
 import type { SecureStore } from '../native/token-store';
@@ -38,6 +38,7 @@ class FakeServer {
   moods = new Map<number, StoredMood>();
   key: JournalKey | null = null;
   turningOff = false;
+  dayEdits = 0;
   private nextMood = 1;
   private timer: ReturnType<typeof setInterval>;
 
@@ -95,6 +96,11 @@ class FakeServer {
       });
     }
     if (route === 'GET /api/habits') return call.respond(200, [habit]);
+    if (/^PUT \/api\/habits\/1\/days\//.test(route)) {
+      this.dayEdits++;
+      return call.respond(200, habit);
+    }
+    if (body.text === 'Refused by the server.') return call.respond(400, { type: 'validation' });
     if (route === 'GET /api/day-notes') {
       const from = url.searchParams.get('from')!;
       const to = url.searchParams.get('to')!;
@@ -197,10 +203,17 @@ describe('JournalService', () => {
     const auth = new AuthService(api, queue, null, null);
     const journal = new JournalService(api, auth, new Keyring(secure), { iterations });
     auth.journal = journal;
+    queue.resealNote = (edit) => journal.resealNote(edit);
+    journal.onDroppedNote = (note) => queue.droppedNotes.update((notes) => [...notes, note]);
     http.session = auth;
     await auth.loadMe(true);
+    queue.userId.set(baseMe.id);
     await journal.restore();
-    return { auth, journal };
+    const replay = () =>
+      queue.replay(baseMe.id, (edit) =>
+        isDayEdit(edit) ? api.sendDayEdit(edit, true) : api.sendNoteEdit(edit, true),
+      );
+    return { auth, journal, queue, replay };
   }
 
   async function rawKey(): Promise<string> {
@@ -492,9 +505,9 @@ describe('JournalService', () => {
     expect(server.moods.get(mood.id)).toMatchObject({ label: 'Bright' });
 
     await journal.disable(loginPassword);
-    expect(
-      [...server.notes.values(), ...server.moods.values()].some((v) => 'encrypted' in v),
-    ).toBe(false);
+    expect([...server.notes.values(), ...server.moods.values()].some((v) => 'encrypted' in v)).toBe(
+      false,
+    );
     expect(server.notes.get('2026-10-31')).toMatchObject({ text: 'Encrypted once.' });
     expect(mock.all.filter((c) => c.url === '/api/me/journal-key/turn-off')).toHaveLength(0);
     expect(server.key).toBeNull();
@@ -527,5 +540,74 @@ describe('JournalService', () => {
     await journal.forget();
     expect(journal.remembered.get()).toBe(false);
     await journal.finishMigration();
+  });
+
+  describe('queued journal edits after the journal changed form', () => {
+    it('encrypts a plaintext edit queued before the journal went private, then sends it', async () => {
+      const offline = await device();
+      await offline.queue.add({
+        kind: 'note',
+        date: '2026-10-30',
+        body: { text: 'Queued while offline.', mood: null },
+      });
+      await offline.journal.enable(passphrase, false, loginPassword);
+
+      expect(await offline.replay()).toMatchObject({ sent: 1, dropped: 0, remaining: 0 });
+      expect(server.notes.get('2026-10-30')).toHaveProperty('encrypted');
+      expect((await offline.journal.notes('2026-10-30', '2026-10-30')).notes).toEqual([
+        { date: '2026-10-30', text: 'Queued while offline.', mood: null },
+      ]);
+    });
+
+    it('holds it while locked without blocking later day edits, and saves it after the next unlock', async () => {
+      const first = await device();
+      await first.journal.enable(passphrase, false, loginPassword);
+      const locked = await device();
+      await locked.queue.add({
+        kind: 'note',
+        date: '2026-10-29',
+        body: { text: 'Written before it went private.', mood: 'okay' },
+      });
+      await locked.queue.add({ habitId: 1, date: '2026-10-29', completed: true });
+
+      expect(await locked.replay()).toMatchObject({ remaining: 0 });
+      expect(server.dayEdits).toBe(1);
+      expect(server.notes.has('2026-10-29')).toBe(false);
+      expect(locked.queue.pending.get()).toBe(0);
+      expect(locked.queue.droppedNotes.get()).toEqual([]);
+
+      await locked.journal.unlock({ passphrase }, false);
+      await vi.waitFor(() => expect(server.notes.get('2026-10-29')).toHaveProperty('encrypted'));
+      expect((await locked.journal.notes('2026-10-29', '2026-10-29')).notes).toEqual([
+        { date: '2026-10-29', text: 'Written before it went private.', mood: 'okay' },
+      ]);
+      await locked.journal.finishMigration();
+    });
+
+    it('forgets held edits with the key on sign-out', async () => {
+      const keyring = new Keyring(null);
+      await keyring.hold(baseMe.id, { kind: 'note', date: '2026-10-27', body: { text: 'Held' } });
+      expect(await new Keyring(null).held(baseMe.id)).toHaveLength(1);
+      expect(await new Keyring(null).held('u2')).toEqual([]);
+
+      await keyring.forget();
+
+      expect(await new Keyring(null).held(baseMe.id)).toEqual([]);
+    });
+
+    it('drops an edit refused for another reason and lists its text for the notice', async () => {
+      const { queue, replay } = await device();
+      await queue.add({
+        kind: 'note',
+        date: '2026-10-28',
+        body: { text: 'Refused by the server.', mood: null },
+      });
+      await queue.add({ habitId: 1, date: '2026-10-28', completed: true });
+
+      expect(await replay()).toMatchObject({ sent: 1, dropped: 1, remaining: 0 });
+      expect(queue.droppedNotes.get()).toEqual([
+        { date: '2026-10-28', text: 'Refused by the server.' },
+      ]);
+    });
   });
 });

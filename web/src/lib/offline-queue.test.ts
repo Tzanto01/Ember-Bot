@@ -95,6 +95,25 @@ describe('OfflineQueue', () => {
 
     expect(result).toEqual({ sent: 0, dropped: 1, remaining: 1 });
     expect(queue.pending.get()).toBe(1);
+    expect(queue.droppedNotes.get()).toEqual([
+      { date: '2026-11-01', text: 'Queued before the journal went private.' },
+    ]);
+  });
+
+  it('replays a journal edit refused with 400 in the form the journal converts it to, in its place', async () => {
+    const encrypted = { encrypted: { v: 1 as const, iv: 'aXY=', ct: 'Y3Q=' } };
+    await queue.add({ kind: 'note', date: '2026-11-01', body: { text: 'Plain' } });
+    await queue.add(edit(2));
+    queue.resealNote = async (note) => ({ edit: { ...note, body: encrypted } });
+    const sent: QueueEdit[] = [];
+    const send = async (e: QueueEdit) => {
+      sent.push(e);
+      if (e.kind === 'note' && !('encrypted' in (e.body ?? {}))) throw new ApiError(400, null);
+    };
+
+    expect(await queue.replay('user-a', send)).toEqual({ sent: 2, dropped: 0, remaining: 0 });
+    expect(sent.slice(1)).toEqual([{ kind: 'note', date: '2026-11-01', body: encrypted }, edit(2)]);
+    expect(queue.droppedNotes.get()).toEqual([]);
   });
 
   it('drops edits refused with 404 or 422 before_habit_start / in_future and continues', async () => {
