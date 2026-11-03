@@ -11,6 +11,9 @@ public class JournalKey
     /// <summary>Incremented on every change.</summary>
     public int Version { get; set; }
 
+    /// <summary>The user is turning the private journal off: plaintext writes are accepted again until the key is deleted.</summary>
+    public bool TurningOff { get; set; }
+
     public string PassphraseSalt { get; set; } = string.Empty;
     public int PassphraseIterations { get; set; }
     public string PassphraseIv { get; set; } = string.Empty;

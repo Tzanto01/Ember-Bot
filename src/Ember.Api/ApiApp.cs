@@ -164,6 +164,7 @@ public static class ApiApp
         signedIn.MapHabits();
         signedIn.MapRoutines();
         signedIn.MapLowDays();
+        signedIn.MapJournal();
         signedIn.MapStats();
 
         api.MapHabitTemplates();
