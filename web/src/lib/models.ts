@@ -26,8 +26,11 @@ export interface Me {
   theme: ThemeId | null;
   consent: { given: boolean; policyVersion: string | null; currentPolicyVersion: string };
   dmReminders: { paused: boolean };
-  /** v1.7 private journal: `encrypted` once a journal key exists; `plaintextLeft` entries and moods still to encrypt. */
-  journal: { encrypted: boolean; plaintextLeft: number };
+  /**
+   * v1.7 private journal: `encrypted` once a journal key exists; `turningOff` while a switch-off is under way;
+   * `plaintextLeft` / `encryptedLeft` entries and moods still to encrypt / decrypt.
+   */
+  journal: { encrypted: boolean; turningOff: boolean; plaintextLeft: number; encryptedLeft: number };
 }
 
 /** `PATCH /api/me` body. */
@@ -259,6 +262,8 @@ export interface DayStat {
 /** `GET /api/me/journal-key` (binary fields base64). */
 export interface JournalKey {
   version: number;
+  /** True after `POST /api/me/journal-key/turn-off`: plaintext writes are accepted again until the key is deleted. */
+  turningOff?: boolean;
   passphrase: { salt: string; iterations: number; iv: string; wrapped: string };
   recovery: { salt: string; iv: string; wrapped: string };
 }
