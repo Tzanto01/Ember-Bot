@@ -378,10 +378,14 @@ export class ApiClient {
     return this.http.request('POST', '/api/me/2fa/setup');
   }
 
-  /** `POST /api/me/2fa/enable`: the ten recovery codes, shown once; wrong code → 400 `validation`. */
-  async enableTwoFactor(code: string): Promise<string[]> {
-    return (await this.http.request<{ recoveryCodes: string[] }>('POST', '/api/me/2fa/enable', { body: { code } }))
-      .recoveryCodes;
+  /**
+   * `POST /api/me/2fa/enable`: the ten recovery codes, shown once; wrong code → 400 on `code`. Accounts with a login
+   * password send it (wrong or missing → 400 on `password`).
+   */
+  async enableTwoFactor(code: string, password?: string): Promise<string[]> {
+    return (
+      await this.http.request<{ recoveryCodes: string[] }>('POST', '/api/me/2fa/enable', { body: { code, password } })
+    ).recoveryCodes;
   }
 
   /** `POST /api/me/2fa/disable`: the login password, or for Discord-only accounts a current code. */
