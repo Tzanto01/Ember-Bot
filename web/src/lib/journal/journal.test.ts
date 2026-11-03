@@ -16,7 +16,13 @@ import {
   memorySecureStore,
   mockFetch,
 } from '../test-support';
-import { decryptNote, fromBase64, toBase64, unwrapWithPassphrase } from './crypto';
+import {
+  decryptNote,
+  fromBase64,
+  importJournalKey,
+  toBase64,
+  unwrapWithPassphrase,
+} from './crypto';
 import { JournalService } from './journal';
 import { Keyring } from './keyring';
 import { JournalLockedError, WrongSecretError } from './types';
@@ -31,6 +37,7 @@ class FakeServer {
   notes = new Map<string, StoredDayNote>();
   moods = new Map<number, StoredMood>();
   key: JournalKey | null = null;
+  turningOff = false;
   private nextMood = 1;
   private timer: ReturnType<typeof setInterval>;
 
@@ -49,18 +56,16 @@ class FakeServer {
     this.nextMood = Math.max(this.nextMood, mood.id + 1);
   }
 
-  private plaintextLeft(): number {
+  private left(encrypted: boolean): number {
     if (!this.key) return 0;
-    const plain = (v: object) => !('encrypted' in v);
-    return (
-      [...this.notes.values()].filter(plain).length + [...this.moods.values()].filter(plain).length
-    );
+    const all = [...this.notes.values(), ...this.moods.values()];
+    return all.filter((v) => 'encrypted' in v === encrypted).length;
   }
 
   private handle(call: FakeCall): void {
     const url = new URL(call.url, 'http://ember.test');
     const path = url.pathname;
-    const body = call.body as {
+    const body = (call.body ?? {}) as {
       encrypted?: unknown;
       label?: unknown;
       emoji?: unknown;
@@ -69,12 +74,24 @@ class FakeServer {
       passphrase?: JournalKey['passphrase'];
       recovery?: JournalKey['recovery'];
       discardEncrypted?: boolean;
+      text?: unknown;
+      mood?: unknown;
     };
     const route = `${call.method} ${path}`;
+    const plainWrite =
+      /^(PUT \/api\/day-notes\/|POST \/api\/moods|PATCH \/api\/moods\/)/.test(route) &&
+      ('text' in body || 'mood' in body || 'label' in body);
+    if (plainWrite && this.key && !this.turningOff)
+      return call.respond(400, { type: 'validation' });
     if (route === 'GET /api/me') {
       return call.respond(200, {
         ...this.me,
-        journal: { encrypted: !!this.key, plaintextLeft: this.plaintextLeft() },
+        journal: {
+          encrypted: !!this.key,
+          turningOff: this.turningOff,
+          plaintextLeft: this.left(false),
+          encryptedLeft: this.left(true),
+        },
       });
     }
     if (route === 'GET /api/habits') return call.respond(200, [habit]);
@@ -119,8 +136,16 @@ class FakeServer {
       this.moods.set(id, next as unknown as StoredMood);
       return call.respond(200, next);
     }
-    if (route === 'GET /api/me/journal-key')
-      return this.key ? call.respond(200, this.key) : call.respond(404);
+    if (route === 'GET /api/me/journal-key') {
+      if (!this.key) return call.respond(404);
+      return call.respond(200, this.turningOff ? { ...this.key, turningOff: true } : this.key);
+    }
+    if (route === 'POST /api/me/journal-key/turn-off') {
+      if (this.me.hasPassword && body.password !== loginPassword)
+        return call.respond(400, { type: 'validation' });
+      this.turningOff = !!this.key;
+      return this.key ? call.respond(200) : call.respond(404);
+    }
     if (route === 'PUT /api/me/journal-key') {
       if (this.me.hasPassword && body.password !== loginPassword)
         return call.respond(400, { type: 'validation' });
@@ -142,6 +167,7 @@ class FakeServer {
         return call.respond(409, { type: 'conflict' });
       }
       this.key = null;
+      this.turningOff = false;
       return call.respond(204);
     }
     call.respond(404);
@@ -266,7 +292,6 @@ describe('JournalService', () => {
     expect(Object.keys(put[0].body as object)).toEqual(['encrypted']);
     expect(JSON.stringify(put[0].body)).not.toContain('walk');
     const stored = server.notes.get('2026-11-01') as unknown as { encrypted: EncryptedBlob };
-    const { importJournalKey } = await import('./crypto');
     const key = await importJournalKey(fromBase64(await rawKey()));
     expect(await decryptNote(key, '2026-11-01', stored.encrypted)).toEqual({
       text: 'Slept badly,\nstill went for a walk.',
@@ -410,6 +435,8 @@ describe('JournalService', () => {
 
     await journal.disable(loginPassword);
 
+    const turnOff = mock.all.findIndex((c) => c.url === '/api/me/journal-key/turn-off');
+    expect(mock.all[turnOff]).toMatchObject({ method: 'POST', body: { password: loginPassword } });
     const deleteIndex = mock.all.findIndex(
       (c) => c.method === 'DELETE' && c.url === '/api/me/journal-key',
     );
@@ -425,7 +452,7 @@ describe('JournalService', () => {
       '/api/day-notes/2025-01-04',
       '/api/day-notes/2026-10-31',
     ]);
-    expect(plainPuts.every(({ i }) => i < deleteIndex)).toBe(true);
+    expect(plainPuts.every(({ i }) => turnOff < i && i < deleteIndex)).toBe(true);
     expect(mock.all[deleteIndex].body).toEqual({
       password: loginPassword,
       discardEncrypted: false,
@@ -439,5 +466,66 @@ describe('JournalService', () => {
     expect(server.moods.get(2)).toEqual({ id: 2, label: 'Bright', emoji: null, archived: false });
     expect(journal.state.get()).toBe('off');
     expect(await new Keyring(null).get(baseMe.id)).toBeNull();
+  });
+
+  it('writes plaintext while turning off, even locked, and any device finishes an interrupted switch-off', async () => {
+    const first = await device();
+    await first.journal.enable(passphrase, false, loginPassword);
+    await first.journal.save('2026-10-31', { text: 'Encrypted once.', mood: null });
+    await first.journal.addMood({ label: 'Calm', emoji: null });
+    server.turningOff = true;
+
+    const { journal } = await device();
+    expect(journal.state.get()).toBe('locked');
+    expect(journal.turningOff.get()).toBe(true);
+    await journal.save('2026-11-01', { text: 'Written mid-switch.', mood: null });
+    expect(server.notes.get('2026-11-01')).toEqual({
+      date: '2026-11-01',
+      text: 'Written mid-switch.',
+      mood: null,
+    });
+
+    await journal.unlock({ passphrase }, false);
+    await vi.waitFor(() => {
+      expect(
+        [...server.notes.values(), ...server.moods.values()].some((v) => 'encrypted' in v),
+      ).toBe(false);
+    });
+    expect(server.notes.get('2026-10-31')).toMatchObject({ text: 'Encrypted once.' });
+    const mood = await journal.addMood({ label: 'Bright', emoji: null });
+    expect(server.moods.get(mood.id)).toMatchObject({ label: 'Bright' });
+
+    await journal.disable(loginPassword);
+    expect(mock.all.filter((c) => c.url === '/api/me/journal-key/turn-off')).toHaveLength(0);
+    expect(server.key).toBeNull();
+    expect(journal.state.get()).toBe('off');
+    expect(journal.turningOff.get()).toBe(false);
+  });
+
+  it('reports from memory whether the keyring stored the key on this device', async () => {
+    const keyring = new Keyring(null);
+    const key = await importJournalKey(new Uint8Array(32));
+
+    await keyring.keep(baseMe.id, { key, keyId: 'k1' }, new Uint8Array(32), false);
+    expect(await keyring.get(baseMe.id)).toMatchObject({ remembered: false });
+    await keyring.keep(baseMe.id, { key, keyId: 'k1' }, new Uint8Array(32), true);
+    expect(await keyring.get(baseMe.id)).toMatchObject({ remembered: true });
+  });
+
+  it('tells the settings screen whether this device keeps the key', async () => {
+    const first = await device();
+    await first.journal.enable(passphrase, false, loginPassword);
+    expect(first.journal.remembered.get()).toBe(false);
+
+    const { journal } = await device();
+    await journal.unlock({ passphrase }, false);
+    expect(journal.remembered.get()).toBe(false);
+    await journal.unlock({ passphrase }, true);
+    expect(journal.remembered.get()).toBe(true);
+    expect((await device()).journal.remembered.get()).toBe(true);
+
+    await journal.forget();
+    expect(journal.remembered.get()).toBe(false);
+    await journal.finishMigration();
   });
 });

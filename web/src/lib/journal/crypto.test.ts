@@ -48,6 +48,15 @@ describe('journal crypto', () => {
     );
   });
 
+  it('rejects a recovery code whose checksum does not match, even when its 16 secret bytes are intact', async () => {
+    const { code } = await newRecoveryCode();
+    const last = code.at(-1) === '0' ? '1' : '0';
+
+    await expect(recoveryCodeBytes(code.slice(0, -1) + last)).rejects.toBeInstanceOf(
+      WrongSecretError,
+    );
+  });
+
   it('refuses a passphrase part whose iteration count was lowered below the minimum', async () => {
     const part = await wrapWithPassphrase(newJournalKeyBytes(), 'quiet harbour lantern', 10);
 
