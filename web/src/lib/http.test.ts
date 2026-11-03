@@ -302,6 +302,11 @@ describe('Http habit write hook', () => {
     (await mock.next('PUT', '/api/habits/1/days/2026-11-01')).respond(200, {});
     await write;
     expect(onHabitWrite).toHaveBeenCalledTimes(1);
+
+    const routine = http.request('PATCH', '/api/routines/1', { body: { reminderTime: '07:30' } });
+    (await mock.next('PATCH', '/api/routines/1')).respond(200, {});
+    await routine;
+    expect(onHabitWrite).toHaveBeenCalledTimes(2);
   });
 });
 

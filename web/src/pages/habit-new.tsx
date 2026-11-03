@@ -7,6 +7,7 @@ import { focusFirstInvalid } from '@/components/form-field';
 import {
   cadenceText,
   emptyHabitForm,
+  habitDaysError,
   HabitFields,
   habitFormValue,
   habitNameError,
@@ -55,6 +56,7 @@ export default function HabitNewPage() {
       setForm(
         template
           ? {
+              ...emptyHabitForm,
               name: template.name,
               frequency: template.frequency,
               weeklyTarget: template.weeklyTarget ?? 3,
@@ -82,18 +84,21 @@ export default function HabitNewPage() {
     event.preventDefault();
     if (create.isPending) return;
     flushSync(() => setTouched(true));
-    if (habitNameError(form.name)) {
+    if (habitNameError(form.name) || habitDaysError(form)) {
       focusFirstInvalid(root.current);
       return;
     }
     const value = habitFormValue(form);
     const body: NewHabit = { name: value.name, frequency: value.frequency };
+    if (value.days !== null) body.days = value.days;
+    if (value.frequency !== 'weekly') body.timesPerDay = value.timesPerDay;
     if (value.weeklyTarget !== null) body.weeklyTarget = value.weeklyTarget;
     if (value.reminderTime) body.reminderTime = value.reminderTime;
     setProblem(null);
     create.mutate(body);
   }
 
+  const preview = habitFormValue(form);
   const lede = showForm
     ? picked
       ? `Based on ${picked}. Adjust anything you like.`
@@ -183,7 +188,7 @@ export default function HabitNewPage() {
           <HabitPreview
             className="hidden lg:flex"
             name={form.name}
-            cadence={cadenceText(form.frequency, form.frequency === 'weekly' ? form.weeklyTarget : null)}
+            cadence={cadenceText(preview.frequency, preview.weeklyTarget, preview.days, preview.timesPerDay)}
           />
         </div>
       )}

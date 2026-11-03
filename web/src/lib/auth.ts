@@ -1,4 +1,5 @@
 import type { ApiClient } from './api-client';
+import type { JournalApi } from './journal/types';
 import type { Me } from './models';
 import type { Reminders } from './native/reminders';
 import type { TokenStore } from './native/token-store';
@@ -28,6 +29,9 @@ export class AuthService {
 
   /** The signed-in user, or null. */
   readonly me = new Store<Me | null>(null);
+
+  /** The day journal; its key is restored after `me` loads and forgotten on sign-out, session end and wipe. */
+  journal: Pick<JournalApi, 'forget' | 'restore'> | null = null;
 
   constructor(
     private readonly api: ApiClient,
@@ -81,6 +85,7 @@ export class AuthService {
         this.loaded = true;
         const unsaved = me && adoptAccountTheme(me.theme, picks);
         if (unsaved) void this.saveTheme(unsaved);
+        if (me) void this.journal?.restore();
         return me;
       })
       .finally(() => (this.inFlight = null));
@@ -104,16 +109,38 @@ export class AuthService {
   /** Forgets the session locally (the server already ended it) and cancels the native build's reminders. */
   clearSession(): void {
     void this.native?.reminders.clearAll();
+    void this.journal?.forget();
     this.session++;
     this.inFlight = null;
     this.me.set(null);
     this.loaded = true;
   }
 
-  /** Signs in with email and password, refreshes antiforgery and loads `me`. Rejects with `ApiError`. */
-  async login(email: string, password: string, staySignedIn: boolean): Promise<Me | null> {
-    if (this.native) await this.native.tokens.signIn(email, password, staySignedIn);
-    else await this.api.login({ email, password }, staySignedIn);
+  /**
+   * Signs in with email and password (and, after a `RequiresTwoFactor` answer, `twoFactor`), refreshes antiforgery
+   * and loads `me`. Rejects with `ApiError`; see `requiresTwoFactor()`.
+   */
+  async login(
+    email: string,
+    password: string,
+    staySignedIn: boolean,
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<Me | null> {
+    if (this.native) await this.native.tokens.signIn(email, password, staySignedIn, twoFactor);
+    else {
+      await this.api.login(
+        { email, password, twoFactorCode: twoFactor?.code, twoFactorRecoveryCode: twoFactor?.recoveryCode },
+        staySignedIn,
+      );
+    }
+    await this.refreshAntiforgery();
+    this.consentPrompted = true;
+    return this.loadMe(true);
+  }
+
+  /** Finishes a Discord sign-in that needs the second factor (`POST /api/auth/discord/2fa`), then loads `me`. */
+  async completeDiscordTwoFactor(secret: { code: string } | { recoveryCode: string }): Promise<Me | null> {
+    await this.api.discordTwoFactor(secret);
     await this.refreshAntiforgery();
     this.consentPrompted = true;
     return this.loadMe(true);
@@ -142,12 +169,13 @@ export class AuthService {
   }
 
   /**
-   * Forgets this device's state for the signed-in user: queued offline edits and the habit cache, and in the
-   * native build the tokens and every scheduled reminder; shows the default theme again. Call before `clearSession()`.
-   * Never throws.
+   * Forgets this device's state for the signed-in user: queued offline edits, the habit cache and the journal key,
+   * and in the native build the tokens and every scheduled reminder; shows the default theme again. Call before
+   * `clearSession()`. Never throws.
    */
   async wipeDevice(): Promise<void> {
     const userId = this.me.get()?.id;
+    await this.journal?.forget();
     if (this.native) {
       await this.native.reminders.clearAll();
       await this.native.tokens.clear();

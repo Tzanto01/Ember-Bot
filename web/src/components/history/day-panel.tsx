@@ -1,4 +1,4 @@
-import { Moon } from 'lucide-react';
+import { Minus, Moon, Plus } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { Spinner } from '@/components/spinner';
@@ -18,6 +18,9 @@ export interface DayPanelProps {
   busy: boolean;
   problem: string | null;
   onEdit: (action: DayAction) => void;
+  /** The habit's check-ins a day; above 1 the panel adds a stepper that calls `onSetCount`. */
+  timesPerDay?: number;
+  onSetCount?: (count: number) => void;
   onToggleLowDay: () => void;
   onClose: () => void;
   className?: string;
@@ -26,13 +29,28 @@ export interface DayPanelProps {
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 
 /**
- * `section#day-panel` for the open History day: long date heading (focused on open), state text, Done / Not done /
- * Clear, the low-day switch, busy and error states, and Close. Escape closes it.
+ * `section#day-panel` for the open History day: long date heading (focused on open), state text, a check-in
+ * stepper for multi-count habits, Done / Not done / Clear, the low-day switch, busy and error states, and Close.
+ * Escape closes it.
  */
-export function DayPanel({ day, busy, problem, onEdit, onToggleLowDay, onClose, className }: DayPanelProps) {
+export function DayPanel({
+  day,
+  busy,
+  problem,
+  onEdit,
+  timesPerDay = 1,
+  onSetCount,
+  onToggleLowDay,
+  onClose,
+  className,
+}: DayPanelProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const reduce = useReducedMotion();
-  const text = dayLabel(day);
+  const text = dayLabel(day, timesPerDay);
+  const count = Math.min(day.count, timesPerDay);
+  const step = (next: number) => {
+    if (!busy && next >= 0 && next <= timesPerDay) onSetCount?.(next);
+  };
 
   useEffect(() => {
     heading.current?.focus();
@@ -56,6 +74,36 @@ export function DayPanel({ day, busy, problem, onEdit, onToggleLowDay, onClose, 
         </h3>
         <p className="text-muted-foreground">{text.charAt(0).toUpperCase() + text.slice(1)}</p>
       </div>
+      {timesPerDay > 1 && onSetCount && (
+        <div className="flex flex-col gap-2">
+          <p id="day-count-label" className="font-medium">
+            Check-ins
+          </p>
+          <div role="group" aria-labelledby="day-count-label" className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="One check-in fewer"
+              aria-disabled={busy || count <= 0 || undefined}
+              onClick={() => step(count - 1)}
+            >
+              <Minus aria-hidden />
+            </Button>
+            <span className="min-w-[4.5rem] text-center text-[18px] font-semibold tabular-nums">
+              {count} of {timesPerDay}
+            </span>
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="One more check-in"
+              aria-disabled={busy || count >= timesPerDay || undefined}
+              onClick={() => step(count + 1)}
+            >
+              <Plus aria-hidden />
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <Button aria-disabled={busy || undefined} onClick={() => onEdit('done')}>
           Done

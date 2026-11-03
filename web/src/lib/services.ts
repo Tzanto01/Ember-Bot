@@ -4,6 +4,8 @@ import { DeviceStore } from './device-store';
 import { DeviceSync } from './device-sync';
 import { env } from './env';
 import { Http } from './http';
+import { JournalService } from './journal/journal';
+import { Keyring } from './journal/keyring';
 import { Reminders } from './native/reminders';
 import { capacitorSecureStore, TokenStore } from './native/token-store';
 import { OfflineQueue } from './offline-queue';
@@ -27,6 +29,15 @@ export const auth = new AuthService(
   env.native ? null : push,
   tokens && reminders ? { tokens, reminders } : null,
 );
+/** The day journal (plain or end-to-end encrypted); its key stays on this device. */
+export const journal = new JournalService(
+  api,
+  auth,
+  new Keyring(env.native ? capacitorSecureStore : null),
+);
+auth.journal = journal;
+offlineQueue.resealNote = (edit) => journal.resealNote(edit);
+journal.onDroppedNote = (note) => offlineQueue.droppedNotes.update((notes) => [...notes, note]);
 export const deviceSync = new DeviceSync(auth, api, offlineQueue, reminders);
 
 http.session = auth;

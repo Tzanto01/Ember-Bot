@@ -122,4 +122,23 @@ describe('HabitEditPage', () => {
     expect(screen.getByText('Pick today or a later day.')).toBeInTheDocument();
     expect(fetch.all.some((call) => call.url === '/api/habits/7/pause')).toBe(false);
   });
+  it("shows the saved schedule and the routine reminder that replaces the habit's own", async () => {
+    const fetch = mockFetch();
+    renderPage();
+    const scheduled: Habit = { ...stretch, frequency: 'weekdays', days: ['mon', 'wed'], timesPerDay: 2, routineId: 5 };
+    (await fetch.next('GET', '/api/me')).respond(200, me);
+    (await fetch.next('GET', '/api/habits/7')).respond(200, scheduled);
+    (await fetch.next('GET', '/api/routines')).respond(200, [
+      { id: 5, name: 'Morning', reminderTime: '07:30', reminderChannels: ['mobile'], habitIds: [7] },
+    ]);
+
+    expect(await screen.findByText(/Your Morning routine reminds you at 07:30 instead/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'On set days' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Wednesday' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Tuesday' })).not.toBeChecked();
+    expect(screen.getByLabelText('Times a day')).toHaveValue('2');
+
+    await userEvent.selectOptions(screen.getByLabelText('Times a day'), '1');
+    expect(screen.getByText('Past days stay as they are.')).toBeInTheDocument();
+  });
 });

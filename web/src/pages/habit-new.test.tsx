@@ -84,4 +84,59 @@ describe('HabitNewPage', () => {
     expect(name).toHaveFocus();
     expect(fetch.all.some((call) => call.method === 'POST')).toBe(false);
   });
+  it('creates a habit on set weekdays several times a day', async () => {
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage();
+    (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
+
+    await user.type(await screen.findByLabelText('Name', { exact: true }), 'Water');
+    await user.click(screen.getByRole('radio', { name: 'On set days' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Friday' }));
+    await user.selectOptions(screen.getByLabelText('Times a day'), '3');
+    await user.click(screen.getByRole('button', { name: 'Create habit' }));
+
+    expect((await fetch.next('POST', '/api/habits')).body).toEqual({
+      name: 'Water',
+      frequency: 'weekdays',
+      days: ['mon', 'tue', 'wed', 'thu'],
+      timesPerDay: 3,
+    });
+  });
+
+  it('asks for at least one day before sending anything', async () => {
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage();
+    (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
+
+    await user.type(await screen.findByLabelText('Name', { exact: true }), 'Water');
+    await user.click(screen.getByRole('radio', { name: 'On set days' }));
+    for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
+      await user.click(screen.getByRole('checkbox', { name: day }));
+    }
+    await user.click(screen.getByRole('button', { name: 'Create habit' }));
+
+    expect(screen.getByText('Pick at least one day.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Monday' })).toHaveFocus();
+    expect(fetch.all.some((call) => call.method === 'POST')).toBe(false);
+  });
+
+  it('saves all seven days as every day and shows server field messages', async () => {
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage();
+    (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
+
+    await user.type(await screen.findByLabelText('Name', { exact: true }), 'Water');
+    await user.click(screen.getByRole('radio', { name: 'On set days' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Saturday' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Sunday' }));
+    await user.click(screen.getByRole('button', { name: 'Create habit' }));
+
+    const create = await fetch.next('POST', '/api/habits');
+    expect(create.body).toEqual({ name: 'Water', frequency: 'daily', timesPerDay: 1 });
+    create.respond(400, { type: 'validation', errors: { timesPerDay: ['Choose 1 to 10 times a day.'] } });
+    expect(await screen.findByText('Choose 1 to 10 times a day.')).toBeInTheDocument();
+  });
 });

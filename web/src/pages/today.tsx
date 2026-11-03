@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Moon, Plus } from 'lucide-react';
+import { ListOrdered, Moon, Pencil, Plus } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
+import { DayJournal } from '@/components/journal/day-journal';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
+import { routineTitle } from '@/components/routines/routine-title';
 import { HabitRow } from '@/components/today/habit-row';
 import { HearthIllustration } from '@/components/today/hearth-illustration';
 import { readReward, type RewardKeyword } from '@/components/today/reward';
@@ -14,8 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isOffday } from '@/lib/calendar';
 import { formatDate } from '@/lib/local-date';
-import type { Habit, LocalDateString, WeeklyStats } from '@/lib/models';
+import type { DayState, Habit, LocalDateString, Routine, WeeklyStats } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, deviceSync } from '@/lib/services';
 import { useStore } from '@/lib/store';
@@ -25,6 +28,32 @@ interface TodayData {
   /** Null when the low-day lookup failed; the low-day action is hidden then. */
   lowDayToday: boolean | null;
   weekly: WeeklyStats | null;
+  /** Null when routines didn't load; habits then show ungrouped. */
+  routines: Routine[] | null;
+}
+
+interface HabitGroup {
+  routine: Routine | null;
+  habits: Habit[];
+}
+
+/** Habits grouped by routine in each routine's `habitIds` order, then the habits in no shown routine. */
+function groupHabits(habits: Habit[], routines: Routine[] | null): HabitGroup[] {
+  const byId = new Map(habits.map((h) => [h.id, h]));
+  const placed = new Set<number>();
+  const groups: HabitGroup[] = [];
+  for (const routine of routines ?? []) {
+    const members = routine.habitIds.flatMap((id) => {
+      const habit = byId.get(id);
+      if (!habit || placed.has(id)) return [];
+      placed.add(id);
+      return [habit];
+    });
+    if (members.length) groups.push({ routine, habits: members });
+  }
+  const rest = habits.filter((h) => !placed.has(h.id));
+  if (rest.length) groups.push({ routine: null, habits: rest });
+  return groups;
 }
 
 interface Problem {
@@ -37,16 +66,18 @@ const todayKey = ['today'] as const;
 async function loadToday(): Promise<TodayData> {
   await auth.loadMe(true).catch(() => null);
   const today = auth.me.get()?.localToday ?? null;
-  const [habits, lowDays, weekly] = await Promise.allSettled([
+  const [habits, lowDays, weekly, routines] = await Promise.allSettled([
     api.listHabits(),
     today ? api.listLowDays(today, today) : Promise.reject(new Error('no local day')),
     api.weeklyStats(),
+    api.listRoutines(),
   ]);
   if (habits.status === 'rejected') throw habits.reason;
   return {
     habits: habits.value,
     lowDayToday: lowDays.status === 'fulfilled' && today ? lowDays.value.includes(today) : null,
     weekly: weekly.status === 'fulfilled' ? weekly.value : null,
+    routines: routines.status === 'fulfilled' ? routines.value : null,
   };
 }
 
@@ -71,6 +102,11 @@ export default function TodayPage() {
     if (synced !== firstSynced.current) void refetch();
   }, [synced, refetch]);
 
+  const nativeCheckIn = useStore(deviceSync.nativeCheckIn);
+  useEffect(() => {
+    if (nativeCheckIn) void refetch();
+  }, [nativeCheckIn, refetch]);
+
   const setData = (fn: (data: TodayData) => TodayData) =>
     queryClient.setQueryData<TodayData>(todayKey, (current) => current && fn(current));
   const updateHabit = (id: number, fn: (current: Habit) => Habit) =>
@@ -90,16 +126,33 @@ export default function TodayPage() {
       return next;
     });
 
-  async function toggle(habit: Habit) {
+  async function toggle(habit: Habit, undoOne = false) {
     if (inFlight.current.has(habit.id) || !data) return;
     inFlight.current.add(habit.id);
-    const checkIn = habit.today.state !== 'done';
+    const target = habit.timesPerDay;
+    const multi = target > 1;
+    const current = Math.min(habit.today.count, target);
+    const nextCount = !multi
+      ? null
+      : undoOne
+        ? Math.max(current - 1, 0)
+        : habit.today.state === 'done'
+          ? 0
+          : current + 1;
+    const checkIn = nextCount === null ? habit.today.state !== 'done' : nextCount > current;
+    const reaches = nextCount === null ? checkIn : nextCount >= target;
+    const resting: DayState = isOffday(habit, habit.today.date)
+      ? 'offday'
+      : data.lowDayToday
+        ? 'lowday'
+        : 'pending';
     const optimistic: Habit = {
       ...habit,
       today: {
         ...habit.today,
-        state: checkIn ? 'done' : data.lowDayToday ? 'lowday' : 'pending',
-        completed: checkIn ? true : null,
+        state: reaches ? 'done' : nextCount ? 'partial' : resting,
+        completed: reaches ? true : null,
+        count: nextCount ?? (checkIn ? target : 0),
       },
     };
     mark(habit.id, true);
@@ -109,11 +162,22 @@ export default function TodayPage() {
     await queryClient.cancelQueries({ queryKey: todayKey });
     updateHabit(habit.id, () => optimistic);
     try {
-      const updated = checkIn
-        ? await api.setDay(habit.id, habit.today.date, true)
-        : await api.clearDay(habit.id, habit.today.date);
+      const updated =
+        nextCount !== null
+          ? await api.setDayCount(habit.id, habit.today.date, nextCount)
+          : checkIn
+            ? await api.setDay(habit.id, habit.today.date, true)
+            : await api.clearDay(habit.id, habit.today.date);
       updateHabit(habit.id, () => updated);
-      setAnnouncement(checkIn ? `${habit.name}: checked in for today.` : `${habit.name}: check-in cleared.`);
+      setAnnouncement(
+        nextCount === null
+          ? checkIn
+            ? `${habit.name}: checked in for today.`
+            : `${habit.name}: check-in cleared.`
+          : nextCount === 0
+            ? `${habit.name}: check-ins cleared for today.`
+            : `${habit.name}: ${nextCount} of ${target} for today${reaches ? ', done' : ''}.`,
+      );
     } catch (error) {
       updateHabit(habit.id, (current) => (current === optimistic ? habit : current));
       setReward(habit.id, null);
@@ -162,6 +226,23 @@ export default function TodayPage() {
     <TodaysEmber count={doneCount} lowDay={lowDay} stepping={rewards.size > 0} className={className} />
   );
   const hasHabits = !!data && data.habits.length > 0;
+  const groups = data ? groupHabits(data.habits, data.routines) : [];
+  const habitList = (habits: Habit[], headingLevel: 'h2' | 'h3') => (
+    <ul role="list" className="flex flex-col gap-3">
+      {habits.map((habit) => (
+        <HabitRow
+          key={habit.id}
+          habit={habit}
+          headingLevel={headingLevel}
+          busy={busy.has(habit.id)}
+          reward={rewards.get(habit.id) ?? null}
+          onToggle={() => void toggle(habit)}
+          onUndoOne={() => void toggle(habit, true)}
+          onRewardEnd={() => setReward(habit.id, null)}
+        />
+      ))}
+    </ul>
+  );
 
   let body: ReactNode;
   if (!data) {
@@ -216,23 +297,45 @@ export default function TodayPage() {
               </Button>
             </Notice>
           )}
-          <ul role="list" className="flex flex-col gap-3">
-            {data.habits.map((habit) => (
-              <HabitRow
-                key={habit.id}
-                habit={habit}
-                busy={busy.has(habit.id)}
-                reward={rewards.get(habit.id) ?? null}
-                onToggle={() => void toggle(habit)}
-                onRewardEnd={() => setReward(habit.id, null)}
-              />
-            ))}
-          </ul>
+          {groups.length === 1 && !groups[0].routine ? (
+            habitList(groups[0].habits, 'h2')
+          ) : (
+            groups.map(({ routine, habits }) => (
+              <section
+                key={routine?.id ?? 'other'}
+                aria-labelledby={routine ? `routine-${routine.id}` : 'routine-other'}
+                className="flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h2
+                    id={routine ? `routine-${routine.id}` : 'routine-other'}
+                    className="text-[20px] break-words"
+                  >
+                    {routine?.name ?? 'Other habits'}
+                  </h2>
+                  {routine && (
+                    <Button asChild variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
+                      <Link to={`/routines/${routine.id}/edit`} aria-label={`Edit ${routineTitle(routine.name)}`}>
+                        <Pencil aria-hidden />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+                {habitList(habits, 'h3')}
+              </section>
+            ))
+          )}
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
             <Button asChild variant="secondary" className="w-full lg:w-auto">
               <Link to="/habits/new">
                 <Plus aria-hidden />
                 New habit
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full lg:w-auto">
+              <Link to="/routines">
+                <ListOrdered aria-hidden />
+                Routines
               </Link>
             </Button>
             {data.lowDayToday === false && (
@@ -261,6 +364,7 @@ export default function TodayPage() {
               )}
             </section>
           )}
+          {today && <DayJournal date={today} />}
         </div>
       </div>
     );
