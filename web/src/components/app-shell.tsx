@@ -6,6 +6,7 @@ import { LegalLinks } from '@/components/legal-links';
 import { NativeConfirmation } from '@/components/native-confirmation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { formatDate } from '@/lib/local-date';
 import { auth, deviceSync, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px
 export function AppShell() {
   const pending = useStore(offlineQueue.pending);
   const dropped = useStore(deviceSync.dropped);
+  const droppedNotes = useStore(offlineQueue.droppedNotes);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
   const busy = useRef(false);
@@ -103,6 +105,27 @@ export function AppShell() {
             A change you made offline couldn't be saved: that day can't be edited anymore, or the habit is gone.
             Everything else is in place.
             <Button variant="ghost" onClick={() => deviceSync.dropped.set(0)}>
+              Okay
+            </Button>
+          </Notice>
+        )}
+        {droppedNotes.length > 0 && (
+          <Notice tone="notice">
+            <p>
+              {droppedNotes.length === 1 ? 'A journal entry' : 'Some journal entries'} you wrote offline couldn't be
+              saved. Here is what you wrote, so you can copy it into the day again.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {droppedNotes.map((note, index) => (
+                <li key={`${note.date}-${index}`}>
+                  <strong>{formatDate(note.date, { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
+                  <p className="whitespace-pre-line select-text">
+                    {note.text ?? "This entry was private and can't be shown on this device."}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <Button variant="ghost" onClick={() => offlineQueue.droppedNotes.set([])}>
               Okay
             </Button>
           </Notice>

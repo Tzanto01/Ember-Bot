@@ -65,4 +65,15 @@ describe('AppShell', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(deviceSync.dropped.get()).toBe(0);
   });
+
+  it('shows the text of a journal entry that could not be saved so it can be copied', async () => {
+    await renderShell();
+    act(() => offlineQueue.droppedNotes.set([{ date: '2026-11-01', text: 'Walked by the river.\nFelt calm.' }]));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Walked by the river.');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Okay' }));
+
+    expect(offlineQueue.droppedNotes.get()).toEqual([]);
+  });
 });
