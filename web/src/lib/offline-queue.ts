@@ -1,4 +1,4 @@
-import type { DeviceStore, QueuedEdit, QueueEdit } from './device-store';
+import type { DeviceStore, NoteEdit, QueuedEdit, QueueEdit } from './device-store';
 import { type ApiError, asApiError } from './problem';
 import { Store } from './store';
 
@@ -12,7 +12,7 @@ export interface ReplayResult {
 /**
  * Contract "Offline day edits": a failed replay is dropped only on 404 or 422 `before_habit_start` /
  * `in_future`; everything else (consent_required, 401, 429, 5xx, network) stays queued for a later try.
- * A journal edit is also dropped on 400: the private journal was switched on or off since it was queued.
+ * A journal edit refused with 400 goes to {@link OfflineQueue.resealNote} instead.
  */
 export function shouldDrop(error: ApiError): boolean {
   return (
@@ -20,6 +20,21 @@ export function shouldDrop(error: ApiError): boolean {
     (error.status === 422 && (error.type === 'before_habit_start' || error.type === 'in_future'))
   );
 }
+
+/**
+ * What to do with a journal edit refused with 400: replay `edit` (converted to the journal's current form), `'hold'`
+ * (the journal took it to replay after the next unlock), or drop it, showing `text` (null when unreadable).
+ */
+export type ResealResult = { edit: NoteEdit } | 'hold' | { dropText: string | null };
+
+/** A dropped journal edit, for the gentle notice; `text` null when it was ciphertext this device can't read. */
+export interface DroppedNote {
+  date: string;
+  text: string | null;
+}
+
+const plainText = (edit: NoteEdit): string | null =>
+  edit.body && 'text' in edit.body ? (edit.body.text ?? null) : null;
 
 /**
  * Day and journal edits made while offline, per user, replayed in order once online (shared by the PWA and the app).
@@ -34,6 +49,10 @@ export class OfflineQueue {
   readonly pending = new Store(0);
   /** Bumps whenever an edit is queued, so `DeviceSync` can try a replay and rebuild reminders. */
   readonly added = new Store(0);
+  /** Journal edits dropped since the app started (contract "Offline day edits"), so the user can copy the text. */
+  readonly droppedNotes = new Store<DroppedNote[]>([]);
+  /** Set by the composition root: converts a journal edit refused with 400 (the journal changed form). */
+  resealNote: ((edit: NoteEdit) => Promise<ResealResult>) | null = null;
 
   constructor(private readonly store: DeviceStore) {}
 
@@ -69,6 +88,7 @@ export class OfflineQueue {
   async clear(userId: string): Promise<void> {
     await this.store.clearUser(userId).catch(() => undefined);
     if (this.userId.get() === userId) this.pending.set(0);
+    this.droppedNotes.set([]);
   }
 
   /** Re-reads the user's queue length into `pending` (when the user is the signed-in one). */
@@ -91,16 +111,53 @@ export class OfflineQueue {
           result.sent++;
         } catch (error) {
           const apiError = asApiError(error);
-          if (!shouldDrop(apiError) && !(edit.kind === 'note' && apiError.status === 400)) {
+          if (edit.kind === 'note' && apiError.status === 400) {
+            const { seq: _seq, userId: _user, ...note } = edit;
+            const outcome = await this.reseal(note, send);
+            if (outcome === 'keep') {
+              result.remaining = queued.length - index;
+              break;
+            }
+            if (outcome === 'sent') result.sent++;
+            else if (outcome === 'dropped') result.dropped++;
+          } else if (!shouldDrop(apiError)) {
             result.remaining = queued.length - index;
             break;
+          } else {
+            result.dropped++;
           }
-          result.dropped++;
         }
         await this.store.deleteEdit(edit.seq);
       }
     }
     await this.refreshCount(userId);
     return result;
+  }
+
+  private async reseal(
+    note: NoteEdit,
+    send: (edit: QueueEdit) => Promise<unknown>,
+  ): Promise<'sent' | 'held' | 'dropped' | 'keep'> {
+    let outcome: ResealResult;
+    try {
+      outcome = this.resealNote ? await this.resealNote(note) : { dropText: plainText(note) };
+    } catch {
+      return 'keep';
+    }
+    if (outcome === 'hold') return 'held';
+    if ('dropText' in outcome) return this.dropNote(note.date, outcome.dropText);
+    try {
+      await send(outcome.edit);
+      return 'sent';
+    } catch (error) {
+      const apiError = asApiError(error);
+      if (apiError.status !== 400 && !shouldDrop(apiError)) return 'keep';
+      return this.dropNote(note.date, plainText(note) ?? plainText(outcome.edit));
+    }
+  }
+
+  private dropNote(date: string, text: string | null): 'dropped' {
+    this.droppedNotes.update((notes) => [...notes, { date, text }]);
+    return 'dropped';
   }
 }

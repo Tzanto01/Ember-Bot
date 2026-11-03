@@ -1,8 +1,10 @@
+import type { NoteEdit } from '../device-store';
 import type { SecureStore } from '../native/token-store';
 import { fromBase64, importJournalKey, toBase64 } from './crypto';
 
 const dbName = 'ember-journal';
 const storeName = 'keys';
+const heldName = 'held';
 const secureKey = 'ember.journalKey';
 
 /** A journal key and the id of the server key it belongs to (`recovery.salt`), to notice a replaced key. */
@@ -92,10 +94,38 @@ export class Keyring {
     if (typeof indexedDB === 'undefined') return;
     try {
       const db = await this.open();
-      await done(db.transaction(storeName, 'readwrite').objectStore(storeName).clear());
+      const tx = db.transaction([storeName, heldName], 'readwrite');
+      tx.objectStore(heldName).clear();
+      await done(tx.objectStore(storeName).clear());
     } catch {
       return;
     }
+  }
+
+  /** Keeps a queued journal edit that can't be converted while locked, to replay after the next unlock. */
+  async hold(userId: string, edit: NoteEdit): Promise<void> {
+    const db = await this.open();
+    await done(db.transaction(heldName, 'readwrite').objectStore(heldName).add({ userId, edit }));
+  }
+
+  /** The user's held journal edits, oldest first, with their storage keys. Empty when storage fails. */
+  async held(userId: string): Promise<{ id: IDBValidKey; edit: NoteEdit }[]> {
+    try {
+      const store = (await this.open()).transaction(heldName).objectStore(heldName);
+      const [keys, values] = await Promise.all([done(store.getAllKeys()), done(store.getAll())]);
+      return values
+        .map((value: { userId: string; edit: NoteEdit }, i) => ({ id: keys[i], ...value }))
+        .filter((value) => value.userId === userId)
+        .map(({ id, edit }) => ({ id, edit }));
+    } catch {
+      return [];
+    }
+  }
+
+  /** Removes one held journal edit. */
+  async release(id: IDBValidKey): Promise<void> {
+    const db = await this.open();
+    await done(db.transaction(heldName, 'readwrite').objectStore(heldName).delete(id));
   }
 
   private async readSecure(userId: string): Promise<KeyEntry | null> {
@@ -123,8 +153,13 @@ export class Keyring {
 
   private open(): Promise<IDBDatabase> {
     this.db ??= new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(dbName, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(storeName);
+      const request = indexedDB.open(dbName, 2);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        if (!db.objectStoreNames.contains(heldName))
+          db.createObjectStore(heldName, { autoIncrement: true });
+      };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     }).catch((error: unknown) => {
