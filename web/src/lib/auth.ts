@@ -101,8 +101,9 @@ export class AuthService {
     this.setMe(me);
   }
 
-  /** Forgets the session locally (the server already ended it). */
+  /** Forgets the session locally (the server already ended it) and cancels the native build's reminders. */
   clearSession(): void {
+    void this.native?.reminders.clearAll();
     this.session++;
     this.inFlight = null;
     this.me.set(null);

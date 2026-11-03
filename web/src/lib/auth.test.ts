@@ -97,6 +97,32 @@ describe('AuthService', () => {
     });
   });
 
+  describe('clearSession', () => {
+    it('in the native build cancels the reminders but keeps the queued check-ins', async () => {
+      const http = new Http({ native: true, apiBase: '' });
+      const device = new DeviceStore();
+      queue = new OfflineQueue(device);
+      vi.spyOn(queue, 'clear').mockResolvedValue();
+      const api = new ApiClient(http, queue);
+      const tokens = new TokenStore(http, memorySecureStore().store);
+      const cancel = vi.fn(async () => undefined);
+      const plugin = {
+        getPending: async () => ({ notifications: [{ id: 1 }] }),
+        cancel,
+        removeAllDeliveredNotifications: async () => undefined,
+      } as unknown as LocalNotificationsPlugin;
+      const reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
+      const auth = new AuthService(api, queue, null, { tokens, reminders });
+      auth.setMe(me);
+
+      auth.clearSession();
+
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledWith({ notifications: [{ id: 1 }] }));
+      expect(queue.clear).not.toHaveBeenCalled();
+      expect(auth.signedIn()).toBe(false);
+    });
+  });
+
   describe('logout', () => {
     it('removes the push subscription before signing out, then refreshes antiforgery and clears the session', async () => {
       const unsubscribe = vi.fn().mockResolvedValue(true);
