@@ -213,7 +213,7 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 - `timesPerDay` 1–10 for `daily` and `weekdays` (always 1 for `weekly`). A day carries `count` (0…timesPerDay). The day is `done` when `count >= timesPerDay`; a day with `0 < count < timesPerDay` has the new state `partial`. Streaks count `done` days only; `partial` days count as "showed up" in day stats.
 - Day objects (`today` and `GET .../days`) gain `count`: `{ date, state, completed, count }`. `completed` stays (true when done, false when explicitly not done, null otherwise).
 - `PUT /api/habits/{id}/days/{date}` accepts `{ completed: bool }` (unchanged: true sets `count = timesPerDay`, false sets `count = 0` and marks not done) or `{ count: int }` (absolute, 0…timesPerDay; out of range → 400). Absolute values keep offline replays idempotent. `DELETE` clears the day as before.
-- `POST`/`PATCH /api/habits` accept `frequency`, `days`, `timesPerDay`, `weeklyTarget` with the rules above; an invalid combination → 400 `validation` naming the field. Lowering `timesPerDay` never rewrites history: past counts above the new target simply count as done.
+- `POST`/`PATCH /api/habits` accept `frequency`, `days`, `timesPerDay`, `weeklyTarget` with the rules above; an invalid combination → 400 `validation` naming the field. Changing `timesPerDay` never takes a done day away: a day that reached its target when it was checked in stays `done` (stored with the day), and a past day whose count reaches a lowered target counts as done too. Only today's day is recomputed against the new target. A checked-in offday counts as `done` and extends the streak like any done day.
 - Bot: shows `2/3` style progress for multi-count habits, its check-in button adds one (capped), and the habit setup offers weekdays and times per day. Offdays show as rest, never as missed. Weekly summary and DM reminders skip offdays.
 - Reminders (all channels) fire only on scheduled days, and not once the day is `done`.
 
@@ -245,7 +245,7 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 
 ### Day stats (year view)
 
-- `GET /api/stats/days?from&to` → `[{ date, scheduled, done, partial, showedUp }]` oldest first (default: the 366 days ending today; maximum 366). Per local day across all habits: `scheduled` = habits expected that day (started, not paused, not offday), `done` / `partial` = how many reached each state, `showedUp` = true when any habit has a check-in that day (any `count > 0` or `completed: true`, offdays included).
+- `GET /api/stats/days?from&to` → `[{ date, scheduled, done, partial, showedUp }]` oldest first (default: the 366 days ending today; maximum 366). Per local day across all habits: `scheduled` = habits expected that day (started, not paused, not offday), `done` / `partial` = how many reached each state, `showedUp` = true when any habit has a check-in that day (any `count > 0` or `completed: true`, offdays included). Weekly habits count as scheduled every day. Range rules as for `/api/habits/{id}/days` (`to` after today → 400).
 - The client words it gently ("you showed up 18 of the last 30 days"); never "missed", never red.
 
 ### Native: check in from a reminder, home-screen widget (clients only)
