@@ -235,7 +235,7 @@ describe('TodayPage', () => {
 
     await screen.findByRole('heading', { name: 'Morning' });
     const headings = screen.getAllByRole('heading').map((h) => `${h.tagName} ${h.textContent}`);
-    expect(headings.slice(1)).toEqual(['H2 Morning', 'H3 Water', 'H3 Walk', 'H2 Other habits', 'H3 Read', 'H2 Your week']);
+    expect(headings.slice(1)).toEqual(['H2 Morning', 'H3 Water', 'H3 Walk', 'H2 Other habits', 'H3 Read', 'H2 Your week', 'H2 How was today?']);
     expect(screen.getByRole('link', { name: 'Edit Morning routine' })).toHaveAttribute('href', '/routines/5/edit');
   });
 

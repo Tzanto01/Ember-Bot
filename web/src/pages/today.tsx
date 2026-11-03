@@ -4,6 +4,7 @@ import { useReducedMotion } from 'motion/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
+import { DayJournal } from '@/components/journal/day-journal';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
 import { routineTitle } from '@/components/routines/routine-title';
@@ -358,6 +359,7 @@ export default function TodayPage() {
               )}
             </section>
           )}
+          {today && <DayJournal date={today} />}
         </div>
       </div>
     );

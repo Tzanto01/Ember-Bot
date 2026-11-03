@@ -1,8 +1,9 @@
-import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Flame, LayoutGrid, SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
+import { NativeConfirmation } from '@/components/native-confirmation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { auth, deviceSync, offlineQueue } from '@/lib/services';
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils';
 const nav = [
   { to: '/today', label: 'Today', icon: Flame },
   { to: '/history', label: 'History', icon: CalendarDays },
+  { to: '/year', label: 'Year', icon: LayoutGrid },
   { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
 ];
 
@@ -105,6 +107,7 @@ export function AppShell() {
             </Button>
           </Notice>
         )}
+        <NativeConfirmation />
         <Outlet />
       </main>
       <footer className="border-t border-border p-4">

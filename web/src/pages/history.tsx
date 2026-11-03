@@ -8,6 +8,7 @@ import { CalendarIllustration, NotebookIllustration } from '@/components/history
 import { Legend } from '@/components/history/legend';
 import { MonthCalendar } from '@/components/history/month-calendar';
 import { StatTiles } from '@/components/history/stat-tiles';
+import { DayJournal } from '@/components/journal/day-journal';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
 import { readReward, type RewardKeyword } from '@/components/today/reward';
@@ -325,6 +326,7 @@ export default function HistoryPage() {
               <p>Pick a day to fill it in or change it.</p>
             </Card>
           )}
+          {openDay && <DayJournal date={openDay.date} />}
         </div>
       </div>
     );
