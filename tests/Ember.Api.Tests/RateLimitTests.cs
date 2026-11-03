@@ -100,3 +100,15 @@ public class MailPerEmailAndIpRateLimitTests(PostgresFixture postgres) : MailRat
         (await ForgotPassword("192.0.2.9", email)).Should().Be(429);
     }
 }
+
+public class MailKeyTests
+{
+    [Fact]
+    public void Mail_keys_start_with_the_client_ip_and_stay_small_for_huge_emails()
+    {
+        var keys = RateLimits.MailKeys("ForgotPasswordRequest", new string('A', 60_000) + "@EXAMPLE.TEST", System.Net.IPAddress.Parse("203.0.113.7"));
+
+        keys[0].Should().Be("ip:203.0.113.7");
+        keys.Should().OnlyContain(key => key.Length <= 128);
+    }
+}

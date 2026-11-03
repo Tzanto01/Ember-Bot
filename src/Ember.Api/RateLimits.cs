@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -71,13 +73,15 @@ internal static class RateLimits
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = AuthWindow });
 
     /// <summary>
-    /// The mail limiter keys for one mail, in the order to take them: the most specific first and the daily total last, so a
-    /// request rejected by a narrower limit doesn't use up the shared allowances behind it.
+    /// The mail limiter keys for one mail, in the order to take them: the client IP first (the only partition an unthrottled
+    /// caller can create), then the narrower email keys, and the daily total last, so a request rejected by a narrower limit
+    /// doesn't use up the shared allowance. Emails go into keys as a fixed-size hash, so key memory doesn't grow with input.
     /// </summary>
     internal static string[] MailKeys(string endpoint, string normalizedEmail, IPAddress? address)
     {
         var client = ClientKey(address);
-        return [$"{endpoint}:{normalizedEmail}:{client}", MailIpPrefix + client, MailEmailPrefix + normalizedEmail, MailDayKey];
+        var email = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedEmail)));
+        return [MailIpPrefix + client, $"{endpoint}:{email}:{client}", MailEmailPrefix + email, MailDayKey];
     }
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
