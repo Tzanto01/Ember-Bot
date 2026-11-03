@@ -70,13 +70,39 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         var text = keptDone
             ? "You already logged that day as done, so I've left it that way. ✅"
             : isToday ? todayText : string.Format(earlierText, dayLabel);
+        var habit = completed ? await _habits.GetHabitAsync(Context.User.Id, habitId) : null;
         if (completed)
-            text = HabitModule.CheckInText(await _habits.GetHabitAsync(Context.User.Id, habitId), day, text, isToday ? null : dayLabel);
-        await ((SocketMessageComponent)Context.Interaction).UpdateAsync(msg =>
+            text = HabitModule.CheckInText(habit, day, text, isToday ? null : dayLabel);
+
+        var component = (SocketMessageComponent)Context.Interaction;
+        if (completed && RoutineButtonsAfterDone(component.Message.Components, component.Data.CustomId,
+                habit?.Logs.Any(l => l.Date == day && l.Completed) == true) is { } remaining)
+        {
+            await component.UpdateAsync(msg => msg.Components = remaining);
+            await FollowupAsync(text, ephemeral: true);
+            return;
+        }
+
+        await component.UpdateAsync(msg =>
         {
             msg.Content    = text;
             msg.Components = new ComponentBuilder().Build();
         });
+    }
+
+    /// <summary>
+    /// For a routine reminder (more than one Done button): the message's buttons after <paramref name="tappedId"/> was used, without it
+    /// once its habit is done, so the other habits can still be logged. Null for a single-habit reminder.
+    /// </summary>
+    internal static MessageComponent? RoutineButtonsAfterDone(IEnumerable<IMessageComponent> components, string tappedId, bool done)
+    {
+        var buttons = components.OfType<ActionRowComponent>().SelectMany(r => r.Components).OfType<ButtonComponent>().ToList();
+        if (buttons.Count(b => b.CustomId?.StartsWith("checkin:done:", StringComparison.Ordinal) == true) < 2) return null;
+
+        var builder = new ComponentBuilder();
+        var kept = buttons.Where(b => !done || b.CustomId != tappedId).ToList();
+        for (var i = 0; i < kept.Count; i++) builder.WithButton(kept[i].ToBuilder(), i / 5);
+        return builder.Build();
     }
 
     [ComponentInteraction("checkin:done:*:*")]

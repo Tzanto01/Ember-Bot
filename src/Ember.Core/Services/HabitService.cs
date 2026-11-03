@@ -604,7 +604,7 @@ public partial class HabitService
         return true;
     }
 
-    /// <summary>Recomputes every reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
+    /// <summary>Recomputes every habit and routine reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
     public async Task<int> RescheduleRemindersAsync(Guid userId)
     {
         var tz = await GetUserTzAsync(userId);
@@ -614,6 +614,8 @@ public partial class HabitService
 
         foreach (var habit in habits)
             habit.NextReminderUtc = NextReminderUtc(habit, tz);
+        foreach (var routine in await _db.Routines.Where(r => r.UserId == userId && r.ReminderTime != null).ToListAsync())
+            routine.NextReminderUtc = NextReminderUtc(routine, tz);
 
         await _db.SaveChangesAsync();
         return habits.Count;
@@ -789,11 +791,12 @@ public partial class HabitService
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// The habit (tracked) with its user and the user's logins and push subscriptions, regardless of owner.
+    /// The habit (tracked) with its routine, its user and the user's logins and push subscriptions, regardless of owner.
     /// Persist edits with <see cref="SaveChangesAsync"/>.
     /// </summary>
     public Task<Habit?> GetHabitWithUserAsync(int habitId, CancellationToken cancellationToken = default)
         => _db.Habits
+            .Include(h => h.Routine)
             .Include(h => h.User).ThenInclude(u => u.Logins)
             .Include(h => h.User).ThenInclude(u => u.PushSubscriptions)
             .AsSplitQuery()

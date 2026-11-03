@@ -3,7 +3,7 @@ using Ember.Core.Models;
 
 namespace Ember.Bot.Services;
 
-/// <summary>Sends reminders as Discord DMs with Done / Skip / Snooze buttons.</summary>
+/// <summary>Sends reminders as Discord DMs with Done / Skip / Snooze buttons; routine reminders list the pending habits with a Done button each.</summary>
 public class DiscordDmReminderChannel : IReminderChannel
 {
     private readonly IDiscordDmSender _discord;
@@ -20,6 +20,7 @@ public class DiscordDmReminderChannel : IReminderChannel
     public async Task<DeliveryOutcome> SendAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
         if (reminder.DiscordUserId is not { } discordUserId) return DeliveryOutcome.UserNotFound;
+        if (reminder.PendingHabits is { } pending) return await SendRoutineAsync(discordUserId, reminder.HabitName, pending, cancellationToken);
 
         var name = reminder.HabitName;
         string intro = reminder.Snoozed
@@ -40,5 +41,28 @@ public class DiscordDmReminderChannel : IReminderChannel
             .Build();
 
         return await _discord.SendMessageAsync(discordUserId, message, components: components, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Discord allows 25 buttons per message, 5 per row.</summary>
+    private const int MaxButtons = 25;
+    private const int ButtonsPerRow = 5;
+    private const int MaxButtonLabel = 80;
+
+    private async Task<DeliveryOutcome> SendRoutineAsync(ulong discordUserId, string routineName, IReadOnlyList<RoutineHabit> pending,
+        CancellationToken cancellationToken)
+    {
+        var list = string.Join("\n", pending.Select(h => $"• {h.Name}"));
+        var message = $"Hey 👋 Time for your **{routineName}** routine. Still open today:\n{list}\n\nTap Done for each one you've done. No pressure 💙";
+
+        var now = _time.GetUtcNow().ToUnixTimeSeconds();
+        var components = new ComponentBuilder();
+        foreach (var (habit, i) in pending.Take(MaxButtons).Select((h, i) => (h, i)))
+        {
+            var label = $"Done: {habit.Name}";
+            if (label.Length > MaxButtonLabel) label = label[..(MaxButtonLabel - 1)] + "…";
+            components.WithButton(label, $"checkin:done:{habit.Id}:{now}", ButtonStyle.Success, row: i / ButtonsPerRow);
+        }
+
+        return await _discord.SendMessageAsync(discordUserId, message, components: components.Build(), cancellationToken: cancellationToken);
     }
 }

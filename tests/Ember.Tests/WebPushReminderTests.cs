@@ -240,4 +240,30 @@ public class WebPushReminderTests
         click.GetProperty("operation").GetString().Should().Be("navigateLastFocusedOrOpen");
         click.GetProperty("url").GetString().Should().Be("/today");
     }
+
+    [Fact]
+    public async Task ARoutineReminder_GoesOutAsTheGenericPushPayload()
+    {
+        var (host, push, _) = await CreateAsync(
+            new Seed(20, ReminderChannels.WebPush, [Endpoint("routine")]),
+            new Seed(30, ReminderChannels.WebPush, [Endpoint("habit")]));
+        await using var hostScope = host;
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var routine = new Routine
+            {
+                UserId = TestUsers.Id(20), Name = "A much longer routine name than any habit", ReminderTime = new TimeOnly(9, 0),
+                NextReminderUtc = Now.UtcDateTime, ReminderChannels = ReminderChannels.WebPush,
+            };
+            routine.Habits.Add(await db.Habits.SingleAsync(h => h.Id == 20));
+            db.Routines.Add(routine);
+            await db.SaveChangesAsync();
+        });
+
+        await RunJobAsync(host);
+
+        push.Endpoints.Should().BeEquivalentTo([Endpoint("routine"), Endpoint("habit")]);
+        push.Requests.Select(r => r.BodyLength).Distinct().Should().ContainSingle();
+    }
 }
