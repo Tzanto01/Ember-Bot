@@ -62,6 +62,6 @@ Each promise in the drafts must be true before publishing. Status against `v2/ph
 | `/privacy delete` deletes everything immediately (7, 9) | Done. Deleting the user row cascades to habits, logs and day marks (`EmberDbContext.cs`). |
 | Consent before the first habit or low day, existing users asked at most once a day, new version asks again (4) | Done (`ConsentModule.cs`, `ConsentPromptNotifier.cs`, `HabitService.CurrentConsentPolicyVersion`). See open questions 1 and 1a. |
 | DM failure counter and reminder pause (3.1) | Done (`ReminderDispatchJob.cs`, `DmRetryModule.cs`). |
-| "Ember legt einen Eintrag erst an, wenn du eine Funktion nutzt, die etwas speichern muss" (3.1) | True, with one quirk: `/privacy optout` also creates a user row (`SetLeaderboardOptInAsync` calls `EnsureUserAsync`) even for someone who was never opted in. Harmless, but avoidable. |
+| "Ember legt einen Eintrag erst an, wenn du eine Funktion nutzt, die etwas speichern muss" (3.1) | True. |
 | Backup daily, 30 days rotation (7) | Open. No backup is defined in this repository. Phase 8.3 plans nightly encrypted `pg_dump`. Publish only what actually runs. |
 | Link to the policy in the consent prompt, `/help` and the bot profile | Open. The prompt link needs `Ember__PrivacyPolicyUrl` (open question 13). `/help` has no link yet. |

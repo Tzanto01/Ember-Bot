@@ -42,6 +42,17 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Patching_me_with_the_removed_leaderboard_field_is_accepted_and_ignored()
+    {
+        var user = await Host.SignedInAsync();
+
+        var patched = await (await user.Patch("/api/me", new { graceDaysPerWeek = 2, leaderboardOptIn = true })).ExpectJson();
+
+        patched.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(2);
+        patched.TryGetProperty("leaderboardOptIn", out _).Should().BeFalse();
+    }
+
+    [DockerFact]
     public async Task Patching_me_with_an_unknown_theme_is_a_400_and_keeps_the_stored_theme()
     {
         var user = await Host.SignedInAsync();

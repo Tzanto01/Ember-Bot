@@ -14,7 +14,6 @@ public class ExportBuilderTests
             Id = TestUsers.Id(1), Logins = TestUsers.Discord(1),
             Timezone = "Europe/Berlin",
             GraceDaysPerWeek = 2,
-            LeaderboardOptIn = true,
             DmFailureCount = 3,
             DmRemindersPausedAt = new DateTime(2025, 6, 17, 9, 0, 0, DateTimeKind.Utc),
             DmPauseNoticeSentAt = new DateTime(2025, 6, 18, 7, 45, 0, DateTimeKind.Utc),
@@ -58,7 +57,7 @@ public class ExportBuilderTests
         var rows = Rows(ExportBuilder.BuildCsv(SampleUser()));
 
         rows.Should().ContainSingle(r => r["record_type"] == "settings"
-            && r["timezone"] == "Europe/Berlin" && r["grace_days_per_week"] == "2" && r["leaderboard_opt_in"] == "true"
+            && r["timezone"] == "Europe/Berlin" && r["grace_days_per_week"] == "2"
             && r["dm_failure_count"] == "3"
             && r["dm_reminders_paused_at"] == "2025-06-17T09:00:00Z"
             && r["dm_pause_notice_sent_at"] == "2025-06-18T07:45:00Z"
@@ -109,7 +108,7 @@ public class ExportBuilderTests
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
 
         doc.Should().NotBeNull();
-        doc!.Settings.Should().Be(new ExportBuilder.SettingsRecord("Europe/Berlin", 2, true, null, 3,
+        doc!.Settings.Should().Be(new ExportBuilder.SettingsRecord("Europe/Berlin", 2, null, 3,
             new DateTime(2025, 6, 17, 9, 0, 0, DateTimeKind.Utc), new DateTime(2025, 6, 18, 7, 45, 0, DateTimeKind.Utc),
             new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc), "2026-10", new DateOnly(2025, 6, 1)));
         doc.Habits.Should().HaveCount(2).And.Contain(h => h.Id == 11 && h.ReminderTime == new TimeOnly(8, 30)

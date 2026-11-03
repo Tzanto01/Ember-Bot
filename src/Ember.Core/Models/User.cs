@@ -16,12 +16,6 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public int GraceDaysPerWeek { get; set; } = 1;
 
-    /// <summary>
-    /// When true, this user appears on leaderboards. Off by default: only an explicit
-    /// opt-in (via /privacy optin or the leaderboard button) turns it on.
-    /// </summary>
-    public bool LeaderboardOptIn { get; set; }
-
     /// <summary>The account's app theme id (one of <see cref="Themes"/>); null until the user picks one. The bot ignores it.</summary>
     public string? Theme { get; set; }
 
@@ -50,4 +44,10 @@ public class User : IdentityUser<Guid>
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
     public ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
+    public ICollection<Routine> Routines { get; set; } = new List<Routine>();
+    public ICollection<DayNote> DayNotes { get; set; } = new List<DayNote>();
+    public ICollection<Mood> Moods { get; set; } = new List<Mood>();
+
+    /// <summary>The wrapped private-journal key; null while the private journal is off.</summary>
+    public JournalKey? JournalKey { get; set; }
 }

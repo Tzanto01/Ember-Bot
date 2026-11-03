@@ -13,7 +13,7 @@ public static class ExportBuilder
 {
     /// <summary>Column header of the CSV export. One row per record, discriminated by <c>record_type</c>.</summary>
     public const string CsvHeader =
-        "record_type,timezone,grace_days_per_week,leaderboard_opt_in,theme," +
+        "record_type,timezone,grace_days_per_week,theme," +
         "dm_failure_count,dm_reminders_paused_at,dm_pause_notice_sent_at," +
         "health_data_consent_at,consent_policy_version,consent_prompted_on," +
         "habit_id,name,frequency,weekly_target,reminder_time,paused_until,paused_from,created_at,next_reminder_utc," +
@@ -27,7 +27,7 @@ public static class ExportBuilder
 
     /// <summary>Settings, reminder delivery state and health-data consent of the exported user. Timestamps are UTC.</summary>
     public sealed record SettingsRecord(
-        string Timezone, int GraceDaysPerWeek, bool LeaderboardOptIn, string? Theme,
+        string Timezone, int GraceDaysPerWeek, string? Theme,
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
         DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn);
 
@@ -61,7 +61,7 @@ public static class ExportBuilder
     {
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
         return new ExportDocument(
-            new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.LeaderboardOptIn, user.Theme,
+            new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.Theme,
                 user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
                 AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn),
             habits.Select(h => new HabitRecord(
@@ -92,14 +92,14 @@ public static class ExportBuilder
         csv.Append(CsvHeader).Append("\r\n");
 
         var s = doc.Settings;
-        AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), Bool(s.LeaderboardOptIn), s.Theme ?? "",
+        AppendRow(csv, "settings", s.Timezone, Num(s.GraceDaysPerWeek), s.Theme ?? "",
             Num(s.DmFailureCount), Utc(s.DmRemindersPausedAt), Utc(s.DmPauseNoticeSentAt),
             Utc(s.HealthDataConsentAt), s.ConsentPolicyVersion ?? "", Date(s.ConsentPromptedOn),
             "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
             doc.Account?.Email ?? "", doc.Account?.DiscordId ?? "");
 
         foreach (var h in doc.Habits)
-            AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "", "",
+            AppendRow(csv, "habit", "", "", "", "", "", "", "", "", "",
                 Num(h.Id), h.Name, h.Frequency, h.WeeklyTarget is { } t ? Num(t) : "",
                 h.ReminderTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? "",
                 h.PausedUntil?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "", Date(h.PausedFrom),
@@ -107,17 +107,17 @@ public static class ExportBuilder
                 "", "", "", "", string.Join(';', h.ReminderChannels), "", "", "");
 
         foreach (var l in doc.Logs)
-            AppendRow(csv, "log", "", "", "", "", "", "", "", "", "", "",
+            AppendRow(csv, "log", "", "", "", "", "", "", "", "", "",
                 Num(l.HabitId), "", "", "", "", "", "", "", "",
                 l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Bool(l.Completed), l.GuildId ?? "", "", "", "", "", "");
 
         foreach (var m in doc.DayMarks)
-            AppendRow(csv, "day_mark", "", "", "", "", "", "", "", "", "", "",
+            AppendRow(csv, "day_mark", "", "", "", "", "", "", "", "", "",
                 "", "", "", "", "", "", "", "", "",
                 Date(m.Date), "", "", m.Kind, "", "", "", "");
 
         foreach (var p in doc.PushSubscriptions ?? [])
-            AppendRow(csv, "push_subscription", "", "", "", "", "", "", "", "", "", "",
+            AppendRow(csv, "push_subscription", "", "", "", "", "", "", "", "", "",
                 "", "", "", "", "", "", "", Utc(p.CreatedAt), "",
                 "", "", "", "", "", p.Endpoint, "", "");
 

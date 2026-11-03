@@ -35,7 +35,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     public async Task Preview_counts_what_would_move_and_shows_the_signed_in_accounts_settings()
     {
         var user = await Host.SignedInAsync();
-        await (await user.Patch("/api/me", new { graceDaysPerWeek = 2, leaderboardOptIn = true })).ExpectJson();
+        await (await user.Patch("/api/me", new { graceDaysPerWeek = 2 })).ExpectJson();
         var bot = await BotOnlyAsync(["Water", "Read"], 0);
         await StartMergeAsync(user, bot.DiscordId);
 
@@ -47,7 +47,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         preview.GetProperty("habitNames").EnumerateArray().Select(n => n.GetString()).Should().Equal("Water", "Read");
         var kept = preview.GetProperty("kept");
         kept.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(2);
-        kept.GetProperty("leaderboardOptIn").GetBoolean().Should().BeTrue();
+        kept.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("timezone", "graceDaysPerWeek");
         kept.GetProperty("timezone").GetString().Should().Be("UTC");
         (await UserExists(bot.UserId)).Should().BeTrue();
     }

@@ -1,7 +1,7 @@
 # Datenschutzerklärung für Ember
 
 > **English summary (not binding; the German text below is the binding version).**
-> Ember is a free Discord habit tracker run by a private individual in Germany. It stores only what it needs to work: your Discord user ID, your timezone, your habits (name, schedule, reminder time, pause), your check-in log (date, done or not, and the server where you checked in; past days can be filled in later), the days you mark as low days, your grace days, your leaderboard choice (off by default), whether reminder DMs reach you, and a record of your consent (when, for which policy version, and when you were last asked). Habit names, check-ins and low days can reveal health information, so Ember processes them only with your explicit consent (GDPR Art. 9(2)(a)), which you give before your first habit. Existing users are asked at most once a day and keep their data working until they answer. Ember cannot read your messages, sells nothing, shows no ads, runs no tracking and uses no AI. Discord (USA) carries every message as the platform. You can download everything with `/export` and delete everything at once with `/privacy delete`. Data stays until you delete it; backups roll over after a fixed period.
+> Ember is a free Discord habit tracker run by a private individual in Germany. It stores only what it needs to work: your Discord user ID, your timezone, your habits (name, schedule, reminder time, pause), your check-in log (date, done or not, and the server where you checked in; past days can be filled in later), the days you mark as low days, your grace days, whether reminder DMs reach you, and a record of your consent (when, for which policy version, and when you were last asked). Habit names, check-ins and low days can reveal health information, so Ember processes them only with your explicit consent (GDPR Art. 9(2)(a)), which you give before your first habit. Existing users are asked at most once a day and keep their data working until they answer. Ember cannot read your messages, sells nothing, shows no ads, runs no tracking and uses no AI. Discord (USA) carries every message as the platform. You can download everything with `/export` and delete everything at once with `/privacy delete`. Data stays until you delete it; backups roll over after a fixed period.
 
 ---
 
@@ -39,19 +39,17 @@ Ember wird privat und nicht kommerziell betrieben. Einen Datenschutzbeauftragten
 | Deine Zeitzone (zum Beispiel `Europe/Berlin`) | Damit „heute“, Streaks, Wochenübersichten und Erinnerungen nach deiner eigenen Uhrzeit laufen. Solange du keine Zeitzone wählst, gilt UTC. |
 | Deine Habits: Name, Häufigkeit (täglich oder x-mal pro Woche), Erinnerungszeit, Pause (erster und letzter pausierter Tag), Erstellungszeitpunkt | Damit Ember deine Habits anzeigen, auswerten und an sie erinnern kann. Den Namen wählst du selbst (höchstens 100 Zeichen). Der Beginn der Pause sorgt dafür, dass nur die pausierten Tage aus deinen Streaks herausfallen. |
 | Der nächste geplante Erinnerungszeitpunkt pro Habit (in UTC) | Damit Erinnerungen pünktlich kommen, auch über Sommer- und Winterzeit hinweg. |
-| Deine Check-ins: Datum (ohne Uhrzeit), erledigt oder nicht erledigt, und die ID des Discord-Servers, auf dem du den Eintrag gemacht oder zuletzt geändert hast (leer bei Einträgen per DM) | Damit Ember Streaks, Wochen- und Monatsstatistiken berechnen kann. Du kannst jeden vergangenen Tag ab dem Start eines Habits nachtragen, ändern oder wieder leeren (zum Beispiel mit `/habit history`). Die Server-ID wird nur für die Bestenliste dieses Servers gebraucht. |
+| Deine Check-ins: Datum (ohne Uhrzeit), erledigt oder nicht erledigt, und die ID des Discord-Servers, auf dem du den Eintrag gemacht oder zuletzt geändert hast (leer bei Einträgen per DM) | Damit Ember Streaks, Wochen- und Monatsstatistiken berechnen kann. Du kannst jeden vergangenen Tag ab dem Start eines Habits nachtragen, ändern oder wieder leeren (zum Beispiel mit `/habit history`). |
 | Deine Tiefs (low days): das Datum jedes Tages, den du als Tief markierst. Ein Tief gilt für alle deine Habits. | Ein Tief schützt an diesem Tag deine Streaks und zählt bei „x von 7 Tagen“ als gehalten. Du kannst es jederzeit wieder entfernen. |
 | Deine Gnadentage pro Woche (0 bis 3) | Damit ein verpasster Tag deinen Streak nicht sofort beendet. |
-| Deine Wahl zur Bestenliste (Standard: aus) | Damit du nur dann auf einer Bestenliste erscheinst, wenn du das ausdrücklich willst. |
 | Zustellstatus deiner Erinnerungs-DMs: Zahl der fehlgeschlagenen Zustellungen in Folge und, falls nötig, der Zeitpunkt, ab dem Erinnerungen pausiert sind, und wann Ember dir das gesagt hat | Wenn Discord eine DM mehrmals hintereinander nicht zustellen kann (zum Beispiel weil du DMs von Servermitgliedern ausgeschaltet hast), pausiert Ember deine Erinnerungs-DMs und sagt dir das einmal beim nächsten Mal Bescheid, statt es endlos weiter zu versuchen. |
 | Dein Einwilligungsnachweis: Zeitpunkt deiner Einwilligung, die Version der Datenschutzerklärung, für die du eingewilligt hast, und der Tag, an dem Ember dich zuletzt danach gefragt hat | Damit wir nachweisen können, dass du eingewilligt hast (Art. 7 Abs. 1 DSGVO), dich bei einer neuen Version erneut fragen und dich höchstens einmal am Tag fragen (siehe Abschnitt 4). |
 
-Ember legt einen Eintrag für dich erst an, wenn du eine Funktion nutzt, die etwas speichern muss, zum Beispiel einwilligst, deine Zeitzone setzt oder deine Wahl zur Bestenliste änderst.
+Ember legt einen Eintrag für dich erst an, wenn du eine Funktion nutzt, die etwas speichern muss, zum Beispiel einwilligst oder deine Zeitzone setzt.
 
 ### 3.2 Daten, die Ember nur kurz verwendet und nicht speichert
 
 - **Dein Discord-Nutzername**, wenn du mit `/habit share` eine Streak-Karte in einem Kanal postest. Der Name steht dann auf der Karte.
-- **Der Anzeigename von Servermitgliedern**, die sich für die Bestenliste angemeldet haben. Ember fragt ihn bei Discord ab, wenn jemand `/leaderboard` aufruft, und schreibt ihn in die Bestenliste. Gespeichert wird er nicht.
 - **Technische Angaben zu jeder Interaktion**, die Discord mitschickt (zum Beispiel aus welchem Server oder Kanal ein Befehl kommt). Ember nutzt sie nur, um den Befehl zu beantworten. Gespeichert wird davon nur die Server-ID bei einem Check-in (siehe oben).
 
 ### 3.3 Technische Protokolle (Logs)
@@ -83,7 +81,7 @@ Wenn du zustimmst, speichert Ember den Zeitpunkt und die Version dieser Erkläru
 
 ### Tiefs sind privat
 
-Ob und wann du ein Tief markiert hast, siehst in Ember nur du. Ember zeigt Tiefs auf keiner Bestenliste. Auch auf einer Streak-Karte, die du mit `/habit share` in einem Kanal postest, erscheint ein Tief nur als normale Lücke.
+Ob und wann du ein Tief markiert hast, siehst in Ember nur du. Auch auf einer Streak-Karte, die du mit `/habit share` in einem Kanal postest, erscheint ein Tief nur als normale Lücke.
 
 ### Widerruf
 
@@ -95,7 +93,6 @@ Du kannst deine Einwilligung jederzeit widerrufen (Art. 7 Abs. 3 DSGVO). Am einf
 |---|---|
 | Ember bereitstellen: Habits anlegen, Check-ins speichern und nachtragen, Tiefs markieren, Streaks und Statistiken berechnen, Erinnerungen, Wochenübersicht und Rückblick per DM schicken, Export und Löschung | Art. 6 Abs. 1 lit. b DSGVO (Nutzungsvertrag, siehe Nutzungsbedingungen). Für Habit-Namen, Check-ins und Tiefs zusätzlich deine ausdrückliche Einwilligung nach Art. 9 Abs. 2 lit. a DSGVO (siehe Abschnitt 4). |
 | Einwilligungsnachweis | Art. 6 Abs. 1 lit. c DSGVO in Verbindung mit Art. 7 Abs. 1 DSGVO (Pflicht, die Einwilligung nachweisen zu können). |
-| Bestenliste in einem Server (nur wenn du dich anmeldest) | Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Du kannst sie jederzeit mit `/privacy optout` widerrufen. |
 | Zustellstatus der Erinnerungs-DMs | Art. 6 Abs. 1 lit. b DSGVO, weil zuverlässige Erinnerungen Teil des Dienstes sind. |
 | Technische Protokolle, Fehlersuche, Sicherheit, Backups | Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse ist ein sicherer, stabiler Betrieb und dass deine Daten nach einem technischen Ausfall nicht verloren sind. |
 
@@ -113,7 +110,7 @@ Ember läuft auf der Plattform Discord. Alles, was du mit Ember machst, und alle
 
 Die Verbindung zwischen Ember und Discord ist verschlüsselt (TLS).
 
-**Bitte beachte:** Nachrichten, die Ember dir per DM geschickt hat, Streak-Karten, die du mit `/habit share` gepostet hast, und Bestenlisten, die in einem Kanal stehen, liegen bei Discord. Ember kann sie nach dem Versenden nicht mehr zurückholen, auch nicht mit `/privacy delete`. Streak-Karten und Bestenlisten in einem Server können die Moderatoren des Servers löschen.
+**Bitte beachte:** Nachrichten, die Ember dir per DM geschickt hat, und Streak-Karten, die du mit `/habit share` gepostet hast, liegen bei Discord. Ember kann sie nach dem Versenden nicht mehr zurückholen, auch nicht mit `/privacy delete`. Streak-Karten in einem Server können die Moderatoren des Servers löschen.
 
 ### 6.2 Hosting
 
@@ -136,7 +133,7 @@ Wir geben deine Daten an niemanden sonst weiter, verkaufen sie nicht und nutzen 
 
 - **Datensparsamkeit:** Ember speichert nur die oben genannten Daten. Bei Check-ins gibt es nur das Datum, keine Uhrzeit.
 - **Kein Mitlesen:** Der Bot nutzt keine Gateway Intents und kann deshalb keine Nachrichteninhalte lesen.
-- **Privat als Standard:** Antworten auf deine Befehle sieht in der Regel nur du. Öffentlich wird nur, was du selbst teilst (`/habit share`) oder wofür du dich angemeldet hast (Bestenliste).
+- **Privat als Standard:** Antworten auf deine Befehle sieht in der Regel nur du. Öffentlich wird nur, was du selbst teilst (`/habit share`).
 - **Verschlüsselte Übertragung:** Die Verbindung zu Discord ist per TLS verschlüsselt.
 - **Löschen auf Knopfdruck:** `/privacy delete` entfernt alles sofort.
 - **Zugriff:** Nur der Verantwortliche hat Zugriff auf den Server und die Datenbank.
@@ -162,7 +159,6 @@ Die meisten Rechte kannst du direkt in Discord selbst ausüben:
 | Ein Habit löschen | `/habit delete` |
 | Einen Habit-Namen oder eine Erinnerung ändern | `/habit edit` |
 | Einen Check-in korrigieren oder ein Tief setzen oder entfernen | `/habit history` |
-| Bestenliste verlassen oder beitreten | `/privacy optout` oder `/privacy optin` |
 | Gesundheitsdaten-Einwilligung widerrufen | `/privacy delete` (siehe Abschnitt 4) |
 
 Für alles andere, oder wenn ein Befehl nicht funktioniert, schreib an [E-MAIL]. Wir antworten so schnell wie möglich, spätestens innerhalb eines Monats. Damit wir sicher sind, dass die Anfrage wirklich von dir kommt, fragen wir eventuell nach deiner Discord-Nutzer-ID und bitten dich, dich über Discord zu bestätigen.
@@ -183,7 +179,7 @@ Ember richtet sich an Menschen, die Discord nach dessen Bedingungen nutzen dürf
 
 ## 11. Pflicht zur Bereitstellung
 
-Du musst Ember keine Daten geben. Ohne Discord-Nutzer-ID, Habit-Namen und Check-ins kann Ember aber nicht funktionieren. Zeitzone, Erinnerungen, Gnadentage, Tiefs und die Bestenliste sind freiwillig. Die Einwilligung (Abschnitt 4) brauchst du, um Habits anzulegen und Tiefs zu markieren.
+Du musst Ember keine Daten geben. Ohne Discord-Nutzer-ID, Habit-Namen und Check-ins kann Ember aber nicht funktionieren. Zeitzone, Erinnerungen, Gnadentage und Tiefs sind freiwillig. Die Einwilligung (Abschnitt 4) brauchst du, um Habits anzulegen und Tiefs zu markieren.
 
 ## 12. Änderungen
 
