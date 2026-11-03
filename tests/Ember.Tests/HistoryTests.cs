@@ -24,14 +24,14 @@ public class HistoryTests
     {
         var days = new List<HabitDay>
         {
-            new(new DateOnly(2027, 1, 4), DayState.BeforeStart, null),
-            new(new DateOnly(2027, 1, 5), DayState.Done, true),
-            new(new DateOnly(2027, 1, 6), DayState.NotDone, false),
-            new(new DateOnly(2027, 1, 7), DayState.NotDone, null),
-            new(new DateOnly(2027, 1, 8), DayState.LowDay, null),
-            new(new DateOnly(2027, 1, 9), DayState.LowDay, true),
-            new(new DateOnly(2027, 1, 10), DayState.Paused, null),
-            new(new DateOnly(2027, 1, 11), DayState.Pending, null),
+            new(new DateOnly(2027, 1, 4), DayState.BeforeStart, null, 0),
+            new(new DateOnly(2027, 1, 5), DayState.Done, true, 1),
+            new(new DateOnly(2027, 1, 6), DayState.NotDone, false, 0),
+            new(new DateOnly(2027, 1, 7), DayState.NotDone, null, 0),
+            new(new DateOnly(2027, 1, 8), DayState.LowDay, null, 0),
+            new(new DateOnly(2027, 1, 9), DayState.LowDay, true, 1),
+            new(new DateOnly(2027, 1, 10), DayState.Paused, null, 0),
+            new(new DateOnly(2027, 1, 11), DayState.Pending, null, 0),
         };
 
         var buttons = Buttons(HistoryModule.BuildGrid(UserId, HabitId, days, new HashSet<DateOnly>()));
@@ -48,7 +48,7 @@ public class HistoryTests
     {
         var today = new DateOnly(2027, 1, 20);
         var days = Enumerable.Range(0, HistoryModule.Days)
-            .Select(i => new HabitDay(today.AddDays(i - HistoryModule.Days + 1), DayState.NotDone, null))
+            .Select(i => new HabitDay(today.AddDays(i - HistoryModule.Days + 1), DayState.NotDone, null, 0))
             .ToList();
 
         var grid = HistoryModule.BuildGrid(UserId, HabitId, days, new HashSet<DateOnly> { today.AddDays(-3) });

@@ -50,11 +50,12 @@ public static class WeeklySummaryService
         var done = habit.Logs.Count(l => l.Completed && l.Date >= from && l.Date <= weekEnd);
 
         // Days in the window the habit could actually have been checked in:
-        // strictly after its creation date, not paused and not a low day.
+        // strictly after its creation date, scheduled, not paused and not a low day.
         var activeDays = 0;
         for (var d = from; d <= weekEnd; d = d.AddDays(1))
         {
-            if (HabitService.IsActiveOn(habit, d, tz) && !HabitService.IsPausedOn(habit, d) && !lowDays.Contains(d))
+            if (HabitService.IsActiveOn(habit, d, tz) && HabitService.IsScheduledOn(habit, d)
+                && !HabitService.IsPausedOn(habit, d) && !lowDays.Contains(d))
                 activeDays++;
         }
 
@@ -66,7 +67,7 @@ public static class WeeklySummaryService
         // more done than possible.
         possible = Math.Max(possible, done);
 
-        var (streak, graceUsed) = habit.FrequencyType == FrequencyType.Daily
+        var (streak, graceUsed) = habit.FrequencyType != FrequencyType.Weekly
             ? HabitService.ConsecutiveStreak(habit, weekEnd.AddDays(1), graceDays, lowDays)
             : (0, 0);
 
@@ -105,18 +106,20 @@ public static class WeeklySummaryService
     }
 
     /// <summary>
-    /// Builds a 7-character dot string like ✅⬜✅✅⬜✅✅ for the window, oldest→newest.
+    /// Builds a 7-dot string like ✅⬜✅🔸▫️✅✅ for the window, oldest→newest: ✅ done, 🔸 partial,
+    /// ▫️ offday (not scheduled, not done), ⬜ otherwise.
     /// </summary>
     public static string BuildDotString(Habit habit, DateOnly from, DateOnly to)
     {
-        var completedDates = habit.Logs
-            .Where(l => l.Completed && l.Date >= from && l.Date <= to)
-            .Select(l => l.Date)
-            .ToHashSet();
-
         var parts = new List<string>();
         for (var d = from; d <= to; d = d.AddDays(1))
-            parts.Add(completedDates.Contains(d) ? "✅" : "⬜");
+        {
+            var log = habit.Logs.FirstOrDefault(l => l.Date == d);
+            parts.Add(log?.Completed == true ? "✅"
+                : log is { Count: > 0 } ? "🔸"
+                : !HabitService.IsScheduledOn(habit, d) ? "▫️"
+                : "⬜");
+        }
 
         return string.Concat(parts);
     }
