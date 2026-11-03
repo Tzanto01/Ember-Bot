@@ -94,6 +94,9 @@ public partial class HabitService
     public async Task<DayEditResult> CheckInAsync(ulong discordUserId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
         => await CheckInAsync(await FindDiscordUserAsync(discordUserId), habitId, date, completed, guildId);
 
+    public async Task<DayEditResult> AddCheckInAsync(ulong discordUserId, int habitId, DateOnly date, ulong? guildId = null)
+        => await AddCheckInAsync(await FindDiscordUserAsync(discordUserId), habitId, date, guildId);
+
     public async Task<DayEditResult> ClearDayAsync(ulong discordUserId, int habitId, DateOnly date)
         => await ClearDayAsync(await FindDiscordUserAsync(discordUserId), habitId, date);
 
@@ -109,8 +112,8 @@ public partial class HabitService
     public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(ulong discordUserId, int habitId, int days)
         => await GetHabitDaysAsync(await FindDiscordUserAsync(discordUserId), habitId, days);
 
-    public async Task<Habit?> SetFrequencyAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget)
-        => await SetFrequencyAsync(await FindDiscordUserAsync(discordUserId), habitId, type, weeklyTarget);
+    public async Task<Habit?> SetScheduleAsync(ulong discordUserId, int habitId, FrequencyType type, int? weeklyTarget, ScheduleDays? days, int timesPerDay)
+        => await SetScheduleAsync(await FindDiscordUserAsync(discordUserId), habitId, type, weeklyTarget, days, timesPerDay);
 
     public async Task<bool> DeleteHabitAsync(ulong discordUserId, int habitId)
         => await DeleteHabitAsync(await FindDiscordUserAsync(discordUserId), habitId);
@@ -144,9 +147,6 @@ public partial class HabitService
 
     public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays)
         => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), graceDays);
-
-    public async Task SetLeaderboardOptInAsync(ulong discordUserId, bool optIn)
-        => await SetLeaderboardOptInAsync(optIn ? await ResolveOrCreateDiscordUserAsync(discordUserId) : await FindDiscordUserAsync(discordUserId), optIn);
 
     public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
         => await GetUserTzAsync(await FindDiscordUserAsync(discordUserId));

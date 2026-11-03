@@ -34,10 +34,13 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             .WithButton("❌ Skipped today", $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
             .Build();
 
+        var progress = habit.TimesPerDay > 1
+            ? $" So far: {HabitModule.DayMark(habit, await _habits.GetLocalTodayAsync(Context.User.Id))}"
+            : "";
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"How did **{habit.Name}** go today?";
+                m.Content    = $"How did **{habit.Name}** go today?{progress}";
                 m.Components = components;
             });
     }
@@ -155,15 +158,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
         if (habit is null) { await NotFoundAsync(); return; }
 
-        var components = new ComponentBuilder()
-            .WithButton("Daily",      $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary,    row: 0)
-            .WithButton("1× / week",  $"freq:weekly:{habitId}:1",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("2× / week",  $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("3× / week",  $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("4× / week",  $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("5× / week",  $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary,  row: 1)
-            .WithButton("6× / week",  $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary,  row: 1)
-            .Build();
+        var components = FrequencyComponents(habitId);
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -172,6 +167,20 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
                 m.Components = components;
             });
     }
+
+    /// <summary>The schedule buttons: daily, 1–6× per week, specific weekdays and times per day.</summary>
+    internal static MessageComponent FrequencyComponents(int habitId) =>
+        new ComponentBuilder()
+            .WithButton("Daily",      $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary,    row: 0)
+            .WithButton("1× / week",  $"freq:weekly:{habitId}:1",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("2× / week",  $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("3× / week",  $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("4× / week",  $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary,  row: 0)
+            .WithButton("5× / week",  $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary,  row: 1)
+            .WithButton("6× / week",  $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary,  row: 1)
+            .WithButton("Specific weekdays", $"freq:weekdays:{habitId}",     ButtonStyle.Secondary,  new Emoji("📅"), row: 2)
+            .WithButton("Times per day",     $"freq:times:{habitId}",        ButtonStyle.Secondary,  new Emoji("🔁"), row: 2)
+            .Build();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -198,6 +207,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             {
                 var d = from.AddDays(row * 10 + col);
                 dots.Append(completed.Contains(d) ? "🟩"
+                    : !HabitService.IsScheduledOn(habit, d) ? "▫️"
                     : HabitService.IsOpen(d, today) ? "⬜"
                     : "⬛");
             }

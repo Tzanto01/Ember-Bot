@@ -32,7 +32,7 @@ public class DiscordUserTests
     }
 
     [Fact]
-    public async Task ReadsAndOptOut_ForAnUnknownDiscordUser_NeverCreateAUser()
+    public async Task ReadsAndDelete_ForAnUnknownDiscordUser_NeverCreateAUser()
     {
         await using var host = await IntegrationTestHost.CreateAsync(start: false);
 
@@ -44,7 +44,6 @@ public class DiscordUserTests
             (await service.HasHealthDataConsentAsync(55)).Should().BeFalse();
             (await service.GetGraceDaysAsync(55)).Should().Be(1);
             (await service.GetUserForExportAsync(55)).Should().BeNull();
-            await service.SetLeaderboardOptInAsync(55, optIn: false);
             await service.DeleteUserDataAsync(55);
         });
 

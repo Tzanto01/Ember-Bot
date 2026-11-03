@@ -50,20 +50,10 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 
 > Set your timezone before adding reminders so they fire at the right local time.
 
-### 🏆 Leaderboard
-
-The leaderboard is opt-in: nobody appears on it until they join. It shows display names (never mentions) and check-ins in that server over the last 7 days.
-
-| Command | What it does |
-|---|---|
-| `/leaderboard` | Top check-ins of opted-in members in the server over the last 7 days |
-
 ### 🔒 Privacy and your data
 
 | Command | What it does |
 |---|---|
-| `/privacy optin` | Join leaderboards (you're off them by default) |
-| `/privacy optout` | Leave all leaderboards |
 | `/export [format: csv\|json]` | Get all your data (settings, every habit, every check-in) as CSV (default) or JSON, sent to your DMs |
 | `/privacy delete` | Permanently delete everything Ember stores about you, after a confirmation button |
 
@@ -89,8 +79,7 @@ The leaderboard is opt-in: nobody appears on it until they join. It shows displa
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
 | 🤔 **Gentle check-in** | If yesterday is still unlogged, a DM invites you to log it or call it a low day. A nudge, not a guilt trip |
 | 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
-| 🏆 **Leaderboard** | Opt-in server check-in board; you only appear if you join |
-| 🔒 **Private by default** | Replies are visible only to you. Only `/habit share` and `/leaderboard` post in a channel, and the leaderboard lists only members who opted in |
+| 🔒 **Private by default** | Replies are visible only to you. Only `/habit share` posts in a channel |
 
 ---
 

@@ -17,20 +17,6 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
         _habits = habits;
     }
 
-    [SlashCommand("optout", "Leave all leaderboards")]
-    public async Task OptOutAsync()
-    {
-        await _habits.SetLeaderboardOptInAsync(Context.User.Id, false);
-        await RespondAsync(LeaderboardModule.OptedOutText, ephemeral: true);
-    }
-
-    [SlashCommand("optin", "Join leaderboards (you're off them by default)")]
-    public async Task OptInAsync()
-    {
-        await _habits.SetLeaderboardOptInAsync(Context.User.Id, true);
-        await RespondAsync(LeaderboardModule.OptedInText, ephemeral: true);
-    }
-
     [SlashCommand("delete", "Permanently delete all your Ember data")]
     public Task DeleteAsync() => RespondWithDeleteConfirmationAsync();
 

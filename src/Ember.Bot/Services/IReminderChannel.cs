@@ -13,7 +13,15 @@ public enum DeliveryOutcome
 /// <param name="DiscordUserId">The user's Discord ID, null when no Discord login is linked.</param>
 /// <param name="RecentCompletions">Completed check-ins in the 7 local days before today; picks the tone.</param>
 /// <param name="Snoozed">True when this is the follow-up of a snooze rather than the daily reminder.</param>
-public sealed record Reminder(Guid UserId, ulong? DiscordUserId, int HabitId, string HabitName, int RecentCompletions, bool Snoozed);
+/// <param name="PendingHabits">
+/// Set for a routine reminder: the member habits still pending or partial today, in routine order.
+/// <paramref name="HabitId"/> and <paramref name="HabitName"/> then carry the routine's id and name.
+/// </param>
+public sealed record Reminder(Guid UserId, ulong? DiscordUserId, int HabitId, string HabitName, int RecentCompletions, bool Snoozed,
+    IReadOnlyList<RoutineHabit>? PendingHabits = null);
+
+/// <summary>A member habit listed in a routine reminder.</summary>
+public sealed record RoutineHabit(int Id, string Name);
 
 /// <summary>Delivers a due habit reminder to a user through one channel (Discord DM, web push).</summary>
 public interface IReminderChannel

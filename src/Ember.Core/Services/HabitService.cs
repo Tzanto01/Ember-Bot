@@ -19,6 +19,9 @@ public partial class HabitService
     /// </summary>
     public const string CurrentConsentPolicyVersion = "2026-10";
 
+    /// <summary>Most check-ins a daily or weekdays habit can need per day (<see cref="Habit.TimesPerDay"/>).</summary>
+    public const int MaxTimesPerDay = 10;
+
     private readonly EmberDbContext _db;
     private readonly TimeProvider _time;
 
@@ -77,8 +80,10 @@ public partial class HabitService
 
     /// <exception cref="ConsentRequiredException">The user hasn't agreed to the current health-data consent.</exception>
     /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
+    /// <remarks><paramref name="days"/> is stored for <see cref="FrequencyType.Weekdays"/> habits only; weekly habits always get <paramref name="timesPerDay"/> 1.</remarks>
     public async Task<Habit> AddHabitAsync(Guid userId, string name, TimeOnly? reminderTime,
-        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, ReminderChannels channels = ReminderChannels.Discord)
+        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, ReminderChannels channels = ReminderChannels.Discord,
+        ScheduleDays? days = null, int timesPerDay = 1)
     {
         if (!await HasHealthDataConsentAsync(userId))
             throw new ConsentRequiredException();
@@ -92,6 +97,8 @@ public partial class HabitService
             ReminderTime = reminderTime,
             FrequencyType = frequency,
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
+            Days = frequency == FrequencyType.Weekdays ? days : null,
+            TimesPerDay = frequency == FrequencyType.Weekly ? 1 : timesPerDay,
             ReminderChannels = channels,
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
@@ -119,11 +126,29 @@ public partial class HabitService
     }
 
     /// <summary>
-    /// Logs the habit as done or not done on the user's local <paramref name="date"/>, replacing any earlier log of that day.
+    /// Logs the habit as done (<see cref="HabitLog.Count"/> = <see cref="Habit.TimesPerDay"/>) or explicitly not done (count 0)
+    /// on the user's local <paramref name="date"/>, replacing any earlier log of that day.
     /// Any day from the habit's local start day (<see cref="StartDate"/>) to the user's local today can be logged,
     /// so past days can be backfilled or corrected; future days are refused.
     /// </summary>
-    public async Task<DayEditResult> CheckInAsync(Guid userId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
+    public Task<DayEditResult> CheckInAsync(Guid userId, int habitId, DateOnly date, bool completed, ulong? guildId = null)
+        => WriteCountAsync(userId, habitId, date, guildId, (habit, _) => completed ? habit.TimesPerDay : 0);
+
+    /// <summary>
+    /// Sets the day's check-in count to the absolute <paramref name="count"/> (0 to <see cref="Habit.TimesPerDay"/>),
+    /// by the same day rules as <see cref="CheckInAsync"/>. The day is done once the count reaches the habit's target.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is outside 0 to the habit's <see cref="Habit.TimesPerDay"/>; nothing is written.</exception>
+    public Task<DayEditResult> SetCountAsync(Guid userId, int habitId, DateOnly date, int count, ulong? guildId = null)
+        => WriteCountAsync(userId, habitId, date, guildId, (habit, _) => count >= 0 && count <= habit.TimesPerDay
+            ? count
+            : throw new ArgumentOutOfRangeException(nameof(count), count, $"Must be between 0 and {habit.TimesPerDay}."));
+
+    /// <summary>Adds one check-in to the day, capped at the habit's <see cref="Habit.TimesPerDay"/>, by the same day rules as <see cref="CheckInAsync"/>.</summary>
+    public Task<DayEditResult> AddCheckInAsync(Guid userId, int habitId, DateOnly date, ulong? guildId = null)
+        => WriteCountAsync(userId, habitId, date, guildId, (habit, current) => Math.Min(current + 1, habit.TimesPerDay));
+
+    private async Task<DayEditResult> WriteCountAsync(Guid userId, int habitId, DateOnly date, ulong? guildId, Func<Habit, int, int> nextCount)
     {
         var (habit, result) = await FindEditableHabitAsync(userId, habitId, date);
         if (habit is null) return result;
@@ -137,9 +162,9 @@ public partial class HabitService
             {
                 HabitId = habitId,
                 Date = date,
-                Completed = completed,
                 GuildId = guildId.HasValue ? (long)guildId.Value : null
             };
+            ApplyCount(log, nextCount(habit, 0), habit);
             _db.HabitLogs.Add(log);
             try
             {
@@ -155,10 +180,16 @@ public partial class HabitService
             }
         }
 
-        existing.Completed = completed;
+        ApplyCount(existing, nextCount(habit, existing.Count), habit);
         if (guildId.HasValue) existing.GuildId = (long)guildId.Value;
         await _db.SaveChangesAsync();
         return DayEditResult.Saved;
+    }
+
+    private static void ApplyCount(HabitLog log, int count, Habit habit)
+    {
+        log.Completed = count >= habit.TimesPerDay || (log.Completed && count > 0 && count >= log.Count);
+        log.Count = count;
     }
 
     /// <summary>
@@ -228,7 +259,7 @@ public partial class HabitService
     /// <summary>
     /// Returns the habit's last <paramref name="days"/> local days, oldest first and ending at the user's local today,
     /// with each day's <see cref="DayState"/> and raw log. Null when the habit doesn't exist or isn't the user's.
-    /// State precedence: before start, paused, low day, done, pending (open), not done.
+    /// State precedence: before start, paused, low day, done, partial, offday, pending (open), not done.
     /// </summary>
     public async Task<IReadOnlyList<HabitDay>?> GetHabitDaysAsync(Guid userId, int habitId, int days)
     {
@@ -263,18 +294,62 @@ public partial class HabitService
     /// <summary>
     /// The habit's <see cref="DayState"/> and raw log on the user's local <paramref name="date"/>, given the user's local
     /// <paramref name="today"/>, timezone and low days. Needs the habit's log of that date loaded, if there is one.
-    /// State precedence: before start, paused, low day, done, pending (open), not done.
+    /// State precedence: before start, paused, low day, done, partial (some check-ins, not done), offday (not
+    /// <see cref="IsScheduledOn"/>), pending (open), not done.
     /// </summary>
     public static HabitDay DayOn(Habit habit, DateOnly date, DateOnly today, TimeZoneInfo tz, IReadOnlySet<DateOnly> lowDays)
     {
-        var completed = habit.Logs.FirstOrDefault(l => l.Date == date)?.Completed;
+        var log = habit.Logs.FirstOrDefault(l => l.Date == date);
+        var partial = log is { Completed: false, Count: > 0 };
         var state = date < StartDate(habit, tz) ? DayState.BeforeStart
             : IsPausedOn(habit, date) ? DayState.Paused
             : lowDays.Contains(date) ? DayState.LowDay
-            : completed == true ? DayState.Done
+            : log?.Completed == true ? DayState.Done
+            : partial ? DayState.Partial
+            : !IsScheduledOn(habit, date) ? DayState.Offday
             : IsOpen(date, today) ? DayState.Pending
             : DayState.NotDone;
-        return new HabitDay(date, state, completed);
+        return new HabitDay(date, state, partial ? null : log?.Completed, log?.Count ?? 0);
+    }
+
+    /// <summary>
+    /// Per local day from <paramref name="from"/> through <paramref name="to"/> (oldest first), across all the user's habits,
+    /// by the rules of <see cref="DayStatsOn"/>. Empty when <paramref name="from"/> is after <paramref name="to"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<DayStats>> GetDayStatsAsync(Guid userId, DateOnly from, DateOnly to)
+    {
+        var tz = await GetUserTzAsync(userId);
+        var habits = await _db.Habits
+            .AsNoTracking()
+            .Where(h => h.UserId == userId)
+            .Include(h => h.Logs.Where(l => l.Date >= from && l.Date <= to))
+            .ToListAsync();
+
+        var result = new List<DayStats>();
+        for (var date = from; date <= to; date = date.AddDays(1))
+            result.Add(DayStatsOn(habits, date, tz));
+        return result;
+    }
+
+    /// <summary>
+    /// One local day across <paramref name="habits"/> (with that day's logs loaded): <c>Scheduled</c> counts the habits expected
+    /// that day (from their <see cref="StartDate"/>, not paused, <see cref="IsScheduledOn"/>; low days don't change it, weekly
+    /// habits count every day), <c>Done</c> and <c>Partial</c> the habits whose log reached each state (offdays included),
+    /// and <c>ShowedUp</c> is true when any habit has a check-in that day.
+    /// </summary>
+    public static DayStats DayStatsOn(IEnumerable<Habit> habits, DateOnly date, TimeZoneInfo tz)
+    {
+        int scheduled = 0, done = 0, partial = 0;
+        var showedUp = false;
+        foreach (var habit in habits)
+        {
+            if (date >= StartDate(habit, tz) && !IsPausedOn(habit, date) && IsScheduledOn(habit, date)) scheduled++;
+            if (habit.Logs.FirstOrDefault(l => l.Date == date) is not { } log) continue;
+            if (log.Completed) done++;
+            else if (log.Count > 0) partial++;
+            showedUp |= log.Completed || log.Count > 0;
+        }
+        return new DayStats(date, scheduled, done, partial, showedUp);
     }
 
     private Task<bool> IsLowDayStoredAsync(Guid userId, DateOnly date)
@@ -294,9 +369,9 @@ public partial class HabitService
 
     /// <summary>
     /// Returns how many of the last <paramref name="days"/> days were kept, using a rolling window ending on the
-    /// user's local <paramref name="today"/>. A day is kept when it was completed or is one of the user's <paramref name="lowDays"/>;
-    /// low days only count from the habit's local start day (<see cref="StartDate"/> in <paramref name="tz"/>, UTC when omitted)
-    /// and outside its paused range.
+    /// user's local <paramref name="today"/>. A day is kept when it was completed (offdays included) or is one of the user's
+    /// <paramref name="lowDays"/>; low days only count from the habit's local start day (<see cref="StartDate"/> in
+    /// <paramref name="tz"/>, UTC when omitted), outside its paused range and on scheduled days (<see cref="IsScheduledOn"/>).
     /// </summary>
     public static int FlexibleStreak(Habit habit, DateOnly today, int days = 7, IReadOnlySet<DateOnly>? lowDays = null,
         TimeZoneInfo? tz = null)
@@ -307,7 +382,7 @@ public partial class HabitService
         {
             var start = StartDate(habit, tz ?? TimeZoneInfo.Utc);
             var from = start > cutoff ? start : cutoff;
-            kept.UnionWith(lowDays.Where(d => d >= from && d <= today && !IsPausedOn(habit, d)));
+            kept.UnionWith(lowDays.Where(d => d >= from && d <= today && !IsPausedOn(habit, d) && IsScheduledOn(habit, d)));
         }
         return kept.Count;
     }
@@ -327,8 +402,9 @@ public partial class HabitService
     /// with up to <paramref name="graceDays"/> forgiven gaps, and how many grace days that streak used.
     /// Open days (<see cref="OpenDays"/>: today and yesterday) that aren't done yet are pending: they never
     /// break the streak and use no grace. Paused days, the user's <paramref name="lowDays"/> and an unlogged
-    /// <see cref="TimezoneHelper.SwitchoverDate"/> are protected: they neither break nor extend the streak.
-    /// Streaks are computed from the logs, never stored, so backfilling an older day heals the streak retroactively.
+    /// <see cref="TimezoneHelper.SwitchoverDate"/> are protected: they neither break nor extend the streak. So is an offday
+    /// (not <see cref="IsScheduledOn"/>) that isn't done, so grace only ever covers scheduled days; a done offday extends it.
+    /// A partial day counts as not done. Streaks are computed from the logs, never stored, so backfilling an older day heals the streak retroactively.
     /// </summary>
     public static (int streak, int graceUsed) ConsecutiveStreak(Habit habit, DateOnly today, int graceDays = 1,
         IReadOnlySet<DateOnly>? lowDays = null)
@@ -342,9 +418,14 @@ public partial class HabitService
         => habit.PausedUntil.HasValue && date <= habit.PausedUntil.Value
             && (habit.PausedFrom is null || date >= habit.PausedFrom.Value);
 
+    /// <summary>Returns whether the habit is scheduled on the given date: always, unless it is a <see cref="FrequencyType.Weekdays"/> habit and the date's weekday isn't in <see cref="Habit.Days"/>.</summary>
+    public static bool IsScheduledOn(Habit habit, DateOnly date)
+        => habit.FrequencyType != FrequencyType.Weekdays
+            || (habit.Days.GetValueOrDefault() & (ScheduleDays)(1 << (((int)date.DayOfWeek + 6) % 7))) != 0;
+
     private static bool IsCoveredOn(Habit habit, DateOnly date, HashSet<DateOnly> completed, IReadOnlySet<DateOnly>? lowDays)
         => IsPausedOn(habit, date) || lowDays?.Contains(date) == true
-            || (date == TimezoneHelper.SwitchoverDate && !completed.Contains(date));
+            || (!completed.Contains(date) && (date == TimezoneHelper.SwitchoverDate || !IsScheduledOn(habit, date)));
 
     /// <summary>
     /// Returns the longest streak the habit ever had, by the same rules as <see cref="ConsecutiveStreak"/>:
@@ -404,6 +485,20 @@ public partial class HabitService
         return (done, target);
     }
 
+    /// <summary>
+    /// The habit's stats on the user's local <paramref name="today"/>: <see cref="FlexibleStreak"/> over the last 7 days, plus
+    /// <see cref="WeeklyProgress"/> for weekly habits, or <see cref="ConsecutiveStreak"/> and <see cref="BestStreak"/> for the others.
+    /// </summary>
+    public static HabitStats StatsOn(Habit habit, DateOnly today, int graceDays, IReadOnlySet<DateOnly> lowDays, TimeZoneInfo tz)
+    {
+        var last7 = FlexibleStreak(habit, today, 7, lowDays, tz);
+        if (habit.FrequencyType == FrequencyType.Weekly)
+            return new HabitStats(null, null, null, last7, WeeklyProgress(habit, today));
+
+        var (streak, graceUsed) = ConsecutiveStreak(habit, today, graceDays, lowDays);
+        return new HabitStats(streak, graceUsed, BestStreak(habit, today, graceDays, lowDays), last7, null);
+    }
+
     /// <summary>Returns the Monday of the Monday–Sunday week containing <paramref name="day"/>.</summary>
     public static DateOnly WeekStart(DateOnly day)
         => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
@@ -421,16 +516,47 @@ public partial class HabitService
     public static DateOnly StartDate(Habit habit, TimeZoneInfo tz)
         => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(habit.CreatedAt, DateTimeKind.Utc), tz));
 
-    public async Task<Habit?> SetFrequencyAsync(Guid userId, int habitId, FrequencyType type, int? weeklyTarget)
+    /// <summary>
+    /// Sets the habit's schedule: <paramref name="weeklyTarget"/> (default 3) is kept for weekly habits only, <paramref name="days"/>
+    /// for <see cref="FrequencyType.Weekdays"/> habits only, and weekly habits always get <paramref name="timesPerDay"/> 1.
+    /// A day that was done stays done: when the target per day changes, days whose count reaches the new target become done, counts
+    /// above a lowered target are clamped to it, and only the user's local today is recomputed against it.
+    /// Null when the habit isn't the user's.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="timesPerDay"/> is outside 1 to <see cref="MaxTimesPerDay"/>.</exception>
+    /// <exception cref="ArgumentException">A weekdays habit without any <paramref name="days"/>.</exception>
+    public async Task<Habit?> SetScheduleAsync(Guid userId, int habitId, FrequencyType type, int? weeklyTarget, ScheduleDays? days,
+        int timesPerDay)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timesPerDay, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timesPerDay, MaxTimesPerDay);
+        if (type == FrequencyType.Weekdays && days.GetValueOrDefault() == ScheduleDays.None)
+            throw new ArgumentException("A weekdays habit needs at least one day.", nameof(days));
+
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
 
         if (habit is null) return null;
 
+        var target = type == FrequencyType.Weekly ? 1 : timesPerDay;
+        var recompute = target != habit.TimesPerDay;
         habit.FrequencyType = type;
-        habit.WeeklyTarget  = type == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null;
+        habit.WeeklyTarget = type == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null;
+        habit.Days = type == FrequencyType.Weekdays ? days : null;
+        habit.TimesPerDay = target;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
         await _db.SaveChangesAsync();
+        if (recompute)
+        {
+            var today = await GetLocalTodayAsync(userId);
+            await _db.HabitLogs
+                .Where(l => l.HabitId == habitId && (l.Date == today || l.Count >= target))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(l => l.Completed, l => l.Count >= target)
+                    .SetProperty(l => l.Count, l => l.Count > target ? target : l.Count));
+        }
+        await transaction.CommitAsync();
         return habit;
     }
 
@@ -494,7 +620,7 @@ public partial class HabitService
         return true;
     }
 
-    /// <summary>Recomputes every reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
+    /// <summary>Recomputes every habit and routine reminder of the user from their current timezone. Returns how many habits have a reminder.</summary>
     public async Task<int> RescheduleRemindersAsync(Guid userId)
     {
         var tz = await GetUserTzAsync(userId);
@@ -504,6 +630,8 @@ public partial class HabitService
 
         foreach (var habit in habits)
             habit.NextReminderUtc = NextReminderUtc(habit, tz);
+        foreach (var routine in await _db.Routines.Where(r => r.UserId == userId && r.ReminderTime != null).ToListAsync())
+            routine.NextReminderUtc = NextReminderUtc(routine, tz);
 
         await _db.SaveChangesAsync();
         return habits.Count;
@@ -521,7 +649,7 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
-    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs and day marks (reminders live on the habits).</summary>
+    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods and journal key (reminders live on the habits and routines).</summary>
     public async Task DeleteUserDataAsync(Guid userId)
     {
         await _db.Users
@@ -598,13 +726,6 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.GraceDaysPerWeek, graceDays));
     }
 
-    public async Task SetLeaderboardOptInAsync(Guid userId, bool optIn)
-    {
-        await _db.Users
-            .Where(u => u.Id == userId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LeaderboardOptIn, optIn));
-    }
-
     public async Task SetThemeAsync(Guid userId, string theme)
     {
         await _db.Users
@@ -612,32 +733,6 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Theme, theme));
     }
 
-    /// <summary>
-    /// Returns the top N opted-in users in a guild by completed check-ins over the
-    /// rolling last 7 days. Users who have not opted in are never included.
-    /// </summary>
-    public async Task<List<(ulong DiscordUserId, int CheckIns)>> GetLeaderboardAsync(ulong guildId, int top = 10)
-    {
-        var weekAgo = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-6);
-        var guildIdLong = (long)guildId;
-
-        var rows = await _db.HabitLogs
-            .Where(l => l.GuildId == guildIdLong && l.Completed && l.Date >= weekAgo && l.Habit.User.LeaderboardOptIn)
-            .GroupBy(l => l.Habit.UserId)
-            .Select(g => new { UserId = g.Key, CheckIns = g.Count() })
-            .OrderByDescending(x => x.CheckIns)
-            .Take(top)
-            .ToListAsync();
-
-        // A guild check-in always comes from Discord, so every ranked user has a Discord login.
-        var userIds = rows.Select(r => r.UserId).ToList();
-        var discordIds = await _db.UserLogins
-            .Where(l => l.LoginProvider == DiscordLogin.Provider && userIds.Contains(l.UserId))
-            .ToDictionaryAsync(l => l.UserId, l => ulong.Parse(l.ProviderKey, CultureInfo.InvariantCulture));
-
-        return rows.Where(r => discordIds.ContainsKey(r.UserId))
-            .Select(r => (discordIds[r.UserId], r.CheckIns)).ToList();
-    }
 
     public async Task<TimeZoneInfo> GetUserTzAsync(Guid userId)
     {
@@ -666,7 +761,10 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Timezone, timezoneId));
     }
 
-    /// <summary>The user with their logins, push subscriptions and every habit, log and day mark (untracked), or null when Ember stores nothing about them.</summary>
+    /// <summary>
+    /// The user with their logins, push subscriptions, every habit, log, day mark, routine, journal entry and own mood, and the
+    /// journal key (untracked), or null when Ember stores nothing about them.
+    /// </summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
             .AsNoTracking()
@@ -674,6 +772,10 @@ public partial class HabitService
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .Include(u => u.PushSubscriptions)
+            .Include(u => u.Routines)
+            .Include(u => u.DayNotes)
+            .Include(u => u.Moods)
+            .Include(u => u.JournalKey)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -712,11 +814,12 @@ public partial class HabitService
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// The habit (tracked) with its user and the user's logins and push subscriptions, regardless of owner.
+    /// The habit (tracked) with its routine, its user and the user's logins and push subscriptions, regardless of owner.
     /// Persist edits with <see cref="SaveChangesAsync"/>.
     /// </summary>
     public Task<Habit?> GetHabitWithUserAsync(int habitId, CancellationToken cancellationToken = default)
         => _db.Habits
+            .Include(h => h.Routine)
             .Include(h => h.User).ThenInclude(u => u.Logins)
             .Include(h => h.User).ThenInclude(u => u.PushSubscriptions)
             .AsSplitQuery()
