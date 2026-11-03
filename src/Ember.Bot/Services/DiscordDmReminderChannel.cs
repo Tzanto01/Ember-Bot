@@ -48,10 +48,22 @@ public class DiscordDmReminderChannel : IReminderChannel
     private const int ButtonsPerRow = 5;
     private const int MaxButtonLabel = 80;
 
+    /// <summary>Keeps the habit list well under Discord's 2000-character message limit.</summary>
+    private const int MaxListLength = 1500;
+
     private async Task<DeliveryOutcome> SendRoutineAsync(ulong discordUserId, string routineName, IReadOnlyList<RoutineHabit> pending,
         CancellationToken cancellationToken)
     {
-        var list = string.Join("\n", pending.Select(h => $"• {h.Name}"));
+        var lines = new List<string>();
+        var length = 0;
+        foreach (var line in pending.Select(h => $"• {h.Name}"))
+        {
+            if (length + line.Length + 1 > MaxListLength) break;
+            lines.Add(line);
+            length += line.Length + 1;
+        }
+        if (lines.Count < pending.Count) lines.Add($"and {pending.Count - lines.Count} more");
+        var list = string.Join("\n", lines);
         var message = $"Hey 👋 Time for your **{routineName}** routine. Still open today:\n{list}\n\nTap Done for each one you've done. No pressure 💙";
 
         var now = _time.GetUtcNow().ToUnixTimeSeconds();

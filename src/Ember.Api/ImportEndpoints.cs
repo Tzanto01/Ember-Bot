@@ -30,6 +30,7 @@ internal static class ImportEndpoints
         {
             var userId = principal.UserId();
             if (!await habits.HasHealthDataConsentAsync(userId)) return Problems.ConsentRequired();
+            if (!await habits.IsAccountEmptyAsync(userId)) return Problems.Conflict(NotEmptyMessage);
 
             ImportDocument? doc;
             try
@@ -59,9 +60,9 @@ internal static class ImportEndpoints
             {
                 ImportResult.Imported => Results.NoContent(),
                 ImportResult.JournalKeyExists => Problems.Conflict("This account already has a private journal key."),
-                _ => Problems.Conflict("Import only works into an account without habits, routines, moods or journal entries."),
+                _ => Problems.Conflict(NotEmptyMessage),
             };
-        }).WithMetadata(new RequestSizeLimitAttribute(MaxBodyBytes));
+        }).WithMetadata(new RequestSizeLimitAttribute(MaxBodyBytes)).RequireRateLimiting(RateLimits.AuthPolicy);
         return api;
     }
 
@@ -228,6 +229,8 @@ internal static class ImportEndpoints
 
         return new ImportData(routines, habits, marks, moods, notes, material, doc.Settings?.GraceDaysPerWeek, doc.Settings?.Theme);
     }
+
+    private const string NotEmptyMessage = "Import only works into an account without habits, routines, moods or journal entries.";
 
     private const string UniqueId = "Each id can be used once in this section.";
 

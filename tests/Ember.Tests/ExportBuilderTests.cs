@@ -257,4 +257,17 @@ public class ExportBuilderTests
             + string.Concat(Enumerable.Repeat(",", 18)) + "2025-06-17,")
             && l.Contains(",'=cmd|' /C calc'!A0,custom:5,"));
     }
+
+    [Fact]
+    public void Csv_WritesBase64CipherAndKeyColumnsVerbatim()
+    {
+        var user = UserWithV17Data();
+        user.DayNotes.Last().CipherText = "+3Q=";
+        user.JournalKey!.RecoveryWrapped = "-nc=";
+
+        var rows = Rows(ExportBuilder.BuildCsv(user));
+
+        rows.Should().ContainSingle(r => r["record_type"] == "day_note" && r["cipher_text"] == "+3Q=");
+        rows.Should().ContainSingle(r => r["record_type"] == "journal_key" && r["recovery_wrapped"] == "-nc=");
+    }
 }

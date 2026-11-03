@@ -27,7 +27,7 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 "`/habit edit` — rename or change reminder time\n" +
                 "`/habit delete` — remove a habit\n" +
                 "`/habit pause` — pause temporarily (streak protected)\n" +
-                "`/habit frequency` — switch between daily and weekly goals\n" +
+                "`/habit frequency` — daily, weekly or set weekdays, and times per day\n" +
                 "`/habit grace` — set how many flex days you get per week",
                 inline: false)
             .AddField("Share",

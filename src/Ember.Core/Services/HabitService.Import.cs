@@ -17,7 +17,7 @@ public enum ImportResult
 {
     Imported,
 
-    /// <summary>The account already has habits, routines, own moods or day notes. Nothing was written.</summary>
+    /// <summary>The account already has habits, routines, own moods, day notes or low days. Nothing was written.</summary>
     NotEmpty,
 
     /// <summary>The file has a journal key and the account already has one. Nothing was written.</summary>
@@ -27,6 +27,12 @@ public enum ImportResult
 /// <summary>Import of an export file into an empty account.</summary>
 public partial class HabitService
 {
+    /// <summary>Whether the user has no habits, routines, own moods, day notes or low days, so an import may write into the account.</summary>
+    public async Task<bool> IsAccountEmptyAsync(Guid userId)
+        => !await _db.Habits.AnyAsync(h => h.UserId == userId) && !await _db.Routines.AnyAsync(r => r.UserId == userId)
+           && !await _db.Moods.AnyAsync(m => m.UserId == userId) && !await _db.DayNotes.AnyAsync(n => n.UserId == userId)
+           && !await _db.DayMarks.AnyAsync(d => d.UserId == userId);
+
     /// <summary>
     /// Writes <paramref name="data"/> into the user's account in one transaction, all or nothing, with new ids. Reminders are
     /// scheduled in the user's timezone; an imported journal key starts at version 1 and not turning off.
@@ -38,8 +44,8 @@ public partial class HabitService
             throw new ConsentRequiredException();
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
-        if (await _db.Habits.AnyAsync(h => h.UserId == userId) || await _db.Routines.AnyAsync(r => r.UserId == userId)
-            || await _db.Moods.AnyAsync(m => m.UserId == userId) || await _db.DayNotes.AnyAsync(n => n.UserId == userId))
+        await _db.Database.ExecuteSqlAsync($"""SELECT 1 FROM "AspNetUsers" WHERE "Id" = {userId} FOR UPDATE""");
+        if (!await IsAccountEmptyAsync(userId))
             return ImportResult.NotEmpty;
         if (data.JournalKey is not null && await _db.JournalKeys.AnyAsync(k => k.UserId == userId))
             return ImportResult.JournalKeyExists;

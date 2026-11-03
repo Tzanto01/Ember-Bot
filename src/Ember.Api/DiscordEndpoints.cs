@@ -140,7 +140,7 @@ internal static class DiscordEndpoints
                 return Results.Redirect(Linked);
             }
 
-            if (owner.PasswordHash is not null || owner.Email is not null) return Results.Redirect(LinkConflict);
+            if (owner.PasswordHash is not null || owner.Email is not null || owner.TwoFactorEnabled) return Results.Redirect(LinkConflict);
 
             PendingMerge.Store(http, user, owner.Id, discordId);
             return Results.Redirect(MergePage);

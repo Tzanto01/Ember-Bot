@@ -27,7 +27,7 @@ public partial class HabitService
 
     public HabitService(EmberDbContext db, TimeProvider time)
     {
-        _db = db;
+        _db   = db;
         _time = time;
     }
 
@@ -519,8 +519,8 @@ public partial class HabitService
     /// <summary>
     /// Sets the habit's schedule: <paramref name="weeklyTarget"/> (default 3) is kept for weekly habits only, <paramref name="days"/>
     /// for <see cref="FrequencyType.Weekdays"/> habits only, and weekly habits always get <paramref name="timesPerDay"/> 1.
-    /// Counts are never rewritten and a day that was done stays done: when the target per day changes, days whose count reaches the
-    /// new target become done and only the user's local today is recomputed against it.
+    /// A day that was done stays done: when the target per day changes, days whose count reaches the new target become done, counts
+    /// above a lowered target are clamped to it, and only the user's local today is recomputed against it.
     /// Null when the habit isn't the user's.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="timesPerDay"/> is outside 1 to <see cref="MaxTimesPerDay"/>.</exception>
@@ -552,7 +552,9 @@ public partial class HabitService
             var today = await GetLocalTodayAsync(userId);
             await _db.HabitLogs
                 .Where(l => l.HabitId == habitId && (l.Date == today || l.Count >= target))
-                .ExecuteUpdateAsync(s => s.SetProperty(l => l.Completed, l => l.Count >= target));
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(l => l.Completed, l => l.Count >= target)
+                    .SetProperty(l => l.Count, l => l.Count > target ? target : l.Count));
         }
         await transaction.CommitAsync();
         return habit;

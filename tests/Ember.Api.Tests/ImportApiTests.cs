@@ -153,6 +153,20 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task A_leftover_low_day_makes_the_account_not_empty()
+    {
+        var user = await Host.SignedInAsync();
+        var habit = await user.CreateHabitAsync();
+        var today = DateOnly.Parse((await (await user.Get("/api/me")).ExpectJson()).GetProperty("localToday").GetString()!);
+        await (await user.Put($"/api/low-days/{today.Iso()}")).Expect(HttpStatusCode.NoContent);
+        await (await user.Delete($"/api/habits/{habit.GetProperty("id").GetInt32()}")).Expect(HttpStatusCode.NoContent);
+
+        await (await Import(user, Doc())).ExpectProblem(HttpStatusCode.Conflict, "conflict");
+
+        (await HabitCountAsync(await user.IdAsync())).Should().Be(0);
+    }
+
+    [DockerFact]
     public async Task Only_format_version_2_is_accepted()
     {
         var user = await Host.SignedInAsync();

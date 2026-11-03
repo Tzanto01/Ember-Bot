@@ -142,6 +142,20 @@ public class DiscordTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Linking_an_id_owned_by_a_bot_only_account_with_two_factor_is_a_conflict_with_no_pending_merge()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        var discordId = ApiHost.NewDiscordId();
+        var ownerId = await Host.Service(s => s.ResolveOrCreateDiscordUserAsync(discordId));
+        await Host.Db(db => db.Users.Where(u => u.Id == ownerId).ExecuteUpdateAsync(s => s.SetProperty(u => u.TwoFactorEnabled, true)));
+
+        (await Host.DiscordAsync(user, Link, discordId)).Should().Be("/settings?discord=conflict");
+
+        user.CookieValue("ember.merge", "/api/account/merge").Should().BeNull();
+        (await Host.Service(s => s.FindDiscordUserAsync(discordId))).Should().Be(ownerId);
+    }
+
+    [DockerFact]
     public async Task Linking_a_second_discord_id_is_a_conflict_and_keeps_the_first()
     {
         var user = await Host.SignedInAsync(consent: false);

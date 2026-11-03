@@ -106,7 +106,7 @@ public class CheckInCountTests
     }
 
     [Fact]
-    public async Task LoweringTimesPerDay_MakesPastCountsThatReachTheTargetDone()
+    public async Task LoweringTimesPerDay_MakesPastCountsThatReachTheTargetDoneAndClampsThem()
     {
         var (host, habitId) = await CreateAsync(timesPerDay: 3);
         await using var _ = host;
@@ -124,7 +124,7 @@ public class CheckInCountTests
 
         var weekly = await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().SetScheduleAsync(UserId, habitId, FrequencyType.Weekly, 2, null, 3));
         weekly!.TimesPerDay.Should().Be(1);
-        (await LogsAsync(host, habitId)).Should().Equal((yesterday, 2, true), (Today, 1, true));
+        (await LogsAsync(host, habitId)).Should().Equal((yesterday, 1, true), (Today, 1, true));
     }
 
     [Fact]
@@ -141,5 +141,24 @@ public class CheckInCountTests
         await host.WithScopeAsync(sp =>
             CheckInButtonModule.LogReminderDayAsync(sp.GetRequiredService<HabitService>(), UserId, habitId, sentUnix, completed: true, null));
         (await LogsAsync(host, habitId)).Should().Equal((Today, 2, true));
+    }
+
+    [Fact]
+    public async Task ReminderSkipButton_KeepsPartialProgress()
+    {
+        var (host, habitId) = await CreateAsync(timesPerDay: 3);
+        await using var _ = host;
+        var sentUnix = new DateTimeOffset(2027, 1, 13, 9, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds().ToString();
+        await host.WithScopeAsync(async sp =>
+        {
+            var service = sp.GetRequiredService<HabitService>();
+            await service.AddCheckInAsync(UserId, habitId, Today);
+            await service.AddCheckInAsync(UserId, habitId, Today);
+        });
+
+        await host.WithScopeAsync(sp =>
+            CheckInButtonModule.LogReminderDayAsync(sp.GetRequiredService<HabitService>(), UserId, habitId, sentUnix, completed: false, null));
+
+        (await LogsAsync(host, habitId)).Should().Equal((Today, 2, false));
     }
 }
