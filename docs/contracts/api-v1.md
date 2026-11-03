@@ -1,6 +1,6 @@
 # Ember API contract v1.6
 
-v1.6 (2026-11-03, Nico: "do all 5"): the leaderboard is gone; flexible schedules (set weekdays, several times a day); routines; a word for the day; day stats for the year view; native "Done" from a reminder and an Android home-screen widget. See "Features v1.6". Defaults marked *(default)* are the department lead's until Nico says otherwise.
+v1.6 (2026-11-03, Nico: "do all 5"): the leaderboard is gone; flexible schedules (set weekdays, several times a day); routines; a journal for the day with moods; day stats for the year view; native "Done" from a reminder and an Android home-screen widget. See "Features v1.6". Defaults marked *(default)* are the department lead's until Nico says otherwise.
 
 v1.5 (2026-11-03): bearer access tokens live 15 minutes; a password reset lifts a lockout; mail limits per client IP, per address across clients and per day; request bodies are capped at 64 KiB.
 
@@ -227,17 +227,19 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 - Channels work as for habits (`discord`, `webpush` dispatched by the server; `mobile` scheduled by the app). The Discord DM may list the pending habit names with check-in buttons (DMs are private). Web push uses the generic body.
 - Routines are in the export and merge; the bot doesn't manage routines (web and app only) *(default)*.
 
-### Word for the day
+### Journal for the day (Nico: free text, five moods plus your own)
 
 ```json
-{ "date": "2026-11-03", "text": "tired but ok" | null, "mood": "low" | "meh" | "okay" | "good" | "great" | null }
+{ "date": "2026-11-03", "text": "Slept badly, still went for a walk." | null, "mood": "okay" | "custom:4" | null }
 ```
 
-- *(default)* One per account per local day, not per habit. `text` 1–60 chars after trimming, or null. At least one of `text`/`mood` is set; a PUT with both null deletes it.
+- One entry per account per local day, not per habit. `text` is free text, 1–2000 chars after trimming (line breaks kept), or null. At least one of `text`/`mood` is set; a PUT with both null deletes the entry.
+- `mood` is one of the five built-ins `low`, `meh`, `okay`, `good`, `great`, or `custom:<id>` for one of the user's own moods.
+- Own moods: `GET /api/moods` → `[{ id, label, emoji, archived }]`; `POST /api/moods` `{ label (1–24 chars after trimming), emoji? (one emoji grapheme or null) }` → 201; `PATCH /api/moods/{id}` `{ label?, emoji?, archived? }` → 200. At most 20 non-archived moods → 409 `conflict`. There is no hard delete: archiving hides a mood from the picker while past days keep showing it. A day can't be set to an archived or foreign mood → 400 `validation`.
 - `GET /api/day-notes?from&to` → `DayNote[]` oldest first (default and maximum: 366 days). `PUT /api/day-notes/{date}` `{ text?, mood? }` → 200 `DayNote` (absolute, so offline replays are idempotent). `DELETE /api/day-notes/{date}` → 204.
 - Same date rules as low days (`in_future`, `before_habit_start`); writes need consent (`consent_required`), reads don't.
-- Never shown by the bot, in any notification, or in the weekly summary. Included in export, delete and merge.
-- Offline: the client queues `PUT`/`DELETE /api/day-notes/{date}` exactly like day edits.
+- Never shown by the bot, in any notification, or in the weekly summary. Entries and own moods are included in export, delete and merge (on merge, own moods with the same label are combined).
+- Offline: the client queues `PUT`/`DELETE /api/day-notes/{date}` exactly like day edits (moods are edited online only).
 
 ### Day stats (year view)
 
