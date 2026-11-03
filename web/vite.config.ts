@@ -11,7 +11,8 @@ const apiHost = 'http://localhost:5081';
  * Web build (`vite build`): PWA with the custom service worker in `src/sw.ts`, output `dist/ember-web/browser`.
  * Mobile build (`vite build --mode mobile`, settings in `.env.mobile`): no service worker (the PWA plugin is
  * disabled, so `virtual:pwa-register` resolves to a no-op), output
- * `dist/ember-mobile/browser` for Capacitor.
+ * `dist/ember-mobile/browser` for Capacitor, with a CSP meta tag mirroring the API's header (the WebView serves the
+ * bundle without one).
  */
 export default defineConfig(({ mode }) => {
   const mobile = mode === 'mobile';
@@ -24,6 +25,19 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      mobile && {
+        name: 'ember-mobile-csp',
+        transformIndexHtml: () => [
+          {
+            tag: 'meta',
+            attrs: {
+              'http-equiv': 'Content-Security-Policy',
+              content: `default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ${new URL(vars['VITE_API_BASE']!).origin}`,
+            },
+            injectTo: 'head-prepend',
+          },
+        ],
+      },
       VitePWA({
         disable: mobile,
         strategies: 'injectManifest',
