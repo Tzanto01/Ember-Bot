@@ -54,7 +54,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
 
         if (open.Count == 1)
         {
-            if (await _habits.CheckInAsync(Context.User.Id, open[0].Id, date, completed: true) != DayEditResult.Saved)
+            if (await _habits.AddCheckInAsync(Context.User.Id, open[0].Id, date) != DayEditResult.Saved)
             {
                 await RespondAsync("Couldn't find that habit.", ephemeral: true);
                 return;
@@ -84,7 +84,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         var logged = 0;
         foreach (var value in values)
             if (int.TryParse(value, out var habitId)
-                && await _habits.CheckInAsync(Context.User.Id, habitId, date, completed: true) == DayEditResult.Saved)
+                && await _habits.AddCheckInAsync(Context.User.Id, habitId, date) == DayEditResult.Saved)
                 logged++;
 
         await CloseAsync($"Logged {logged} habit{(logged == 1 ? "" : "s")} for {Label(date)}. Nice. ✅");
@@ -105,7 +105,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         await CloseAsync($"Marked {Label(date)} as a low day. Your streaks are safe. 💙");
     }
 
-    /// <summary>The user's daily habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>
+    /// <summary>The user's daily and weekdays habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>
     internal static async Task<List<Habit>> OpenHabitsAsync(HabitService habits, ulong userId, DateOnly date)
     {
         var tz = await habits.GetUserTzAsync(userId);

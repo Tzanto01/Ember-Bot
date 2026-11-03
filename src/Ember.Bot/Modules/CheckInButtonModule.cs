@@ -23,8 +23,8 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 
     /// <summary>
     /// Logs the habit for the user's local day at <paramref name="timestampStr"/> (the reminder's send time, unix seconds),
-    /// or for local today when the timestamp is malformed. A "not done" never overwrites a day already logged as done
-    /// (<c>KeptDone</c>). Returns the edit result and the day it applied to.
+    /// or for local today when the timestamp is malformed. Done adds one check-in (capped at the habit's times per day).
+    /// A "not done" never overwrites a day already logged as done (<c>KeptDone</c>). Returns the edit result and the day it applied to.
     /// </summary>
     internal static async Task<(DayEditResult Result, DateOnly Day, bool KeptDone)> LogReminderDayAsync(
         HabitService habits, ulong userId, int habitId, string timestampStr, bool completed, ulong? guildId)
@@ -36,7 +36,9 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) == true)
             return (DayEditResult.Saved, day, true);
 
-        return (await habits.CheckInAsync(userId, habitId, day, completed, guildId), day, false);
+        return (completed
+            ? await habits.AddCheckInAsync(userId, habitId, day, guildId)
+            : await habits.CheckInAsync(userId, habitId, day, completed: false, guildId), day, false);
     }
 
     private async Task LogAsync(string habitIdStr, string timestampStr, bool completed, string todayText, string earlierText)
@@ -63,11 +65,13 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
                 return;
         }
 
+        var isToday = day == await _habits.GetLocalTodayAsync(Context.User.Id);
+        var dayLabel = day.ToString("dddd d MMM", CultureInfo.InvariantCulture);
         var text = keptDone
             ? "You already logged that day as done, so I've left it that way. ✅"
-            : day == await _habits.GetLocalTodayAsync(Context.User.Id)
-                ? todayText
-                : string.Format(earlierText, day.ToString("dddd d MMM", CultureInfo.InvariantCulture));
+            : isToday ? todayText : string.Format(earlierText, dayLabel);
+        if (completed)
+            text = HabitModule.CheckInText(await _habits.GetHabitAsync(Context.User.Id, habitId), day, text, isToday ? null : dayLabel);
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(msg =>
         {
             msg.Content    = text;

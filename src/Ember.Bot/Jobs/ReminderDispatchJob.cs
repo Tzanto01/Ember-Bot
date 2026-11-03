@@ -94,6 +94,7 @@ public class ReminderDispatchJob : IJob
         var send = targets.Count > 0
             && now - dueAt <= StaleAfter
             && !HabitService.IsPausedOn(habit, today)
+            && HabitService.IsScheduledOn(habit, today)
             && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
 
         if (send)

@@ -85,7 +85,7 @@ public class MissedDayReflectionJob : IJob
 
         foreach (var habit in user.Habits)
         {
-            if (habit.FrequencyType == Ember.Core.Models.FrequencyType.Daily)
+            if (habit.FrequencyType != Ember.Core.Models.FrequencyType.Weekly)
             {
                 if (IsOpenDaily(habit, yesterday, tz))
                 {
@@ -142,9 +142,13 @@ public class MissedDayReflectionJob : IJob
         await _discord.SendMessageAsync(discordId, embed: embed, components: components.Build());
     }
 
-    /// <summary>Whether a daily habit is active and unpaused on <paramref name="date"/> but not logged as done yet.</summary>
+    /// <summary>
+    /// Whether a daily or weekdays habit is active, scheduled and unpaused on <paramref name="date"/> but not logged as done yet
+    /// (a partial day is still open).
+    /// </summary>
     internal static bool IsOpenDaily(Ember.Core.Models.Habit habit, DateOnly date, TimeZoneInfo tz)
-        => habit.FrequencyType == Ember.Core.Models.FrequencyType.Daily
+        => habit.FrequencyType != Ember.Core.Models.FrequencyType.Weekly
+            && HabitService.IsScheduledOn(habit, date)
             && HabitService.IsActiveOn(habit, date, tz)
             && !HabitService.IsPausedOn(habit, date)
             && !habit.Logs.Any(l => l.Date == date && l.Completed);

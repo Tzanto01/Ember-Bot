@@ -29,10 +29,41 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         return $"<t:{unix}:t>";
     }
 
-    internal static string FrequencyLabel(Habit h) =>
-        h.FrequencyType == FrequencyType.Weekly
-            ? $"{h.WeeklyTarget ?? 3}×/week"
-            : "daily";
+    internal static string FrequencyLabel(Habit h)
+    {
+        var times = h.TimesPerDay > 1 ? $" · {h.TimesPerDay}×/day" : "";
+        return h.FrequencyType switch
+        {
+            FrequencyType.Weekly   => $"{h.WeeklyTarget ?? 3}×/week",
+            FrequencyType.Weekdays => string.Join(" ", ScheduleDayNames.ToNames(h.Days.GetValueOrDefault())
+                .Select(n => char.ToUpperInvariant(n[0]) + n[1..])) + times,
+            _                      => "daily" + times,
+        };
+    }
+
+    /// <summary>The habit's status on <paramref name="day"/>: ✅ done, 🔸 2/3 partly done, 💤 rest day (not scheduled), ⬜ otherwise.</summary>
+    internal static string DayMark(Habit h, DateOnly day)
+    {
+        var log = h.Logs.FirstOrDefault(l => l.Date == day);
+        return log?.Completed == true ? "✅"
+            : log is { Count: > 0 } ? $"🔸 {log.Count}/{h.TimesPerDay}"
+            : !HabitService.IsScheduledOn(h, day) ? "💤"
+            : "⬜";
+    }
+
+    /// <summary>
+    /// The reply after a check-in that added one: <paramref name="doneText"/> once the day is done (with the count for
+    /// multi-count habits), else the count so far, for today or for <paramref name="dayLabel"/>.
+    /// </summary>
+    internal static string CheckInText(Habit? habit, DateOnly day, string doneText, string? dayLabel = null)
+    {
+        if (habit is null || habit.TimesPerDay == 1) return doneText;
+        var log = habit.Logs.FirstOrDefault(l => l.Date == day);
+        var count = $"{log?.Count ?? 0}/{habit.TimesPerDay}";
+        return log?.Completed == true
+            ? $"{doneText} ({count})"
+            : $"Logged **{count}** {(dayLabel is null ? "today" : $"for {dayLabel}")}. Every one counts. 🔸";
+    }
 
     // ── Habit select menu builder (shared by several commands) ───────────────
 
@@ -144,8 +175,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
             foreach (var h in slice)
             {
-                var checkedToday = h.Logs.Any(l => l.Date == today && l.Completed);
-                var todayMark    = checkedToday ? "✅" : "⬜";
+                var todayMark    = DayMark(h, today);
                 var reminderStr  = await FormatReminderAsync(Context.User.Id, h.ReminderTime);
                 var pauseStr     = h.PausedUntil.HasValue && h.PausedUntil >= today
                     ? $" · ⏸️ paused until {h.PausedUntil:MMM d}" : "";
