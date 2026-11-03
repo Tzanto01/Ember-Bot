@@ -120,6 +120,18 @@ describe('TodayPage', () => {
     expect(await checkButton()).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('shows a check-in made from a reminder or the widget', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+    expect(await checkButton()).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => deviceSync.nativeCheckIn.set({ name: 'Walk' }));
+    await answerLoad(f, [doneHabit]);
+
+    await waitFor(async () => expect(await checkButton()).toHaveAttribute('aria-pressed', 'true'));
+    act(() => deviceSync.nativeCheckIn.set(null));
+  });
+
   it("plays the theme's reward only after the user's own tap, never on first render", async () => {
     document.documentElement.style.setProperty('--ember-reward', 'glow');
     const read = { ...habit, id: 2, name: 'Read', today: { ...doneHabit.today } };
