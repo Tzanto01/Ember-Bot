@@ -188,6 +188,14 @@ export class ApiClient {
     return { blob, fileName };
   }
 
+  /**
+   * `POST /api/me/import` (v1.7): moves device data (the JSON export format v2) into an account without habits. All or
+   * nothing; 409 `conflict` when the account already has habits, 403 `consent_required` without consent.
+   */
+  importData(body: unknown): Promise<void> {
+    return this.http.request('POST', '/api/me/import', { body });
+  }
+
   /** `POST /api/me/delete`: deletes everything and signs out. */
   deleteAccount(body: DeleteAccountRequest): Promise<void> {
     return this.http.request('POST', '/api/me/delete', { body });

@@ -6,6 +6,11 @@ import { env } from './env';
 import { Http } from './http';
 import { JournalService } from './journal/journal';
 import { Keyring } from './journal/keyring';
+import { LocalBackend } from './local/backend';
+import { BackupService } from './local/backup';
+import { LocalMode } from './local/mode';
+import { LocalStore } from './local/store';
+import { UpgradeService } from './local/upgrade';
 import { Reminders } from './native/reminders';
 import { capacitorSecureStore, TokenStore } from './native/token-store';
 import { OfflineQueue } from './offline-queue';
@@ -43,3 +48,14 @@ export const deviceSync = new DeviceSync(auth, api, offlineQueue, reminders);
 http.session = auth;
 http.bearer = tokens;
 http.onHabitWrite = () => deviceSync.rebuildReminders();
+
+/** No-account mode: the device data (IndexedDB `ember-local`). */
+export const localStore = new LocalStore();
+/** No-account mode: answers own `/api` requests from the device data while `Http.local` points at it. */
+export const localBackend = new LocalBackend(localStore, { native: env.native });
+/** Which data source the app runs on (account, device, or upgrading from device to account). */
+export const localMode = new LocalMode(localStore, localBackend, http, api, auth, { native: env.native });
+/** Backup files and the backup reminder of no-account mode. */
+export const backup = new BackupService(localStore);
+/** Moves the device data into the signed-in account. */
+export const upgrade = new UpgradeService(localStore, api, auth, journal, deviceStore, localMode);

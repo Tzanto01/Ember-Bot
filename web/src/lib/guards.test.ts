@@ -3,6 +3,7 @@ import { ApiError } from './problem';
 import type { AuthService } from './auth';
 import { guest, signedIn } from './guards';
 import { type Me } from './models';
+import { Store } from './store';
 import { me } from './test-support';
 
 function fakeSession(load: () => Promise<Me | null>, consentNeeded = false) {
@@ -41,6 +42,16 @@ describe('signedIn guard', () => {
 
   it('lets a signed-in user with consent through', async () => {
     expect(await signedIn('/today', fakeSession(async () => me))).toBeNull();
+  });
+
+  it('sends a signed-in user to /keep-data while device data waits, but not from the consent or keep-data steps', async () => {
+    const upgrading = new Store<'account' | 'local' | 'upgrading'>('upgrading');
+    const session = fakeSession(async () => me);
+
+    expect(await signedIn('/today', session, upgrading)).toBe('/keep-data');
+    expect(await signedIn('/consent?returnUrl=%2Ftoday', session, upgrading)).toBeNull();
+    expect(await signedIn('/keep-data', session, upgrading)).toBeNull();
+    expect(await signedIn('/today', session, new Store<'account' | 'local' | 'upgrading'>('account'))).toBeNull();
   });
 });
 

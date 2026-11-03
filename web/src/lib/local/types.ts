@@ -78,6 +78,27 @@ export interface LocalData {
   routines: LocalRoutine[];
   moods: LocalMood[];
   notes: LocalNote[];
+  /** Progress of a move into an account, so an interrupted upgrade resumes without importing twice. */
+  upgrade?: UpgradeProgress;
+}
+
+/** What an upgrade already did for the account `userId`. */
+export interface UpgradeProgress {
+  userId: string;
+  /** The import request was sent at least once (its answer may have been lost). */
+  importSent: boolean;
+  /** The account holds the habits, check-ins and low days (and, for a plain journal, the journal). */
+  imported: boolean;
+  /** Private journal: the journal key exists in the account. */
+  journalEnabled: boolean;
+  /** Private journal: the one-time recovery code, kept on the device only until the upgrade finishes. */
+  recoveryCode: string | null;
+  /** Private journal: device mood id to account mood id. */
+  moodIds: Record<string, number>;
+  /** Private journal: device ids of archived moods already archived in the account. */
+  archivedMoods: number[];
+  /** Private journal: dates of entries already saved in the account. */
+  notesDone: string[];
 }
 
 /** Which data source the app runs on: the server (`account`), the device (`local`), or the server while device data waits for import (`upgrading`). */
