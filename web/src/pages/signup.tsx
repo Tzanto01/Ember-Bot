@@ -11,6 +11,7 @@ import {
   validateAll,
 } from '@/components/auth/use-field';
 import { FormField } from '@/components/form-field';
+import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, PasswordInput } from '@/components/ui/input';
@@ -88,6 +89,7 @@ export default function SignupPage() {
   return (
     <>
       <PageHeader title="Create your account" lede="A calm place for your habits. It takes a minute." />
+      <UpgradingNotice />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Email" error={email.error ?? problem?.fields['email'] ?? null}>
           {(field) => (
@@ -126,6 +128,7 @@ export default function SignupPage() {
       <p className="text-center text-muted-foreground">
         Already have an account? <TapLink to="/login">Sign in</TapLink>
       </p>
+      <NoAccountLink />
     </>
   );
 }

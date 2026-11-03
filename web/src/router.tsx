@@ -143,6 +143,12 @@ export const routes: RouteObject[] = [
           { path: 'confirm-email', ...page('Confirm your email', () => import('./pages/confirm-email')) },
           { path: 'reset-password', ...page('Choose a new password', () => import('./pages/reset-password')) },
           { path: 'consent', loader: requireSignedIn, ...page('One quick question', () => import('./pages/consent')) },
+          {
+            path: 'local',
+            loader: requireGuest,
+            ...page('Use Ember without an account', () => import('./pages/local-start')),
+          },
+          { path: 'keep-data', loader: requireSignedIn, ...page('Keep your data', () => import('./pages/keep-data')) },
         ],
       },
       {

@@ -4,11 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { reminderNames } from '@/lib/native/reminder-names';
-import { auth } from '@/lib/services';
+import { auth, localMode } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SettingsPage from './settings';
 
 vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
+vi.mock('@/lib/services', async (original) => {
+  const { Store } = await import('@/lib/store');
+  return {
+    ...(await original<typeof import('@/lib/services')>()),
+    localMode: { mode: new Store('account'), evicted: new Store(false) },
+  };
+});
 
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
 
@@ -34,6 +41,7 @@ describe('SettingsPage', () => {
     document.documentElement.removeAttribute('data-theme');
     env.native = false;
     reminderNames.set(false);
+    localMode.mode.set('account');
   });
 
   it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {
@@ -195,5 +203,24 @@ describe('SettingsPage', () => {
 
     expect(await screen.findByRole('button', { name: 'Unlink Discord' })).toBeInTheDocument();
     expect(router.state.location.search).toBe('');
+  });
+
+  it('without an account, shows the device card first and no sign-out, Discord, two-step or private journal', async () => {
+    localMode.mode.set('local');
+    await open();
+
+    const cards = document.querySelectorAll('section');
+    expect(cards[0]).toHaveAccessibleName('On this device');
+    expect(within(cards[0] as HTMLElement).getByText(/Browsers can delete site data/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export backup' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create an account and keep my data' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete everything on this device' })).toBeInTheDocument();
+    for (const name of ['Discord', 'Two-step sign-in', 'Private journal', 'Your data', 'Delete your account']) {
+      expect(screen.queryByRole('heading', { name })).toBeNull();
+    }
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete my account' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Timezone' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument();
   });
 });

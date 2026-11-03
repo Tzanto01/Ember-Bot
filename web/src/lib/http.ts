@@ -61,6 +61,11 @@ function readCookie(name: string): string | null {
   return null;
 }
 
+function withQuery(url: string, params: Record<string, string | undefined> = {}): string {
+  const search = queryString(params);
+  return search ? `${url}${url.includes('?') ? '&' : '?'}${search}` : url;
+}
+
 async function readJson(response: Response): Promise<unknown> {
   try {
     const text = await response.text();
@@ -85,6 +90,11 @@ export class Http {
   bearer: BearerTokens | null = null;
   /** Called after a successful habit, day or pause write (native reminder rebuild). */
   onHabitWrite: (() => void) | null = null;
+  /**
+   * No-account mode: answers own `/api/` requests in process instead of `fetch` (`url` is the path with its query
+   * string, without the API base). Null sends them to the server.
+   */
+  local: ((method: Method, url: string, body: unknown) => Promise<Response>) | null = null;
 
   constructor(private readonly config: HttpConfig) {}
 
@@ -178,6 +188,10 @@ export class Http {
     options: RequestOptions,
     token: string | null,
   ): Promise<Response> {
+    if (this.local && this.isOwnApi(url)) {
+      const path = url.startsWith('/api/') ? url : url.slice(this.config.apiBase.length);
+      return this.local(method, withQuery(path, options.params), options.body ?? null);
+    }
     const headers = new Headers();
     const hasBody = options.body !== undefined && options.body !== null;
     if (hasBody) headers.set('Content-Type', 'application/json');
@@ -195,9 +209,8 @@ export class Http {
     });
   }
 
-  private resolve(url: string, params: Record<string, string | undefined> = {}): string {
-    const search = queryString(params);
-    const full = search ? `${url}${url.includes('?') ? '&' : '?'}${search}` : url;
+  private resolve(url: string, params?: Record<string, string | undefined>): string {
+    const full = withQuery(url, params);
     return this.config.apiBase && url.startsWith('/api/') ? this.config.apiBase + full : full;
   }
 }

@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { email as emailRule, required, useField, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
+import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
 import { PageHeader } from '@/components/page-header';
 import { CodeInput, cleanCode, codeRule, recoveryRule, wrongCodeText } from '@/components/settings/two-factor-code';
 import { Button } from '@/components/ui/button';
@@ -207,6 +208,7 @@ export default function LoginPage() {
   return (
     <>
       <PageHeader title="Welcome back" lede="Sign in to check in on your habits." />
+      <UpgradingNotice />
       {discordFailed && <Notice tone="notice">Discord sign-in didn't finish. You can try again.</Notice>}
       {reason === 'session' && <Notice>Your session ended. Sign in again to pick up where you left off.</Notice>}
       {reason === 'offline' && (
@@ -291,6 +293,7 @@ export default function LoginPage() {
       <p className="text-center text-muted-foreground">
         New to Ember? <TapLink to="/signup">Create an account</TapLink>
       </p>
+      <NoAccountLink />
     </>
   );
 }
