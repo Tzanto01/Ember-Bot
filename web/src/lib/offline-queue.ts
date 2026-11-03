@@ -1,4 +1,4 @@
-import type { DayEdit, DeviceStore, QueuedEdit } from './device-store';
+import type { DeviceStore, QueuedEdit, QueueEdit } from './device-store';
 import { type ApiError, asApiError } from './problem';
 import { Store } from './store';
 
@@ -21,7 +21,7 @@ export function shouldDrop(error: ApiError): boolean {
 }
 
 /**
- * Day edits made while offline, per user, replayed in order once online (shared by the PWA and the app).
+ * Day and journal edits made while offline, per user, replayed in order once online (shared by the PWA and the app).
  * `userId` is set by `DeviceSync` from the signed-in user.
  */
 export class OfflineQueue {
@@ -37,7 +37,7 @@ export class OfflineQueue {
   constructor(private readonly store: DeviceStore) {}
 
   /** Queues an edit for the signed-in user; false when nobody is signed in or storage is unavailable. */
-  async add(edit: DayEdit): Promise<boolean> {
+  async add(edit: QueueEdit): Promise<boolean> {
     const userId = this.userId.get();
     if (!userId) return false;
     try {
@@ -55,7 +55,7 @@ export class OfflineQueue {
    * the first edit that must be kept stops the replay so the order holds. Concurrent calls share one run, and
    * edits queued while it runs are sent in the same run.
    */
-  replay(userId: string, send: (edit: DayEdit) => Promise<unknown>): Promise<ReplayResult> {
+  replay(userId: string, send: (edit: QueueEdit) => Promise<unknown>): Promise<ReplayResult> {
     let run = this.replaying.get(userId);
     if (!run) {
       run = this.run(userId, send).finally(() => this.replaying.delete(userId));
@@ -78,14 +78,15 @@ export class OfflineQueue {
 
   private async run(
     userId: string,
-    send: (edit: DayEdit) => Promise<unknown>,
+    send: (edit: QueueEdit) => Promise<unknown>,
   ): Promise<ReplayResult> {
     const result: ReplayResult = { sent: 0, dropped: 0, remaining: 0 };
     const load = () => this.store.edits(userId).catch(() => [] as QueuedEdit[]);
     for (let queued = await load(); queued.length && !result.remaining; queued = await load()) {
       for (const [index, edit] of queued.entries()) {
         try {
-          await send({ habitId: edit.habitId, date: edit.date, completed: edit.completed });
+          const { seq: _seq, userId: _user, ...sent } = edit;
+          await send(sent as QueueEdit);
           result.sent++;
         } catch (error) {
           if (!shouldDrop(asApiError(error))) {

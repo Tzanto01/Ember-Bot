@@ -26,7 +26,7 @@ function summary(p: MergePreview): string {
 function kept({ kept: k }: MergePreview): string {
   const grace =
     k.graceDaysPerWeek === 0 ? 'no grace days' : count(k.graceDaysPerWeek, 'grace day', 'grace days') + ' a week';
-  return `Your settings stay as they are: timezone ${timeZoneLabel(k.timezone)}, ${grace}, leaderboards ${k.leaderboardOptIn ? 'on' : 'off'}.`;
+  return `Your settings stay as they are: timezone ${timeZoneLabel(k.timezone)} and ${grace}.`;
 }
 
 /** `/link/merge`: preview of the Discord-only account's data, then move it here or cancel. */

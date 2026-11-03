@@ -81,7 +81,7 @@ export class Reminders {
       if (!cached) return;
       const queued = await this.store.edits(userId).catch(() => []);
       habits = cached.habits.map((habit) =>
-        queued.filter((edit) => edit.habitId === habit.id).reduce(withDayEdit, habit),
+        queued.reduce(withDayEdit, habit),
       );
     }
     const plan = planReminders(habits, timeZone, Date.now());

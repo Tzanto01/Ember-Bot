@@ -1,5 +1,6 @@
 import type { ApiClient } from './api-client';
 import type { AuthService } from './auth';
+import { isDayEdit } from './device-store';
 import type { Reminders } from './native/reminders';
 import { browserTimeZone } from './local-date';
 import { navigate } from './navigation';
@@ -47,7 +48,9 @@ export class DeviceSync {
     const me = this.auth.me.get();
     if (!me) return;
     const result = await this.queue
-      .replay(me.id, (edit) => this.api.sendDayEdit(edit, true))
+      .replay(me.id, (edit) =>
+        isDayEdit(edit) ? this.api.sendDayEdit(edit, true) : this.api.sendNoteEdit(edit, true),
+      )
       .catch(() => null);
     if (result?.dropped) this.dropped.update((count) => count + result.dropped);
     if (result && (result.sent || result.dropped)) this.synced.update((count) => count + 1);

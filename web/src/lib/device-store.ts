@@ -1,16 +1,41 @@
-import type { Habit } from './models';
+import type { DayNoteBody, DayState, Habit } from './models';
 
-/** One day edit made while offline: `completed` null means "clear the day". */
+/**
+ * One day edit made while offline: `completed` null means "clear the day"; `count` (v1.6) sends the absolute
+ * `PUT { count }` instead and wins over `completed`. Entries stored before v1.6 have no `kind`.
+ */
 export interface DayEdit {
+  kind?: 'day';
   habitId: number;
   date: string;
   completed: boolean | null;
+  count?: number;
 }
 
-/** A queued {@link DayEdit}, keyed by the user who made it; `seq` keeps the replay order. */
-export interface QueuedEdit extends DayEdit {
+/** One journal edit made while offline (v1.6): `body` null deletes the day's note. Encrypted already when private. */
+export interface NoteEdit {
+  kind: 'note';
+  date: string;
+  body: DayNoteBody | null;
+}
+
+/** Anything the offline queue replays. */
+export type QueueEdit = DayEdit | NoteEdit;
+
+/** A queued {@link QueueEdit}, keyed by the user who made it; `seq` keeps the replay order. */
+export type QueuedEdit = QueueEdit & {
   seq: number;
   userId: string;
+};
+
+/** True for a habit day edit (including entries queued before v1.6). */
+export function isDayEdit(edit: QueueEdit): edit is DayEdit {
+  return edit.kind !== 'note';
+}
+
+/** The day state a count reaches: done at `timesPerDay`, partial below it, pending at zero. */
+export function stateForCount(count: number, timesPerDay: number): DayState {
+  return count >= timesPerDay ? 'done' : count > 0 ? 'partial' : 'pending';
 }
 
 /** The habit list last seen for a user, so the app can schedule reminders while offline. */
@@ -21,10 +46,17 @@ export interface CachedHabits {
 }
 
 /** The habit with `edit` applied to its `today` entry when the edit is for that day (optimistic view). */
-export function withDayEdit(habit: Habit, edit: DayEdit): Habit {
-  if (habit.today.date !== edit.date) return habit;
+export function withDayEdit(habit: Habit, edit: QueueEdit): Habit {
+  if (!isDayEdit(edit) || edit.habitId !== habit.id || habit.today.date !== edit.date) return habit;
+  const target = habit.timesPerDay ?? 1;
+  if (edit.count !== undefined) {
+    const state = stateForCount(edit.count, target);
+    const completed = state === 'done' ? true : null;
+    return { ...habit, today: { date: edit.date, state, completed, count: edit.count } };
+  }
   const state = edit.completed === true ? 'done' : edit.completed === false ? 'notdone' : 'pending';
-  return { ...habit, today: { date: edit.date, state, completed: edit.completed } };
+  const count = edit.completed === true ? target : 0;
+  return { ...habit, today: { date: edit.date, state, completed: edit.completed, count } };
 }
 
 const dbName = 'ember-device';
@@ -67,7 +99,7 @@ export class DeviceStore {
   }
 
   /** Appends an edit to the user's queue. */
-  async addEdit(userId: string, edit: DayEdit): Promise<void> {
+  async addEdit(userId: string, edit: QueueEdit): Promise<void> {
     await done((await this.store(edits, 'readwrite')).add({ ...edit, userId }));
   }
 
