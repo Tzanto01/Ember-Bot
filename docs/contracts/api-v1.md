@@ -303,3 +303,5 @@ snake_case like today, plus `"format_version": 2` at the top level (an export wi
 - `journal_key`: `{ passphrase: { salt, iterations, iv, wrapped }, recovery: { salt, iv, wrapped } }` or null.
 - Ids in a file are only references inside that file; import assigns new ids and remaps `routine_id`, log `habit_id` and `custom:<id>` moods inside plaintext notes. `account`, push subscriptions, DM state and consent fields are ignored on import.
 - The CSV export gets the matching columns and record types; import is JSON only.
+- `POST /api/me/import` alone accepts bodies up to 5 MiB (signed-in callers only; every other endpoint keeps the 64 KiB cap). Larger → 413.
+- Upgrading with the private journal chosen: the client imports everything except `moods` and `day_notes` (sent empty, since the server can't remap mood ids inside ciphertext), then creates the journal key and uploads encrypted moods and entries through the journal endpoints. No plaintext journal data is ever sent. The local copy stays until every step succeeded, and a retry resumes where it stopped.
