@@ -143,4 +143,19 @@ describe('HistoryPage', () => {
     expect(container.querySelector('#day-2026-11-03')).toHaveAttribute('aria-expanded', 'false');
     expect(container.querySelector('#day-panel')).toBeNull();
   });
+  it('names a partly done day "2 of 3 done" and steps its count with an absolute value', async () => {
+    const container = renderHistory();
+    await answerHabits(f, [{ ...habit, timesPerDay: 3 }]);
+    await answerMonth(f, 1, '2026-11-01', '2026-11-04', [
+      { date: '2026-11-03', state: 'partial', completed: null, count: 2 },
+    ]);
+
+    const day = await screen.findByRole('button', { name: /(3 November|November 3).*, 2 of 3 done$/ });
+    await userEvent.click(day);
+    const panel = container.querySelector<HTMLElement>('#day-panel')!;
+    expect(within(panel).getByText('2 of 3 done')).toBeInTheDocument();
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'One more check-in' }));
+    expect((await f.next('PUT', '/api/habits/1/days/2026-11-03')).body).toEqual({ count: 3 });
+  });
 });

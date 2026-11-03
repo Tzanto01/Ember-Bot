@@ -4,7 +4,9 @@ import type { DayState, LocalDateString } from '@/lib/models';
 const items: { state: DayState; text: string; date?: LocalDateString }[] = [
   { state: 'done', text: 'Done' },
   { state: 'notdone', text: 'Not checked in' },
+  { state: 'partial', text: 'Partly done' },
   { state: 'pending', text: 'Still open' },
+  { state: 'offday', text: 'Rest day' },
   { state: 'lowday', text: 'Low day' },
   { state: 'paused', text: 'Paused' },
   { state: 'beforestart', text: 'Before the habit started', date: '2026-01-07' },

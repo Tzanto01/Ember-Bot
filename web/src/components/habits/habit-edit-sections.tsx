@@ -4,7 +4,14 @@ import { flushSync } from 'react-dom';
 import { Link, useNavigate } from 'react-router';
 import { DayCell } from '@/components/day-cell';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
-import { HabitFields, habitFormValue, habitNameError, habitToForm } from '@/components/habits/habit-fields';
+import {
+  habitDaysError,
+  HabitFields,
+  habitFormValue,
+  habitNameError,
+  habitToForm,
+} from '@/components/habits/habit-fields';
+import { routineTitle } from '@/components/routines/routine-title';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
@@ -14,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { env } from '@/lib/env';
 import { formatDate } from '@/lib/local-date';
-import type { Habit, HabitPatch, LocalDateString, ReminderChannel } from '@/lib/models';
+import type { Habit, HabitPatch, LocalDateString, ReminderChannel, Routine } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api, auth, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
@@ -38,8 +45,11 @@ export interface SectionProps {
   onChange: (habit: Habit) => void;
 }
 
-/** "Details": the habit form; sends only the changed fields, or says "Nothing has changed yet.". */
-export function DetailsSection({ habit, onChange }: SectionProps) {
+/**
+ * "Details": the habit form; sends only the changed fields, or says "Nothing has changed yet.". With `routine`
+ * (the habit's routine) it links there and, when that routine has a reminder, shows it replacing the habit's own.
+ */
+export function DetailsSection({ habit, onChange, routine = null }: SectionProps & { routine?: Routine | null }) {
   const root = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState(() => habitToForm(habit));
   const [touched, setTouched] = useState(false);
@@ -69,7 +79,7 @@ export function DetailsSection({ habit, onChange }: SectionProps) {
       setFeedback(null);
       setTouched(true);
     });
-    if (habitNameError(form.name)) {
+    if (habitNameError(form.name) || habitDaysError(form)) {
       focusFirstInvalid(root.current);
       return;
     }
@@ -78,6 +88,9 @@ export function DetailsSection({ habit, onChange }: SectionProps) {
     if (value.name !== habit.name) patch.name = value.name;
     if (value.frequency !== habit.frequency) patch.frequency = value.frequency;
     if (value.frequency === 'weekly' && value.weeklyTarget !== habit.weeklyTarget) patch.weeklyTarget = value.weeklyTarget;
+    if (value.days !== null ? value.days.join() !== (habit.days ?? []).join() : habit.days !== null)
+      patch.days = value.days;
+    if (value.timesPerDay !== habit.timesPerDay) patch.timesPerDay = value.timesPerDay;
     if (value.reminderTime === null && habit.reminderTime !== null) patch.clearReminder = true;
     else if (value.reminderTime !== null && value.reminderTime !== habit.reminderTime)
       patch.reminderTime = value.reminderTime;
@@ -106,9 +119,25 @@ export function DetailsSection({ habit, onChange }: SectionProps) {
         touched={touched}
         onTouched={() => setTouched(true)}
         errors={fieldErrors}
+        savedTimesPerDay={habit.frequency === 'weekly' ? undefined : habit.timesPerDay}
+        reminderNote={
+          routine?.reminderTime &&
+          `Your ${routineTitle(routine.name)} reminds you at ${routine.reminderTime} instead, while this habit is part of it.`
+        }
       />
       <p className="text-[14px] text-muted-foreground">
         Grace days apply to all your habits. You can change them in <Link to="/settings">Settings</Link>.
+      </p>
+      <p className="text-[14px] text-muted-foreground">
+        {routine ? (
+          <>
+            Part of your <Link to={`/routines/${routine.id}/edit`}>{routineTitle(routine.name)}</Link>.
+          </>
+        ) : (
+          <>
+            Habits you do together can share one reminder in <Link to="/routines">Routines</Link>.
+          </>
+        )}
       </p>
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       <Button type="submit" block aria-disabled={save.isPending || undefined}>
@@ -138,17 +167,40 @@ const webChannels: { channel: Exclude<ReminderChannel, 'mobile'>; label: string 
   { channel: 'webpush', label: 'Web push' },
 ];
 
+export interface ChannelsSectionProps {
+  /** What the reminders belong to, in the copy: "this habit" or "this routine". */
+  subject: 'habit' | 'routine';
+  channels: ReminderChannel[];
+  /** Device key for the channels to restore when "Remind me on this phone" is turned off. */
+  memoryKey: string;
+  hasReminderTime: boolean;
+  /** Saves the channels and hands the server's answer to the page. */
+  save: (next: ReminderChannel[]) => Promise<void>;
+}
+
+/** {@link ChannelsSection} for a habit, saving through `PATCH /api/habits/{id}`. */
+export function HabitChannelsSection({ habit, channels, onChange }: SectionProps & { channels: ReminderChannel[] }) {
+  return (
+    <ChannelsSection
+      subject="habit"
+      channels={channels}
+      memoryKey={`ember.channelsBeforePhone.${habit.id}`}
+      hasReminderTime={habit.reminderTime !== null}
+      save={async (next) => onChange(await api.updateHabit(habit.id, { reminderChannels: next }))}
+    />
+  );
+}
+
 /**
  * "Where reminders go". Adding Discord DM or Web push drops `mobile`; native "Remind me on this phone" sets the
  * channels to `mobile` only, and turning it off restores the channels remembered on this device under
- * `ember.channelsBeforePhone.{habitId}`, else `discord` when Discord is linked, else `webpush`.
+ * `memoryKey`, else `discord` when Discord is linked, else `webpush`.
  */
-export function ChannelsSection({ habit, channels, onChange }: SectionProps & { channels: ReminderChannel[] }) {
+export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime, save }: ChannelsSectionProps) {
   const me = useStore(auth.me);
   const pushAvailable = useStore(push.available);
   const [shown, setShown] = useState<{ base: ReminderChannel[]; next: ReminderChannel[] } | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const memoryKey = `ember.channelsBeforePhone.${habit.id}`;
 
   useEffect(() => {
     if (!env.native) void push.check();
@@ -157,11 +209,11 @@ export function ChannelsSection({ habit, channels, onChange }: SectionProps & { 
   const change = useMutation({
     mutationFn: async ({ next, phone }: ChannelChange) => {
       const allowed = phone ? ((await reminders?.requestPermission().catch(() => false)) ?? false) : true;
-      return { updated: await api.updateHabit(habit.id, { reminderChannels: next }), allowed };
+      await save(next);
+      return allowed;
     },
-    onSuccess: ({ updated, allowed }, { phone, before }) => {
+    onSuccess: (allowed, { phone, before }) => {
       setShown(null);
-      onChange(updated);
       if (phone === true) localStorage.setItem(memoryKey, JSON.stringify(before ?? []));
       else if (phone === false) localStorage.removeItem(memoryKey);
       setFeedback(
@@ -251,13 +303,13 @@ export function ChannelsSection({ habit, channels, onChange }: SectionProps & { 
       </div>
       {channels.includes('mobile') && (
         <p className="text-[14px] text-muted-foreground">
-          Reminders for this habit come to your phone only, not Discord or web push, so you get each one once.
+          Reminders for this {subject} come to your phone only, not Discord or web push, so you get each one once.
         </p>
       )}
       {channels.length === 0 ? (
-        <p className="text-[14px] text-muted-foreground">No reminders will go out for this habit. That's fine too.</p>
+        <p className="text-[14px] text-muted-foreground">No reminders will go out for this {subject}. That's fine too.</p>
       ) : (
-        !habit.reminderTime && (
+        !hasReminderTime && (
           <p className="text-[14px] text-muted-foreground">
             Set a reminder time above so these have a moment to arrive.
           </p>
