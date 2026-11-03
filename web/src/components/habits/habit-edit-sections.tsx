@@ -23,7 +23,7 @@ import { env } from '@/lib/env';
 import { formatDate } from '@/lib/local-date';
 import type { Habit, HabitPatch, LocalDateString, ReminderChannel, Routine } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
-import { api, auth, push, reminders } from '@/lib/services';
+import { api, auth, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
 interface Feedback {
@@ -199,11 +199,12 @@ export function HabitChannelsSection({ habit, channels, onChange }: SectionProps
 export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime, save }: ChannelsSectionProps) {
   const me = useStore(auth.me);
   const pushAvailable = useStore(push.available);
+  const local = useStore(localMode.mode) === 'local';
   const [shown, setShown] = useState<{ base: ReminderChannel[]; next: ReminderChannel[] } | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
-    if (!env.native) void push.check();
+    if (!env.native && !local) void push.check();
   }, []);
 
   const change = useMutation({
@@ -260,11 +261,11 @@ export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime,
       previous = null;
     }
     const fallback: ReminderChannel[] = me?.discord.linked ? ['discord'] : ['webpush'];
-    send({ next: previous ?? fallback, phone: false });
+    send({ next: local ? [] : (previous ?? fallback), phone: false });
   }
 
   const boxes = [
-    ...webChannels.map(({ channel, label }) => ({
+    ...(local ? [] : webChannels).map(({ channel, label }) => ({
       key: channel,
       label,
       checked: current.includes(channel),
@@ -287,26 +288,30 @@ export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime,
       <h2 id="channels-heading" className="text-[22px]">
         Where reminders go
       </h2>
-      <div role="group" aria-label="Reminder channels" className="flex flex-col gap-1">
-        {boxes.map((box) => (
-          <div key={box.key} className="flex min-h-[44px] items-center gap-3">
-            <Checkbox
-              id={`channel-${box.key}`}
-              checked={box.checked}
-              onCheckedChange={(checked) => box.onChange(checked === true)}
-            />
-            <Label htmlFor={`channel-${box.key}`} className="cursor-pointer font-normal">
-              {box.label}
-            </Label>
-          </div>
-        ))}
-      </div>
-      {channels.includes('mobile') && (
+      {local && !env.native ? (
+        <p className="text-muted-foreground">Reminders need the Ember app or an account.</p>
+      ) : (
+        <div role="group" aria-label="Reminder channels" className="flex flex-col gap-1">
+          {boxes.map((box) => (
+            <div key={box.key} className="flex min-h-[44px] items-center gap-3">
+              <Checkbox
+                id={`channel-${box.key}`}
+                checked={box.checked}
+                onCheckedChange={(checked) => box.onChange(checked === true)}
+              />
+              <Label htmlFor={`channel-${box.key}`} className="cursor-pointer font-normal">
+                {box.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+      )}
+      {channels.includes('mobile') && !local && (
         <p className="text-[14px] text-muted-foreground">
           Reminders for this {subject} come to your phone only, not Discord or web push, so you get each one once.
         </p>
       )}
-      {channels.length === 0 ? (
+      {local && !env.native ? null : channels.length === 0 ? (
         <p className="text-[14px] text-muted-foreground">No reminders will go out for this {subject}. That's fine too.</p>
       ) : (
         !hasReminderTime && (
@@ -315,7 +320,7 @@ export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime,
           </p>
         )
       )}
-      {pushAvailable && (
+      {pushAvailable && !local && (
         <p className="text-[14px] text-muted-foreground">
           Web push also needs this browser turned on for notifications in{' '}
           <Link to={{ pathname: '/settings', hash: 'push' }}>Settings</Link>.

@@ -307,7 +307,8 @@ function setMembers(data: LocalData, routineId: number, habitIds: number[]): voi
   }
 }
 
-function earliestStart(data: LocalData): string | null {
+/** The earliest start day of the device's habits, or null without habits. */
+export function earliestStart(data: LocalData): string | null {
   const starts = data.habits.map((h) => habitStartDate(h, data.profile.timezone)).sort();
   return starts[0] ?? null;
 }
@@ -335,7 +336,13 @@ export class LocalBackend {
   ) {
     this.now = options.now ?? (() => new Date());
     const id = (m: RegExpExecArray, index = 1) => Number(m[index]);
-    const date = (m: RegExpExecArray, index: number) => decodeURIComponent(m[index]);
+    const date = (m: RegExpExecArray, index: number) => {
+      try {
+        return decodeURIComponent(m[index]);
+      } catch {
+        throw invalidField('date', dateMessage);
+      }
+    };
     this.routes = [
       ['GET', /^\/api\/auth\/antiforgery$/, async () => empty()],
       ['POST', /^\/api\/auth\/logout$/, async () => empty()],
@@ -872,18 +879,16 @@ function allowedMood(data: LocalData, mood: string): boolean {
 }
 
 async function backupText(store: LocalStore, now: Date): Promise<{ text: string; fileName: string }> {
-  const data = await store.update((d) => {
-    d.profile.lastBackupAt = now.toISOString();
-    return d;
-  });
+  const data = await store.load();
+  if (!data) throw new Error('No device data.');
   return {
-    text: JSON.stringify(exportDocument(data), null, 2),
+    text: JSON.stringify(exportDocument(data)),
     fileName: `ember-backup-${localToday(data.profile.timezone, now)}.json`,
   };
 }
 
-/** Builds the backup file (`ember-backup-<local today>.json`) and records the backup time on the device. */
-export async function exportBackupFile(store: LocalStore, now: Date): Promise<{ blob: Blob; fileName: string }> {
+/** Builds the backup file (`ember-backup-<local today>.json`); the backup time is recorded once the file is saved. */
+export async function exportBackupFile(store: LocalStore, now: Date = new Date()): Promise<{ blob: Blob; fileName: string }> {
   const { text, fileName } = await backupText(store, now);
   return { blob: new Blob([text], { type: 'application/json' }), fileName };
 }

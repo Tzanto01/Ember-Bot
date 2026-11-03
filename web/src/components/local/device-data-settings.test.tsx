@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ParsedBackup } from '@/lib/local/types';
+import { saveExport } from '@/lib/native/save-file';
 import { backup } from '@/lib/services';
 import { DeviceDataSettings } from './device-data-settings';
 
@@ -12,7 +13,12 @@ vi.mock('@/lib/services', async () => {
   return {
     auth: { loadMe: vi.fn(async () => null) },
     localMode: { mode: new Store('local'), evicted: new Store(false), beginUpgrade: vi.fn() },
-    backup: { exportBackup: vi.fn(), parseBackup: vi.fn(), restoreBackup: vi.fn(async () => {}) },
+    backup: {
+      exportBackup: vi.fn(async () => ({})),
+      markBackedUp: vi.fn(async () => {}),
+      parseBackup: vi.fn(),
+      restoreBackup: vi.fn(async () => {}),
+    },
   };
 });
 vi.mock('@/lib/native/save-file', () => ({ saveExport: vi.fn(async () => true) }));
@@ -93,5 +99,30 @@ describe('DeviceDataSettings', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent("This file isn't an Ember backup.");
     expect(screen.queryByRole('button', { name: 'Replace my data' })).toBeNull();
+  });
+
+  it('turns down a file over 5 MiB without reading it', async () => {
+    renderCard();
+
+    await chooseBackup('x'.repeat(5 * 1024 * 1024 + 1));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This file is too big to be an Ember backup.');
+    expect(backup.parseBackup).not.toHaveBeenCalled();
+  });
+
+  it('records the backup only after the file was saved, not when the picker is cancelled', async () => {
+    vi.mocked(saveExport).mockResolvedValueOnce(false);
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Export backup' }));
+    expect(saveExport).toHaveBeenCalledOnce();
+    expect(backup.markBackedUp).not.toHaveBeenCalled();
+    expect(screen.queryByText('Backup saved.')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Export backup' }));
+
+    expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
+    expect(backup.markBackedUp).toHaveBeenCalledOnce();
   });
 });

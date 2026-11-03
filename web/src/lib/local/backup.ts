@@ -283,7 +283,7 @@ export class BackupService implements BackupApi {
   constructor(private readonly store: LocalStore) {}
 
   exportBackup(): Promise<ExportFile> {
-    return exportBackupFile(this.store, new Date());
+    return exportBackupFile(this.store);
   }
 
   parseBackup(text: string): ParsedBackup | { error: string } {
@@ -296,40 +296,41 @@ export class BackupService implements BackupApi {
 
   async restoreBackup(backup: ParsedBackup): Promise<void> {
     const { settings, ...data } = backup.data;
-    const current =
-      (await this.store.load()) ?? newLocalData({ timezone: settings.timezone, theme: settings.theme }, new Date());
-    const habit = current.profile.nextIds.habit - 1;
-    const routine = current.profile.nextIds.routine - 1;
-    const mood = current.profile.nextIds.mood - 1;
-    const next: LocalData = {
-      profile: {
-        ...current.profile,
-        timezone: settings.timezone,
-        graceDaysPerWeek: settings.graceDaysPerWeek,
-        theme: settings.theme,
-        nextIds: {
-          habit: habit + data.habits.length + 1,
-          routine: routine + data.routines.length + 1,
-          mood: mood + data.moods.length + 1,
+    await this.store.upsert((stored) => {
+      const current = stored ?? newLocalData({ timezone: settings.timezone, theme: settings.theme }, new Date());
+      const habit = current.profile.nextIds.habit - 1;
+      const routine = current.profile.nextIds.routine - 1;
+      const mood = current.profile.nextIds.mood - 1;
+      const next: LocalData = {
+        profile: {
+          ...current.profile,
+          timezone: settings.timezone,
+          graceDaysPerWeek: settings.graceDaysPerWeek,
+          theme: settings.theme,
+          nextIds: {
+            habit: habit + data.habits.length + 1,
+            routine: routine + data.routines.length + 1,
+            mood: mood + data.moods.length + 1,
+          },
         },
-      },
-      habits: data.habits.map((h) => ({
-        ...h,
-        id: h.id + habit,
-        days: h.days && [...h.days],
-        reminderChannels: [...h.reminderChannels],
-        routineId: h.routineId === null ? null : h.routineId + routine,
-      })),
-      logs: data.logs.map((l) => ({ ...l, habitId: l.habitId + habit })),
-      lowDays: [...data.lowDays],
-      routines: data.routines.map((r) => ({ ...r, id: r.id + routine, reminderChannels: [...r.reminderChannels] })),
-      moods: data.moods.map((m) => ({ ...m, id: m.id + mood })),
-      notes: data.notes.map((n) => ({
-        ...n,
-        mood: n.mood?.startsWith('custom:') ? `custom:${Number(n.mood.slice(7)) + mood}` : n.mood,
-      })),
-    };
-    await this.store.replace(next);
+        habits: data.habits.map((h) => ({
+          ...h,
+          id: h.id + habit,
+          days: h.days && [...h.days],
+          reminderChannels: [...h.reminderChannels],
+          routineId: h.routineId === null ? null : h.routineId + routine,
+        })),
+        logs: data.logs.map((l) => ({ ...l, habitId: l.habitId + habit })),
+        lowDays: [...data.lowDays],
+        routines: data.routines.map((r) => ({ ...r, id: r.id + routine, reminderChannels: [...r.reminderChannels] })),
+        moods: data.moods.map((m) => ({ ...m, id: m.id + mood })),
+        notes: data.notes.map((n) => ({
+          ...n,
+          mood: n.mood?.startsWith('custom:') ? `custom:${Number(n.mood.slice(7)) + mood}` : n.mood,
+        })),
+      };
+      return next;
+    });
   }
 
   async backupReminderDue(now: Date = new Date()): Promise<boolean> {
@@ -338,6 +339,13 @@ export class BackupService implements BackupApi {
     const { lastBackupAt, createdAt, backupReminderSnoozedUntil } = data.profile;
     if (backupReminderSnoozedUntil && now.getTime() < Date.parse(backupReminderSnoozedUntil)) return false;
     return now.getTime() - Date.parse(lastBackupAt ?? createdAt) >= reminderMs;
+  }
+
+  async markBackedUp(now: Date = new Date()): Promise<void> {
+    await this.store.update((d) => {
+      d.profile.lastBackupAt = now.toISOString();
+      return d;
+    });
   }
 
   async snoozeBackupReminder(now: Date = new Date()): Promise<void> {

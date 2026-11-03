@@ -14,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UpgradeSummary } from '@/lib/local/types';
-import { auth, upgrade } from '@/lib/services';
+import { saveExport } from '@/lib/native/save-file';
+import { auth, backup, localMode, upgrade } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
 type Step = { step: 'form' } | { step: 'recovery'; code: string } | { step: 'conflict'; message: string };
@@ -59,6 +60,8 @@ export default function KeepDataPage() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState('');
   useFocusHeadingOnChange(step.step);
 
   const needsPassword = privateJournal && !!me?.hasPassword;
@@ -106,6 +109,34 @@ export default function KeepDataPage() {
     else if (result.reason === 'failed') setProblem(result.message);
   }
 
+  async function finish(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      await localMode.finishUpgrade();
+      await navigate('/today');
+    } catch {
+      setProblem("That didn't work just now. You can try again.");
+      setBusy(false);
+    }
+  }
+
+  async function exportFirst(): Promise<void> {
+    if (exporting) return;
+    setExporting(true);
+    setExported('');
+    try {
+      if (await saveExport(await backup.exportBackup())) {
+        await backup.markBackedUp();
+        setExported('Backup saved.');
+      }
+    } catch {
+      setExported("The backup couldn't be saved. You can try again.");
+    }
+    setExporting(false);
+  }
+
   async function otherAccount(): Promise<void> {
     if (leaving) return;
     setLeaving(true);
@@ -148,6 +179,12 @@ export default function KeepDataPage() {
 
   const data = summary.data;
   const hasJournal = !!data && data.notes + data.moods > 0;
+  const leftOut = [
+    data?.leftOut?.notes ? plural(data.leftOut.notes, 'journal entry', 'journal entries') : '',
+    data?.leftOut?.lowDays ? plural(data.leftOut.lowDays, 'low day', 'low days') : '',
+  ]
+    .filter(Boolean)
+    .join(' and ');
   return (
     <>
       <PageHeader title="Keep your data" lede="Move what's on this device into your account." />
@@ -168,15 +205,39 @@ export default function KeepDataPage() {
       ) : !data ? (
         <>
           <p>There's nothing from this device waiting to move.</p>
-          <Button type="button" block onClick={() => void navigate('/today')}>
+          {problem && (
+            <Notice tone="notice">
+              <p>{problem}</p>
+            </Notice>
+          )}
+          <BusyButton type="button" block busy={busy} busyLabel="One moment…" onClick={() => void finish()}>
             Continue
-          </Button>
+          </BusyButton>
         </>
       ) : (
         <form ref={form} noValidate onSubmit={(event) => void move(event)} className="flex flex-col gap-4">
           <p>
             On this device: <strong>{summaryText(data)}</strong>.
           </p>
+          {leftOut && (
+            <Notice>
+              <p>
+                {leftOut} from before your first habit can't be moved to the account. They stay in your device backup.
+              </p>
+              <BusyButton
+                type="button"
+                variant="secondary"
+                busy={exporting}
+                busyLabel="Preparing…"
+                onClick={() => void exportFirst()}
+              >
+                Export backup first
+              </BusyButton>
+              <p role="status" className="text-[14px]">
+                {exported}
+              </p>
+            </Notice>
+          )}
           {hasJournal && (
             <div className="flex items-start gap-3">
               <div className="flex min-h-[44px] items-center">

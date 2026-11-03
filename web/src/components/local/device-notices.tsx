@@ -47,6 +47,7 @@ export function DeviceNotices() {
     setProblem(null);
     try {
       if (await saveExport(await backup.exportBackup())) {
+        await backup.markBackedUp();
         setHidden(true);
         setSaved(true);
       }

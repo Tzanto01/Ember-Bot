@@ -65,7 +65,10 @@ export function DeviceDataSettings() {
   async function exportBackup(): Promise<void> {
     if (!begin('export')) return;
     try {
-      if (await saveExport(await backup.exportBackup())) setDone('Backup saved.');
+      if (await saveExport(await backup.exportBackup())) {
+        await backup.markBackedUp();
+        setDone('Backup saved.');
+      }
     } catch {
       setProblem("The backup couldn't be saved. You can try again.");
     }
@@ -77,6 +80,11 @@ export function DeviceDataSettings() {
     event.target.value = '';
     if (!file || !begin('import')) return;
     setPending(null);
+    if (file.size > 5 * 1024 * 1024) {
+      setProblem('This file is too big to be an Ember backup.');
+      setBusy(null);
+      return;
+    }
     let text: string;
     try {
       text = await file.text();

@@ -4,29 +4,13 @@ const dbName = 'ember-local';
 const storeName = 'data';
 const key = 'data';
 
-function done<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function committed(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error ?? new Error('Transaction aborted'));
-  });
-}
-
 /**
  * No-account mode's device data: the whole {@link LocalData} as one IndexedDB record (database `ember-local`), so every
- * write is all or nothing. Reads and writes run one after another in call order; the last written value is cached.
+ * write is all or nothing. Every read goes to IndexedDB and every change is a read-modify-write inside one readwrite
+ * transaction, so several tabs never overwrite each other's changes.
  */
 export class LocalStore {
   private db: Promise<IDBDatabase> | null = null;
-  private cache: LocalData | null | undefined;
-  private queue: Promise<unknown> = Promise.resolve();
 
   private open(): Promise<IDBDatabase> {
     this.db ??= new Promise<IDBDatabase>((resolve, reject) => {
@@ -41,65 +25,67 @@ export class LocalStore {
     return this.db;
   }
 
-  private serial<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.queue.then(task, task);
-    this.queue = run.catch(() => undefined);
-    return run;
-  }
-
-  private async read(): Promise<LocalData | null> {
-    if (this.cache !== undefined) return this.cache;
-    const db = await this.open();
-    const value = (await done(db.transaction(storeName, 'readonly').objectStore(storeName).get(key))) as
-      | LocalData
-      | undefined;
-    this.cache = value ?? null;
-    return this.cache;
-  }
-
-  private async write(data: LocalData | null): Promise<void> {
-    const transaction = (await this.open()).transaction(storeName, 'readwrite');
+  private async transact<T>(
+    mode: IDBTransactionMode,
+    run: (objects: IDBObjectStore, current: LocalData | null) => T,
+  ): Promise<T> {
+    const transaction = (await this.open()).transaction(storeName, mode);
     const objects = transaction.objectStore(storeName);
-    if (data) objects.put(data, key);
-    else objects.delete(key);
-    await committed(transaction);
-    this.cache = data;
-  }
-
-  /** A copy of the device data, or null when there is none. */
-  load(): Promise<LocalData | null> {
-    return this.serial(async () => {
-      const data = await this.read();
-      return data && structuredClone(data);
+    return new Promise<T>((resolve, reject) => {
+      let result: T;
+      let failure: unknown = null;
+      const get = objects.get(key);
+      get.onsuccess = () => {
+        try {
+          result = run(objects, (get.result as LocalData | undefined) ?? null);
+        } catch (error) {
+          failure = error;
+          transaction.abort();
+        }
+      };
+      transaction.oncomplete = () => resolve(result);
+      transaction.onerror = transaction.onabort = () =>
+        reject(failure ?? transaction.error ?? new Error('Transaction aborted'));
     });
   }
 
+  /** The device data, or null when there is none. */
+  load(): Promise<LocalData | null> {
+    return this.transact('readonly', (_objects, current) => current);
+  }
+
   /** True when device data exists. */
-  exists(): Promise<boolean> {
-    return this.serial(async () => (await this.read()) !== null);
+  async exists(): Promise<boolean> {
+    return (await this.load()) !== null;
   }
 
   /**
-   * Writes `fn(current)` after every earlier write; `fn` gets a copy it may change. Rejects (writing nothing) when there
-   * is no device data or `fn` throws. Resolves a copy of what was written.
+   * Writes `fn(current)` in the same transaction that read `current` (`fn` is synchronous and may change its argument).
+   * Rejects, writing nothing, when there is no device data or `fn` throws. Resolves what was written.
    */
   update(fn: (data: LocalData) => LocalData): Promise<LocalData> {
-    return this.serial(async () => {
-      const current = await this.read();
+    return this.upsert((current) => {
       if (!current) throw new Error('No device data.');
-      const next = fn(structuredClone(current));
-      await this.write(next);
-      return structuredClone(next);
+      return fn(current);
+    });
+  }
+
+  /** Like {@link update}, but `fn` also runs (with null) when there is no device data yet. */
+  upsert(fn: (data: LocalData | null) => LocalData): Promise<LocalData> {
+    return this.transact('readwrite', (objects, current) => {
+      const next = fn(current);
+      objects.put(next, key);
+      return next;
     });
   }
 
   /** Replaces all device data in one write. */
   replace(data: LocalData): Promise<void> {
-    return this.serial(() => this.write(structuredClone(data)));
+    return this.upsert(() => data).then(() => undefined);
   }
 
   /** Deletes the device data. */
   clear(): Promise<void> {
-    return this.serial(() => this.write(null));
+    return this.transact('readwrite', (objects) => void objects.delete(key));
   }
 }

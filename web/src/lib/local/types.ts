@@ -89,6 +89,8 @@ export interface UpgradeProgress {
   importSent: boolean;
   /** The account holds the habits, check-ins and low days (and, for a plain journal, the journal). */
   imported: boolean;
+  /** The import left moods and entries out (private journal): they still have to go up encrypted before the device copy goes. */
+  journalOmitted: boolean;
   /** Private journal: the journal key exists in the account. */
   journalEnabled: boolean;
   /** Private journal: the one-time recovery code, kept on the device only until the upgrade finishes. */
@@ -117,6 +119,8 @@ export interface LocalModeApi {
   cancelUpgrade(): Promise<void>;
   /** Deletes the device data and returns to the welcome screen (mode `account`, signed out). */
   wipe(): Promise<void>;
+  /** Leaves `upgrading` for the account mode (after the move, or when no device data is left to move). */
+  finishUpgrade(): void;
 }
 
 /** What a backup file holds, for the confirmation before it replaces the device data. */
@@ -146,6 +150,8 @@ export interface BackupApi {
   restoreBackup(backup: ParsedBackup): Promise<void>;
   /** True when a backup is due: 30 days since the last backup (or since the profile was made) and not snoozed. */
   backupReminderDue(now?: Date): Promise<boolean>;
+  /** Records the backup time; call once the exported file was saved. */
+  markBackedUp(now?: Date): Promise<void>;
   /** Quiets the backup reminder for 30 days. */
   snoozeBackupReminder(now?: Date): Promise<void>;
 }
@@ -156,6 +162,8 @@ export interface UpgradeSummary {
   checkIns: number;
   notes: number;
   moods: number;
+  /** Entries and low days the move can't take along (dated before the earliest habit start; every entry when there are no habits); they go with the device copy. */
+  leftOut?: { notes: number; lowDays: number };
 }
 
 export type UpgradeResult =

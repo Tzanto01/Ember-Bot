@@ -1,7 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { auth, localMode, upgrade } from '@/lib/services';
+import { saveExport } from '@/lib/native/save-file';
+import { auth, backup, localMode, upgrade } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { renderPage } from '@/test-utils';
 import KeepDataPage from './keep-data';
@@ -10,10 +11,17 @@ vi.mock('@/lib/services', async (original) => {
   const { Store } = await import('@/lib/store');
   return {
     ...(await original<typeof import('@/lib/services')>()),
-    localMode: { mode: new Store('upgrading'), evicted: new Store(false), cancelUpgrade: vi.fn(async () => {}) },
+    localMode: {
+      mode: new Store('upgrading'),
+      evicted: new Store(false),
+      cancelUpgrade: vi.fn(async () => {}),
+      finishUpgrade: vi.fn(async () => {}),
+    },
     upgrade: { summary: vi.fn(), run: vi.fn() },
+    backup: { exportBackup: vi.fn(async () => ({})), markBackedUp: vi.fn(async () => {}) },
   };
 });
+vi.mock('@/lib/native/save-file', () => ({ saveExport: vi.fn(async () => true) }));
 
 const summary = { habits: 12, checkIns: 340, notes: 8, moods: 0 };
 
@@ -122,5 +130,36 @@ describe('KeepDataPage', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
     expect(upgrade.run).toHaveBeenCalledTimes(2);
+  });
+
+  it('with nothing waiting, Continue finishes the upgrade before going to Today', async () => {
+    vi.mocked(upgrade.summary).mockResolvedValue(null);
+    const router = renderPage('/keep-data', KeepDataPage, '/keep-data');
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Continue' }));
+
+    expect(localMode.finishUpgrade).toHaveBeenCalledOnce();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+  });
+
+  it('says which entries stay behind and records a backup only once it was saved', async () => {
+    vi.mocked(upgrade.summary).mockResolvedValue({ ...summary, leftOut: { notes: 3, lowDays: 1 } });
+    vi.mocked(saveExport).mockResolvedValueOnce(false);
+    const user = userEvent.setup();
+    await open();
+
+    expect(
+      screen.getByText(
+        "3 journal entries and 1 low day from before your first habit can't be moved to the account. They stay in your device backup.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Export backup first' }));
+    expect(saveExport).toHaveBeenCalledOnce();
+    expect(backup.markBackedUp).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Export backup first' }));
+
+    expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
+    expect(backup.markBackedUp).toHaveBeenCalledOnce();
   });
 });

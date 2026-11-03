@@ -43,23 +43,35 @@ export class LocalMode implements LocalModeApi {
     private readonly options: { native: boolean },
   ) {}
 
-  /** Restores the mode at app start, before anything calls the API. Never throws. */
+  /**
+   * Restores the mode at app start, before anything calls the API. `upgrading` without device data left goes back to the
+   * account mode; `local` without device data starts a fresh profile and sets `evicted`. A storage read error changes
+   * nothing (the local API then answers with errors). Never throws.
+   */
   async init(): Promise<void> {
     const flag = readFlag();
     if (flag === 'upgrading') {
-      this.mode.set('upgrading');
+      if ((await this.store.exists().catch(() => true)) === false) this.leave();
+      else this.mode.set('upgrading');
       return;
     }
     if (flag !== 'local') return;
-    if (!(await this.store.exists().catch(() => false))) {
-      this.evicted.set(true);
-      await this.store.replace(this.fresh()).catch(() => undefined);
-    }
+    let evicted = false;
+    await this.store
+      .upsert((data) => {
+        if (data) return data;
+        evicted = true;
+        return this.fresh();
+      })
+      .then(
+        () => this.evicted.set(evicted),
+        () => undefined,
+      );
     this.enterLocal();
   }
 
   async start(): Promise<void> {
-    if (!(await this.store.exists())) await this.store.replace(this.fresh());
+    await this.store.upsert((data) => data ?? this.fresh());
     if (!this.options.native) await navigator.storage?.persist?.().catch(() => false);
     this.enterLocal();
     await this.auth.loadMe(true);
@@ -79,7 +91,11 @@ export class LocalMode implements LocalModeApi {
       await this.auth.wipeDevice();
       this.auth.clearSession();
     }
-    if (!(await this.store.exists())) await this.store.replace(this.fresh());
+    await this.store.upsert((data) => {
+      if (!data) return this.fresh();
+      const { upgrade: _dropped, ...rest } = data;
+      return rest;
+    });
     this.enterLocal();
     await this.auth.loadMe(true);
   }
