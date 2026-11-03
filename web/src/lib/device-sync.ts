@@ -16,8 +16,8 @@ import { themeApplied } from './theme';
  * (`reminders` set) it also re-reads `me` on resume and rebuilds the local reminders after every sync and
  * whenever `me` holds a new time zone or the theme changes (the reminder icon follows its colour). When a user
  * is known whose zone was never set, it sends the device's zone (not UTC) once per user on this device (a failure
- * waits for the next app start). Native "Done" taps on a reminder and widget row taps check in through
- * {@link Reminders.checkIn} and open Today.
+ * waits for the next app start). Native "Done" taps on a reminder this app issued ({@link Reminders.wasIssued})
+ * and widget row taps check in through {@link Reminders.checkIn} and open Today.
  */
 export class DeviceSync {
   private userId: string | null = null;
@@ -105,7 +105,9 @@ export class DeviceSync {
     });
     const { LocalNotifications } = await import('@capacitor/local-notifications');
     await LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
-      void this.checkIn(event.actionId === doneAction ? event.notification.extra : null);
+      const { id, extra } = event.notification;
+      const done = event.actionId === doneAction && !!this.reminders?.wasIssued(id, extra);
+      void this.checkIn(done ? extra : null);
     });
     const { EmberWidget } = await capacitorWidget();
     await EmberWidget.addListener('widgetTap', (tap) => void this.checkIn(tap));
@@ -114,7 +116,7 @@ export class DeviceSync {
   /** Checks in `extra` (validated by {@link Reminders.checkIn}) for the signed-in user, then opens Today. */
   private async checkIn(extra: unknown): Promise<void> {
     const me = this.auth.me.get() ?? (await this.auth.loadMe().catch(() => null));
-    const name = me && extra ? await this.reminders?.checkIn(me.id, me.timezone, extra) : null;
+    const name = me && extra ? await this.reminders?.checkIn(me.id, me.timezone, extra, this.queue) : null;
     navigate('/today');
     if (name) this.nativeCheckIn.set({ name });
   }

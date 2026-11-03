@@ -1,8 +1,9 @@
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
 import type { ApiClient } from '../api-client';
 import { type DeviceStore, withDayEdit } from '../device-store';
-import { isLocalDate } from '../local-date';
+import { addDays, isLocalDate } from '../local-date';
 import type { Habit, LocalDateString, Routine } from '../models';
+import type { OfflineQueue } from '../offline-queue';
 import { asApiError } from '../problem';
 import { notificationColor } from '../theme';
 import { reminderNames } from './reminder-names';
@@ -16,6 +17,28 @@ export const doneActionType = 'ember-done';
 /** The `actionId` of the "Done" button. */
 export const doneAction = 'done';
 const channelId = 'reminders';
+const issuedKey = 'ember.reminderIssued';
+
+interface Issued {
+  id: number;
+  userId: string;
+  habitId: number;
+  date: LocalDateString;
+}
+
+function readIssued(): Issued[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(issuedKey) ?? '[]');
+    return Array.isArray(value) ? (value as Issued[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function unreachable(error: unknown): boolean {
+  const apiError = asApiError(error);
+  return apiError.status === 0 || (apiError.status === 504 && !apiError.problem);
+}
 
 const capacitorNotifications = () => import('@capacitor/local-notifications');
 
@@ -91,6 +114,7 @@ export class Reminders {
    */
   async clearAll(): Promise<void> {
     reminderNames.set(false);
+    localStorage.removeItem(issuedKey);
     this.chain = this.chain
       .then(async () => {
         await this.toWidget((widget) => widget.clear());
@@ -103,22 +127,53 @@ export class Reminders {
   }
 
   /**
+   * True when this app scheduled a notification with "Done" under `id` carrying exactly `extra` (recent days),
+   * so a notification action forged by another app through the exported activity is not acted on.
+   */
+  wasIssued(id: unknown, extra: unknown): boolean {
+    if (typeof extra !== 'object' || extra === null) return false;
+    const { userId, habitId, date } = extra as Record<string, unknown>;
+    return readIssued().some(
+      (issued) =>
+        issued.id === id &&
+        issued.userId === userId &&
+        issued.habitId === habitId &&
+        issued.date === date,
+    );
+  }
+
+  /**
    * "Done" from a reminder or a widget tap: when `extra` is a valid {@link checkInTarget} for `userId` and names a
-   * habit the app knows, adds one to that day's count (capped at `timesPerDay`) through the offline queue and
+   * habit the app knows (live list, or offline the cached one with queued edits), adds one to that day's count
+   * (capped at `timesPerDay`) with the absolute `PUT { count }`, queued in `queue` when the API is unreachable, and
    * resolves with the habit's name; anything stale, foreign or unreadable resolves null and writes nothing.
    */
-  async checkIn(userId: string, timeZone: string, extra: unknown): Promise<string | null> {
+  async checkIn(
+    userId: string,
+    timeZone: string,
+    extra: unknown,
+    queue: OfflineQueue,
+  ): Promise<string | null> {
     const target = checkInTarget(extra, userId);
     if (!target) return null;
     try {
-      const habit = (await this.load(userId, timeZone))?.habits.find(({ id }) => id === target.habitId);
+      const habit = (await this.load(userId, timeZone))?.habits.find(
+        ({ id }) => id === target.habitId,
+      );
       if (!habit) return null;
       const count =
         habit.today.date === target.date
           ? habit.today.count
           : ((await this.api.getDays(habit.id, target.date, target.date))[0]?.count ?? 0);
       const timesPerDay = habit.timesPerDay ?? 1;
-      if (count < timesPerDay) await this.api.setDayCount(habit.id, target.date, count + 1);
+      if (count < timesPerDay) {
+        const edit = { habitId: habit.id, date: target.date, completed: null, count: count + 1 };
+        await this.api
+          .setDayCount(edit.habitId, edit.date, edit.count)
+          .catch(async (error: unknown) => {
+            if (!unreachable(error) || !(await queue.add(edit))) throw error;
+          });
+      }
       return habit.name;
     } catch {
       return null;
@@ -164,7 +219,9 @@ export class Reminders {
         importance: 3,
       });
       await plugin.registerActionTypes({
-        types: [{ id: doneActionType, actions: [{ id: doneAction, title: 'Done', foreground: true }] }],
+        types: [
+          { id: doneActionType, actions: [{ id: doneAction, title: 'Done', foreground: true }] },
+        ],
       });
       this.channelReady = true;
     }
@@ -173,28 +230,35 @@ export class Reminders {
     const iconColor = notificationColor();
     const habitName = new Map(habits.map((habit) => [habit.id, habit.name]));
     const routineName = new Map(routines.map((routine) => [routine.id, routine.name]));
-    await plugin.schedule({
-      notifications: plan.map((reminder) => {
-        const name =
+    const notifications = plan.map((reminder) => {
+      const name =
+        reminder.habitId !== undefined
+          ? habitName.get(reminder.habitId)
+          : routineName.get(reminder.routineId ?? 0);
+      const named = names && !!name;
+      return {
+        id: reminder.id,
+        title: named ? name : 'Ember',
+        body: reminderBody,
+        channelId,
+        iconColor,
+        actionTypeId: named && reminder.habitId !== undefined ? doneActionType : undefined,
+        extra:
           reminder.habitId !== undefined
-            ? habitName.get(reminder.habitId)
-            : routineName.get(reminder.routineId ?? 0);
-        const named = names && !!name;
-        return {
-          id: reminder.id,
-          title: named ? name : 'Ember',
-          body: reminderBody,
-          channelId,
-          iconColor,
-          actionTypeId: named && reminder.habitId !== undefined ? doneActionType : undefined,
-          extra:
-            reminder.habitId !== undefined
-              ? { userId, habitId: reminder.habitId, date: reminder.date }
-              : { userId, routineId: reminder.routineId, date: reminder.date },
-          schedule: { at: new Date(reminder.at), allowWhileIdle: true },
-        };
-      }),
+            ? { userId, habitId: reminder.habitId, date: reminder.date }
+            : { userId, routineId: reminder.routineId, date: reminder.date },
+        schedule: { at: new Date(reminder.at), allowWhileIdle: true },
+      };
     });
+    const recent = addDays(localDate(now, timeZone), -2);
+    const issued = notifications
+      .filter((n) => n.actionTypeId)
+      .map((n) => ({ id: n.id, ...(n.extra as Omit<Issued, 'id'>) }));
+    localStorage.setItem(
+      issuedKey,
+      JSON.stringify([...readIssued().filter((entry) => entry.date >= recent), ...issued]),
+    );
+    await plugin.schedule({ notifications });
   }
 
   private toWidget(call: (widget: EmberWidgetPlugin) => Promise<void>): Promise<void> {

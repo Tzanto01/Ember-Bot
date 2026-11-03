@@ -57,6 +57,7 @@ describe('Reminders', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     reminderNames.set(false);
+    localStorage.clear();
   });
 
   async function rebuildOnline(habits: Habit[], routines: unknown[] = []) {
@@ -142,6 +143,26 @@ describe('Reminders', () => {
       extra: { userId: 'u1', habitId: 1, date: '2026-11-01' },
     });
     expect(JSON.stringify(notifications)).not.toContain('Read');
+  });
+
+  it('remembers which "Done" notifications it issued, for that exact extra only', async () => {
+    reminderNames.set(true);
+    const [first] = await rebuildOnline([reminded]);
+    const extra = { userId: 'u1', habitId: 1, date: '2026-11-01' };
+
+    expect(reminders.wasIssued(first.id, extra)).toBe(true);
+    expect(reminders.wasIssued(first.id, { ...extra, habitId: 2 })).toBe(false);
+    expect(reminders.wasIssued(first.id + 100, extra)).toBe(false);
+
+    reminderNames.set(false);
+    await reminders.clearAll();
+    expect(reminders.wasIssued(first.id, extra)).toBe(false);
+  });
+
+  it('issues no "Done" while names are off', async () => {
+    const [first] = await rebuildOnline([reminded]);
+
+    expect(reminders.wasIssued(first.id, first.extra)).toBe(false);
   });
 
   it('offline, plans the cached routines too', async () => {
