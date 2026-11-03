@@ -15,7 +15,9 @@ namespace Ember.Bot.Jobs;
 /// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
 /// native app schedules those reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
-/// without sending, as are habits paused or already completed on the user's local day.
+/// without sending, as are habits paused or already completed on the user's local day, and habits in a routine that has a
+/// reminder (the routine's reminder replaces theirs). A due <see cref="Routine"/> reminder is sent the same way, once, listing
+/// the member habits still pending or partial on the user's local day, and advanced without sending when there are none.
 /// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
 /// reminders pause (still advanced, not sent) until they confirm Ember can reach them again.
 /// </summary>
@@ -47,11 +49,12 @@ public class ReminderDispatchJob : IJob
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         var now = _time.GetUtcNow().UtcDateTime;
-        List<int> dueIds;
+        List<int> dueIds, dueRoutineIds;
         using (var scope = _services.CreateScope())
         {
-            dueIds = await scope.ServiceProvider.GetRequiredService<HabitService>()
-                .GetDueReminderHabitIdsAsync(now, cancellationToken);
+            var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
+            dueIds = await habits.GetDueReminderHabitIdsAsync(now, cancellationToken);
+            dueRoutineIds = await habits.GetDueReminderRoutineIdsAsync(now, cancellationToken);
         }
 
         foreach (var habitId in dueIds)
@@ -71,6 +74,24 @@ public class ReminderDispatchJob : IJob
                 await DeferAsync(habitId, now.AddDays(1), cancellationToken);
             }
         }
+
+        foreach (var routineId in dueRoutineIds)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            try
+            {
+                await ProcessRoutineAsync(routineId, now, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Reminder for routine {RoutineId} failed; retrying in a day.", routineId);
+                await DeferRoutineAsync(routineId, now.AddDays(1), cancellationToken);
+            }
+        }
     }
 
     private async Task ProcessAsync(int habitId, DateTime now, CancellationToken cancellationToken)
@@ -85,13 +106,9 @@ public class ReminderDispatchJob : IJob
 
         var user = habit.User;
         var discordId = user.DiscordId();
-        var targets = _channels.Where(c => habit.ReminderChannels.HasFlag(c.Channel) && c.Channel switch
-        {
-            ReminderChannels.Discord => discordId is not null && user.DmRemindersPausedAt is null,
-            ReminderChannels.WebPush => user.PushSubscriptions.Count > 0,
-            _ => false,
-        }).ToList();
+        var targets = Targets(habit.ReminderChannels, user, discordId);
         var send = targets.Count > 0
+            && habit.Routine?.ReminderTime is null
             && now - dueAt <= StaleAfter
             && !HabitService.IsPausedOn(habit, today)
             && HabitService.IsScheduledOn(habit, today)
@@ -104,29 +121,79 @@ public class ReminderDispatchJob : IJob
             var snoozed = habit.ReminderTime is not { } time
                 || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
             var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed);
-
-            foreach (var channel in targets)
-            {
-                var outcome = await SendAsync(channel, reminder, cancellationToken);
-                if (channel.Channel != ReminderChannels.Discord) continue;
-
-                if (outcome == DeliveryOutcome.Delivered)
-                {
-                    user.DmFailureCount = 0;
-                }
-                else if (outcome is not null && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
-                {
-                    user.DmRemindersPausedAt = now;
-                    _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
-                        user.Id, user.DmFailureCount);
-                }
-            }
+            await DeliverAsync(targets, reminder, user, now, cancellationToken);
         }
 
         habit.NextReminderUtc = habit.ReminderTime is { } reminderTime
             ? TimezoneHelper.NextOccurrenceUtc(reminderTime, tz, now)
             : null;
         await habits.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
+    }
+
+    private async Task ProcessRoutineAsync(int routineId, DateTime now, CancellationToken cancellationToken)
+    {
+        using var scope = _services.CreateScope();
+        var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
+        var routine = await habits.GetRoutineWithUserAsync(routineId, cancellationToken);
+        if (routine?.NextReminderUtc is not { } dueAt || dueAt > now) return;
+
+        var user = routine.User;
+        var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
+        var today = TimezoneHelper.LocalToday(user.Timezone, _time);
+        var discordId = user.DiscordId();
+        var targets = Targets(routine.ReminderChannels, user, discordId);
+
+        List<RoutineHabit> pending = [];
+        if (targets.Count > 0 && now - dueAt <= StaleAfter)
+        {
+            var lowDays = await habits.GetLowDaysAsync(user.Id);
+            pending = routine.Habits
+                .OrderBy(h => h.RoutinePosition)
+                .Where(h => HabitService.DayOn(h, today, today, tz, lowDays).State is DayState.Pending or DayState.Partial)
+                .Select(h => new RoutineHabit(h.Id, h.Name))
+                .ToList();
+        }
+
+        var send = pending.Count > 0;
+        if (send)
+            await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, pending), user, now,
+                cancellationToken);
+
+        routine.NextReminderUtc = routine.ReminderTime is { } reminderTime
+            ? TimezoneHelper.NextOccurrenceUtc(reminderTime, tz, now)
+            : null;
+        await habits.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
+    }
+
+    /// <summary>The registered channels among <paramref name="channels"/> that the user can receive.</summary>
+    private List<IReminderChannel> Targets(ReminderChannels channels, User user, ulong? discordId)
+        => _channels.Where(c => channels.HasFlag(c.Channel) && c.Channel switch
+        {
+            ReminderChannels.Discord => discordId is not null && user.DmRemindersPausedAt is null,
+            ReminderChannels.WebPush => user.PushSubscriptions.Count > 0,
+            _ => false,
+        }).ToList();
+
+    /// <summary>Sends the reminder to each target; the Discord outcome updates the user's DM failure count and pause.</summary>
+    private async Task DeliverAsync(List<IReminderChannel> targets, Reminder reminder, User user, DateTime now,
+        CancellationToken cancellationToken)
+    {
+        foreach (var channel in targets)
+        {
+            var outcome = await SendAsync(channel, reminder, cancellationToken);
+            if (channel.Channel != ReminderChannels.Discord) continue;
+
+            if (outcome == DeliveryOutcome.Delivered)
+            {
+                user.DmFailureCount = 0;
+            }
+            else if (outcome is not null && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
+            {
+                user.DmRemindersPausedAt = now;
+                _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",
+                    user.Id, user.DmFailureCount);
+            }
+        }
     }
 
     private async Task DeferAsync(int habitId, DateTime until, CancellationToken cancellationToken)
@@ -140,6 +207,20 @@ public class ReminderDispatchJob : IJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not defer the reminder for habit {HabitId}.", habitId);
+        }
+    }
+
+    private async Task DeferRoutineAsync(int routineId, DateTime until, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<HabitService>()
+                .DeferRoutineReminderAsync(routineId, until, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not defer the reminder for routine {RoutineId}.", routineId);
         }
     }
 

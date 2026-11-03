@@ -16,7 +16,7 @@ internal static class HabitEndpoints
     public sealed record HabitDto(
         int Id, string Name, string Frequency, int? WeeklyTarget, string? ReminderTime,
         DateOnly? PausedFrom, DateOnly? PausedUntil, bool PausedToday, DateTime CreatedAt, DateOnly StartDate,
-        DayDto Today, StatsDto Stats, List<string> ReminderChannels, List<string>? Days, int TimesPerDay);
+        DayDto Today, StatsDto Stats, List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId);
 
     public sealed record TemplateDto(string Key, string Name, string Description, string SuggestedReminderTime, string Frequency, int? WeeklyTarget);
 
@@ -215,22 +215,22 @@ internal static class HabitEndpoints
             ToDayDto(HabitService.DayOn(habit, user.Today, user.Today, user.Tz, user.LowDays)), stats,
             HabitService.ReminderChannelNames(habit.ReminderChannels),
             habit.FrequencyType == FrequencyType.Weekdays && habit.Days is { } days ? ScheduleDayNames.ToNames(days) : null,
-            habit.TimesPerDay);
+            habit.TimesPerDay, habit.RoutineId);
     }
 
     private static DayDto ToDayDto(HabitDay day) => new(day.Date, Lower(day.State), day.Completed, day.Count);
 
     private static string Lower<T>(T value) where T : struct, Enum => value.ToString().ToLowerInvariant();
 
-    private static string? ValidName(string? name, Dictionary<string, string[]> errors)
+    internal static string? ValidName(string? name, Dictionary<string, string[]> errors, int maxLength = 100)
     {
         var trimmed = name?.Trim();
-        if (trimmed is { Length: >= 1 and <= 100 }) return trimmed;
-        errors["name"] = ["Must be 1 to 100 characters."];
+        if (trimmed is { Length: >= 1 } && trimmed.Length <= maxLength) return trimmed;
+        errors["name"] = [$"Must be 1 to {maxLength} characters."];
         return null;
     }
 
-    private static TimeOnly? ParseReminder(string? value, Dictionary<string, string[]> errors)
+    internal static TimeOnly? ParseReminder(string? value, Dictionary<string, string[]> errors)
     {
         if (value is null) return null;
         if (Formats.TryParseTime(value, out var time)) return time;
@@ -238,7 +238,7 @@ internal static class HabitEndpoints
         return null;
     }
 
-    private static ReminderChannels? ParseReminderChannels(string?[]? values, Dictionary<string, string[]> errors)
+    internal static ReminderChannels? ParseReminderChannels(string?[]? values, Dictionary<string, string[]> errors)
     {
         if (values is null) return null;
         var channels = ReminderChannels.None;

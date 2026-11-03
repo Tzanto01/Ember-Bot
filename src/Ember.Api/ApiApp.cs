@@ -162,6 +162,7 @@ public static class ApiApp
         signedIn.MapDiscordUnlink();
         signedIn.MapMerge();
         signedIn.MapHabits();
+        signedIn.MapRoutines();
         signedIn.MapLowDays();
         signedIn.MapStats();
 
