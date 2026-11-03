@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
@@ -17,6 +17,7 @@ import { CodeInput, cleanCode, codeRule, wrongCodeText } from './two-factor-code
 
 const statusKey = ['two-factor'] as const;
 const passwordRule: Validator = (value) => (value ? null : 'Please enter your password.');
+const noRule: Validator = () => null;
 const passwordMismatch = "That password doesn't match. Try again.";
 
 function problemText(error: unknown): string | null {
@@ -24,14 +25,56 @@ function problemText(error: unknown): string | null {
   return apiError.handled ? null : problemToMessage(apiError).message;
 }
 
+/** The login password with a hidden username for password managers. */
+function PasswordField({
+  email,
+  field,
+  hint,
+  error,
+  inputRef,
+}: {
+  email: string | null;
+  field: ReturnType<typeof useField>;
+  hint?: string;
+  error: string | null;
+  inputRef?: Ref<HTMLInputElement>;
+}) {
+  return (
+    <>
+      <input
+        className="sr-only"
+        type="email"
+        name="username"
+        autoComplete="username"
+        value={email ?? ''}
+        readOnly
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+      <FormField label="Your password" hint={hint} error={error}>
+        {(control) => (
+          <PasswordInput
+            {...control}
+            {...field.input}
+            ref={inputRef}
+            autoComplete="current-password"
+          />
+        )}
+      </FormField>
+    </>
+  );
+}
+
 /**
- * Asks for an authenticator code or the login password, then runs `onSubmit`. A 400 answer is shown as a gentle
- * field error; anything else as a notice under the form.
+ * Asks for an authenticator code or the login password (with `withPassword`, a code and the password), then runs
+ * `onSubmit`. A 400 answer is shown as a gentle field error on the field it names; anything else as a notice under the
+ * form.
  */
 function ConfirmForm({
   kind,
   email,
   hint,
+  withPassword = false,
   submitLabel,
   busyLabel,
   onSubmit,
@@ -40,31 +83,38 @@ function ConfirmForm({
   kind: 'code' | 'password';
   email: string | null;
   hint?: string;
+  withPassword?: boolean;
   submitLabel: string;
   busyLabel: string;
-  onSubmit: (value: string) => Promise<void>;
+  onSubmit: (value: string, password?: string) => Promise<void>;
   onCancel?: () => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const field = useField(kind === 'code' ? codeRule : passwordRule);
+  const password = useField(withPassword ? passwordRule : noRule);
   const [busy, setBusy] = useState(false);
-  const [rejected, setRejected] = useState(false);
+  const [rejected, setRejected] = useState<'field' | 'password' | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => input.current?.focus(), []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (busy || !validateAll(form.current, [field])) return;
+    if (busy || !validateAll(form.current, withPassword ? [field, password] : [field])) return;
     setBusy(true);
-    setRejected(false);
+    setRejected(null);
     setProblem(null);
     try {
-      await onSubmit(kind === 'code' ? cleanCode(field.value) : field.value);
+      await onSubmit(
+        kind === 'code' ? cleanCode(field.value) : field.value,
+        withPassword ? password.value : undefined,
+      );
     } catch (error) {
-      if (asApiError(error).status === 400) {
-        flushSync(() => setRejected(true));
+      const apiError = asApiError(error);
+      if (apiError.status === 400) {
+        const onPassword = withPassword && apiError.problem?.errors?.['password'] !== undefined;
+        flushSync(() => setRejected(onPassword ? 'password' : 'field'));
         focusFirstInvalid(form.current);
       } else {
         setProblem(problemText(error));
@@ -75,7 +125,8 @@ function ConfirmForm({
   }
 
   const error =
-    field.error ?? (rejected ? (kind === 'code' ? wrongCodeText : passwordMismatch) : null);
+    field.error ??
+    (rejected === 'field' ? (kind === 'code' ? wrongCodeText : passwordMismatch) : null);
   return (
     <form
       ref={form}
@@ -88,28 +139,15 @@ function ConfirmForm({
           {(control) => <CodeInput ref={input} field={field} control={control} />}
         </FormField>
       ) : (
-        <>
-          <input
-            className="sr-only"
-            type="email"
-            name="username"
-            autoComplete="username"
-            value={email ?? ''}
-            readOnly
-            tabIndex={-1}
-            aria-hidden="true"
-          />
-          <FormField label="Your password" hint={hint} error={error}>
-            {(control) => (
-              <PasswordInput
-                {...control}
-                {...field.input}
-                ref={input}
-                autoComplete="current-password"
-              />
-            )}
-          </FormField>
-        </>
+        <PasswordField email={email} field={field} hint={hint} error={error} inputRef={input} />
+      )}
+      {withPassword && (
+        <PasswordField
+          email={email}
+          field={password}
+          hint="Ember checks it before turning on two-step sign-in."
+          error={password.error ?? (rejected === 'password' ? passwordMismatch : null)}
+        />
       )}
       {problem && (
         <Notice tone="notice">
@@ -169,8 +207,8 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     }
   }
 
-  async function enable(code: string): Promise<void> {
-    const next = await api.enableTwoFactor(code);
+  async function enable(code: string, password?: string): Promise<void> {
+    const next = await api.enableTwoFactor(code, password);
     settle({ enabled: true, recoveryCodesLeft: next.length }, '');
     setCodes(next);
   }
@@ -245,6 +283,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
           <ConfirmForm
             kind="code"
             email={me.email}
+            withPassword={me.hasPassword}
             submitLabel="Turn on two-step sign-in"
             busyLabel="Checking…"
             onSubmit={enable}
