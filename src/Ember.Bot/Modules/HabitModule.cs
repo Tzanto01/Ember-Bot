@@ -423,6 +423,38 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             components: components,
             ephemeral: true);
     }
+
+    // ── /habit second-reminder ────────────────────────────────────────────────
+
+    [SlashCommand("second-reminder", "Get one more nudge after a reminder if you haven't checked in yet")]
+    public async Task SecondReminderAsync([Summary("delay", "How long after a reminder")] SecondReminderDelay delay)
+    {
+        var minutes = (int)delay;
+        await _habits.SetSecondReminderMinutesAsync(Context.User.Id, minutes);
+
+        await RespondAsync(minutes == 0
+                ? "Second reminder off. One reminder it is. 💙"
+                : $"Got it. If you haven't checked in yet, I'll nudge you once more **{SecondReminderLabel(delay)}** after a reminder. 💙",
+            ephemeral: true);
+    }
+
+    private static string SecondReminderLabel(SecondReminderDelay delay) => delay switch
+    {
+        SecondReminderDelay.FifteenMinutes => "15 minutes",
+        SecondReminderDelay.ThirtyMinutes => "30 minutes",
+        SecondReminderDelay.OneHour => "1 hour",
+        _ => "2 hours",
+    };
+}
+
+/// <summary>The <c>/habit second-reminder</c> choices; each value is <see cref="Core.Models.User.SecondReminderMinutes"/>.</summary>
+public enum SecondReminderDelay
+{
+    [ChoiceDisplay("Off")] Off = 0,
+    [ChoiceDisplay("15 minutes")] FifteenMinutes = 15,
+    [ChoiceDisplay("30 minutes")] ThirtyMinutes = 30,
+    [ChoiceDisplay("1 hour")] OneHour = 60,
+    [ChoiceDisplay("2 hours")] TwoHours = 120,
 }
 
 public enum PauseDuration

@@ -323,4 +323,27 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         await (await user.Post(MergeUrl)).ExpectProblem(HttpStatusCode.NotFound, "not_found");
         (await UserExists(bot.UserId)).Should().BeTrue();
     }
+
+    [DockerFact]
+    public async Task Merging_keeps_the_bot_accounts_open_reminder_messages_under_the_signed_in_account()
+    {
+        var user = await Host.SignedInAsync();
+        var userId = await user.IdAsync();
+        var bot = await BotOnlyAsync(["Water"]);
+        var habitId = await Host.Db(db => db.Habits.Where(h => h.UserId == bot.UserId).Select(h => h.Id).SingleAsync());
+        await Host.Db(db =>
+        {
+            db.ReminderMessages.Add(new ReminderMessage
+            {
+                UserId = bot.UserId, HabitId = habitId, Date = Host.Today, ChannelId = 900_001, MessageId = 900_002,
+            });
+            return db.SaveChangesAsync();
+        });
+        await StartMergeAsync(user, bot.DiscordId);
+
+        await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
+
+        (await Host.Db(db => db.ReminderMessages.Where(m => m.MessageId == 900_002).Select(m => m.UserId).ToListAsync()))
+            .Should().Equal(userId);
+    }
 }

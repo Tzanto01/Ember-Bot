@@ -97,6 +97,9 @@ public partial class HabitService
                 .Where(l => l.LoginProvider == DiscordLogin.Provider && l.ProviderKey == key)
                 .ExecuteUpdateAsync(s => s.SetProperty(l => l.UserId, targetUserId), cancellationToken);
 
+            await _db.ReminderMessages.Where(m => m.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, targetUserId), cancellationToken);
+
             await _db.Users.Where(u => u.Id == sourceUserId).ExecuteDeleteAsync(cancellationToken);
 
             var securityStamp = Guid.NewGuid().ToString("N").ToUpperInvariant();

@@ -15,7 +15,7 @@ internal static class ImportEndpoints
     public sealed record ImportDocument(int? FormatVersion, ImportSettings? Settings, List<ImportHabit?>? Habits, List<ImportLog?>? Logs,
         List<ImportDayMark?>? DayMarks, List<ImportRoutine?>? Routines, List<ImportMood?>? Moods, List<ImportDayNote?>? DayNotes,
         JournalEndpoints.JournalKeyRequest? JournalKey);
-    public sealed record ImportSettings(int? GraceDaysPerWeek, string? Theme);
+    public sealed record ImportSettings(int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes);
     public sealed record ImportHabit(int? Id, string? Name, string? Frequency, int? WeeklyTarget, TimeOnly? ReminderTime,
         DateOnly? PausedUntil, DateOnly? PausedFrom, DateTimeOffset? CreatedAt, string?[]? ReminderChannels, string?[]? Days,
         int? TimesPerDay, int? RoutineId, int? RoutinePosition);
@@ -78,6 +78,7 @@ internal static class ImportEndpoints
         var local = new Dictionary<string, string[]>();
 
         MeEndpoints.ValidateGraceAndTheme(doc.Settings?.GraceDaysPerWeek, doc.Settings?.Theme, local);
+        MeEndpoints.ValidateSecondReminder(doc.Settings?.SecondReminderMinutes, local);
         Nest(errors, "settings", local);
 
         var routines = new List<Routine>();
@@ -233,7 +234,8 @@ internal static class ImportEndpoints
             Nest(errors, "journal_key", local);
         }
 
-        return new ImportData(routines, habits, marks, moods, notes, material, doc.Settings?.GraceDaysPerWeek, doc.Settings?.Theme);
+        return new ImportData(routines, habits, marks, moods, notes, material, doc.Settings?.GraceDaysPerWeek, doc.Settings?.Theme,
+            doc.Settings?.SecondReminderMinutes ?? 0);
     }
 
     private const string NotEmptyMessage = "Import only works into an account without habits, routines, moods or journal entries.";

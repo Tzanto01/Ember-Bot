@@ -13,6 +13,12 @@ public class Routine
     /// <summary>UTC instant of the next routine reminder. Null means nothing is due.</summary>
     public DateTime? NextReminderUtc { get; set; }
 
+    /// <summary>
+    /// UTC instant of the pending second routine reminder (<see cref="User.SecondReminderMinutes"/> after the regular one was sent,
+    /// on the same local day). Null when none is pending.
+    /// </summary>
+    public DateTime? SecondReminderUtc { get; set; }
+
     /// <summary>Channels the routine's reminder is sent to.</summary>
     public ReminderChannels ReminderChannels { get; set; } = ReminderChannels.WebPush;
 

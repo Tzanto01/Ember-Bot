@@ -17,8 +17,10 @@ public enum DeliveryOutcome
 /// Set for a routine reminder: the member habits still pending or partial today, in routine order.
 /// <paramref name="HabitId"/> and <paramref name="HabitName"/> then carry the routine's id and name.
 /// </param>
+/// <param name="Day">The user's local day the reminder is for.</param>
+/// <param name="Second">True for the one second reminder that follows a sent regular reminder.</param>
 public sealed record Reminder(Guid UserId, ulong? DiscordUserId, int HabitId, string HabitName, int RecentCompletions, bool Snoozed,
-    IReadOnlyList<RoutineHabit>? PendingHabits = null);
+    DateOnly Day, IReadOnlyList<RoutineHabit>? PendingHabits = null, bool Second = false);
 
 /// <summary>A member habit listed in a routine reminder.</summary>
 public sealed record RoutineHabit(int Id, string Name);

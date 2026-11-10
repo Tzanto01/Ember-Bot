@@ -40,6 +40,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | `/habit pause` | Pause a habit — reminders stop, streak is protected |
 | `/habit frequency` | Switch between daily and weekly (1×–6×/week) |
 | `/habit grace` | Set how many flex days per week before a streak breaks (0–3) |
+| `/habit second-reminder` | Get one more nudge after a reminder if you haven't checked in yet |
 
 ### 🕐 Timezone
 
@@ -88,7 +89,8 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 - **Backfill:** `/habit history` shows the last 14 days of a habit as buttons. Tap a day to cycle it: ✅ done, ➖ not done, ▫️ not logged. Any day since the habit started can be filled in, so fixing last week takes a few taps, and streaks recalculate right away.
 - **Open days:** today and yesterday are always open. An unlogged open day never counts against a streak; a day only counts as a gap once it has closed. Older days can still be filled in later.
 - **Low days:** pick a day in the 🌙 menu under the history grid (or tap **It was a low day** in the check-in DM). A low day protects all your habits: it neither breaks nor extends a streak, and counts as kept in the 7-day and 30-day views. Pick it again to remove it.
-- **Reminder buttons** never expire: tapping an old one logs the day that reminder was for.
+- **Reminder buttons** work until 10:00 the next morning, or until that day is logged anywhere (bot or web), whichever comes first. Then the buttons go away and the message says `✅ Logged.` or `This reminder has closed.`; an old day can still be filled in with `/habit history` or on the web.
+- **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, and there is never a third.
 - **Consent:** habits and low days can say something about your health, so Ember asks once for your OK before storing them. You can withdraw any time with `/privacy delete`.
 
 ---

@@ -25,12 +25,17 @@ public sealed class WebPushReminderChannel : IReminderChannel
     public const int TimeToLiveSeconds = 12 * 60 * 60;
 
     /// <summary>The Angular service worker notification payload.</summary>
-    public static readonly string Payload = JsonSerializer.Serialize(new
+    public static readonly string Payload = BuildPayload("A gentle nudge from Ember");
+
+    /// <summary>The payload of a second reminder: the same notification with its own body.</summary>
+    public static readonly string SecondPayload = BuildPayload("One more nudge, in case the first one got buried.");
+
+    private static string BuildPayload(string body) => JsonSerializer.Serialize(new
     {
         notification = new
         {
             title = "Ember",
-            body = "A gentle nudge from Ember",
+            body,
             data = new { onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/today" } } },
         },
     });
@@ -111,7 +116,7 @@ public sealed class WebPushReminderChannel : IReminderChannel
 
             try
             {
-                await client.RequestPushMessageDeliveryAsync(target, new PushMessage(Payload) { TimeToLive = TimeToLiveSeconds },
+                await client.RequestPushMessageDeliveryAsync(target, new PushMessage(reminder.Second ? SecondPayload : Payload) { TimeToLive = TimeToLiveSeconds },
                     cancellationToken);
                 delivered = true;
             }

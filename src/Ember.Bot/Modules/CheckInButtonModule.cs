@@ -2,6 +2,8 @@ using System.Globalization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Ember.Bot.Jobs;
+using Ember.Bot.Services;
 using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
@@ -9,16 +11,51 @@ namespace Ember.Bot.Modules;
 /// <summary>
 /// Handles the ✅/❌/⏰ button interactions sent in DM reminders.
 /// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
-/// Done and skip never expire: they log the user's local day the reminder was sent on.
+/// Done and skip log the user's local day the reminder was sent on, until the reminder expires
+/// (<see cref="ReminderDispatchJob.IsExpired"/>); after that they close the message instead.
 /// Snooze only works within <see cref="HabitService.SnoozeWindow"/> of the send time.
+/// A tap that removes a reminder's buttons forgets its <see cref="Core.Models.ReminderMessage"/>.
 /// </summary>
 public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly HabitService _habits;
+    private const string ExpiredText = "This reminder has closed. You can still fill in that day with /habit history or on the web. 💙";
 
-    public CheckInButtonModule(HabitService habits)
+    private readonly HabitService _habits;
+    private readonly TimeProvider _time;
+
+    public CheckInButtonModule(HabitService habits, TimeProvider time)
     {
         _habits = habits;
+        _time = time;
+    }
+
+    /// <summary>The user's local day at <paramref name="timestampStr"/> (unix seconds), or null when the timestamp is malformed.</summary>
+    private static async Task<DateOnly?> SentDayAsync(HabitService habits, ulong userId, string timestampStr)
+        => long.TryParse(timestampStr, out var sentUnix) && sentUnix is >= 0 and <= 253402300799
+            ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(sentUnix), await habits.GetUserTzAsync(userId)).DateTime)
+            : null;
+
+    /// <summary>
+    /// For a Done or Skip tap on a reminder sent at <paramref name="timestampStr"/>: null while the reminder is usable, otherwise the
+    /// subtext its message closes with: <see cref="DiscordDmReminderChannel.LoggedLine"/> when every habit with a Done button in
+    /// <paramref name="components"/> is done for that day, <see cref="DiscordDmReminderChannel.ClosedLine"/> otherwise.
+    /// </summary>
+    internal static async Task<string?> ExpiredLineAsync(HabitService habits, TimeProvider time, ulong userId, string timestampStr,
+        IEnumerable<IMessageComponent> components)
+    {
+        if (await SentDayAsync(habits, userId, timestampStr) is not { } day
+            || !ReminderDispatchJob.IsExpired(day, TimeZoneInfo.ConvertTime(time.GetUtcNow(), await habits.GetUserTzAsync(userId)).DateTime))
+            return null;
+
+        var habitIds = components.OfType<ActionRowComponent>().SelectMany(r => r.Components).OfType<ButtonComponent>()
+            .Select(b => b.CustomId?.Split(':'))
+            .Where(p => p is ["checkin", "done", _, _])
+            .Select(p => int.TryParse(p![2], out var id) ? id : 0)
+            .ToList();
+        foreach (var habitId in habitIds)
+            if ((await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) != true)
+                return DiscordDmReminderChannel.ClosedLine;
+        return habitIds.Count > 0 ? DiscordDmReminderChannel.LoggedLine : DiscordDmReminderChannel.ClosedLine;
     }
 
     /// <summary>
@@ -29,9 +66,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
     internal static async Task<(DayEditResult Result, DateOnly Day, bool KeptDone)> LogReminderDayAsync(
         HabitService habits, ulong userId, int habitId, string timestampStr, bool completed, ulong? guildId)
     {
-        var day = long.TryParse(timestampStr, out var sentUnix) && sentUnix is >= 0 and <= 253402300799
-            ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeSeconds(sentUnix), await habits.GetUserTzAsync(userId)).DateTime)
-            : await habits.GetLocalTodayAsync(userId);
+        var day = await SentDayAsync(habits, userId, timestampStr) ?? await habits.GetLocalTodayAsync(userId);
 
         if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && (l.Completed || l.Count > 0)) == true)
             return (DayEditResult.Saved, day, true);
@@ -46,6 +81,19 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         if (!int.TryParse(habitIdStr, out var habitId))
         {
             await RespondAsync("Something went wrong with that button.", ephemeral: true);
+            return;
+        }
+
+        var component = (SocketMessageComponent)Context.Interaction;
+        if (await ExpiredLineAsync(_habits, _time, Context.User.Id, timestampStr, component.Message.Components) is { } line)
+        {
+            await component.UpdateAsync(msg =>
+            {
+                msg.Content = $"{component.Message.Content}\n{line}";
+                msg.Components = new ComponentBuilder().Build();
+            });
+            await FollowupAsync(ExpiredText, ephemeral: true);
+            await _habits.DeleteReminderMessageByDiscordIdAsync(component.Message.Id);
             return;
         }
 
@@ -74,7 +122,6 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
         if (completed)
             text = HabitModule.CheckInText(habit, day, text, isToday ? null : dayLabel);
 
-        var component = (SocketMessageComponent)Context.Interaction;
         if (completed && RoutineButtonsAfterDone(component.Message.Components, component.Data.CustomId,
                 habit?.Logs.Any(l => l.Date == day && l.Completed) == true) is { } remaining)
         {
@@ -88,6 +135,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             msg.Content    = text;
             msg.Components = new ComponentBuilder().Build();
         });
+        await _habits.DeleteReminderMessageByDiscordIdAsync(component.Message.Id);
     }
 
     /// <summary>
@@ -137,5 +185,6 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             msg.Content    = "Got it — I'll nudge you again in 1 hour. 💤";
             msg.Components = new ComponentBuilder().Build();
         });
+        await _habits.DeleteReminderMessageByDiscordIdAsync(component.Message.Id);
     }
 }
