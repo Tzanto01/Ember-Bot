@@ -210,6 +210,99 @@ describe('planReminders', () => {
     expect(plan[0].habitId).toBe(1);
     expect(plan[59].date).toBe('2026-11-07');
   });
+
+  it('plans a second reminder the chosen minutes after each one, for the same habit or routine and date', () => {
+    const routine: Routine = {
+      id: 7,
+      name: 'Evening',
+      reminderTime: '18:00',
+      reminderChannels: ['mobile'],
+      habitIds: [2],
+    };
+    const plan = planReminders(
+      [habit({ id: 1 }), habit({ id: 2 })],
+      'Europe/Berlin',
+      berlinMorning,
+      [routine],
+      30,
+    );
+
+    expect(
+      plan
+        .filter((r) => r.date === '2026-11-02')
+        .map((r) => [r.habitId ?? r.routineId, r.second ?? false, new Date(r.at).toISOString()]),
+    ).toEqual([
+      [7, false, '2026-11-02T17:00:00.000Z'],
+      [7, true, '2026-11-02T17:30:00.000Z'],
+      [1, false, '2026-11-02T19:00:00.000Z'],
+      [1, true, '2026-11-02T19:30:00.000Z'],
+    ]);
+    expect(plan.filter((r) => r.second)).toHaveLength(14);
+  });
+
+  it('plans no second reminder when it is off', () => {
+    expect(planReminders([habit()], 'Europe/Berlin', berlinMorning).some((r) => r.second)).toBe(
+      false,
+    );
+  });
+
+  it('drops a second reminder that would fall on the next local day', () => {
+    const plan = planReminders(
+      [habit({ reminderTime: '23:30' })],
+      'Europe/Berlin',
+      berlinMorning,
+      [],
+      60,
+    );
+
+    expect(plan).toHaveLength(7);
+    expect(plan.some((r) => r.second)).toBe(false);
+    expect(
+      planReminders(
+        [habit({ reminderTime: '23:30' })],
+        'Europe/Berlin',
+        berlinMorning,
+        [],
+        15,
+      ).filter((r) => r.second),
+    ).toHaveLength(7);
+  });
+
+  it('keeps the second reminder of a first one that already fired', () => {
+    const plan = planReminders(
+      [habit()],
+      'Europe/Berlin',
+      Date.parse('2026-11-02T19:10:00Z'),
+      [],
+      30,
+    );
+
+    expect(plan[0]).toMatchObject({
+      id: 1,
+      date: '2026-11-02',
+      second: true,
+      at: Date.parse('2026-11-02T19:30:00Z'),
+    });
+    expect(plan[1]).toMatchObject({ date: '2026-11-03' });
+  });
+
+  it('keeps ids unique and the soonest 60 with second reminders on', () => {
+    const habits = Array.from({ length: 10 }, (_, i) =>
+      habit({ id: i + 1, reminderTime: `${String(12 + i).padStart(2, '0')}:00` }),
+    );
+
+    const plan = planReminders(habits, 'Europe/Berlin', berlinMorning, [], 15);
+
+    expect(plan).toHaveLength(60);
+    expect(new Set(plan.map((r) => r.id)).size).toBe(60);
+    expect(plan.map((r) => r.at)).toEqual([...plan.map((r) => r.at)].sort((a, b) => a - b));
+    expect(plan[1]).toMatchObject({
+      habitId: 1,
+      second: true,
+      at: Date.parse('2026-11-02T11:15:00Z'),
+    });
+    expect(plan[59].date).toBe('2026-11-04');
+  });
 });
 
 describe('zonedToUtc', () => {

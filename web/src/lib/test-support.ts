@@ -110,6 +110,7 @@ export const me: Me = {
   timezoneSet: true,
   localToday: '2026-11-01',
   graceDaysPerWeek: 1,
+  secondReminderMinutes: 0,
   theme: null,
   consent: { given: true, policyVersion: '1', currentPolicyVersion: '1' },
   dmReminders: { paused: false },

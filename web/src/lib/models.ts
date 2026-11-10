@@ -22,6 +22,8 @@ export interface Me {
   /** The user's local today. Use this, never the browser clock, for data. */
   localToday: LocalDateString;
   graceDaysPerWeek: number;
+  /** v1.8: minutes after a reminder for one more nudge; 0 is off. */
+  secondReminderMinutes: SecondReminderMinutes;
   /** The account's theme id; null when never chosen (the app shows the default). */
   theme: ThemeId | null;
   consent: { given: boolean; policyVersion: string | null; currentPolicyVersion: string };
@@ -39,7 +41,12 @@ export interface MePatch {
   /** 0 to 3. */
   graceDaysPerWeek?: number;
   theme?: ThemeId;
+  secondReminderMinutes?: SecondReminderMinutes;
 }
+
+/** The `secondReminderMinutes` choices; 0 is off. */
+export const secondReminderChoices = [0, 15, 30, 60, 120] as const;
+export type SecondReminderMinutes = (typeof secondReminderChoices)[number];
 
 export type Frequency = 'daily' | 'weekly' | 'weekdays';
 

@@ -9,6 +9,8 @@ import {
   type OwnMood,
   type ReminderChannel,
   type Routine,
+  secondReminderChoices,
+  type SecondReminderMinutes,
   type TimeOfDay,
   type Weekday,
   weekdays,
@@ -429,6 +431,7 @@ export class LocalBackend {
       timezoneSet: true,
       localToday: this.today(data),
       graceDaysPerWeek: profile.graceDaysPerWeek,
+      secondReminderMinutes: profile.secondReminderMinutes ?? 0,
       theme: profile.theme,
       consent: { given: true, policyVersion: devicePolicyVersion, currentPolicyVersion: devicePolicyVersion },
       dmReminders: { paused: false },
@@ -446,11 +449,15 @@ export class LocalBackend {
       errors['graceDaysPerWeek'] = ['Must be between 0 and 3.'];
     const theme = b['theme'];
     if (theme !== null && theme !== undefined && !themeIds.includes(theme as string)) errors['theme'] = ['Unknown theme.'];
+    const second = b['secondReminderMinutes'];
+    if (second !== null && second !== undefined && !(secondReminderChoices as readonly unknown[]).includes(second))
+      errors['secondReminderMinutes'] = ['Must be 0, 15, 30, 60 or 120.'];
     if (Object.keys(errors).length) throw invalid(errors);
     const data = await this.update((d) => {
       if (typeof timezone === 'string') d.profile.timezone = timezone;
       if (typeof grace === 'number') d.profile.graceDaysPerWeek = grace;
       if (typeof theme === 'string') d.profile.theme = theme as LocalData['profile']['theme'];
+      if (typeof second === 'number') d.profile.secondReminderMinutes = second as SecondReminderMinutes;
       return d;
     });
     return json(200, this.me(data));

@@ -1,5 +1,13 @@
 import type { ExportFile } from '../api-client';
-import type { Frequency, LocalDateString, MoodKey, ReminderChannel, TimeOfDay, Weekday } from '../models';
+import type {
+  Frequency,
+  LocalDateString,
+  MoodKey,
+  ReminderChannel,
+  SecondReminderMinutes,
+  TimeOfDay,
+  Weekday,
+} from '../models';
 import type { Store } from '../store';
 import type { ThemeId } from '../theme';
 
@@ -59,6 +67,8 @@ export interface LocalProfile {
   timezone: string;
   graceDaysPerWeek: number;
   theme: ThemeId | null;
+  /** Minutes after a local reminder for one more nudge; missing or 0 is off. */
+  secondReminderMinutes?: SecondReminderMinutes;
   /** ISO instant the local profile was made. */
   createdAt: string;
   /** ISO instant of the last successful backup export, or null. */

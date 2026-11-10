@@ -194,6 +194,18 @@ describe('LocalBackend through ApiClient', () => {
     await api.antiforgery();
   });
 
+  it('keeps the second reminder setting on the device, off until chosen, and refuses other values', async () => {
+    await store.replace(seed());
+
+    expect((await api.getMe()).secondReminderMinutes).toBe(0);
+    expect((await api.updateMe({ secondReminderMinutes: 30 })).secondReminderMinutes).toBe(30);
+    expect((await store.load())?.profile.secondReminderMinutes).toBe(30);
+    expect((await api.updateMe({ graceDaysPerWeek: 2 })).secondReminderMinutes).toBe(30);
+    const error = await rejection(api.updateMe({ secondReminderMinutes: 45 as 30 }));
+    expect(error.problem?.errors).toEqual({ secondReminderMinutes: ['Must be 0, 15, 30, 60 or 120.'] });
+    expect((await api.getMe()).secondReminderMinutes).toBe(30);
+  });
+
   it('exports the device data as a format v2 backup file without recording the backup time', async () => {
     await store.replace(seed([localHabit(1)]));
 

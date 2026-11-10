@@ -10,7 +10,7 @@ import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
 import { applyTheme } from '../theme';
 import { reminderNames } from './reminder-names';
-import { doneActionType, Reminders, reminderBody } from './reminders';
+import { doneActionType, Reminders, reminderBody, secondReminderBody } from './reminders';
 import type { EmberWidgetPlugin } from './widget';
 
 const zone = 'Europe/Berlin';
@@ -143,6 +143,26 @@ describe('Reminders', () => {
       extra: { userId: 'u1', habitId: 1, date: '2026-11-01' },
     });
     expect(JSON.stringify(notifications)).not.toContain('Read');
+  });
+
+  it('follows each reminder with a second one under its own id, with the same title, Done and day', async () => {
+    reminderNames.set(true);
+    const done = reminders.rebuild('u1', zone, 30);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await done;
+    const [first, second] = schedule.mock.calls[0][0].notifications;
+
+    expect(first).toMatchObject({ title: 'Walk', body: reminderBody, actionTypeId: doneActionType });
+    expect(second).toMatchObject({
+      title: 'Walk',
+      body: secondReminderBody,
+      actionTypeId: doneActionType,
+      extra: first.extra,
+    });
+    expect(second.id).not.toBe(first.id);
+    expect(second.schedule?.at?.toISOString()).toBe('2026-11-01T19:30:00.000Z');
+    expect(reminders.wasIssued(second.id, second.extra)).toBe(true);
   });
 
   it('remembers which "Done" notifications it issued, for that exact extra only', async () => {
