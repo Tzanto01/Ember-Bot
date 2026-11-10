@@ -19,6 +19,15 @@ public class User : IdentityUser<Guid>
     /// <summary>The account's app theme id (one of <see cref="Themes"/>); null until the user picks one. The bot ignores it.</summary>
     public string? Theme { get; set; }
 
+    /// <summary>
+    /// Minutes after a sent habit or routine reminder that one second reminder follows while the day is still open; 0 turns it off.
+    /// One of <see cref="SecondReminderChoices"/>.
+    /// </summary>
+    public int SecondReminderMinutes { get; set; }
+
+    /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
+    public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
+
     /// <summary>The theme ids <see cref="Theme"/> may hold.</summary>
     public static readonly IReadOnlySet<string> Themes = new HashSet<string> { "hearthlight", "fieldnotes", "tidepool", "marigold" };
 

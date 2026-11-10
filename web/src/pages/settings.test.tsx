@@ -91,6 +91,23 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Saved.')).toBeInTheDocument();
   });
 
+  it('saves the second reminder choice to the account', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+    const select = screen.getByRole('combobox', { name: 'Second reminder' });
+    expect(select).toHaveDisplayValue('Off');
+    expect(select).toHaveAccessibleDescription("If you haven't checked in yet, Ember nudges you once more.");
+
+    await user.selectOptions(select, '1 hour');
+
+    const patch = await fetch.next('PATCH', '/api/me');
+    expect(patch.body).toEqual({ secondReminderMinutes: 60 });
+    patch.respond(200, { ...me, secondReminderMinutes: 60 });
+    await waitFor(() => expect(auth.me.get()?.secondReminderMinutes).toBe(60));
+    expect(select).toHaveDisplayValue('1 hour');
+    expect(screen.getByText('Saved.')).toBeInTheDocument();
+  });
+
   it('waits for the grace PATCH before sending the theme one', async () => {
     const user = userEvent.setup();
     const { fetch } = await open();
@@ -222,5 +239,6 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('button', { name: 'Delete my account' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Timezone' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Second reminder' })).toHaveDisplayValue('Off');
   });
 });

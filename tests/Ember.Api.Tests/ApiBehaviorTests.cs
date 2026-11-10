@@ -205,4 +205,20 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         column.Should().BePositive();
         lines.Single(l => l.StartsWith("settings,")).Split(',')[column].Should().Be("fieldnotes");
     }
+
+    [DockerFact]
+    public async Task Patching_me_with_a_second_reminder_choice_stores_it_and_any_other_value_is_a_400()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("secondReminderMinutes").GetInt32().Should().Be(0);
+
+        var patched = await (await user.Patch("/api/me", new { secondReminderMinutes = 30 })).ExpectJson();
+        var problem = await (await user.Patch("/api/me", new { secondReminderMinutes = 45, graceDaysPerWeek = 2 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var kept = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+
+        patched.GetProperty("secondReminderMinutes").GetInt32().Should().Be(30);
+        problem.GetProperty("errors").Has("secondReminderMinutes").Should().BeTrue();
+        kept.GetProperty("secondReminderMinutes").GetInt32().Should().Be(30);
+        kept.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(1);
+    }
 }

@@ -12,6 +12,8 @@ import { capacitorWidget, type EmberWidgetPlugin, widgetSnapshot } from './widge
 
 /** Lock-screen text: names no habit (contract, web push rule). */
 export const reminderBody = 'A gentle nudge from Ember';
+/** Body of the second reminder (contract v1.8). */
+export const secondReminderBody = 'One more nudge, in case the first one got buried.';
 /** The notification action type carrying the "Done" button (single-habit reminders, names on). */
 export const doneActionType = 'ember-done';
 /** The `actionId` of the "Done" button. */
@@ -78,11 +80,11 @@ export class Reminders {
 
   /**
    * Rebuilds the user's reminders from the current habit list (when offline: the cached list with the queued
-   * day edits applied, so an offline check-in still cancels today's reminder), in `timeZone`.
-   * Rebuilds run one after another. Never throws.
+   * day edits applied, so an offline check-in still cancels today's reminder), in `timeZone`, with a second
+   * reminder `secondMinutes` after each one when above 0. Rebuilds run one after another. Never throws.
    */
-  rebuild(userId: string, timeZone: string): Promise<void> {
-    this.chain = this.chain.then(() => this.run(userId, timeZone)).catch(() => undefined);
+  rebuild(userId: string, timeZone: string, secondMinutes = 0): Promise<void> {
+    this.chain = this.chain.then(() => this.run(userId, timeZone, secondMinutes)).catch(() => undefined);
     return this.chain;
   }
 
@@ -203,14 +205,14 @@ export class Reminders {
     }
   }
 
-  private async run(userId: string, timeZone: string): Promise<void> {
+  private async run(userId: string, timeZone: string, secondMinutes: number): Promise<void> {
     const loaded = await this.load(userId, timeZone);
     if (!loaded) return;
     const { habits, routines } = loaded;
     const now = Date.now();
     const today = localDate(now, timeZone);
     await this.toWidget((widget) => widget.update(widgetSnapshot(userId, timeZone, today, habits)));
-    const plan = planReminders(habits, timeZone, now, routines);
+    const plan = planReminders(habits, timeZone, now, routines, secondMinutes);
     const plugin = (await this.notifications()).LocalNotifications;
     const names = reminderNames.get();
     if (!this.channelReady) {
@@ -241,7 +243,7 @@ export class Reminders {
       return {
         id: reminder.id,
         title: named ? name : 'Ember',
-        body: reminderBody,
+        body: reminder.second ? secondReminderBody : reminderBody,
         channelId,
         iconColor,
         actionTypeId: named && reminder.habitId !== undefined ? doneActionType : undefined,

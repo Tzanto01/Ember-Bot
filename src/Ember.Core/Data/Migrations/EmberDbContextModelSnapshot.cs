@@ -131,6 +131,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<int>("RoutinePosition")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("SecondReminderUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("TimesPerDay")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -147,6 +150,8 @@ namespace Ember.Core.Data.Migrations
                     b.HasIndex("NextReminderUtc");
 
                     b.HasIndex("RoutineId");
+
+                    b.HasIndex("SecondReminderUtc");
 
                     b.HasIndex("UserId");
 
@@ -315,6 +320,45 @@ namespace Ember.Core.Data.Migrations
                     b.ToTable("PushSubscriptions");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.ReminderMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ChannelId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("HabitId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MessageId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<int?>("RoutineId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HabitId");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("RoutineId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReminderMessages");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.Routine", b =>
                 {
                     b.Property<int>("Id")
@@ -340,12 +384,17 @@ namespace Ember.Core.Data.Migrations
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<DateTime?>("SecondReminderUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NextReminderUtc");
+
+                    b.HasIndex("SecondReminderUtc");
 
                     b.HasIndex("UserId");
 
@@ -416,6 +465,9 @@ namespace Ember.Core.Data.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("SecondReminderMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
@@ -594,6 +646,25 @@ namespace Ember.Core.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.ReminderMessage", b =>
+                {
+                    b.HasOne("Ember.Core.Models.Habit", null)
+                        .WithMany()
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ember.Core.Models.Routine", null)
+                        .WithMany()
+                        .HasForeignKey("RoutineId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ember.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Ember.Core.Models.Routine", b =>

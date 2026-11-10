@@ -148,5 +148,15 @@ public static class AppHost
             MessageComponent? components = null,
             CancellationToken cancellationToken = default)
             => Task.FromResult(DeliveryOutcome.UserNotFound);
+
+        public Task<SentDm> SendTrackedMessageAsync(ulong userId, string text, MessageComponent components,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new SentDm(DeliveryOutcome.UserNotFound));
+
+        public Task<bool> CloseMessageAsync(ulong channelId, ulong messageId, string line, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
+        public Task<bool> DeleteMessageAsync(ulong channelId, ulong messageId, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
     }
 }

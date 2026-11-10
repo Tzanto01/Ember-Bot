@@ -119,12 +119,71 @@ public sealed class IntegrationTestHost : IAsyncDisposable
     }
 }
 
-public sealed record SentDiscordDm(ulong UserId, string? Text, Embed? Embed, MessageComponent? Components);
+public sealed record SentDiscordDm(ulong UserId, string? Text, Embed? Embed, MessageComponent? Components, ulong MessageId = 0);
+
+/// <summary>An edit or delete of a sent DM: <see cref="Line"/> is the appended subtext of a close, null for a delete.</summary>
+public sealed record ChangedDiscordDm(ulong ChannelId, ulong MessageId, string? Line);
 
 public sealed class TestDiscordDmSender : IDiscordDmSender
 {
     private readonly List<SentDiscordDm> _messages = [];
+    private readonly List<ChangedDiscordDm> _changes = [];
     private readonly Lock _gate = new();
+    private ulong _nextMessageId = 1000;
+
+    /// <summary>The DM channel id the fake reports for a user.</summary>
+    public static ulong ChannelOf(ulong userId) => userId + 500_000;
+
+    /// <summary>Closes and deletes of sent DMs, in order (failed ones too).</summary>
+    public IReadOnlyList<ChangedDiscordDm> Changes
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _changes.ToList();
+            }
+        }
+    }
+
+    /// <summary>Whether deleting a message succeeds.</summary>
+    public bool DeleteSucceeds { get; set; } = true;
+
+    public Task<SentDm> SendTrackedMessageAsync(ulong userId, string text, MessageComponent components,
+        CancellationToken cancellationToken = default)
+    {
+        ulong messageId;
+        lock (_gate)
+        {
+            messageId = _nextMessageId++;
+            _messages.Add(new SentDiscordDm(userId, text, null, components, messageId));
+        }
+
+        var outcome = Deliver(userId);
+        return Task.FromResult(outcome == DeliveryOutcome.Delivered
+            ? new SentDm(outcome, ChannelOf(userId), messageId)
+            : new SentDm(outcome));
+    }
+
+    public Task<bool> CloseMessageAsync(ulong channelId, ulong messageId, string line, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            _changes.Add(new ChangedDiscordDm(channelId, messageId, line));
+        }
+
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> DeleteMessageAsync(ulong channelId, ulong messageId, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            _changes.Add(new ChangedDiscordDm(channelId, messageId, null));
+        }
+
+        return Task.FromResult(DeleteSucceeds);
+    }
 
     public IReadOnlyList<SentDiscordDm> Messages
     {

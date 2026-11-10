@@ -20,6 +20,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<DayNote> DayNotes => Set<DayNote>();
     public DbSet<Mood> Moods => Set<Mood>();
     public DbSet<JournalKey> JournalKeys => Set<JournalKey>();
+    public DbSet<ReminderMessage> ReminderMessages => Set<ReminderMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +42,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasKey(h => h.Id);
             entity.Property(h => h.Name).HasMaxLength(100).IsRequired();
             entity.HasIndex(h => h.NextReminderUtc);
+            entity.HasIndex(h => h.SecondReminderUtc);
             entity.Property(h => h.TimesPerDay).HasDefaultValue(1);
             entity.HasOne(h => h.User)
                   .WithMany(u => u.Habits)
@@ -57,9 +59,28 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasKey(r => r.Id);
             entity.Property(r => r.Name).HasMaxLength(50).IsRequired();
             entity.HasIndex(r => r.NextReminderUtc);
+            entity.HasIndex(r => r.SecondReminderUtc);
             entity.HasOne(r => r.User)
                   .WithMany(u => u.Routines)
                   .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReminderMessage>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.HasIndex(m => m.MessageId);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(m => m.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Habit>()
+                  .WithMany()
+                  .HasForeignKey(m => m.HabitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Routine>()
+                  .WithMany()
+                  .HasForeignKey(m => m.RoutineId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

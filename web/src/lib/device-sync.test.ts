@@ -67,7 +67,12 @@ describe('DeviceSync', () => {
 
     auth.setMe({ ...me, timezone: 'Asia/Tokyo' });
     expect(rebuild).toHaveBeenCalledTimes(1);
-    expect(rebuild).toHaveBeenCalledWith('u1', 'Asia/Tokyo');
+    expect(rebuild).toHaveBeenCalledWith('u1', 'Asia/Tokyo', 0);
+
+    rebuild.mockClear();
+    auth.setMe({ ...me, timezone: 'Asia/Tokyo', secondReminderMinutes: 60 });
+    expect(rebuild).toHaveBeenCalledTimes(1);
+    expect(rebuild).toHaveBeenCalledWith('u1', 'Asia/Tokyo', 60);
 
     rebuild.mockClear();
     applyTheme('marigold');
@@ -215,7 +220,7 @@ describe('DeviceSync', () => {
       sync.dropped.set(2);
 
       auth.setMe({ ...me, id: 'u2' });
-      await vi.waitFor(() => expect(rebuild).toHaveBeenCalledWith('u2', me.timezone));
+      await vi.waitFor(() => expect(rebuild).toHaveBeenCalledWith('u2', me.timezone, 0));
 
       expect(sync.nativeCheckIn.get()).toBeNull();
       expect(sync.dropped.get()).toBe(0);

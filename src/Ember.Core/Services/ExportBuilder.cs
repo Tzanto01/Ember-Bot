@@ -21,7 +21,8 @@ public static class ExportBuilder
     /// <c>count</c> (log); <c>routine_position</c> (habit, its order inside its routine); <c>text</c>, <c>mood</c> (day_note);
     /// <c>mood_id</c>, <c>label</c>, <c>emoji</c>, <c>archived</c> (mood); <c>cipher_version</c>, <c>cipher_iv</c>, <c>cipher_text</c>
     /// (encrypted day_note or mood); <c>version</c>, <c>turning_off</c>, <c>passphrase_salt</c>, <c>passphrase_iterations</c>,
-    /// <c>passphrase_iv</c>, <c>passphrase_wrapped</c>, <c>recovery_salt</c>, <c>recovery_iv</c>, <c>recovery_wrapped</c> (journal_key).
+    /// <c>passphrase_iv</c>, <c>passphrase_wrapped</c>, <c>recovery_salt</c>, <c>recovery_iv</c>, <c>recovery_wrapped</c> (journal_key);
+    /// <c>second_reminder_minutes</c> (settings).
     /// </summary>
     public const string CsvHeader =
         "record_type,timezone,grace_days_per_week,theme," +
@@ -31,7 +32,8 @@ public static class ExportBuilder
         "date,completed,guild_id,kind,reminder_channels,endpoint,email,discord_id," +
         "two_factor_enabled,days,times_per_day,routine_id,count,routine_position,text,mood,mood_id,label,emoji,archived," +
         "cipher_version,cipher_iv,cipher_text,version,turning_off," +
-        "passphrase_salt,passphrase_iterations,passphrase_iv,passphrase_wrapped,recovery_salt,recovery_iv,recovery_wrapped";
+        "passphrase_salt,passphrase_iterations,passphrase_iv,passphrase_wrapped,recovery_salt,recovery_iv,recovery_wrapped," +
+        "second_reminder_minutes";
 
     private static readonly string[] CsvColumns = CsvHeader.Split(',');
 
@@ -52,7 +54,8 @@ public static class ExportBuilder
     public sealed record SettingsRecord(
         string Timezone, int GraceDaysPerWeek, string? Theme,
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
-        DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn, bool TwoFactorEnabled);
+        DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn, bool TwoFactorEnabled,
+        int SecondReminderMinutes);
 
     /// <summary>
     /// One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds any of <c>discord</c>, <c>webpush</c> and <c>mobile</c>.
@@ -122,7 +125,8 @@ public static class ExportBuilder
         return new ExportDocument(
             new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.Theme,
                 user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
-                AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn, user.TwoFactorEnabled),
+                AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn, user.TwoFactorEnabled,
+                user.SecondReminderMinutes),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
@@ -176,7 +180,7 @@ public static class ExportBuilder
             ("dm_pause_notice_sent_at", Utc(s.DmPauseNoticeSentAt)), ("health_data_consent_at", Utc(s.HealthDataConsentAt)),
             ("consent_policy_version", s.ConsentPolicyVersion ?? ""), ("consent_prompted_on", Date(s.ConsentPromptedOn)),
             ("email", doc.Account?.Email ?? ""), ("discord_id", doc.Account?.DiscordId ?? ""),
-            ("two_factor_enabled", Bool(s.TwoFactorEnabled)));
+            ("two_factor_enabled", Bool(s.TwoFactorEnabled)), ("second_reminder_minutes", Num(s.SecondReminderMinutes)));
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", ("habit_id", Num(h.Id)), ("name", h.Name), ("frequency", h.Frequency),

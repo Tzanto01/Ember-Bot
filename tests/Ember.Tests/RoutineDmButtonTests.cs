@@ -2,6 +2,8 @@ using Discord;
 using Ember.Bot.Modules;
 using Ember.Bot.Services;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ember.Tests;
 
@@ -43,8 +45,9 @@ public class RoutineDmButtonTests
         var sender = new TestDiscordDmSender();
         var pending = Enumerable.Range(1, 25).Select(i => new RoutineHabit(i, $"Habit {i:00} " + new string('x', 91))).ToList();
 
-        await new DiscordDmReminderChannel(sender, TimeProvider.System)
-            .SendAsync(new Reminder(Guid.NewGuid(), 42, 7, "Morning", 0, false, pending));
+        await new DiscordDmReminderChannel(sender, TimeProvider.System, new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<DiscordDmReminderChannel>.Instance)
+            .SendAsync(new Reminder(Guid.NewGuid(), 42, 7, "Morning", 0, false, new DateOnly(2027, 1, 15), pending));
 
         var dm = sender.Messages.Should().ContainSingle().Subject;
         dm.Text!.Length.Should().BeLessThan(2000);

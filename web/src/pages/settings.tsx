@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { saveFile } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
-import type { ExportFormat, MePatch } from '@/lib/models';
+import { type ExportFormat, type MePatch, secondReminderChoices, type SecondReminderMinutes } from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, localMode, push, reminders } from '@/lib/services';
@@ -30,6 +30,7 @@ import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 type Section =
   | 'timezone'
   | 'grace'
+  | 'second'
   | 'discord'
   | 'dm'
   | 'push'
@@ -62,6 +63,13 @@ const themeNotSavedText =
 
 const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
 const graceOptions = [0, 1, 2, 3];
+const secondReminderLabels: Record<SecondReminderMinutes, string> = {
+  0: 'Off',
+  15: '15 minutes',
+  30: '30 minutes',
+  60: '1 hour',
+  120: '2 hours',
+};
 const exportFormats: ExportFormat[] = ['json', 'csv'];
 const scrollMargin = 'scroll-mt-[calc(56px+env(safe-area-inset-top)+1.5rem)]';
 
@@ -132,6 +140,7 @@ export default function SettingsPage() {
   const busyRef = useRef<Section | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
+  const secondRef = useRef<SecondReminderMinutes | null>(null);
   const scrolled = useRef(false);
   const tzForm = useRef<HTMLFormElement>(null);
   const deleteForm = useRef<HTMLFormElement>(null);
@@ -141,6 +150,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<(Message & { section: Section }) | null>(null);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
+  const [second, setSecond] = useState<SecondReminderMinutes | null>(null);
   const [zone, setZone] = useState('');
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
@@ -237,6 +247,17 @@ export default function SettingsPage() {
       graceRef.current = null;
       setGrace(null);
       if (error) fail('grace', error);
+    });
+  }
+
+  function changeSecond(value: SecondReminderMinutes): void {
+    secondRef.current = value;
+    setSecond(value);
+    void patch('second', { secondReminderMinutes: value }).then((error) => {
+      if (secondRef.current !== value) return;
+      secondRef.current = null;
+      setSecond(null);
+      if (error) fail('second', error);
     });
   }
 
@@ -395,6 +416,7 @@ export default function SettingsPage() {
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
+    { id: 'second-reminder', title: 'Second reminder' },
     { id: 'appearance', title: 'Appearance' },
     ...(local ? [] : [{ id: 'export', title: 'Your data' }]),
     { id: 'account', title: local ? 'Legal' : 'Account' },
@@ -405,6 +427,7 @@ export default function SettingsPage() {
   const zoneMessage = (zoneTouched ? zoneError(zone) : null) ?? zoneServerError;
   const suggestZone = !!me && isValidTimeZone(browserZone) && (!me.timezoneSet || me.timezone !== browserZone);
   const graceShown = grace ?? me?.graceDaysPerWeek ?? 0;
+  const secondShown = second ?? me?.secondReminderMinutes ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -674,6 +697,26 @@ export default function SettingsPage() {
                 )}
               </SettingsCard>
             )}
+
+            <SettingsCard id="second-reminder" title={title('second-reminder')}>
+              <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
+                {(field) => (
+                  <NativeSelect
+                    {...field}
+                    value={String(secondShown)}
+                    onChange={(event) => changeSecond(Number(event.target.value) as SecondReminderMinutes)}
+                  >
+                    {secondReminderChoices.map((n) => (
+                      <option key={n} value={n}>
+                        {secondReminderLabels[n]}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </FormField>
+              {savedStatus('second')}
+              {outcome('second')}
+            </SettingsCard>
 
             <SettingsCard id="appearance" title={title('appearance')}>
               <p id="appearance-hint">

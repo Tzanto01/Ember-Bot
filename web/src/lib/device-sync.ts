@@ -14,14 +14,15 @@ import { themeApplied } from './theme';
  * Keeps the device in step with the account: replays queued offline day edits when the user is known, when an
  * edit is queued, when the browser comes back online and (native) when the app resumes; in the native build
  * (`reminders` set) it also re-reads `me` on resume and rebuilds the local reminders after every sync and
- * whenever `me` holds a new time zone or the theme changes (the reminder icon follows its colour). When a user
- * is known whose zone was never set, it sends the device's zone (not UTC) once per user on this device (a failure
- * waits for the next app start). Native "Done" taps on a reminder this app issued ({@link Reminders.wasIssued})
+ * whenever `me` holds a new time zone or second reminder setting or the theme changes (the reminder icon follows
+ * its colour). When a user is known whose zone was never set, it sends the device's zone (not UTC) once per user
+ * on this device (a failure waits for the next app start). Native "Done" taps on a reminder this app issued ({@link Reminders.wasIssued})
  * and widget row taps check in through {@link Reminders.checkIn} and open Today.
  */
 export class DeviceSync {
   private userId: string | null = null;
   private timeZone: string | null = null;
+  private secondMinutes: number | null = null;
 
   /** Bumps after a replay sent or dropped something, so screens can reload. */
   readonly synced = new Store(0);
@@ -68,7 +69,7 @@ export class DeviceSync {
   /** Native build only: rebuilds the local reminders for the signed-in user. */
   rebuildReminders(): void {
     const me = this.auth.me.get();
-    if (this.reminders && me) void this.reminders.rebuild(me.id, me.timezone);
+    if (this.reminders && me) void this.reminders.rebuild(me.id, me.timezone, me.secondReminderMinutes);
   }
 
   private follow(): void {
@@ -83,8 +84,10 @@ export class DeviceSync {
       if (id && !me?.timezoneSet) void this.claimTimeZone(id);
     }
     const timeZone = me?.timezone ?? null;
-    if (timeZone !== this.timeZone) {
+    const secondMinutes = me?.secondReminderMinutes ?? null;
+    if (timeZone !== this.timeZone || secondMinutes !== this.secondMinutes) {
       this.timeZone = timeZone;
+      this.secondMinutes = secondMinutes;
       this.rebuildReminders();
     }
   }

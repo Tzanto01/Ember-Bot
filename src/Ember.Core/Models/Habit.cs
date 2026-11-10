@@ -27,6 +27,12 @@ public class Habit
     public DateTime? NextReminderUtc { get; set; }
 
     /// <summary>
+    /// UTC instant of the pending second reminder (<see cref="User.SecondReminderMinutes"/> after the regular reminder was sent,
+    /// on the same local day). Null when none is pending; a snooze clears it.
+    /// </summary>
+    public DateTime? SecondReminderUtc { get; set; }
+
+    /// <summary>
     /// Last local day of the pause. Days from <see cref="PausedFrom"/> through this day are paused: reminders are
     /// suppressed and the days are excluded from streak calculations.
     /// </summary>

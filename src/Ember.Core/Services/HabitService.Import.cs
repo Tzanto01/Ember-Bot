@@ -10,7 +10,8 @@ namespace Ember.Core.Services;
 /// </summary>
 public sealed record ImportData(
     IReadOnlyList<Routine> Routines, IReadOnlyList<Habit> Habits, IReadOnlyList<DayMark> DayMarks, IReadOnlyList<Mood> Moods,
-    IReadOnlyList<(DayNote Note, Mood? CustomMood)> DayNotes, JournalKey? JournalKey, int? GraceDaysPerWeek, string? Theme);
+    IReadOnlyList<(DayNote Note, Mood? CustomMood)> DayNotes, JournalKey? JournalKey, int? GraceDaysPerWeek, string? Theme,
+    int SecondReminderMinutes);
 
 /// <summary>Outcome of <see cref="HabitService.ImportAsync"/>.</summary>
 public enum ImportResult
@@ -88,11 +89,13 @@ public partial class HabitService
 
         var grace = data.GraceDaysPerWeek;
         var theme = data.Theme;
+        var secondReminderMinutes = data.SecondReminderMinutes;
         await _db.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.GraceDaysPerWeek, u => grace ?? u.GraceDaysPerWeek)
-                .SetProperty(u => u.Theme, u => theme ?? u.Theme));
+                .SetProperty(u => u.Theme, u => theme ?? u.Theme)
+                .SetProperty(u => u.SecondReminderMinutes, secondReminderMinutes));
         await transaction.CommitAsync();
         return ImportResult.Imported;
     }

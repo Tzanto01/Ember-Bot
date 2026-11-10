@@ -603,7 +603,7 @@ public partial class HabitService
     public static readonly TimeSpan SnoozeWindow = TimeSpan.FromHours(24);
 
     /// <summary>
-    /// Delays the habit's next reminder by <see cref="SnoozeDelay"/>. Returns false when the habit isn't the user's or has no reminder,
+    /// Delays the habit's next reminder by <see cref="SnoozeDelay"/> and drops its pending second reminder. Returns false when the habit isn't the user's or has no reminder,
     /// or when the reminder was sent (<paramref name="sentAtUtc"/>) more than <see cref="SnoozeWindow"/> ago, so an old DM can't displace the schedule.
     /// </summary>
     public async Task<bool> SnoozeReminderAsync(Guid userId, int habitId, DateTimeOffset sentAtUtc)
@@ -616,6 +616,7 @@ public partial class HabitService
         if (habit is null) return false;
 
         habit.NextReminderUtc = _time.GetUtcNow().UtcDateTime + SnoozeDelay;
+        habit.SecondReminderUtc = null;
         await _db.SaveChangesAsync();
         return true;
     }

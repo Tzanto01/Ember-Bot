@@ -1,4 +1,4 @@
-# Ember API contract v1.7
+# Ember API contract v1.8
 
 v1.7 follow-up (2026-11-03): enabling 2FA and importing a journal key need the login password; import, merge and body details pinned from team backend's defaults.
 
@@ -311,3 +311,32 @@ snake_case like today, plus `"format_version": 2` at the top level (an export wi
 - Import answers 204. On account merge, the signed-in account's day note wins when both accounts have one for the same date, and same-label plaintext moods are combined.
 - `POST /api/me/import` alone accepts bodies up to 5 MiB (signed-in callers only; every other endpoint keeps the 64 KiB cap). Larger → 413.
 - Upgrading with the private journal chosen: the client imports everything except `moods` and `day_notes` (sent empty, since the server can't remap mood ids inside ciphertext), then creates the journal key and uploads encrypted moods and entries through the journal endpoints. No plaintext journal data is ever sent. The local copy stays until every step succeeded, and a retry resumes where it stopped.
+
+## Reminders v1.8
+
+v1.8 (2026-11-10, Nico): old reminder buttons disappear once they can no longer be used, so the reminder message means something; and an optional second reminder for people who did the task but forgot to tap. Defaults marked *(default)* are the department lead's until Nico says otherwise.
+
+### Reminder buttons close (Discord)
+
+- A Discord reminder (habit or routine) keeps its buttons from the moment it is sent until the first of:
+  1. 10:00 local time on the day after the reminder's local day (`MissedDayReflectionJob.LocalSendHour`, when the "Log yesterday" check-in takes over) *(default)*;
+  2. every habit on it being done for that day, logged anywhere (bot, web, app, widget);
+  3. a second reminder for the same habit or routine and day being sent (see below);
+  4. the user tapping a button on it (as today).
+- Closing removes every button and keeps the text, adding one subtext line: `-# ✅ Logged.` when its habits are done for that day, `-# This reminder has closed.` otherwise. A message superseded by a second reminder is deleted instead (closed as above if deleting fails).
+- The bot remembers each reminder message it sent (Discord channel and message id, user, habit or routine, local day) only until that message is closed; the record is then removed. It is deleted with the user, habit or routine and is not part of the export.
+- Done and Skip on a reminder no longer work forever: tapping them after rule 1 answers ephemerally `This reminder has closed. You can still fill in that day with /habit history or on the web. 💙` and closes the message. This also covers messages sent before v1.8 (no record exists for them). Snooze keeps its own window.
+- Closing is best effort: a message Discord can't edit (deleted by the user, DMs closed) just drops its record.
+
+### Second reminder (all channels)
+
+- New account setting `secondReminderMinutes`: `0` (off, the default), `15`, `30`, `60` or `120`. One setting for all of the user's habit and routine reminders *(default: per account, not per habit)*.
+- When it is on, every regular reminder that was sent is followed once, that many minutes later, by a second reminder on the same channels, but only if, at that moment, the habit is still not done for that local day (a routine: at least one member habit still pending or partial), the habit isn't paused, the local day hasn't changed since the first reminder, and it isn't stale (same `StaleAfter` rule). Never a third.
+- A snooze replaces the pending second reminder (the user picked their own time). A second reminder is never sent for a snoozed reminder.
+- Discord text for a habit: `🔔 One more nudge for **{name}**, in case the first one got buried. Did you get to it today?` with the usual Done / Skip / Snooze buttons. Routine: `🔔 One more nudge for your **{routine}** routine. Still open today:` plus the list and Done buttons as in the first one. The first message is deleted (see above).
+- Web push: same as the first reminder's payload, body `One more nudge, in case the first one got buried.`
+- `GET /api/me` gains `"secondReminderMinutes": 0`. `PATCH /api/me` accepts `secondReminderMinutes`; any other value → 400 `validation` on `secondReminderMinutes`; absent leaves it unchanged.
+- Bot: `/habit second-reminder` with one required choice (`Off`, `15 minutes`, `30 minutes`, `1 hour`, `2 hours`), answering ephemerally in Ember's tone, like `/habit grace`.
+- Export: `settings.second_reminder_minutes`; import accepts it (missing → 0, invalid → 400 `validation`). The CSV export gets the matching column.
+- Native app: schedules a second local notification `secondReminderMinutes` after each planned reminder, for the same habit or routine and date, same title and "Done" action, body `One more nudge, in case the first one got buried.`, dropped when it would fall on another local day. Both go away together when the day is checked in (the plan already drops done days). No-account mode keeps the setting on the device, with the same choices, and uses it for these local notifications only.
+- Web and app Settings: a "Second reminder" control (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) in the reminder area, explained in one gentle line: `If you haven't checked in yet, Ember nudges you once more.`
