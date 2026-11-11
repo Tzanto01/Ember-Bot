@@ -177,6 +177,24 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Logout_ends_the_accounts_other_sessions_on_the_server()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        const string cookieName = ".AspNetCore.Identity.Application";
+        var copied = Host.NewClient();
+        copied.AddCookie(cookieName, client.CookieValue(cookieName)!, "/");
+        var tokens = await (await Host.NewClient().Post("/api/auth/login", new Credentials(client.Email, ApiClient.Passphrase))).ExpectJson();
+        await (await copied.Get("/api/me")).Expect(HttpStatusCode.OK);
+
+        await (await client.Post("/api/auth/logout")).Expect(HttpStatusCode.NoContent);
+        Host.Time.Advance(TimeSpan.FromSeconds(61));
+
+        await (await copied.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
+        await (await Host.NewClient().Post("/api/auth/refresh", new { refreshToken = tokens.GetProperty("refreshToken").GetString() }))
+            .Expect(HttpStatusCode.Unauthorized);
+    }
+
+    [DockerFact]
     public async Task Password_reset_mails_a_web_link_and_the_new_password_replaces_the_old_one()
     {
         var client = await Host.ConfirmedUserAsync();

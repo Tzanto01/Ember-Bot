@@ -71,7 +71,9 @@ internal static class AuthEndpoints
 
         auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn) =>
         {
-            if (http.User.Identity?.IsAuthenticated == true) await signIn.SignOutAsync();
+            if (http.User.Identity?.IsAuthenticated != true) return TypedResults.NoContent();
+            if (await signIn.UserManager.GetUserAsync(http.User) is { } user) await signIn.UserManager.UpdateSecurityStampAsync(user);
+            await signIn.SignOutAsync();
             return TypedResults.NoContent();
         });
 

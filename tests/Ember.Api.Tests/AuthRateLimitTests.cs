@@ -1,5 +1,9 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ember.Api.Tests;
 
@@ -94,5 +98,47 @@ public class AuthOtherRateLimitTests(PostgresFixture postgres) : ApiTestBase(pos
             (await client.Get("/api/auth/discord/callback?state=x&code=y")).StatusCode.Should().NotBe((HttpStatusCode)429);
 
         await (await client.Get("/api/auth/discord/callback?state=x&code=y")).ExpectProblem((HttpStatusCode)429, "rate_limited");
+    }
+}
+
+[Collection("Postgres")]
+public class TrustedProxyNetworkRateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres)
+{
+    protected override Dictionary<string, string?>? Settings => new()
+    {
+        ["Ember:RateLimits:AuthPerIpPerMinute"] = "2",
+        ["Ember:ForwardedHeaders:KnownNetworks:0"] = "172.18.0.0/16",
+    };
+
+    [DockerFact]
+    public async Task Requests_through_a_proxy_in_a_trusted_network_are_limited_per_forwarded_client_ip()
+    {
+        using var proxied = Host.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new RemoteAddress(IPAddress.Parse("172.18.0.5")))));
+        async Task<HttpStatusCode> WrongLogin(string clientIp)
+        {
+            using var http = proxied.CreateClient();
+            http.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp);
+            return (await http.PostAsJsonAsync("/api/auth/login", new Credentials(ApiHost.NewEmail(), ApiClient.Passphrase))).StatusCode;
+        }
+
+        (await WrongLogin("203.0.113.1")).Should().Be(HttpStatusCode.Unauthorized);
+        (await WrongLogin("203.0.113.1")).Should().Be(HttpStatusCode.Unauthorized);
+        (await WrongLogin("203.0.113.1")).Should().Be((HttpStatusCode)429);
+
+        (await WrongLogin("203.0.113.2")).Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private sealed class RemoteAddress(IPAddress address) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((http, nextMiddleware) =>
+            {
+                http.Connection.RemoteIpAddress = address;
+                return nextMiddleware(http);
+            });
+            next(app);
+        };
     }
 }
