@@ -72,7 +72,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                 <span aria-hidden="true" className="w-6 shrink-0 text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 break-words max-[379px]:basis-[calc(100%-1.75rem)]">{habit.name}</span>
+                <span className="min-w-0 flex-1 break-words max-[379px]:basis-[calc(100%-2.5rem)]">{habit.name}</span>
                 <Button
                   id={`${id}-up-${habit.id}`}
                   type="button"
