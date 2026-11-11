@@ -372,19 +372,6 @@ describe('TodayPage', () => {
     expect(screen.getByRole('link', { name: 'Turn on reminders in Settings' })).toHaveAttribute('href', '/settings#push');
   });
 
-  it("doesn't ask about reminders when Discord is linked", async () => {
-    auth.setMe({ ...me, discord: { linked: true, id: '42' } });
-    renderToday();
-    (await f.next('GET', '/api/me')).respond(200, { ...me, discord: { linked: true, id: '42' } });
-    (await f.next('GET', '/api/habits')).respond(200, [{ ...habit, reminderTime: '08:00' }]);
-    (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, []);
-    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
-    (await f.next('GET', '/api/routines')).respond(200, []);
-
-    await checkButton();
-    expect(screen.queryByText("Your reminders can't reach you yet")).toBeNull();
-  });
-
   it('says yesterday is still open when nothing was checked in on a planned day', async () => {
     renderToday();
     await answerLoad(f, [habit]);

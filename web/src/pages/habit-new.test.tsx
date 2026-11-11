@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -158,8 +158,10 @@ describe('HabitNewPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Start from scratch' }));
     await user.type(screen.getByLabelText('Name', { exact: true }), 'Stretch');
     const form = screen.getByRole('button', { name: 'Create habit' }).closest('form')!;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
+    act(() => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
 
     await fetch.next('POST', '/api/habits');
     await new Promise((resolve) => setTimeout(resolve, 20));
