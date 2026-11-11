@@ -47,8 +47,19 @@ export interface CachedHabits {
   routines?: Routine[];
 }
 
-/** The habit with `edit` applied to its `today` entry when the edit is for that day (optimistic view). */
+/**
+ * The habit with `edit` applied to its `today` entry when the edit is for that day (optimistic view). A weekly habit's
+ * `stats.week.done` follows a day that becomes done or stops being done.
+ */
 export function withDayEdit(habit: Habit, edit: QueueEdit): Habit {
+  const next = withTodayEdit(habit, edit);
+  const week = habit.stats.week;
+  const delta = Number(next.today.state === 'done') - Number(habit.today.state === 'done');
+  if (habit.frequency !== 'weekly' || !week || !delta) return next;
+  return { ...next, stats: { ...next.stats, week: { ...week, done: week.done + delta } } };
+}
+
+function withTodayEdit(habit: Habit, edit: QueueEdit): Habit {
   if (!isDayEdit(edit) || edit.habitId !== habit.id || habit.today.date !== edit.date) return habit;
   const target = habit.timesPerDay ?? 1;
   const resting = habit.today.state === 'offday' || habit.today.state === 'lowday' ? habit.today.state : null;
