@@ -5,7 +5,8 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
-import { useReminderReach } from '@/components/habits/reminder-reach';
+import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
+import { isPausedOn } from '@/components/history/kept-days';
 import { DayJournal } from '@/components/journal/day-journal';
 import { DeviceNotices } from '@/components/local/device-notices';
 import { LiveRegion } from '@/components/live-region';
@@ -68,13 +69,13 @@ interface Problem {
 
 const todayKey = ['today'] as const;
 
-/** True when nothing was checked in yesterday although something was planned and it wasn't a low day. */
+/** True when nothing was checked in yesterday and it wasn't a low day; ask only when a habit was due yesterday. */
 async function loadYesterdayOpen(yesterday: LocalDateString): Promise<boolean> {
   const [[stat], lowDays] = await Promise.all([
     api.dayStats(yesterday, yesterday),
     api.listLowDays(yesterday, yesterday),
   ]);
-  return !!stat && stat.scheduled > 0 && !stat.showedUp && !lowDays.includes(yesterday);
+  return !!stat && !stat.showedUp && !lowDays.includes(yesterday);
 }
 
 /** The weekly card's first line: the count without a grade when some but not all check-ins happened. */
@@ -112,9 +113,14 @@ export default function TodayPage() {
   const firstSynced = useRef(synced);
   const reduceMotion = useReducedMotion();
   const reach = useReminderReach();
+  const reminderHash = useReminderSettingsHash();
   const yesterday = today ? addDays(today, -1) : null;
   const tracksYesterday =
-    !!yesterday && !!data?.habits.some((h) => h.frequency !== 'weekly' && h.startDate <= yesterday);
+    !!yesterday &&
+    !!data?.habits.some(
+      (h) =>
+        h.frequency !== 'weekly' && h.startDate <= yesterday && !isOffday(h, yesterday) && !isPausedOn(h, yesterday),
+    );
   const yesterdayQuery = useQuery({
     queryKey: [...todayKey, 'yesterday', yesterday],
     queryFn: () => loadYesterdayOpen(yesterday!),
@@ -265,7 +271,10 @@ export default function TodayPage() {
   const allDone =
     doneCount > 0 &&
     !!data?.habits.every(
-      (h) => ['done', 'offday', 'lowday', 'paused', 'beforestart'].includes(h.today.state) || h.pausedToday,
+      (h) =>
+        ['done', 'offday', 'lowday', 'paused', 'beforestart'].includes(h.today.state) ||
+        h.pausedToday ||
+        (h.frequency === 'weekly' && h.today.state === 'pending'),
     );
   const oldestStart = data?.habits.reduce<LocalDateString | null>(
     (min, h) => (min === null || h.startDate < min ? h.startDate : min),
@@ -360,12 +369,6 @@ export default function TodayPage() {
               </Button>
             </Notice>
           )}
-          {remindersUnheard && (
-            <Notice tone="info" heading="Your reminders can't reach you yet">
-              <p>Turn on notifications for this device, or link Discord, and Ember can nudge you at the times you picked.</p>
-              <TapLink to={{ pathname: '/settings', hash: 'push' }}>Turn on reminders in Settings</TapLink>
-            </Notice>
-          )}
           {yesterdayQuery.data === true && (
             <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
               <CalendarDays aria-hidden className="size-[18px] shrink-0" />
@@ -405,6 +408,12 @@ export default function TodayPage() {
                 {habitList(habits, 'h3')}
               </section>
             ))
+          )}
+          {remindersUnheard && (
+            <Notice tone="info" heading="Your reminders can't reach you yet">
+              <p>Turn on notifications for this device, or link Discord, and Ember can nudge you at the times you picked.</p>
+              <TapLink to={{ pathname: '/settings', hash: reminderHash }}>Turn on reminders in Settings</TapLink>
+            </Notice>
           )}
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
             <Button asChild variant="secondary" className="w-full lg:w-auto">

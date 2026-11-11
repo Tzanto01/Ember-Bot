@@ -168,7 +168,7 @@ describe('HabitNewPage', () => {
     expect(fetch.all.filter((c) => c.method === 'POST')).toHaveLength(1);
   });
 
-  it('says how reminders can reach an account that has no channel yet', async () => {
+  it('says how reminders can reach an account that has no channel yet, linking Discord where push is not offered', async () => {
     const user = userEvent.setup();
     const fetch = mockFetch();
     renderPage();
@@ -177,7 +177,7 @@ describe('HabitNewPage', () => {
     await user.click(await screen.findByRole('button', { name: /Walk/ }));
 
     expect(await screen.findByText(/Reminders reach you through Discord or notifications on this device/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Turn one on in Settings.' })).toHaveAttribute('href', '/settings#push');
+    expect(screen.getByRole('link', { name: 'Turn one on in Settings.' })).toHaveAttribute('href', '/settings#discord');
   });
 
   it('offers no reminder time without an account on the web', async () => {

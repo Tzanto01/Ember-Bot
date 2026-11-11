@@ -383,7 +383,38 @@ describe('TodayPage', () => {
     await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
 
     expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Turn on reminders in Settings' })).toHaveAttribute('href', '/settings#push');
+    expect(screen.getByRole('link', { name: 'Turn on reminders in Settings' })).toHaveAttribute('href', '/settings#discord');
+  });
+
+  it('counts Discord with paused DM reminders as not reaching the user', async () => {
+    renderToday();
+    (await f.next('GET', '/api/me')).respond(200, {
+      ...me,
+      localToday: '2026-11-01',
+      discord: { ...me.discord, linked: true },
+      dmReminders: { paused: true },
+    });
+    (await f.next('GET', '/api/habits')).respond(200, [{ ...habit, reminderTime: '08:00' }]);
+    (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, []);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
+
+    expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
+  });
+
+  it('shows no reminder warning when the push check failed in a browser that supports push', async () => {
+    vi.stubGlobal('PushManager', class {});
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { getRegistration: async () => undefined } });
+    try {
+      renderToday();
+      await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+
+      await checkButton();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByText("Your reminders can't reach you yet")).toBeNull();
+    } finally {
+      Reflect.deleteProperty(navigator, 'serviceWorker');
+    }
   });
 
   it('says yesterday is still open when nothing was checked in on a planned day', async () => {
@@ -411,5 +442,33 @@ describe('TodayPage', () => {
     await checkButton();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText(/Yesterday is still open/)).toBeNull();
+  });
+
+  it("doesn't ask about yesterday when only a weekly habit or a rest day was on it", async () => {
+    renderToday();
+    await answerLoad(f, [
+      { ...habit, frequency: 'weekly', weeklyTarget: 3 },
+      { ...habit, id: 2, name: 'Read', frequency: 'weekdays', days: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+    ]);
+
+    await screen.findByRole('button', { name: 'Check in Read for today' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(f.all.some((c) => c.url.startsWith('/api/stats/days'))).toBe(false);
+  });
+
+  it("doesn't ask about yesterday when the only daily habit was paused then", async () => {
+    renderToday();
+    await answerLoad(f, [{ ...habit, pausedFrom: '2026-10-30', pausedUntil: '2026-10-31' }]);
+
+    await checkButton();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(f.all.some((c) => c.url.startsWith('/api/stats/days'))).toBe(false);
+  });
+
+  it('says everything is done while a weekly habit is still open today', async () => {
+    renderToday();
+    await answerLoad(f, [doneHabit, { ...habit, id: 2, name: 'Swim', frequency: 'weekly', weeklyTarget: 2 }]);
+
+    expect((await screen.findAllByText(/That's everything for today/)).length).toBeGreaterThan(0);
   });
 });

@@ -13,7 +13,7 @@ import {
   habitNameError,
 } from '@/components/habits/habit-fields';
 import { HabitPreview } from '@/components/habits/habit-preview';
-import { useReminderReach } from '@/components/habits/reminder-reach';
+import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
 import { PageHeader } from '@/components/page-header';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ export default function HabitNewPage() {
   const [problem, setProblem] = useState<FriendlyProblem | null>(null);
   const submitting = useRef(false);
   const reach = useReminderReach();
+  const reminderHash = useReminderSettingsHash();
   const reminders = reach !== 'local';
 
   const create = useMutation({
@@ -172,7 +173,7 @@ export default function HabitNewPage() {
                   reach === 'none' && (
                     <>
                       Reminders reach you through Discord or notifications on this device.{' '}
-                      <Link to={{ pathname: '/settings', hash: 'push' }}>Turn one on in Settings.</Link>
+                      <Link to={{ pathname: '/settings', hash: reminderHash }}>Turn one on in Settings.</Link>
                     </>
                   )
                 }

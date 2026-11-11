@@ -11,6 +11,11 @@ export interface KeptDays {
   span: number;
 }
 
+/** Whether the habit is paused on `date`: inside [`pausedFrom`, `pausedUntil`] (Core `IsPausedOn`). */
+export function isPausedOn(habit: Pick<Habit, 'pausedFrom' | 'pausedUntil'>, date: LocalDateString): boolean {
+  return habit.pausedUntil !== null && date <= habit.pausedUntil && (habit.pausedFrom === null || date >= habit.pausedFrom);
+}
+
 /** The first day of the `window` days ending on `today`, but not before the habit's start. */
 export function windowStart(habit: Pick<Habit, 'startDate'>, today: LocalDateString, window: number): LocalDateString {
   const cutoff = addDays(today, 1 - window);
@@ -31,10 +36,8 @@ export function keptDays(
 ): KeptDays {
   const cutoff = addDays(today, 1 - window);
   const from = windowStart(habit, today, window);
-  const paused = (d: LocalDateString) =>
-    habit.pausedUntil !== null && d <= habit.pausedUntil && (habit.pausedFrom === null || d >= habit.pausedFrom);
   const kept = new Set<LocalDateString>();
   for (const day of days) if (day.completed === true && day.date >= cutoff && day.date <= today) kept.add(day.date);
-  for (const d of lowDays) if (d >= from && d <= today && !paused(d) && !isOffday(habit, d)) kept.add(d);
+  for (const d of lowDays) if (d >= from && d <= today && !isPausedOn(habit, d) && !isOffday(habit, d)) kept.add(d);
   return { kept: kept.size, span: Math.max(0, Math.min(window, daysBetween(from, today) + 1)) };
 }
