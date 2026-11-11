@@ -189,13 +189,29 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>Posts the web link's <c>userId</c> and <c>code</c> from a confirmation mail, with the password entered on the confirm page, to confirmEmail.</summary>
-    /// <param name="code">Replaces the code from the link.</param>
-    public Task<HttpResponseMessage> OpenConfirmLinkAsync(ApiClient client, SentMail mail, string passphrase, string? code = null)
+    /// <summary>
+    /// The account ID from a confirmation mail's link and a fresh Identity confirmation code for it (Base64Url, as the older
+    /// confirmEmail links carried), or a code that fails when the account no longer exists.
+    /// </summary>
+    public async Task<(string UserId, string Code)> OldConfirmLinkAsync(SentMail mail)
     {
-        var query = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query);
-        return client.Post("/api/auth/confirmEmail", new ConfirmRequest(query["userId"].ToString(), code ?? query["code"].ToString(), passphrase));
+        var userId = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query)["user"].ToString();
+        using var scope = Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<Ember.Core.Models.User>>();
+        var token = await users.FindByIdAsync(userId) is { } user ? await users.GenerateEmailConfirmationTokenAsync(user) : "gone";
+        return (userId, WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)));
     }
+
+    /// <summary>Posts the account ID and an Identity confirmation code (see <see cref="OldConfirmLinkAsync"/>), with the password entered on the confirm page, to confirmEmail.</summary>
+    /// <param name="code">Replaces the Identity code.</param>
+    public async Task<HttpResponseMessage> OpenConfirmLinkAsync(ApiClient client, SentMail mail, string passphrase, string? code = null)
+    {
+        var link = await OldConfirmLinkAsync(mail);
+        return await client.Post("/api/auth/confirmEmail", new ConfirmRequest(link.UserId, code ?? link.Code, passphrase));
+    }
+
+    /// <summary>The 6-digit sign-up code from the <c>code</c> parameter of a confirmation mail's link.</summary>
+    public static string SignupCode(SentMail mail) => QueryHelpers.ParseQuery(new Uri(mail.Link()).Query)["code"].ToString();
 
     /// <summary>A confirmed user signed in with the cookie and an antiforgery token, optionally with the health-data consent.</summary>
     public async Task<ApiClient> SignedInAsync(bool consent = true)

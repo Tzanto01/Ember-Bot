@@ -61,9 +61,9 @@ public class ConfirmEmailTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var client = Host.NewClient();
         var email = ApiHost.NewEmail();
         var mail = await RegisterAsync(client, email, ApiClient.Passphrase, 1);
-        var query = QueryHelpers.ParseQuery(new Uri(mail.Link()).Query);
+        var link = await Host.OldConfirmLinkAsync(mail);
 
-        var response = await client.Get($"/api/auth/confirmEmail/?userId={query["userId"]}&code={Uri.EscapeDataString(query["code"].ToString())}");
+        var response = await client.Get($"/api/auth/confirmEmail/?userId={link.UserId}&code={Uri.EscapeDataString(link.Code)}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await IsConfirmed(email)).Should().BeFalse();

@@ -284,9 +284,9 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var http = Host.CreateClient();
         var email = ApiHost.NewEmail();
         await (await http.PostAsJsonAsync("/api/auth/register", new Credentials(email, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
-        var query = QueryHelpers.ParseQuery(new Uri((await Host.Mail.WaitForAsync(email, 1)).Single().Link()).Query);
+        var link = await Host.OldConfirmLinkAsync((await Host.Mail.WaitForAsync(email, 1)).Single());
         await (await http.PostAsJsonAsync("/api/auth/confirmEmail",
-            new ConfirmRequest(query["userId"].ToString(), query["code"].ToString(), ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
+            new ConfirmRequest(link.UserId, link.Code, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
         var tokens = await (await http.PostAsJsonAsync("/api/auth/login", new Credentials(email, ApiClient.Passphrase))).ExpectJson();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GetProperty("accessToken").GetString());
         await (await http.PostAsJsonAsync("/api/me/consent", new { policyVersion = Ember.Core.Services.HabitService.CurrentConsentPolicyVersion })).Expect(HttpStatusCode.NoContent);
