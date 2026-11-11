@@ -38,19 +38,30 @@ function failed(message: string): UpgradeResult {
   return { ok: false, reason: 'failed', message };
 }
 
+function holdsData(data: LocalData): boolean {
+  return [data.habits, data.logs, data.lowDays, data.routines, data.moods, data.notes].some((list) => list.length > 0);
+}
+
+function sameSorted(a: string[], b: string[]): boolean {
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+}
+
 function customId(mood: MoodKey | null): number | null {
   return mood?.startsWith('custom:') ? Number(mood.slice(7)) : null;
 }
 
 /**
  * "Create an account and keep my data": imports the device data into the signed-in account (`POST /api/me/import`),
- * encrypting the journal first when the private journal is chosen, then removes the device copy. Progress is kept on the
- * device, so a retry after an interruption resumes and never imports twice; nothing local is deleted on any failure.
+ * encrypting the journal first when the private journal is chosen, then removes the device copy (with a recovery code,
+ * all but the code until it is acknowledged). Progress is kept on the device, so a retry after an interruption resumes
+ * and never imports twice; nothing local is deleted on any failure.
  */
 export class UpgradeService implements UpgradeApi {
   constructor(
     private readonly store: LocalStore,
-    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'updateMe'>,
+    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'listRoutines' | 'updateMe'>,
     private readonly auth: Pick<AuthService, 'me'>,
     private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'moods' | 'addMood' | 'updateMood' | 'save'>,
     private readonly device: Pick<DeviceStore, 'clearUser'>,
@@ -59,7 +70,7 @@ export class UpgradeService implements UpgradeApi {
 
   async summary(): Promise<UpgradeSummary | null> {
     const data = await this.store.load().catch(() => null);
-    if (!data) return null;
+    if (!data || (data.upgrade?.finished && !holdsData(data))) return null;
     const out = leftOut(data);
     return {
       habits: data.habits.length,
@@ -68,6 +79,20 @@ export class UpgradeService implements UpgradeApi {
       moods: data.moods.length,
       leftOut: { notes: out.notes.length, lowDays: out.lowDays.length },
     };
+  }
+
+  async pendingRecoveryCode(): Promise<string | null> {
+    const data = await this.store.load().catch(() => null);
+    const progress = data?.upgrade;
+    if (!data || !progress?.finished || holdsData(data)) return null;
+    return progress.userId === this.auth.me.get()?.id ? progress.recoveryCode : null;
+  }
+
+  async acknowledge(): Promise<void> {
+    const userId = (await this.store.load())?.profile.userId;
+    await this.store.clear();
+    if (userId) await this.device.clearUser(userId).catch(() => undefined);
+    this.localMode.finishUpgrade();
   }
 
   async run(
@@ -99,6 +124,12 @@ export class UpgradeService implements UpgradeApi {
             archivedMoods: [],
             notesDone: [],
           };
+    if (progress.finished) {
+      if (holdsData(data)) {
+        return failed('Sign in to the account you moved your data to and save its recovery code first.');
+      }
+      return { ok: true, recoveryCode: progress.recoveryCode };
+    }
     const save = async (change: Partial<UpgradeProgress>) => {
       progress = { ...progress, ...change };
       const next = progress;
@@ -113,7 +144,10 @@ export class UpgradeService implements UpgradeApi {
         const names = (await this.api.listHabits()).map((h) => h.name).sort();
         const local = data.habits.map((h) => h.name).sort();
         const landed =
-          sentBefore && names.length > 0 && names.length === local.length && names.every((name, i) => name === local[i]);
+          sentBefore &&
+          names.length === local.length &&
+          names.every((name, i) => name === local[i]) &&
+          (names.length > 0 || (await this.landedWithoutHabits(data, progress.journalOmitted)));
         if (!landed) {
           if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy };
           const { profile } = data;
@@ -145,10 +179,25 @@ export class UpgradeService implements UpgradeApi {
       }
       if (progress.journalOmitted) await this.moveJournal(data, !!secret, () => progress, save);
 
+      if (progress.recoveryCode) {
+        const finished = { ...progress, finished: true };
+        await this.store.update((d) => ({
+          ...d,
+          habits: [],
+          logs: [],
+          lowDays: [],
+          routines: [],
+          moods: [],
+          notes: [],
+          upgrade: finished,
+        }));
+        await this.device.clearUser(data.profile.userId).catch(() => undefined);
+        return { ok: true, recoveryCode: progress.recoveryCode };
+      }
       await this.store.clear();
       await this.device.clearUser(data.profile.userId).catch(() => undefined);
       this.localMode.finishUpgrade();
-      return { ok: true, recoveryCode: progress.recoveryCode };
+      return { ok: true, recoveryCode: null };
     } catch (error) {
       if (error instanceof JournalLockedError) return failed('Unlock your private journal on this device, then try again.');
       if (error instanceof RangeError) return failed(error.message);
@@ -159,6 +208,16 @@ export class UpgradeService implements UpgradeApi {
       }
       return failed(problemToMessage(apiError).message);
     }
+  }
+
+  /** Whether a sent import without habits landed: the account holds its routines and moods, and it sent at least one. */
+  private async landedWithoutHabits(data: LocalData, journalOmitted: boolean): Promise<boolean> {
+    const routines = data.routines.map((r) => r.name);
+    const moods = journalOmitted ? [] : data.moods.map((m) => m.label);
+    if (routines.length + moods.length === 0) return false;
+    const accountRoutines = (await this.api.listRoutines()).map((r) => r.name);
+    const accountMoods = moods.length > 0 ? (await this.journal.moods()).map((m) => m.label) : [];
+    return sameSorted(accountRoutines, routines) && sameSorted(accountMoods, moods);
   }
 
   private async moveJournal(

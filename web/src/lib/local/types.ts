@@ -103,8 +103,10 @@ export interface UpgradeProgress {
   journalOmitted: boolean;
   /** Private journal: the journal key exists in the account. */
   journalEnabled: boolean;
-  /** Private journal: the one-time recovery code, kept on the device only until the upgrade finishes. */
+  /** Private journal: the one-time recovery code, kept on the device only until the user acknowledges it. */
   recoveryCode: string | null;
+  /** Everything moved and the device data is gone; only the recovery code waits to be acknowledged. */
+  finished?: boolean;
   /** Private journal: device mood id to account mood id. */
   moodIds: Record<string, number>;
   /** Private journal: device ids of archived moods already archived in the account. */
@@ -187,7 +189,12 @@ export interface UpgradeApi {
   /**
    * Uploads the device data into the signed-in account (`POST /api/me/import`), then removes the local copy and
    * leaves `upgrading` mode. With `privateJournal`, the journal is encrypted on the device before it is uploaded and
-   * `recoveryCode` is the new journal's recovery code. Safe to call again after an interruption.
+   * `recoveryCode` is the new journal's recovery code; then the code stays on the device and the mode stays `upgrading`
+   * until {@link acknowledge}. Safe to call again after an interruption.
    */
   run(options?: { privateJournal?: { passphrase: string; remember: boolean; password?: string } }): Promise<UpgradeResult>;
+  /** The recovery code of a finished upgrade into the signed-in account that hasn't been acknowledged yet, else null. */
+  pendingRecoveryCode(): Promise<string | null>;
+  /** The recovery code is saved: removes it with the rest of the device record and leaves `upgrading` mode. */
+  acknowledge(): Promise<void>;
 }

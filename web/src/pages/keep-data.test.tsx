@@ -17,7 +17,12 @@ vi.mock('@/lib/services', async (original) => {
       cancelUpgrade: vi.fn(async () => {}),
       finishUpgrade: vi.fn(async () => {}),
     },
-    upgrade: { summary: vi.fn(), run: vi.fn() },
+    upgrade: {
+      summary: vi.fn(),
+      run: vi.fn(),
+      pendingRecoveryCode: vi.fn(async () => null),
+      acknowledge: vi.fn(async () => {}),
+    },
     backup: { exportBackup: vi.fn(async () => ({})), markBackedUp: vi.fn(async () => {}) },
   };
 });
@@ -80,7 +85,31 @@ describe('KeepDataPage', () => {
     await user.click(screen.getByRole('button', { name: 'Finish' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+    expect(upgrade.acknowledge).toHaveBeenCalledOnce();
     expect(screen.queryByText('ABCD EFGH IJKL')).toBeNull();
+  });
+
+  it('offers nothing to continue past until the waiting recovery code has been looked up', async () => {
+    let resolveCode = (_code: string) => {};
+    vi.mocked(upgrade.summary).mockResolvedValueOnce(null);
+    vi.mocked(upgrade.pendingRecoveryCode).mockReturnValueOnce(new Promise((resolve) => (resolveCode = resolve)));
+    renderPage('/keep-data', KeepDataPage, '/keep-data');
+
+    await waitFor(() => expect(upgrade.summary).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+
+    resolveCode('ABCD-EFGH-IJKL');
+
+    expect(await screen.findByText('ABCD EFGH IJKL')).toBeInTheDocument();
+  });
+
+  it('shows a recovery code that was not acknowledged before the app closed', async () => {
+    vi.mocked(upgrade.pendingRecoveryCode).mockResolvedValueOnce('ABCD-EFGH-IJKL');
+    renderPage('/keep-data', KeepDataPage, '/keep-data');
+
+    expect(await screen.findByText('ABCD EFGH IJKL')).toBeInTheDocument();
+    expect(upgrade.run).not.toHaveBeenCalled();
   });
 
   it('does not move anything while the passphrases differ', async () => {

@@ -70,8 +70,18 @@ export class LocalMode implements LocalModeApi {
     this.enterLocal();
   }
 
+  /**
+   * Starts no-account mode on this device. A finished upgrade whose recovery code wasn't acknowledged yet keeps its
+   * record and goes back to `upgrading` instead, so the code is shown once the user signs in to that account.
+   */
   async start(): Promise<void> {
-    await this.store.upsert((data) => data ?? this.fresh());
+    const data = await this.store.upsert((current) => current ?? this.fresh());
+    if (data.upgrade?.finished) {
+      this.http.local = null;
+      writeFlag('upgrading');
+      this.mode.set('upgrading');
+      return;
+    }
     if (!this.options.native) await navigator.storage?.persist?.().catch(() => false);
     this.enterLocal();
     await this.auth.loadMe(true);
@@ -85,7 +95,9 @@ export class LocalMode implements LocalModeApi {
     await this.auth.refreshAntiforgery();
   }
 
+  /** Back to no-account mode with the device data; does nothing while a finished upgrade's recovery code waits. */
   async cancelUpgrade(): Promise<void> {
+    if ((await this.store.load().catch(() => null))?.upgrade?.finished) return;
     if (this.auth.signedIn()) {
       if (!this.options.native) await this.api.logout().catch(() => undefined);
       await this.auth.wipeDevice();

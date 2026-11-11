@@ -36,7 +36,7 @@ public class TodayWidget extends AppWidgetProvider {
     static final String ACTION_CHECK_IN = "app.ember.habits.WIDGET_CHECK_IN";
     static final String ACTION_OPEN_TODAY = "app.ember.habits.WIDGET_OPEN_TODAY";
     private static final String ACTION_MIDNIGHT = "app.ember.habits.WIDGET_MIDNIGHT";
-    static final int MAX_ROWS = 6;
+    static final int MAX_ROWS = 4;
 
     private static final String PREFS = "ember_widget";
     private static final String SNAPSHOT = "snapshot";
@@ -45,16 +45,13 @@ public class TodayWidget extends AppWidgetProvider {
     private static final int MAX_NAME = 100;
 
     private static final int[] ROWS = {
-        R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2,
-        R.id.widget_row_3, R.id.widget_row_4, R.id.widget_row_5,
+        R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2, R.id.widget_row_3,
     };
     private static final int[] NAMES = {
-        R.id.widget_name_0, R.id.widget_name_1, R.id.widget_name_2,
-        R.id.widget_name_3, R.id.widget_name_4, R.id.widget_name_5,
+        R.id.widget_name_0, R.id.widget_name_1, R.id.widget_name_2, R.id.widget_name_3,
     };
     private static final int[] STATE_TEXTS = {
-        R.id.widget_state_0, R.id.widget_state_1, R.id.widget_state_2,
-        R.id.widget_state_3, R.id.widget_state_4, R.id.widget_state_5,
+        R.id.widget_state_0, R.id.widget_state_1, R.id.widget_state_2, R.id.widget_state_3,
     };
 
     @Override
@@ -183,7 +180,7 @@ public class TodayWidget extends AppWidgetProvider {
         if (snapshot != null) scheduleMidnight(context, snapshot.optString("timeZone"));
         JSONArray habits = snapshot == null ? null : snapshot.optJSONArray("habits");
         int shown = habits == null ? 0 : Math.min(habits.length(), MAX_ROWS);
-        int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more"));
+        int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more")) + (habits == null ? 0 : habits.length() - shown);
         views.setTextViewText(
             R.id.widget_empty,
             context.getString(snapshot == null ? R.string.widget_signed_out : R.string.widget_nothing_today)

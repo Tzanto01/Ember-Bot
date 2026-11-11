@@ -24,6 +24,7 @@ class FakeServer {
   me: Me = { ...baseMe, id: 'account-1' };
   imports: unknown[] = [];
   habitNames: string[] = [];
+  routineNames: string[] = [];
   key: JournalKey | null = null;
   moods = new Map<number, unknown>();
   notes = new Map<string, unknown>();
@@ -63,13 +64,23 @@ class FakeServer {
         return call.respond(429, { type: 'rate_limited' });
       }
       if (this.importRejection) return call.respond(409, { type: 'conflict', detail: this.importRejection });
-      if (this.habitNames.length) return call.respond(409, { type: 'conflict', detail: notEmptyDetail });
+      if (this.habitNames.length || this.routineNames.length || this.moods.size) {
+        return call.respond(409, { type: 'conflict', detail: notEmptyDetail });
+      }
       this.imports.push(body);
       this.habitNames = (body['habits'] as { name: string }[]).map((h) => h.name);
+      this.routineNames = ((body['routines'] ?? []) as { name: string }[]).map((r) => r.name);
+      for (const mood of (body['moods'] ?? []) as { label: string; emoji: string | null; archived: boolean }[]) {
+        const id = this.nextMood++;
+        this.moods.set(id, { id, label: mood.label, emoji: mood.emoji, archived: mood.archived });
+      }
       return this.loseImportAnswer ? call.fail() : call.respond(204);
     }
     if (route === 'GET /api/habits') {
       return call.respond(200, this.habitNames.map((name, i) => ({ ...habit, id: i + 1, name })));
+    }
+    if (route === 'GET /api/routines') {
+      return call.respond(200, this.routineNames.map((name, i) => ({ id: i + 1, name, reminderTime: null, reminderChannels: [], habitIds: [] })));
     }
     if (route === 'GET /api/me') {
       return call.respond(200, {
@@ -228,6 +239,40 @@ describe('UpgradeService', () => {
     expect(await store.exists()).toBe(false);
   });
 
+  it('finishes the retry of a device without habits whose import answer was lost', async () => {
+    await store.update((d) => ({
+      ...d,
+      habits: [],
+      logs: [],
+      routines: [{ id: 1, name: 'Synthetic mornings', reminderTime: null, reminderChannels: [] }],
+    }));
+    server.loseImportAnswer = true;
+    const first = await upgrade.run();
+    server.loseImportAnswer = false;
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true, recoveryCode: null });
+    expect(server.imports).toHaveLength(1);
+    expect(await store.exists()).toBe(false);
+    expect(finishUpgrade).toHaveBeenCalledOnce();
+  });
+
+  it('finishes the retry of a device with only moods whose import answer was lost', async () => {
+    await store.update((d) => ({ ...d, habits: [], logs: [] }));
+    server.loseImportAnswer = true;
+    const first = await upgrade.run();
+    server.loseImportAnswer = false;
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true, recoveryCode: null });
+    expect(server.imports).toHaveLength(1);
+    expect(await store.exists()).toBe(false);
+  });
+
   it('encrypts the private journal on the device and resumes after an interruption without a second import', async () => {
     server.failMoodPosts = 1;
     const secret = { passphrase: 'synthetic harbour lantern', remember: false, password: 'synthetic-pw' };
@@ -253,7 +298,7 @@ describe('UpgradeService', () => {
       expect(sent).not.toContain('Synthetic rest day');
       expect(sent).not.toContain('Synthetic old');
     }
-    expect(await store.exists()).toBe(false);
+    expect(await store.load()).toMatchObject({ habits: [], logs: [], moods: [], notes: [] });
   });
 
   const callIndex = (route: string) => mock.all.findIndex((c) => `${c.method} ${new URL(c.url, 'http://ember.test').pathname}` === route);
@@ -316,7 +361,7 @@ describe('UpgradeService', () => {
     expect(first.ok).toBe(false);
     expect(second.ok).toBe(true);
     expect(server.moods.size).toBe(2);
-    expect(await store.exists()).toBe(false);
+    expect(await store.load()).toMatchObject({ habits: [], logs: [], moods: [], notes: [] });
   });
 
   it('reports and leaves out notes and low days dated before the earliest habit start', async () => {
@@ -378,6 +423,56 @@ describe('UpgradeService', () => {
       const sent = JSON.stringify(call.body ?? null);
       for (const plain of [noteText, moodLabel, 'Synthetic rest day', 'Synthetic old']) expect(sent).not.toContain(plain);
     }
+  });
+
+  it('keeps the recovery code on the device after the move until it is acknowledged', async () => {
+    const result = await upgrade.run({ privateJournal: secret });
+    const code = result.ok ? result.recoveryCode : null;
+    const calls = mock.all.length;
+
+    expect(code).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
+    expect(finishUpgrade).not.toHaveBeenCalled();
+    expect(await upgrade.pendingRecoveryCode()).toBe(code);
+    expect(await upgrade.run()).toEqual({ ok: true, recoveryCode: code });
+    expect(mock.all.length).toBe(calls);
+
+    await upgrade.acknowledge();
+
+    expect(await store.exists()).toBe(false);
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect(finishUpgrade).toHaveBeenCalledOnce();
+  });
+
+  it('shows nothing waiting and no recovery code to another account after the move finished', async () => {
+    await upgrade.run({ privateJournal: secret });
+    auth.setMe({ ...server.me, id: 'account-2' });
+
+    expect(await upgrade.summary()).toBeNull();
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect((await store.load())?.upgrade?.recoveryCode).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
+  });
+
+  it('keeps device data added after a finished move instead of returning the old recovery code', async () => {
+    await upgrade.run({ privateJournal: secret });
+    await store.update((d) => ({ ...d, habits: deviceData().habits }));
+    const calls = mock.all.length;
+
+    const result = await upgrade.run();
+
+    expect(result).toMatchObject({ ok: false, reason: 'failed' });
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect((await store.load())?.habits).toHaveLength(1);
+    expect(mock.all.length).toBe(calls);
+  });
+
+  it('clears the device caches of the local user when the recovery code is acknowledged', async () => {
+    await upgrade.run({ privateJournal: secret });
+    const localUser = (await store.load())!.profile.userId;
+    await device.saveHabits({ userId: localUser, timeZone: 'Europe/Berlin', habits: [] });
+
+    await upgrade.acknowledge();
+
+    expect(await device.habits(localUser)).toBeNull();
   });
 
   it('returns the saved recovery code when a retry without the private journal choice finishes', async () => {
