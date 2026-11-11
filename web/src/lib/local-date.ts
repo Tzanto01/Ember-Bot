@@ -112,6 +112,14 @@ export function formatDate(
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(toUtc(date));
 }
 
+/** Formats an `HH:MM` wall-clock time for display in the user's locale, for example "1:00 PM" or "13:00". */
+export function formatTime(time: string, locale?: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(
+    Date.UTC(2026, 0, 1, hours, minutes),
+  );
+}
+
 /** Month heading such as "November 2026". */
 export function monthLabel(date: LocalDateString, locale?: string): string {
   return formatDate(date, { month: 'long', year: 'numeric' }, locale);

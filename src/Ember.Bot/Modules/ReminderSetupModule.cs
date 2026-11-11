@@ -86,6 +86,14 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             });
     }
 
+    /// <summary>
+    /// For a reminder set from Discord, which keeps one time: a note naming the earlier times it replaced, when there were several.
+    /// </summary>
+    internal static string ReplacedText(IReadOnlyList<TimeOnly> replaced)
+        => replaced.Count > 1
+            ? $"\nThis replaces your earlier reminders at {HabitModule.FormatTimes(replaced)}. To get several reminders a day, set the times in the Ember web app."
+            : "";
+
     /// <summary>"every day", or "on Mon, Wed" for a habit on set weekdays (weekly habits get a reminder every day).</summary>
     internal static string ScheduleText(Habit habit)
         => habit.FrequencyType == FrequencyType.Weekdays
@@ -180,6 +188,7 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
+        var replaced = (await _habits.GetHabitAsync(Context.User.Id, habitId))?.ReminderTimes.ToList() ?? [];
         var habit = await _habits.EditHabitAsync(Context.User.Id, habitId, newName: null, parsed, clearReminder: false);
 
         if (habit is null)
@@ -191,7 +200,8 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
             .WithTitle("⏰ Reminder set!")
-            .WithDescription($"I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{parsed:HH\\:mm}** your time.")
+            .WithDescription($"I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{parsed:HH\\:mm}** your time."
+                + ReplacedText(replaced))
             .WithFooter("You've got this. One day at a time.")
             .Build();
 

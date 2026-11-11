@@ -12,6 +12,13 @@ import {
   habitFormValue,
   habitNameError,
 } from '@/components/habits/habit-fields';
+import {
+  allowDeviceReminders,
+  canAskDevice,
+  deviceChannel,
+  DeviceRemindersOff,
+} from '@/components/habits/device-reminders';
+import { ChannelChoices, channelOptions, toggledChannels } from '@/components/habits/habit-edit-sections';
 import { HabitPreview } from '@/components/habits/habit-preview';
 import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
 import { PageHeader } from '@/components/page-header';
@@ -20,9 +27,11 @@ import { Button } from '@/components/ui/button';
 import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { HabitTemplate, NewHabit } from '@/lib/models';
+import { env } from '@/lib/env';
+import type { HabitTemplate, NewHabit, ReminderChannel } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
-import { api } from '@/lib/services';
+import { api, auth, localMode, push } from '@/lib/services';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 const nameId = 'habit-name';
@@ -41,11 +50,36 @@ export default function HabitNewPage() {
   const reach = useReminderReach();
   const reminderHash = useReminderSettingsHash();
   const reminders = reach !== 'local';
+  const me = useStore(auth.me);
+  const local = useStore(localMode.mode) === 'local';
+  const pushAvailable = useStore(push.available);
+  const [chosenChannels, setChannels] = useState<ReminderChannel[] | null>(null);
+  const [createdOff, setCreatedOff] = useState(false);
+  const offRef = useRef<HTMLDivElement>(null);
+  const discordLinked = !!me?.discord.linked;
+  const channels: ReminderChannel[] =
+    chosenChannels ??
+    (env.native ? ['mobile'] : !pushAvailable && discordLinked ? ['discord'] : ['webpush']);
+  const channelChoices = channelOptions(channels, {
+    discordLinked,
+    local,
+    pushAvailable,
+    hideUnavailablePush: true,
+  });
 
   const create = useMutation({
-    mutationFn: (body: NewHabit) => api.createHabit(body),
-    onSuccess: () => {
-      void navigate('/today');
+    mutationFn: async ({ body, ask }: { body: NewHabit; ask: boolean }) => {
+      const allowed = ask ? await allowDeviceReminders() : true;
+      await api.createHabit(body);
+      return allowed;
+    },
+    onSuccess: (allowed) => {
+      if (allowed) {
+        void navigate('/today');
+        return;
+      }
+      flushSync(() => setCreatedOff(true));
+      offRef.current?.focus();
     },
     onError: (error) => {
       submitting.current = false;
@@ -66,12 +100,13 @@ export default function HabitNewPage() {
               name: template.name,
               frequency: template.frequency,
               weeklyTarget: template.weeklyTarget ?? 3,
-              reminderTime: template.suggestedReminderTime,
+              reminderTimes: [template.suggestedReminderTime],
             }
           : emptyHabitForm,
       );
       setTouched(false);
       setPicked(template?.name ?? null);
+      setChannels(null);
       setProblem(null);
       setChosen(true);
     });
@@ -99,10 +134,16 @@ export default function HabitNewPage() {
     if (value.days !== null) body.days = value.days;
     if (value.frequency !== 'weekly') body.timesPerDay = value.timesPerDay;
     if (value.weeklyTarget !== null) body.weeklyTarget = value.weeklyTarget;
-    if (value.reminderTime && reminders) body.reminderTime = value.reminderTime;
+    if (reminders) {
+      if (channelChoices.length) body.reminderChannels = channels;
+      if (value.reminderTimes.length && channels.length) body.reminderTimes = value.reminderTimes;
+    }
     submitting.current = true;
     setProblem(null);
-    create.mutate(body);
+    create.mutate({
+      body,
+      ask: !!body.reminderTimes && channels.includes(deviceChannel()) && canAskDevice(),
+    });
   }
 
   const preview = habitFormValue(form);
@@ -157,7 +198,17 @@ export default function HabitNewPage() {
         </>
       )}
 
-      {showForm && (
+      {createdOff && (
+        <Card ref={offRef} tabIndex={-1} className="w-full max-w-[36rem] focus:outline-none">
+          <p className="font-semibold">Your habit is ready.</p>
+          <DeviceRemindersOff />
+          <Button block asChild>
+            <Link to="/today">Go to Today</Link>
+          </Button>
+        </Card>
+      )}
+
+      {showForm && !createdOff && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,36rem)_18rem] lg:items-start">
           <Card className="w-full max-w-[36rem]">
             <form noValidate onSubmit={submit} className="flex flex-col gap-6">
@@ -169,6 +220,7 @@ export default function HabitNewPage() {
                 errors={problem?.fields ?? {}}
                 nameId={nameId}
                 showReminder={reminders}
+                silent={channels.length === 0}
                 reminderNote={
                   reach === 'none' && (
                     <>
@@ -178,6 +230,21 @@ export default function HabitNewPage() {
                   )
                 }
               />
+              {reminders && channelChoices.length > 0 && (
+                <div className="-mt-3 flex flex-col gap-2">
+                  <p className="font-medium">How this habit reminds you</p>
+                  <ChannelChoices
+                    options={channelChoices}
+                    current={channels}
+                    idPrefix="new-channel"
+                    onToggle={(channel, checked) =>
+                      setChannels(
+                        toggledChannels(channels, channel, checked, local ? [] : discordLinked ? ['discord'] : ['webpush']),
+                      )
+                    }
+                  />
+                </div>
+              )}
               {problem && <Notice tone="notice">{problem.message}</Notice>}
               <div className="flex flex-col gap-3">
                 <Button type="submit" block aria-disabled={create.isPending || undefined}>

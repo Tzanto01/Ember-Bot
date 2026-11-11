@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Habit } from '@/lib/models';
-import { auth } from '@/lib/services';
+import { auth, push } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import HabitEditPage from './habit-edit';
 
@@ -27,8 +27,8 @@ function renderPage() {
   return router;
 }
 
-async function load(fetch: FetchMock, data: Habit = stretch, today = me.localToday) {
-  (await fetch.next('GET', '/api/me')).respond(200, { ...me, localToday: today });
+async function load(fetch: FetchMock, data: Habit = stretch, today = me.localToday, who = me) {
+  (await fetch.next('GET', '/api/me')).respond(200, { ...who, localToday: today });
   (await fetch.next('GET', '/api/habits/7')).respond(200, data);
   await screen.findByRole('heading', { name: 'Details' });
 }
@@ -45,16 +45,70 @@ describe('HabitEditPage', () => {
     );
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    push.available.set(false);
+    push.subscribed.set(false);
+  });
+
+  it('shows every saved reminder time, and saves an added one with the times sorted', async () => {
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage();
+    const water: Habit = {
+      ...stretch,
+      timesPerDay: 3,
+      reminderTime: '08:00',
+      reminderTimes: ['08:00', '20:00'],
+      reminderChannels: ['discord'],
+    };
+    await load(fetch, water);
+
+    expect(screen.getByLabelText('Reminder time 1')).toHaveValue('08:00');
+    expect(screen.getByLabelText('Reminder time 2')).toHaveValue('20:00');
+    expect(screen.getByRole('button', { name: 'Remove 20:00' })).toBeInTheDocument();
+    expect(screen.getByText("Ember reminds you at 08:00 and 20:00 until you've checked in 3 times.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add another time' }));
+    fireEvent.change(screen.getByLabelText('Reminder time 3'), { target: { value: '13:00' } });
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    const patch = await fetch.next('PATCH', '/api/habits/7');
+    expect(patch.body).toEqual({ reminderTimes: ['08:00', '13:00', '20:00'] });
+    patch.respond(200, { ...water, reminderTimes: ['08:00', '13:00', '20:00'] });
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Reminder time 2')).toHaveValue('13:00');
+  });
+
+  it('asks this browser for notifications when a reminder time is set on a habit that notifies this device', async () => {
+    push.available.set(true);
+    vi.spyOn(push, 'check').mockResolvedValue();
+    const subscribe = vi.spyOn(push, 'subscribe').mockRejectedValue(new DOMException('Denied', 'NotAllowedError'));
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage();
+    await load(fetch, { ...stretch, reminderTime: null, reminderTimes: [], reminderChannels: ['webpush'] });
+
+    fireEvent.change(screen.getByLabelText(/Reminder time/), { target: { value: '07:00' } });
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    const patch = await fetch.next('PATCH', '/api/habits/7');
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    expect(patch.body).toEqual({ reminderTimes: ['07:00'] });
+    patch.respond(200, { ...stretch, reminderTimes: ['07:00'], reminderChannels: ['webpush'] });
+    expect(await screen.findByText(/Notifications are off for Ember in this browser/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Notifications on this device' })).toBeChecked();
+  });
 
   it.each([
     ['Discord DM', 'discord'],
-    ['Web push', 'webpush'],
+    ['Notifications on this device', 'webpush'],
   ])('drops mobile when %s is added to a mobile-only habit', async (label, channel) => {
     const user = userEvent.setup();
     const fetch = mockFetch();
     renderPage();
-    await load(fetch);
+    await load(fetch, stretch, me.localToday, { ...me, discord: { linked: true, id: '1' } });
 
     await user.click(screen.getByRole('checkbox', { name: label }));
 

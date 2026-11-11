@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Ember.Core.Models;
 
 public enum FrequencyType { Daily, Weekly, Weekdays }
@@ -20,10 +22,21 @@ public class Habit
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Time of day to send the DM reminder, stored in the user's local time. Null means no reminder.</summary>
-    public TimeOnly? ReminderTime { get; set; }
+    /// <summary>
+    /// Times of day to send the reminder, in the user's local time, sorted ascending without repeats; at most
+    /// <see cref="TimesPerDay"/> of them. Empty means no reminder.
+    /// </summary>
+    public List<TimeOnly> ReminderTimes { get; set; } = [];
 
-    /// <summary>UTC instant of the next reminder (the next local ReminderTime, or a snooze). Null means nothing is due.</summary>
+    /// <summary>The first of <see cref="ReminderTimes"/>, or null. Setting it replaces all of them with this one time, or clears them when null.</summary>
+    [NotMapped]
+    public TimeOnly? ReminderTime
+    {
+        get => ReminderTimes.Count > 0 ? ReminderTimes[0] : null;
+        set => ReminderTimes = value is { } time ? [time] : [];
+    }
+
+    /// <summary>UTC instant of the next reminder (the next local time of any of the <see cref="ReminderTimes"/>, or a snooze). Null means nothing is due.</summary>
     public DateTime? NextReminderUtc { get; set; }
 
     /// <summary>

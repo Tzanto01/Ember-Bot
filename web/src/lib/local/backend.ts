@@ -8,6 +8,7 @@ import {
   type MoodKey,
   type OwnMood,
   type ReminderChannel,
+  reminderTimesOf,
   type Routine,
   secondReminderChoices,
   type SecondReminderMinutes,
@@ -128,6 +129,7 @@ export function exportDocument(data: LocalData, journal = true): Record<string, 
       frequency: h.frequency,
       weekly_target: h.weeklyTarget,
       reminder_time: h.reminderTime,
+      reminder_times: reminderTimesOf(h),
       paused_until: h.pausedUntil,
       paused_from: h.pausedFrom,
       created_at: h.createdAt,
@@ -198,6 +200,19 @@ function reminderField(value: unknown, errors: Errors): TimeOfDay | null {
   if (value === null || value === undefined) return null;
   if (isTime(value)) return value;
   errors['reminderTime'] = ['Must be a time as HH:mm.'];
+  return null;
+}
+
+function reminderTimesField(value: unknown, limit: number, errors: Errors): TimeOfDay[] | null {
+  if (value === null || value === undefined) return null;
+  if (!Array.isArray(value) || !value.every(isTime)) {
+    errors['reminderTimes'] = ['Each must be a time as HH:mm.'];
+    return null;
+  }
+  const times = [...new Set(value)].sort();
+  if (times.length < value.length) errors['reminderTimes'] = ['Each time can only be listed once.'];
+  else if (times.length > limit) errors['reminderTimes'] = [`At most ${limit}, one per check-in.`];
+  else return times;
   return null;
 }
 
@@ -507,6 +522,10 @@ export class LocalBackend {
     weeklyTargetField(b['weeklyTarget'], frequency, errors);
     const days = daysField(b['days'], frequency, null, errors);
     const timesPerDay = timesPerDayField(b['timesPerDay'] ?? 1, frequency, errors);
+    const times =
+      reminderTimesField(b['reminderTimes'], frequency === 'weekly' ? 1 : timesPerDay, errors) ??
+      (reminder ? [reminder] : []);
+    const channels = channelsField(b['reminderChannels'], errors);
     if (Object.keys(errors).length) throw invalid(errors);
 
     let created = 0;
@@ -520,8 +539,9 @@ export class LocalBackend {
         weeklyTarget: frequency === 'weekly' ? ((b['weeklyTarget'] as number | null | undefined) ?? 3) : null,
         days: frequency === 'weekdays' ? days : null,
         timesPerDay: frequency === 'weekly' ? 1 : timesPerDay,
-        reminderTime: reminder,
-        reminderChannels: this.options.native ? ['mobile'] : [],
+        reminderTime: times[0] ?? null,
+        reminderTimes: times,
+        reminderChannels: channels ?? (this.options.native ? ['mobile'] : []),
         pausedFrom: null,
         pausedUntil: null,
         createdAt: this.now().toISOString(),
@@ -555,6 +575,8 @@ export class LocalBackend {
       newFrequency,
       errors,
     );
+    const times = reminderTimesField(b['reminderTimes'], newFrequency === 'weekly' ? 1 : timesPerDay, errors);
+    if (times !== null && clearReminder) errors['reminderTimes'] = ["Can't be combined with clearReminder."];
     const channels = channelsField(b['reminderChannels'], errors);
     if (Object.keys(errors).length) throw invalid(errors);
 
@@ -565,8 +587,7 @@ export class LocalBackend {
       const h = d.habits.find((x) => x.id === id);
       if (!h) throw notFound();
       if (name !== null) h.name = name;
-      if (clearReminder) h.reminderTime = null;
-      else if (reminder !== null) h.reminderTime = reminder;
+      let kept = times ?? (clearReminder ? [] : reminder !== null ? [reminder] : reminderTimesOf(h));
       if (channels) h.reminderChannels = channels;
       if (scheduleGiven) {
         const target = newFrequency === 'weekly' ? 1 : timesPerDay;
@@ -576,7 +597,10 @@ export class LocalBackend {
         h.frequency = newFrequency!;
         h.days = newFrequency === 'weekdays' ? days : null;
         h.timesPerDay = target;
+        kept = kept.slice(0, target);
       }
+      h.reminderTimes = kept;
+      h.reminderTime = kept[0] ?? null;
       return d;
     });
     return this.habitResult(data, id);

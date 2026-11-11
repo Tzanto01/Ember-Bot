@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Habit, Routine } from '../models';
-import { planCap, planDays, planReminders, zonedToUtc } from './reminder-plan';
+import { planCap, planDays, planReminders, reminderId, zonedToUtc } from './reminder-plan';
 
 function habit(overrides: Partial<Habit> = {}): Habit {
   return {
@@ -115,6 +115,24 @@ describe('planReminders', () => {
     expect(dates([done]).slice(0, 2)).toEqual(['2026-11-03', '2026-11-04']);
   });
 
+  it('stops a weekly habit for the rest of the week once its target is met, and starts again on Monday', () => {
+    const wednesday = Date.parse('2026-11-04T10:00:00Z');
+    const weekly = (done: number) =>
+      habit({
+        frequency: 'weekly',
+        weeklyTarget: 3,
+        today: { date: '2026-11-04', state: 'pending', completed: null, count: 0 },
+        stats: { streak: null, graceUsed: null, bestStreak: null, last7: done, week: { done, target: 3 } },
+      });
+    const planned = (done: number) =>
+      planReminders([weekly(done)], 'Europe/Berlin', wednesday)
+        .map((r) => r.date)
+        .slice(0, 6);
+
+    expect(planned(2)).toEqual(['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09']);
+    expect(planned(3)).toEqual(['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14']);
+  });
+
   it('fires a weekdays habit only on its scheduled days', () => {
     expect(dates([habit({ frequency: 'weekdays', days: ['mon', 'wed'] })])).toEqual([
       '2026-11-02',
@@ -202,7 +220,7 @@ describe('planReminders', () => {
     ]);
   });
 
-  it('sorts soonest first, numbers ids from 1 and keeps the soonest 400', () => {
+  it('sorts soonest first, gives unique ids and keeps the soonest 400', () => {
     const habits = Array.from({ length: 30 }, (_, i) =>
       habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 3)}:${['00', '20', '40'][i % 3]}` }),
     );
@@ -211,7 +229,7 @@ describe('planReminders', () => {
 
     expect(planCap).toBe(400);
     expect(plan).toHaveLength(400);
-    expect(plan.map((r) => r.id)).toEqual(Array.from({ length: 400 }, (_, i) => i + 1));
+    expect(new Set(plan.map((r) => r.id)).size).toBe(400);
     expect(plan.map((r) => r.at)).toEqual([...plan.map((r) => r.at)].sort((a, b) => a - b));
     expect(plan[0].habitId).toBe(1);
     expect(plan[399].date).toBe('2026-11-15');
@@ -284,7 +302,6 @@ describe('planReminders', () => {
     );
 
     expect(plan[0]).toMatchObject({
-      id: 1,
       date: '2026-11-02',
       second: true,
       at: Date.parse('2026-11-02T19:30:00Z'),
@@ -328,5 +345,52 @@ describe('zonedToUtc', () => {
     expect(new Date(zonedToUtc('2026-11-02', '09:00', 'Europe/Berlin')).toISOString()).toBe(
       '2026-11-02T08:00:00.000Z',
     );
+  });
+
+  describe('with several reminder times', () => {
+    const water = (overrides: Partial<Habit> = {}) =>
+      habit({ id: 2, timesPerDay: 3, reminderTime: '08:00', reminderTimes: ['08:00', '13:00', '20:00'], ...overrides });
+    const todayAt = (plan: ReturnType<typeof planReminders>) =>
+      plan.filter((r) => r.date === '2026-11-02').map((r) => new Date(r.at).toISOString());
+
+    it("plans every time still ahead while the day is open, and none of today's once it is done", () => {
+      const partial = { date: '2026-11-02', state: 'partial' as const, completed: null, count: 1 };
+      const done = { date: '2026-11-02', state: 'done' as const, completed: true, count: 3 };
+
+      const plan = planReminders([water({ today: partial })], 'Europe/Berlin', berlinMorning);
+
+      expect(todayAt(plan)).toEqual(['2026-11-02T12:00:00.000Z', '2026-11-02T19:00:00.000Z']);
+      expect(plan.filter((r) => r.date === '2026-11-03').map((r) => r.time)).toEqual(['08:00', '13:00', '20:00']);
+      expect(plan).toHaveLength(2 + 3 * (planDays - 1));
+      expect(todayAt(planReminders([water({ today: done })], 'Europe/Berlin', berlinMorning))).toEqual([]);
+    });
+
+    it('keeps each reminder id when other habits change, with a different id per time', () => {
+      const alone = planReminders([water()], 'Europe/Berlin', berlinMorning);
+      const withOthers = planReminders([habit({ id: 1, reminderTime: '07:00' }), water()], 'Europe/Berlin', berlinMorning);
+      const ids = (plan: ReturnType<typeof planReminders>) =>
+        plan.filter((r) => r.habitId === 2).map((r) => [r.date, r.time, r.id]);
+
+      expect(ids(withOthers)).toEqual(ids(alone));
+      expect(new Set(alone.map((r) => r.id)).size).toBe(alone.length);
+      expect(alone[0].id).toBe(reminderId({ habitId: 2, date: '2026-11-02', time: '13:00' }));
+    });
+
+    it('skips a second reminder when the next reminder time comes first', () => {
+      const plan = planReminders(
+        [water({ timesPerDay: 2, reminderTimes: ['13:00', '13:20'] })],
+        'Europe/Berlin',
+        berlinMorning,
+        [],
+        30,
+      );
+
+      expect(todayAt(plan)).toEqual([
+        '2026-11-02T12:00:00.000Z',
+        '2026-11-02T12:20:00.000Z',
+        '2026-11-02T12:50:00.000Z',
+      ]);
+      expect(plan.filter((r) => r.date === '2026-11-02').map((r) => r.second ?? false)).toEqual([false, false, true]);
+    });
   });
 });

@@ -128,6 +128,29 @@ describe('LocalBackend through ApiClient', () => {
     expect(habit.today.state).toBe('partial');
   });
 
+  it('keeps several reminder times sorted on the device, the earliest when timesPerDay drops, and refuses too many', async () => {
+    connect(true);
+    await store.replace(seed([]));
+
+    const created = await api.createHabit({
+      name: 'Water',
+      frequency: 'daily',
+      timesPerDay: 3,
+      reminderTimes: ['20:00', '08:00', '13:00'],
+      reminderChannels: [],
+    });
+    expect(created).toMatchObject({ reminderTime: '08:00', reminderTimes: ['08:00', '13:00', '20:00'], reminderChannels: [] });
+    expect((await api.getHabit(created.id)).reminderTimes).toEqual(['08:00', '13:00', '20:00']);
+
+    const fewer = await api.updateHabit(created.id, { timesPerDay: 2 });
+    expect(fewer.reminderTimes).toEqual(['08:00', '13:00']);
+
+    const tooMany = await rejection(api.updateHabit(created.id, { reminderTimes: ['07:00', '12:00', '18:00'] }));
+    expect(tooMany.problem?.errors?.['reminderTimes']).toBeTruthy();
+    const cleared = await api.updateHabit(created.id, { reminderTimes: [] });
+    expect(cleared).toMatchObject({ reminderTime: null, reminderTimes: [] });
+  });
+
   it('keeps a habit in one routine at a time, in the listed order, and caps routines at 10', async () => {
     await store.replace(seed([localHabit(1), localHabit(2), localHabit(3)]));
 

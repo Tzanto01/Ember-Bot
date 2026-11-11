@@ -43,6 +43,10 @@ public static class TimezoneHelper
         return TimeOnly.FromDateTime(LocalToUtc(date.ToDateTime(localTime), tz));
     }
 
+    /// <summary>The earliest <see cref="NextOccurrenceUtc(TimeOnly, TimeZoneInfo, DateTime)"/> of any of <paramref name="localTimes"/>; null when there are none.</summary>
+    public static DateTime? NextOccurrenceUtc(IEnumerable<TimeOnly> localTimes, TimeZoneInfo tz, DateTime afterUtc)
+        => localTimes.Select(t => (DateTime?)NextOccurrenceUtc(t, tz, afterUtc)).Min();
+
     /// <summary>
     /// The first UTC instant strictly after <paramref name="afterUtc"/> at which the wall clock
     /// in <paramref name="tz"/> shows <paramref name="localTime"/>. A time inside a spring-forward

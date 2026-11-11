@@ -61,11 +61,13 @@ public static class ExportBuilder
     /// One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderChannels</c> holds any of <c>discord</c>, <c>webpush</c> and <c>mobile</c>.
     /// <c>Days</c> lists the weekdays (<c>mon</c> … <c>sun</c>, Monday first) of a <c>weekdays</c> habit, null otherwise.
     /// <c>RoutinePosition</c> is the habit's order inside its routine, null when it has none.
+    /// <c>ReminderTimes</c> lists all reminder times, sorted; <c>ReminderTime</c> is the first of them, or null.
     /// </summary>
     public sealed record HabitRecord(
         int Id, string Name, string Frequency, int? WeeklyTarget,
         TimeOnly? ReminderTime, DateOnly? PausedUntil, DateOnly? PausedFrom, DateTime CreatedAt, DateTime? NextReminderUtc,
-        List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId, int? RoutinePosition);
+        List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId, int? RoutinePosition,
+        List<TimeOnly> ReminderTimes);
 
     /// <summary>One routine; its members are the habits with its <c>RoutineId</c>. Timestamps are UTC.</summary>
     public sealed record RoutineRecord(
@@ -135,7 +137,7 @@ public static class ExportBuilder
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
                 AsUtc(h.NextReminderUtc), HabitService.ReminderChannelNames(h.ReminderChannels),
                 h.Days is { } days ? ScheduleDayNames.ToNames(days) : null, h.TimesPerDay, h.RoutineId,
-                h.RoutineId is null ? null : h.RoutinePosition)).ToList(),
+                h.RoutineId is null ? null : h.RoutinePosition, h.ReminderTimes.ToList())).ToList(),
             habits.SelectMany(h => h.Logs.OrderBy(l => l.Date).Select(l => new LogRecord(
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture), l.Count))).ToList(),
             user.DayMarks.OrderBy(m => m.Date).ThenBy(m => m.Kind)
@@ -174,7 +176,7 @@ public static class ExportBuilder
     /// One CSV file with <see cref="CsvHeader"/> columns: a <c>settings</c> row, one <c>habit</c> row per habit,
     /// one <c>log</c> row per log, one <c>day_mark</c> row per day mark, one <c>push_subscription</c> row per push subscription,
     /// one <c>routine</c> row per routine, one <c>day_note</c> row per journal entry, one <c>mood</c> row per own mood and a
-    /// <c>journal_key</c> row when the private journal is on (reminder channels are joined with <c>;</c>); columns that don't apply to a record type are empty.
+    /// <c>journal_key</c> row when the private journal is on (reminder channels and a habit's reminder times are joined with <c>;</c>); columns that don't apply to a record type are empty.
     /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them, except the base64
     /// cipher and journal key columns, which are written verbatim. See <see cref="BuildDocument"/> for <paramref name="forDiscord"/>.
     /// </summary>
@@ -194,7 +196,7 @@ public static class ExportBuilder
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", ("habit_id", Num(h.Id)), ("name", h.Name), ("frequency", h.Frequency),
-                ("weekly_target", h.WeeklyTarget is { } t ? Num(t) : ""), ("reminder_time", Time(h.ReminderTime)),
+                ("weekly_target", h.WeeklyTarget is { } t ? Num(t) : ""), ("reminder_time", string.Join(';', h.ReminderTimes.Select(r => Time(r)))),
                 ("paused_until", Date(h.PausedUntil)), ("paused_from", Date(h.PausedFrom)),
                 ("created_at", Utc(h.CreatedAt)), ("next_reminder_utc", Utc(h.NextReminderUtc)),
                 ("reminder_channels", string.Join(';', h.ReminderChannels)), ("days", string.Join(';', h.Days ?? [])),

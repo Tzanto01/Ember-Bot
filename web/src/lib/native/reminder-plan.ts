@@ -1,15 +1,17 @@
-import { addDays, weekdayIndex } from '../local-date';
-import { type Habit, type LocalDateString, type Routine, weekdays } from '../models';
+import { addDays, startOfWeek, weekdayIndex } from '../local-date';
+import { type Habit, type LocalDateString, reminderTimesOf, type Routine, weekdays } from '../models';
 
 /** One local notification to schedule: for one habit (`habitId`) or for a routine's pending habits (`routineId`). */
 export interface PlannedReminder {
-  /** 1-based, unique within one plan. */
+  /** Unique within one plan and stable across plans for the same habit or routine, date, time and kind; see {@link reminderId}. */
   id: number;
   habitId?: number;
   routineId?: number;
   date: LocalDateString;
   /** UTC instant in milliseconds. */
   at: number;
+  /** The reminder time on the local wall clock, `HH:mm`. */
+  time: string;
   /** True for the follow-up planned `secondReminderMinutes` after the first reminder. */
   second?: boolean;
 }
@@ -42,6 +44,20 @@ function wallClock(utc: number, timeZone: string): { date: LocalDateString; minu
     date: `${p['year']}-${p['month']}-${p['day']}`,
     minutes: Number(p['hour']) * 60 + Number(p['minute']),
   };
+}
+
+/**
+ * The notification id for one reminder: a positive 31-bit FNV-1a hash of `habit` or `routine`, the id, the local
+ * date, the `HH:mm` time and whether it's the second reminder. The same reminder keeps its id when the plan is
+ * rebuilt, so Android replaces it rather than showing it twice.
+ */
+export function reminderId(
+  reminder: Pick<PlannedReminder, 'habitId' | 'routineId' | 'date' | 'time' | 'second'>,
+): number {
+  const key = `${reminder.habitId !== undefined ? `h${reminder.habitId}` : `r${reminder.routineId}`}|${reminder.date}|${reminder.time}|${reminder.second ? 2 : 1}`;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) hash = Math.imul(hash ^ key.charCodeAt(i), 0x01000193);
+  return (hash & 0x7fffffff) || 1;
 }
 
 /** The local calendar day in `timeZone` at the UTC instant `utc`. */
@@ -100,6 +116,16 @@ function doneToday(habit: Habit, date: LocalDateString): boolean {
   );
 }
 
+function weekMet(habit: Habit, date: LocalDateString): boolean {
+  const week = habit.stats.week;
+  return (
+    habit.frequency === 'weekly' &&
+    !!week &&
+    week.done >= week.target &&
+    startOfWeek(date) === startOfWeek(habit.today.date)
+  );
+}
+
 function pendingOn(habit: Habit, date: LocalDateString): boolean {
   if (habit.today.date === date) return habit.today.state === 'pending' || habit.today.state === 'partial';
   return scheduledOn(habit, date);
@@ -107,12 +133,14 @@ function pendingOn(habit: Habit, date: LocalDateString): boolean {
 
 /**
  * The local notifications for the next {@link planDays} local days in `timeZone` (the account's, never the
- * device's), with the bot dispatcher's rules. Habits with the `mobile` channel and a reminder time fire on
- * scheduled days only (started, not paused, a listed weekday), not once today is done. A routine with a reminder
+ * device's), with the bot dispatcher's rules. Habits with the `mobile` channel fire at each of their reminder times
+ * on scheduled days only (started, not paused, a listed weekday), not once today is done, and
+ * for weekly habits not for the rest of the week (Monday to Sunday) once its target is met. A routine with a reminder
  * time and the `mobile` channel fires once a day while any member habit is still pending or partial (today from
  * `habit.today`, later days when scheduled); its members' own reminders are skipped. Instants already past are
  * dropped. With `secondMinutes` above 0 each reminder gets a follow-up (`second`) that many minutes later, unless
- * it falls on another local day. Sorted soonest first and capped at {@link planCap}.
+ * it falls on another local day or the habit's next reminder time that day comes first. Sorted soonest first,
+ * capped at {@link planCap}, with ids from {@link reminderId} (a collision moves to the next free id).
  */
 export function planReminders(
   habits: Habit[],
@@ -123,20 +151,23 @@ export function planReminders(
 ): PlannedReminder[] {
   const today = localDate(now, timeZone);
   const planned: Omit<PlannedReminder, 'id'>[] = [];
-  const plan = (reminder: Omit<PlannedReminder, 'id' | 'second'>) => {
+  const plan = (reminder: Omit<PlannedReminder, 'id' | 'second'>, nextAt = Infinity) => {
     if (reminder.at > now) planned.push(reminder);
     if (secondMinutes <= 0) return;
     const at = reminder.at + secondMinutes * 60_000;
-    if (at > now && localDate(at, timeZone) === reminder.date) planned.push({ ...reminder, at, second: true });
+    if (at > now && at < nextAt && localDate(at, timeZone) === reminder.date)
+      planned.push({ ...reminder, at, second: true });
   };
   const overridden = new Set(routines.filter((r) => r.reminderTime).flatMap((r) => r.habitIds));
   for (const habit of habits) {
-    if (!habit.reminderTime || !habit.reminderChannels?.includes('mobile')) continue;
+    const times = reminderTimesOf(habit);
+    if (!times.length || !habit.reminderChannels?.includes('mobile')) continue;
     if (overridden.has(habit.id)) continue;
     for (let offset = 0; offset < planDays; offset++) {
       const date = addDays(today, offset);
-      if (!scheduledOn(habit, date) || doneToday(habit, date)) continue;
-      plan({ habitId: habit.id, date, at: zonedToUtc(date, habit.reminderTime, timeZone) });
+      if (!scheduledOn(habit, date) || doneToday(habit, date) || weekMet(habit, date)) continue;
+      const instants = times.map((time) => zonedToUtc(date, time, timeZone));
+      times.forEach((time, i) => plan({ habitId: habit.id, date, time, at: instants[i] }, instants[i + 1]));
     }
   }
   for (const routine of routines) {
@@ -145,14 +176,25 @@ export function planReminders(
     for (let offset = 0; offset < planDays; offset++) {
       const date = addDays(today, offset);
       if (!members.some((habit) => pendingOn(habit, date))) continue;
-      plan({ routineId: routine.id, date, at: zonedToUtc(date, routine.reminderTime, timeZone) });
+      plan({
+        routineId: routine.id,
+        date,
+        time: routine.reminderTime,
+        at: zonedToUtc(date, routine.reminderTime, timeZone),
+      });
     }
   }
+  const used = new Set<number>();
   return planned
     .sort(
       (a, b) =>
         a.at - b.at || (a.habitId ?? 0) - (b.habitId ?? 0) || (a.routineId ?? 0) - (b.routineId ?? 0),
     )
     .slice(0, planCap)
-    .map((reminder, index) => ({ ...reminder, id: index + 1 }));
+    .map((reminder) => {
+      let id = reminderId(reminder);
+      while (used.has(id)) id = (id % 0x7fffffff) + 1;
+      used.add(id);
+      return { ...reminder, id };
+    });
 }

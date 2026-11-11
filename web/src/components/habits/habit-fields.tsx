@@ -1,12 +1,16 @@
-import { type ReactNode, useId } from 'react';
+import { Plus, X } from 'lucide-react';
+import { type ReactNode, useId, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { FormField, fieldMessages } from '@/components/form-field';
+import { LiveRegion } from '@/components/live-region';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NativeSelect } from '@/components/ui/select';
-import { weekdayLabels } from '@/lib/local-date';
-import { type Frequency, type Habit, type TimeOfDay, type Weekday, weekdays } from '@/lib/models';
+import { formatTime, weekdayLabels } from '@/lib/local-date';
+import { type Frequency, type Habit, reminderTimesOf, type TimeOfDay, type Weekday, weekdays } from '@/lib/models';
 
 /** What the create and edit form holds; fields that don't fit the chosen schedule are kept but not sent. */
 export interface HabitFormState {
@@ -17,13 +21,14 @@ export interface HabitFormState {
   days: Weekday[];
   /** 1 to 10 (for `daily` and `weekdays`). */
   timesPerDay: number;
-  /** `HH:MM`, or empty for no reminder. */
-  reminderTime: string;
+  /** The reminder rows in the order they were added, each `HH:MM` or empty; at least one row. */
+  reminderTimes: string[];
 }
 
 /**
  * The form read as API-ready values: name trimmed, weekly target only when weekly, days only for set weekdays
- * (all seven become `daily`), times per day 1 when weekly, empty reminder as null.
+ * (all seven become `daily`), times per day 1 when weekly, reminder times sorted without blanks or repeats and at
+ * most one per check-in (the earliest).
  */
 export interface HabitFormValue {
   name: string;
@@ -31,7 +36,7 @@ export interface HabitFormValue {
   weeklyTarget: number | null;
   days: Weekday[] | null;
   timesPerDay: number;
-  reminderTime: TimeOfDay | null;
+  reminderTimes: TimeOfDay[];
 }
 
 const workdays: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
@@ -42,7 +47,7 @@ export const emptyHabitForm: HabitFormState = {
   weeklyTarget: 3,
   days: workdays,
   timesPerDay: 1,
-  reminderTime: '',
+  reminderTimes: [''],
 };
 
 /** The form filled from a saved habit. */
@@ -53,7 +58,7 @@ export function habitToForm(habit: Habit): HabitFormState {
     weeklyTarget: habit.weeklyTarget ?? 3,
     days: habit.days ?? workdays,
     timesPerDay: habit.timesPerDay,
-    reminderTime: habit.reminderTime ?? '',
+    reminderTimes: reminderTimesOf(habit).length ? [...reminderTimesOf(habit)] : [''],
   };
 }
 
@@ -94,6 +99,34 @@ export function habitCadence(habit: Habit): string {
   return cadenceText(habit.frequency, habit.weeklyTarget, habit.days, habit.timesPerDay);
 }
 
+/** The filled rows, sorted, without repeats. */
+function sortedTimes(rows: readonly string[]): TimeOfDay[] {
+  return [...new Set(rows.filter(Boolean))].sort();
+}
+
+function timeList(times: readonly string[]): string {
+  return times.length > 1 ? `${times.slice(0, -1).join(', ')} and ${times[times.length - 1]}` : (times[0] ?? '');
+}
+
+/**
+ * The line under the reminder times when more than one check-in a day is asked for: "Ember reminds you at 08:00,
+ * 13:00 and 20:00 until you've checked in 3 times." Null with no time or one check-in a day.
+ */
+export function reminderSchedule(times: readonly TimeOfDay[], timesPerDay: number): string | null {
+  if (!times.length || timesPerDay <= 1) return null;
+  if (times.length === 1) return `Ember reminds you once, at ${times[0]}. You can add a time for each check-in.`;
+  return `Ember reminds you at ${timeList(times)} until you've checked in ${timesPerDay} times.`;
+}
+
+/**
+ * The line under a weekly habit's reminder time: Ember reminds on days without a check-in until the week's target
+ * is met, then stays quiet until Monday.
+ */
+export function weeklySchedule(time: TimeOfDay, weeklyTarget: number): string {
+  const target = weeklyTarget === 1 ? 'once' : `${weeklyTarget} times`;
+  return `Ember reminds you at ${formatTime(time)} on days you haven't checked in yet, until you've done it ${target} this week. Then it's quiet until Monday.`;
+}
+
 export function habitFormValue(state: HabitFormState): HabitFormValue {
   const allDays = state.frequency === 'weekdays' && state.days.length === weekdays.length;
   const frequency = allDays ? 'daily' : state.frequency;
@@ -103,7 +136,7 @@ export function habitFormValue(state: HabitFormState): HabitFormValue {
     weeklyTarget: frequency === 'weekly' ? state.weeklyTarget : null,
     days: frequency === 'weekdays' ? weekdays.filter((day) => state.days.includes(day)) : null,
     timesPerDay: frequency === 'weekly' ? 1 : state.timesPerDay,
-    reminderTime: state.reminderTime || null,
+    reminderTimes: sortedTimes(state.reminderTimes).slice(0, frequency === 'weekly' ? 1 : state.timesPerDay),
   };
 }
 
@@ -135,11 +168,14 @@ export interface HabitFieldsProps {
   reminderNote?: ReactNode;
   /** False hides the reminder time, where reminders can't go out (no-account mode on the web). */
   showReminder?: boolean;
+  /** True when every reminder channel is off, so the times stay quiet and the form says so. */
+  silent?: boolean;
 }
 
 /**
  * Name, "How often" (every day, set weekdays or a few times a week), the weekdays, times per day or per week, and
- * the optional reminder time. Place inside the page's `form`.
+ * the optional reminder times (one per check-in a day, with "Add another time" and a line spelling out the schedule).
+ * Place inside the page's `form`.
  */
 export function HabitFields({
   value,
@@ -151,8 +187,60 @@ export function HabitFields({
   savedTimesPerDay,
   reminderNote,
   showReminder = true,
+  silent = false,
 }: HabitFieldsProps) {
   const id = useId();
+  const timesId = `${id}-times`;
+  const timesRef = useRef<HTMLDivElement>(null);
+  const [dropped, setDropped] = useState<TimeOfDay[]>([]);
+  const limit = value.frequency === 'weekly' ? 1 : value.timesPerDay;
+  const times = sortedTimes(value.reminderTimes);
+  const timesError = errors['reminderTimes'] ?? errors['reminderTime'] ?? null;
+  const schedule = silent
+    ? times.length
+      ? 'No reminders will go out for this habit, since every way to reach you is off.'
+      : null
+    : reminderSchedule(times, limit);
+  const droppedNote = dropped.length
+    ? `${timeList(dropped)} ${dropped.length === 1 ? 'was' : 'were'} taken off, since you now check in ${limit === 1 ? 'once' : `${limit} times`} a day.`
+    : null;
+
+  function changeSchedule(next: HabitFormState): void {
+    const nextLimit = next.frequency === 'weekly' ? 1 : next.timesPerDay;
+    if (next.reminderTimes.length <= nextLimit) {
+      setDropped([]);
+      onChange(next);
+      return;
+    }
+    const kept = sortedTimes(next.reminderTimes);
+    setDropped(kept.slice(nextLimit));
+    onChange({ ...next, reminderTimes: kept.length ? kept.slice(0, nextLimit) : [''] });
+  }
+
+  function setTime(index: number, time: string): void {
+    setDropped([]);
+    onChange({ ...value, reminderTimes: value.reminderTimes.map((t, i) => (i === index ? time : t)) });
+  }
+
+  function focusTime(index: number): void {
+    timesRef.current?.querySelectorAll<HTMLInputElement>('input[type="time"]')[index]?.focus();
+  }
+
+  function addTime(): void {
+    flushSync(() => {
+      setDropped([]);
+      onChange({ ...value, reminderTimes: [...value.reminderTimes, ''] });
+    });
+    focusTime(value.reminderTimes.length);
+  }
+
+  function removeTime(index: number): void {
+    flushSync(() => {
+      setDropped([]);
+      onChange({ ...value, reminderTimes: value.reminderTimes.filter((_, i) => i !== index) });
+    });
+    focusTime(Math.min(index, value.reminderTimes.length - 2));
+  }
   const legendId = `${id}-often`;
   const daysId = `${id}-days`;
   const nameError = (touched ? habitNameError(value.name) : null) ?? errors['name'] ?? null;
@@ -185,7 +273,7 @@ export function HabitFields({
         <RadioGroup
           aria-labelledby={legendId}
           value={value.frequency}
-          onValueChange={(frequency) => onChange({ ...value, frequency: frequency as Frequency })}
+          onValueChange={(frequency) => changeSchedule({ ...value, frequency: frequency as Frequency })}
           className="sm:grid-cols-3"
         >
           {frequencies.map((option) => (
@@ -252,7 +340,7 @@ export function HabitFields({
                 {...field}
                 className="max-w-[12rem]"
                 value={value.timesPerDay}
-                onChange={(event) => onChange({ ...value, timesPerDay: Number(event.target.value) })}
+                onChange={(event) => changeSchedule({ ...value, timesPerDay: Number(event.target.value) })}
               >
                 {perDayOptions.map((n) => (
                   <option key={n} value={n}>
@@ -289,22 +377,89 @@ export function HabitFields({
 
       {showReminder && (
         <>
-          <FormField
-            label="Reminder time"
-            optional
-            hint="Ember sends a gentle nudge at this time."
-            error={errors['reminderTime'] ?? null}
-          >
-            {(field) => (
-              <Input
-                {...field}
-                type="time"
-                className="max-w-[12rem]"
-                value={value.reminderTime}
-                onChange={(event) => onChange({ ...value, reminderTime: event.target.value })}
-              />
-            )}
-          </FormField>
+          {limit === 1 ? (
+            <FormField
+              label="Reminder time"
+              optional
+              hint={
+                value.frequency === 'weekly' && times[0] && !silent
+                  ? weeklySchedule(times[0], value.weeklyTarget)
+                  : 'Ember sends a gentle nudge at this time.'
+              }
+              error={timesError}
+            >
+              {(field) => (
+                <Input
+                  {...field}
+                  type="time"
+                  className="max-w-[12rem]"
+                  value={value.reminderTimes[0] ?? ''}
+                  onChange={(event) => setTime(0, event.target.value)}
+                />
+              )}
+            </FormField>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p id={timesId} className="font-medium">
+                Reminder times <span className="font-normal text-muted-foreground">(optional)</span>
+              </p>
+              <p id={`${timesId}-hint`} className="-mt-1 text-[14px] text-muted-foreground">
+                One gentle nudge at each time, up to one per check-in.
+              </p>
+              <div
+                ref={timesRef}
+                role="group"
+                aria-labelledby={timesId}
+                aria-describedby={[`${timesId}-hint`, schedule ? `${timesId}-schedule` : '', timesError ? `${timesId}-error` : '']
+                  .filter(Boolean)
+                  .join(' ')}
+                className="flex flex-col gap-2"
+              >
+                {value.reminderTimes.map((time, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      aria-label={`Reminder time ${i + 1}`}
+                      aria-invalid={timesError ? true : undefined}
+                      className="max-w-[12rem]"
+                      value={time}
+                      onChange={(event) => setTime(i, event.target.value)}
+                    />
+                    {value.reminderTimes.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={time ? `Remove ${time}` : `Remove reminder time ${i + 1}`}
+                        onClick={() => removeTime(i)}
+                      >
+                        <X aria-hidden />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {value.reminderTimes.length < limit && (
+                <Button type="button" variant="secondary" className="self-start" onClick={addTime}>
+                  <Plus aria-hidden />
+                  Add another time
+                </Button>
+              )}
+              {schedule && (
+                <p id={`${timesId}-schedule`} className="text-[14px] text-muted-foreground">
+                  {schedule}
+                </p>
+              )}
+              {timesError && (
+                <p id={`${timesId}-error`} role="alert" className="text-[14px] text-destructive">
+                  {timesError}
+                </p>
+              )}
+            </div>
+          )}
+          {limit === 1 && silent && schedule && <p className="-mt-3 text-[14px] text-muted-foreground">{schedule}</p>}
+          {droppedNote && <p className="-mt-3 text-[14px] text-muted-foreground">{droppedNote}</p>}
+          <LiveRegion message={droppedNote ?? ''} />
           {reminderNote && <p className="-mt-3 text-[14px] text-muted-foreground">{reminderNote}</p>}
         </>
       )}

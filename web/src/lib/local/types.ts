@@ -22,7 +22,10 @@ export interface LocalHabit {
   days: Weekday[] | null;
   /** 1–10 for daily and weekdays habits, always 1 for weekly. */
   timesPerDay: number;
+  /** The first of `reminderTimes`, or null. */
   reminderTime: TimeOfDay | null;
+  /** Sorted, unique, 0 to `timesPerDay`; absent on data saved before multi-time reminders (then `reminderTime` alone). */
+  reminderTimes?: TimeOfDay[];
   reminderChannels: ReminderChannel[];
   pausedFrom: LocalDateString | null;
   pausedUntil: LocalDateString | null;

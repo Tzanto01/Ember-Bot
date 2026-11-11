@@ -24,6 +24,50 @@ describe('DayJournal', { timeout: 15_000 }, () => {
     expect(await screen.findByText('Saved')).toBeInTheDocument();
   });
 
+  it('shows Saved in place of Save once saved, focused, and brings Save back after an edit', async () => {
+    const user = userEvent.setup();
+    const journal = fakeJournal();
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+
+    const textbox = await screen.findByRole('textbox', { name: /A few words/ });
+    await user.type(textbox, 'Walked.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    const status = (await screen.findByText('Saved')).closest('[role="status"]');
+    expect(status).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+
+    await user.type(textbox, ' Twice.');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.queryByText('Saved')).toBeNull();
+    expect(status).toBeInTheDocument();
+    expect(status).toBeEmptyDOMElement();
+  });
+
+  it('shows a stored entry as saved on a fresh mount, and Save once the form differs from it', async () => {
+    const user = userEvent.setup();
+    const journal = fakeJournal({ notes: [{ date: '2026-10-30', text: 'Tired.', mood: 'okay' }] });
+    renderWithJournal(<DayJournal date="2026-10-30" />, journal);
+
+    expect(await screen.findByText('Saved')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Clear mood' }));
+    expect(await screen.findByText('Mood cleared')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.queryByText(/Saved|cleared/)).toBeNull();
+  });
+
+  it('keeps Save for an empty day', async () => {
+    const journal = fakeJournal();
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
   it('deletes the entry when text and mood are both cleared', async () => {
     const user = userEvent.setup();
     const journal = fakeJournal({ notes: [{ date: '2026-10-30', text: 'Tired.', mood: 'okay' }] });
@@ -57,7 +101,7 @@ describe('DayJournal', { timeout: 15_000 }, () => {
     journal.save.mockResolvedValue({ queued: true });
     renderWithJournal(<DayJournal date="2026-11-01" />, journal);
 
-    await user.click(await screen.findByRole('radio', { name: 'Low' }));
+    await user.type(await screen.findByRole('textbox', { name: /A few words/ }), 'Rested.');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText("Saved on this device, it'll sync when you're back online.")).toBeInTheDocument();
@@ -69,7 +113,7 @@ describe('DayJournal', { timeout: 15_000 }, () => {
     journal.save.mockResolvedValue({ queued: true });
     renderWithJournal(<DayJournal date="2026-11-01" />, journal);
 
-    await user.click(await screen.findByRole('radio', { name: 'Low' }));
+    await user.type(await screen.findByRole('textbox', { name: /A few words/ }), 'Rested.');
     act(() => offlineQueue.pending.set(1));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/Saved on this device/)).toBeInTheDocument();
