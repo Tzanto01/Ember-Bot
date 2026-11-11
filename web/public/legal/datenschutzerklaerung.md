@@ -230,7 +230,7 @@ Außer an die oben genannten Dienste und an den Speicher für die verschlüsselt
 
 - **Dein Konto und deine Daten** bleiben gespeichert, bis du sie löschst. Einzelne Habits, Routinen, Check-ins, Tiefs, Tagesnotizen und Stimmungen kannst du in der App oder im Bot entfernen. Die Kontolöschung entfernt alles sofort (Abschnitt 9).
 - **Konten, deren E-Mail-Adresse nie bestätigt wurde,** werden nach 7 Tagen automatisch gelöscht, wenn sie noch keine Daten und keine Discord-Anmeldung haben.
-- **Anmeldesitzungen:** Eine Sitzung läuft 14 Tage nach der letzten Nutzung ab. Abgelaufene Sitzungen löscht Ember bei der nächsten Anmeldung. [PRÜFEN: Bis dahin bleiben sie in der Datenbank. Feste Löschfrist vorsehen oder diesen Satz anpassen, siehe docs/legal/README.md.]
+- **Anmeldesitzungen:** Eine Sitzung läuft 14 Tage nach der letzten Nutzung ab. Abgelaufene Sitzungen löscht Ember einmal am Tag. Pro Konto bleiben höchstens 50 Sitzungen, bei einer neuen Anmeldung endet dann die älteste.
 - **Erinnerungen in Discord:** Der Eintrag bleibt, bis die Nachricht geschlossen oder ersetzt wird. Danach wird er gelöscht.
 - **Web-Push-Abos:** bis du sie abmeldest, Benachrichtigungen ausschaltest, der Push-Dienst das Abo als ungültig meldet oder dein Konto gelöscht wird. Beim Abmelden entfernt die Web-App das Abo.
 - **Technische Protokolle:** siehe Abschnitt 3.7.
