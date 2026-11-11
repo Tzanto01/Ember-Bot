@@ -21,7 +21,7 @@ import { Input, PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
 import { env } from '@/lib/env';
-import { openOnWeb } from '@/lib/native/browser';
+import { type DiscordCode, listenForDiscord, startDiscordSignIn } from '@/lib/native/discord';
 import { queryString } from '@/lib/navigation';
 import { asApiError, type FriendlyProblem, problemToMessage, requiresTwoFactor } from '@/lib/problem';
 import { safeReturnUrl } from '@/lib/return-url';
@@ -143,9 +143,10 @@ function TwoFactorStep({
 }
 
 /**
- * `/login`: email and password sign-in, Discord sign-in (web) or the "Open Ember on the web" hand-off (native).
- * After a `RequiresTwoFactor` answer it asks for the second factor on the same page, keeping the email and password
- * in memory only for that step; `/login?step=2fa` is that step for a Discord sign-in.
+ * `/login`: email and password sign-in, and Discord sign-in (native: in the system browser, returning to the app with a
+ * one-time code). After a `RequiresTwoFactor` answer it asks for the second factor on the same page, keeping the email
+ * and password (or the native Discord code) in memory only for that step; `/login?step=2fa` is that step for a web
+ * Discord sign-in.
  */
 export default function LoginPage() {
   const [params] = useSearchParams();
@@ -163,7 +164,39 @@ export default function LoginPage() {
   const [pending, setPending] = useState<Credentials | null>(null);
   const [offlineForm, setOfflineForm] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [discordCode, setDiscordCode] = useState<DiscordCode | null>(null);
+  const [discordError, setDiscordError] = useState(false);
+  const onDiscord = useRef<(result: DiscordCode | 'error') => void>(() => undefined);
   useFocusHeadingOnChange(offlineForm);
+
+  useEffect(() => {
+    onDiscord.current = (result) => {
+      setProblem(null);
+      setDiscordError(false);
+      if (result === 'error') {
+        setDiscordError(true);
+        return;
+      }
+      auth.loginWithDiscord(result).then(signedIn, (error: unknown) => {
+        if (requiresTwoFactor(error)) setDiscordCode(result);
+        else setDiscordError(true);
+      });
+    };
+  });
+
+  useEffect(() => {
+    if (!env.native) return;
+    let stop: (() => void) | null = null;
+    let gone = false;
+    void listenForDiscord((result) => onDiscord.current(result)).then((remove) => {
+      if (gone) remove();
+      else stop = remove;
+    });
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  }, []);
 
   async function retry(): Promise<void> {
     if (retrying) return;
@@ -202,21 +235,24 @@ export default function LoginPage() {
   async function secondFactor(secret: SecondFactor): Promise<void> {
     if (pending) {
       await auth.login(pending.email, pending.password, pending.staySignedIn, secret);
+    } else if (discordCode) {
+      await auth.loginWithDiscord(discordCode, secret);
     } else {
       await auth.completeDiscordTwoFactor(secret);
     }
     signedIn();
   }
 
-  if (pending || discordStep) {
+  if (pending || discordCode || discordStep) {
     return (
       <TwoFactorStep
         onSubmit={secondFactor}
         onBack={() => {
           if (pending) setPending(null);
+          else if (discordCode) setDiscordCode(null);
           else void navigate({ search: '' }, { replace: true });
         }}
-        backLabel={pending ? 'Back' : 'Back to sign-in'}
+        backLabel={pending || discordCode ? 'Back' : 'Back to sign-in'}
       />
     );
   }
@@ -244,7 +280,7 @@ export default function LoginPage() {
     <>
       <PageHeader title="Welcome back" lede="Sign in to check in on your habits." />
       <UpgradingNotice />
-      {discordFailed && <Notice tone="notice">Discord sign-in didn't finish. You can try again.</Notice>}
+      {(discordFailed || discordError) && <Notice tone="notice">Discord sign-in didn't finish. You can try again.</Notice>}
       {reason === 'session' && <Notice>Your session ended. Sign in again to pick up where you left off.</Notice>}
       {reason === 'deleted' && (
         <Notice>Your account and everything in it are deleted. Thank you for spending time with Ember.</Notice>
@@ -306,19 +342,9 @@ export default function LoginPage() {
         </BusyButton>
       </form>
 
-      {env.native ? (
-        <>
-          <p className="text-muted-foreground">
-            Started with the Ember bot on Discord? Discord sign-in works on the web. Create an email login there, then
-            link Discord in Settings: your habits come along.
-          </p>
-          <Button type="button" variant="secondary" block onClick={() => void openOnWeb('/signup')}>
-            Open Ember on the web
-          </Button>
-        </>
-      ) : (
-        <DiscordButton returnUrl={returnUrl}>Sign in with Discord</DiscordButton>
-      )}
+      <DiscordButton returnUrl={returnUrl} onNative={() => void startDiscordSignIn()}>
+        {env.native ? 'Continue with Discord' : 'Sign in with Discord'}
+      </DiscordButton>
       <p className="text-center text-muted-foreground">
         New to Ember? <TapLink to="/signup">Create an account</TapLink>
       </p>

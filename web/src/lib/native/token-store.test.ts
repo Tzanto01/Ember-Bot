@@ -93,6 +93,17 @@ describe('TokenStore', () => {
     expect(store.accessToken).toBe('access-1');
   });
 
+  it('exchanges a native Discord code with its verifier and keeps the refresh token in secure storage', async () => {
+    const signedIn = store.signInWithDiscord('code-synthetic', 'verifier-synthetic');
+    const exchange = await mock.next('POST', '/api/auth/discord/native/token');
+    expect(exchange.body).toEqual({ code: 'code-synthetic', verifier: 'verifier-synthetic' });
+    exchange.respond(200, tokens('access-d', 'refresh-d'));
+    await signedIn;
+
+    expect(store.accessToken).toBe('access-d');
+    expect(secure.get('ember.refreshToken')).toBe('refresh-d');
+  });
+
   it('forgets both tokens on clear', async () => {
     secure.set('ember.refreshToken', 'stored-refresh');
 

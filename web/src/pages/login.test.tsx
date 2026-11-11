@@ -2,10 +2,31 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
+import { env } from '@/lib/env';
+import { ApiError } from '@/lib/problem';
 import { api, auth, localMode } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import LoginPage from './login';
 
+const native = vi.hoisted(() => ({
+  opened: [] as string[],
+  appUrlOpen: null as ((event: { url: string }) => void) | null,
+}));
+
+vi.mock('@capacitor/browser', () => ({
+  Browser: { open: async ({ url }: { url: string }) => void native.opened.push(url), close: async () => undefined },
+}));
+
+vi.mock('@capacitor/app', () => ({
+  App: {
+    addListener: async (_event: string, listener: (event: { url: string }) => void) => {
+      native.appUrlOpen = listener;
+      return { remove: async () => undefined };
+    },
+  },
+}));
+
+vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
 vi.mock('@/lib/services', async (original) => {
   const { Store } = await import('@/lib/store');
   return {
@@ -22,6 +43,8 @@ describe('LoginPage', () => {
   });
 
   afterEach(() => {
+    env.native = false;
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     auth.clearSession();
     localMode.mode.set('account');
@@ -140,6 +163,30 @@ describe('LoginPage', () => {
     (await mock.next('GET', '/api/me')).respond(200, me);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+  });
+
+  it('native: Continue with Discord opens the browser, and the app URL with the code signs in after the second factor', async () => {
+    env.native = true;
+    const user = userEvent.setup();
+    const exchange = vi
+      .spyOn(auth, 'loginWithDiscord')
+      .mockRejectedValueOnce(new ApiError(401, { status: 401, title: 'Unauthorized', detail: 'RequiresTwoFactor' }))
+      .mockResolvedValueOnce(null);
+    const router = renderPage('/login', LoginPage, '/login?returnUrl=%2Fhistory');
+    expect(screen.queryByRole('button', { name: 'Open Ember on the web' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Continue with Discord' }));
+    await waitFor(() => expect(native.opened).toHaveLength(1));
+    expect(native.opened[0]).toMatch(/^\/api\/auth\/discord\/login\?client=native&challenge=[A-Za-z0-9_-]{43}$/);
+    await waitFor(() => expect(native.appUrlOpen).not.toBeNull());
+    const code = 'C'.repeat(43);
+    native.appUrlOpen!({ url: `app.ember.habits://auth/discord?code=${code}` });
+
+    await user.type(await screen.findByLabelText('Authenticator code'), '246810');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/history'));
+    expect(exchange).toHaveBeenNthCalledWith(1, { code, verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+    expect(exchange).toHaveBeenNthCalledWith(2, exchange.mock.calls[0][0], { code: '246810' });
   });
 
   it('when Ember could not be reached, offers Try again instead of the form, and the form on request', async () => {

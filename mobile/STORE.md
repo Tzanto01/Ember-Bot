@@ -8,7 +8,7 @@ Marker: `TODO (Nico):` means the answer depends on a decision or fact that is no
 
 ## What the app does (for the store answers)
 
-- **Two modes.** With an account (email and password; Discord sign-in only on the web), data syncs with Ember's server. Without an account ("No account (device only)"), everything stays on the phone and nothing is sent to the server.
+- **Two modes.** With an account (email and password, or Discord), data syncs with Ember's server. Without an account ("No account (device only)"), everything stays on the phone and nothing is sent to the server.
 - **Habits and check-ins**, routines, low days, pauses and grace days.
 - **Journal:** a day note (text) and a mood per day, with the user's own moods. Stored in plain text on the server, unless the user turns on the **private journal**: then notes and own moods are encrypted on the device (AES-GCM, key wrapped with a passphrase and a recovery code) and the server only holds ciphertext.
 - **Phone reminders** are local notifications planned on the device for the next 14 days (up to 400). The lock-screen text names no habit unless the user turns on "Show habit names in reminders".
@@ -103,7 +103,7 @@ Do not submit. Kept for when iOS starts.
 - **App Privacy labels.** Linked to the user, not used for tracking, purpose App Functionality: Health & Fitness (habits, check-ins, low days, moods), User Content (day notes), Contact Info (email), Identifiers (user ID, Discord ID if linked), Other Data (timezone, reminder times, consent record). No usage data, diagnostics, location or purchases.
 - **5.1.1(v) account deletion:** in-app deletion exists (section 2.4). Test it in the native build.
 - **5.1.3 health data:** no ads, no sale, no sharing beyond the service. No HealthKit.
-- **4.8 Sign in with Apple:** the app's login screen offers email only and sends Discord users to the web. TODO (Nico): confirm the guideline before submission.
+- **4.8 Sign in with Apple:** the app's login screen offers email and Discord sign-in (Android shell only so far: an iOS shell needs the `app.ember.habits` URL scheme for the Discord return), which brings Sign in with Apple into scope. TODO (Nico): confirm the guideline before submission.
 - **Other:** export compliance (HTTPS only), age rating, bundle ID `app.ember.habits`, whether device backups include the WebView storage, and the privacy manifest. TODO before an iOS build.
 
 ## 4. Open items

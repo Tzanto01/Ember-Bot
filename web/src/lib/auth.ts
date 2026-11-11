@@ -182,6 +182,20 @@ export class AuthService {
   }
 
   /**
+   * Native build: finishes a Discord sign-in with the code from the browser step (and, after a `RequiresTwoFactor`
+   * answer, `twoFactor`), then loads `me`. Rejects with `ApiError`.
+   */
+  async loginWithDiscord(
+    { code, verifier }: { code: string; verifier: string },
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<Me | null> {
+    if (!this.native) throw new Error('Discord code sign-in needs the native build.');
+    await this.native.tokens.signInWithDiscord(code, verifier, twoFactor);
+    this.consentPrompted = true;
+    return this.loadMe(true);
+  }
+
+  /**
    * Removes this device's push subscription (server first, then the browser), signs out,
    * refreshes antiforgery and goes to `/login`. `everywhere` ends every session of the account on every device
    * (in the native build too). Resolves false and keeps the session when the server couldn't end it (offline, 5xx, and
