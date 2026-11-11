@@ -295,14 +295,6 @@ export default function HistoryPage() {
           ) : (
             <p className="text-muted-foreground">{selected.name}</p>
           )}
-          <StatTiles
-            habit={selected}
-            monthName={formatDate(month, { month: 'long' })}
-            doneInMonth={daysQuery.data ? inMonth.filter((d) => d.state === 'done').length : null}
-            lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
-            last7Days={kept(7)}
-            last30Days={kept(30)}
-          />
           <MonthCalendar
             title={monthLabel(month)}
             weeks={weeks}
@@ -352,6 +344,14 @@ export default function HistoryPage() {
             </Card>
           )}
           {openDay && <DayJournal date={openDay.date} />}
+          <StatTiles
+            habit={selected}
+            monthName={formatDate(month, { month: 'long' })}
+            doneInMonth={daysQuery.data ? inMonth.filter((d) => d.state === 'done').length : null}
+            lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
+            last7Days={kept(7)}
+            last30Days={kept(30)}
+          />
         </div>
       </div>
     );
