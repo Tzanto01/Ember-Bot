@@ -91,7 +91,7 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className={cn('mx-auto flex min-h-dvh w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
+        className={cn('mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
       >
         {signOutFailed && (
           <Notice tone="notice">

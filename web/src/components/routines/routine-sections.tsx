@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
+import { env } from '@/lib/env';
 import type { Habit, NewRoutine, Routine, RoutinePatch } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
-import { api } from '@/lib/services';
+import { api, localMode } from '@/lib/services';
+import { useStore } from '@/lib/store';
 import { RoutineHabits } from './routine-habits';
 
 /** Query key of the routine list, shared by Routines, the routine form and habit edit. */
@@ -60,6 +62,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
   const [name, setName] = useState(routine?.name ?? '');
   const [habitIds, setHabitIds] = useState(() => (routine?.habitIds ?? []).filter((id) => known.has(id)));
   const [reminderTime, setReminderTime] = useState(routine?.reminderTime ?? '');
+  const localWeb = useStore(localMode.mode) === 'local' && !env.native;
   const [touched, setTouched] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -152,26 +155,30 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
         routineId={routine?.id ?? null}
         error={fieldErrors['habitIds'] ?? null}
       />
-      <FormField
-        label="Reminder time"
-        optional
-        hint="One gentle nudge for the habits here that are still open. It replaces their own reminders while they're in this routine."
-        error={fieldErrors['reminderTime'] ?? null}
-      >
-        {(field) => (
-          <Input
-            {...field}
-            type="time"
-            className="max-w-[12rem]"
-            value={reminderTime}
-            onChange={(event) => setReminderTime(event.target.value)}
-          />
-        )}
-      </FormField>
-      {!routine && (
-        <p className="text-[14px] text-muted-foreground">
-          Once it's saved, you can choose where its reminder goes.
-        </p>
+      {!localWeb && (
+        <>
+          <FormField
+            label="Reminder time"
+            optional
+            hint="One gentle nudge for the habits here that are still open. It replaces their own reminders while they're in this routine."
+            error={fieldErrors['reminderTime'] ?? null}
+          >
+            {(field) => (
+              <Input
+                {...field}
+                type="time"
+                className="max-w-[12rem]"
+                value={reminderTime}
+                onChange={(event) => setReminderTime(event.target.value)}
+              />
+            )}
+          </FormField>
+          {!routine && (
+            <p className="text-[14px] text-muted-foreground">
+              Once it's saved, you can choose where its reminder goes.
+            </p>
+          )}
+        </>
       )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       <div className="flex flex-col gap-3">

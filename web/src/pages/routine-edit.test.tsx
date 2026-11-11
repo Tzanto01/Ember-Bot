@@ -4,8 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Habit } from '@/lib/models';
+import { localMode } from '@/lib/services';
 import { type FetchMock, habit, mockFetch } from '@/lib/test-support';
 import RoutineEditPage from './routine-edit';
+
+vi.mock('@/lib/services', async (original) => {
+  const { Store } = await import('@/lib/store');
+  return { ...(await original<typeof import('@/lib/services')>()), localMode: { mode: new Store('account') } };
+});
 
 const water: Habit = { ...habit, id: 3, name: 'Water' };
 
@@ -33,7 +39,19 @@ async function load(f: FetchMock) {
 }
 
 describe('RoutineEditPage (new)', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localMode.mode.set('account');
+  });
+
+  it('offers no reminder time without an account on the web', async () => {
+    localMode.mode.set('local');
+    const f = mockFetch();
+    renderNew();
+    await load(f);
+
+    expect(screen.queryByLabelText(/Reminder time/)).toBeNull();
+  });
 
   it('creates a routine with its habits in the chosen order, then lands on /routines', async () => {
     const user = userEvent.setup();

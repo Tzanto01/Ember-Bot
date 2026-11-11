@@ -11,8 +11,16 @@ function todayIn(zone: string): LocalDateString | null {
   }
 }
 
-/** Loads `me` again only when it isn't loaded yet or its `localToday` is no longer today in the user's zone. */
+const maxAgeMs = 5 * 60_000;
+let seen: { me: Me; at: number } | null = null;
+
+/**
+ * Loads `me` again only when it isn't loaded yet, its `localToday` is no longer today in the user's zone, or it was
+ * first seen here more than five minutes ago, so changes from other devices show up.
+ */
 export function loadFreshMe(): Promise<Me | null> {
   const me = auth.me.get();
-  return auth.loadMe(!me || me.localToday !== todayIn(me.timezone));
+  if (me && seen?.me !== me) seen = { me, at: Date.now() };
+  const stale = !me || me.localToday !== todayIn(me.timezone) || Date.now() - (seen?.at ?? 0) > maxAgeMs;
+  return auth.loadMe(stale);
 }
