@@ -92,6 +92,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 - **Reminder buttons** work until 10:00 the next morning, or until that day is logged anywhere (bot or web), whichever comes first. Then the buttons go away and the message says `✅ Logged.` or `This reminder has closed.`; an old day can still be filled in with `/habit history` or on the web.
 - **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, and there is never a third.
 - **Consent:** habits and low days can say something about your health, so Ember asks once for your OK before storing them. You can withdraw any time with `/privacy delete`.
+- **Unconfirmed accounts:** a web signup whose email is never confirmed is deleted after 7 days, unless it has a Discord or other linked login or holds any habits or other data.
 
 ---
 
