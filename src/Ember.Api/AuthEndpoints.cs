@@ -81,6 +81,7 @@ internal static class AuthEndpoints
 
             var sameDevice = user.EmailCodeKeyHash is { } keyHash && EmberEmailSender.KeyHash(request.SignupKey) is { } sentKeyHash
                 && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(keyHash), Encoding.ASCII.GetBytes(sentKeyHash));
+            if (await users.IsLockedOutAsync(user)) return Problems.InvalidCode();
             if (!sameDevice && string.IsNullOrEmpty(request.Password)) return Problems.PasswordRequired();
             if (!sameDevice && !await users.CheckPasswordAsync(user, request.Password!)) return Problems.InvalidCode();
 
