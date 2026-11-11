@@ -11,7 +11,7 @@ Marker: `TODO (Nico):` means the answer depends on a decision or fact that is no
 - **Two modes.** With an account (email and password; Discord sign-in only on the web), data syncs with Ember's server. Without an account ("No account (device only)"), everything stays on the phone and nothing is sent to the server.
 - **Habits and check-ins**, routines, low days, pauses and grace days.
 - **Journal:** a day note (text) and a mood per day, with the user's own moods. Stored in plain text on the server, unless the user turns on the **private journal**: then notes and own moods are encrypted on the device (AES-GCM, key wrapped with a passphrase and a recovery code) and the server only holds ciphertext.
-- **Phone reminders** are local notifications planned on the device for the next 30 days (up to 400). The lock-screen text names no habit unless the user turns on "Show habit names in reminders".
+- **Phone reminders** are local notifications planned on the device for the next 14 days (up to 400). The lock-screen text names no habit unless the user turns on "Show habit names in reminders".
 - **Home-screen widget** "Today in Ember": today's habits from app-private storage, tap a row to check in. Signing out clears it.
 - **Backup file export** (no-account mode): the user saves a file with their data where they choose. It is not sent to Ember.
 - **Not in the app:** no leaderboard, no ads, no analytics, no crash reporting, no location, no server push (no push token on Android).
@@ -131,7 +131,7 @@ The version and the upload key come from Gradle properties, never from the repo.
 | `emberUploadKeyPassword` | Release builds | none |
 
 - Debug builds need none of them.
-- A release build (`assembleRelease`, `bundleRelease`) without all four `emberUpload*` properties stops with "Release signing is not set up. Missing Gradle properties: ...".
+- `assembleRelease` or `bundleRelease` without all four `emberUpload*` properties stops before building with "Release signing is not set up. Missing Gradle properties: ...".
 - Build the AAB for Play: `cd web && bun run build:mobile && bun run cap:sync`, then `cd mobile/android && ./gradlew bundleRelease -PemberVersionCode=<n> -PemberVersionName=<x.y.z>`. The bundle is in `app/build/outputs/bundle/release/`.
 - Create the upload key once with `keytool -genkeypair -keystore <path outside the repo> -alias upload -keyalg RSA -keysize 2048 -validity 10000`, then enrol in Play App Signing on the first upload.
 
