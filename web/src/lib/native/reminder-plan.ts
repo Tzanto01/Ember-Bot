@@ -1,4 +1,4 @@
-import { addDays, weekdayIndex } from '../local-date';
+import { addDays, startOfWeek, weekdayIndex } from '../local-date';
 import { type Habit, type LocalDateString, reminderTimesOf, type Routine, weekdays } from '../models';
 
 /** One local notification to schedule: for one habit (`habitId`) or for a routine's pending habits (`routineId`). */
@@ -116,6 +116,16 @@ function doneToday(habit: Habit, date: LocalDateString): boolean {
   );
 }
 
+function weekMet(habit: Habit, date: LocalDateString): boolean {
+  const week = habit.stats.week;
+  return (
+    habit.frequency === 'weekly' &&
+    !!week &&
+    week.done >= week.target &&
+    startOfWeek(date) === startOfWeek(habit.today.date)
+  );
+}
+
 function pendingOn(habit: Habit, date: LocalDateString): boolean {
   if (habit.today.date === date) return habit.today.state === 'pending' || habit.today.state === 'partial';
   return scheduledOn(habit, date);
@@ -124,7 +134,8 @@ function pendingOn(habit: Habit, date: LocalDateString): boolean {
 /**
  * The local notifications for the next {@link planDays} local days in `timeZone` (the account's, never the
  * device's), with the bot dispatcher's rules. Habits with the `mobile` channel fire at each of their reminder times
- * on scheduled days only (started, not paused, a listed weekday), not once today is done. A routine with a reminder
+ * on scheduled days only (started, not paused, a listed weekday), not once today is done, and
+ * for weekly habits not for the rest of the week (Monday to Sunday) once its target is met. A routine with a reminder
  * time and the `mobile` channel fires once a day while any member habit is still pending or partial (today from
  * `habit.today`, later days when scheduled); its members' own reminders are skipped. Instants already past are
  * dropped. With `secondMinutes` above 0 each reminder gets a follow-up (`second`) that many minutes later, unless
@@ -154,7 +165,7 @@ export function planReminders(
     if (overridden.has(habit.id)) continue;
     for (let offset = 0; offset < planDays; offset++) {
       const date = addDays(today, offset);
-      if (!scheduledOn(habit, date) || doneToday(habit, date)) continue;
+      if (!scheduledOn(habit, date) || doneToday(habit, date) || weekMet(habit, date)) continue;
       const instants = times.map((time) => zonedToUtc(date, time, timeZone));
       times.forEach((time, i) => plan({ habitId: habit.id, date, time, at: instants[i] }, instants[i + 1]));
     }

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NativeSelect } from '@/components/ui/select';
-import { weekdayLabels } from '@/lib/local-date';
+import { formatTime, weekdayLabels } from '@/lib/local-date';
 import { type Frequency, type Habit, reminderTimesOf, type TimeOfDay, type Weekday, weekdays } from '@/lib/models';
 
 /** What the create and edit form holds; fields that don't fit the chosen schedule are kept but not sent. */
@@ -116,6 +116,15 @@ export function reminderSchedule(times: readonly TimeOfDay[], timesPerDay: numbe
   if (!times.length || timesPerDay <= 1) return null;
   if (times.length === 1) return `Ember reminds you once, at ${times[0]}. You can add a time for each check-in.`;
   return `Ember reminds you at ${timeList(times)} until you've checked in ${timesPerDay} times.`;
+}
+
+/**
+ * The line under a weekly habit's reminder time: Ember reminds on days without a check-in until the week's target
+ * is met, then stays quiet until Monday.
+ */
+export function weeklySchedule(time: TimeOfDay, weeklyTarget: number): string {
+  const target = weeklyTarget === 1 ? 'once' : `${weeklyTarget} times`;
+  return `Ember reminds you at ${formatTime(time)} on days you haven't checked in yet, until you've done it ${target} this week. Then it's quiet until Monday.`;
 }
 
 export function habitFormValue(state: HabitFormState): HabitFormValue {
@@ -372,7 +381,11 @@ export function HabitFields({
             <FormField
               label="Reminder time"
               optional
-              hint="Ember sends a gentle nudge at this time."
+              hint={
+                value.frequency === 'weekly' && times[0] && !silent
+                  ? weeklySchedule(times[0], value.weeklyTarget)
+                  : 'Ember sends a gentle nudge at this time.'
+              }
               error={timesError}
             >
               {(field) => (

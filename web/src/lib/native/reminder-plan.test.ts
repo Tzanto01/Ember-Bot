@@ -115,6 +115,24 @@ describe('planReminders', () => {
     expect(dates([done]).slice(0, 2)).toEqual(['2026-11-03', '2026-11-04']);
   });
 
+  it('stops a weekly habit for the rest of the week once its target is met, and starts again on Monday', () => {
+    const wednesday = Date.parse('2026-11-04T10:00:00Z');
+    const weekly = (done: number) =>
+      habit({
+        frequency: 'weekly',
+        weeklyTarget: 3,
+        today: { date: '2026-11-04', state: 'pending', completed: null, count: 0 },
+        stats: { streak: null, graceUsed: null, bestStreak: null, last7: done, week: { done, target: 3 } },
+      });
+    const planned = (done: number) =>
+      planReminders([weekly(done)], 'Europe/Berlin', wednesday)
+        .map((r) => r.date)
+        .slice(0, 6);
+
+    expect(planned(2)).toEqual(['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09']);
+    expect(planned(3)).toEqual(['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14']);
+  });
+
   it('fires a weekdays habit only on its scheduled days', () => {
     expect(dates([habit({ frequency: 'weekdays', days: ['mon', 'wed'] })])).toEqual([
       '2026-11-02',

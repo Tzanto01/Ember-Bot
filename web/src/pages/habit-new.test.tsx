@@ -223,6 +223,9 @@ describe('HabitNewPage', () => {
     await user.click(screen.getByRole('radio', { name: 'A few times a week' }));
     await user.selectOptions(screen.getByLabelText('Times per week'), '4');
     fireEvent.change(screen.getByLabelText(/Reminder time/), { target: { value: '07:30' } });
+    expect(screen.getByLabelText(/Reminder time/)).toHaveAccessibleDescription(
+      "Ember reminds you at 7:30 AM on days you haven't checked in yet, until you've done it 4 times this week. Then it's quiet until Monday.",
+    );
     await user.click(screen.getByRole('button', { name: 'Create habit' }));
 
     const create = await fetch.next('POST', '/api/habits');

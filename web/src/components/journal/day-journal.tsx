@@ -71,8 +71,14 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   const [unlockStatus, setUnlockStatus] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const focusStatus = useRef(false);
 
   useEffect(() => {
+    if (focusStatus.current) {
+      focusStatus.current = false;
+      statusRef.current?.focus();
+    }
     if (!focusHeading.current) return;
     focusHeading.current = false;
     headingRef.current?.focus();
@@ -179,6 +185,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   const text = draft?.text ?? note?.text ?? '';
   const mood = draft ? draft.mood : (note?.mood ?? null);
   const trimmedLength = text.trim().length;
+  const stored = !!note && text === (note.text ?? '') && mood === note.mood;
   const lengthError = tooLong && trimmedLength > maxJournalText ? `Keep it to ${maxJournalText} characters or fewer.` : null;
 
   function edit(next: Partial<Draft>) {
@@ -200,6 +207,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
       } else {
         setDraft(null);
         setTooLong(false);
+        focusStatus.current = saved !== null;
         setStatus(queued ? 'queued' : saved ? 'saved' : 'cleared');
       }
     } catch (error) {
@@ -326,27 +334,34 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
           </Notice>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <BusyButton type="submit" busy={busy} busyLabel="Saving…">
-            Save
-          </BusyButton>
-          {(text || mood) && (
-            <Button type="button" variant="ghost" onClick={clearAll}>
-              Clear
-            </Button>
+          {!stored && (
+            <BusyButton type="submit" busy={busy} busyLabel="Saving…">
+              Save
+            </BusyButton>
           )}
-          <p role="status" className="flex items-center gap-2 text-muted-foreground">
+          <p
+            ref={statusRef}
+            role="status"
+            tabIndex={-1}
+            className="flex items-center gap-2 text-muted-foreground empty:sr-only focus:outline-none"
+          >
             {status === 'queued' ? (
               <>
                 <CloudOff aria-hidden className="size-[18px] shrink-0" />
                 Saved on this device, it'll sync when you're back online.
               </>
-            ) : status ? (
+            ) : status || stored ? (
               <>
                 <Check aria-hidden className="size-[18px] shrink-0" />
-                {statusText[status]}
+                {statusText[status ?? 'saved']}
               </>
             ) : null}
           </p>
+          {(text || mood) && (
+            <Button type="button" variant="ghost" onClick={clearAll}>
+              Clear
+            </Button>
+          )}
         </div>
       </form>
     );
