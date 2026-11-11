@@ -1,4 +1,6 @@
-# Ember API contract v1.8
+# Ember API contract v1.9
+
+v1.9 (2026-11-11, Nico: "Android Discord sign-in"): the Android app signs in with Discord through the system browser, PKCE and a one-time code (`POST /api/auth/discord/native/token`). See "Native Discord sign-in".
 
 v1.7 follow-up (2026-11-03): enabling 2FA and importing a journal key need the login password; import, merge and body details pinned from team backend's defaults.
 
@@ -46,14 +48,14 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 
 ## Auth
 
-Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and `/api/auth/refresh`; Discord sign-in is browser-only in v2.
+Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` (or `/api/auth/discord/native/token`) and `/api/auth/refresh`.
 
 ### Native app (Phase 7)
 
 - The Capacitor app runs the same Angular build from the origins `https://localhost` (Android) and `capacitor://localhost` (iOS). CORS allows these in addition to `Ember__WebOrigin`, configurable as `Ember__NativeOrigins` (comma-separated, exact origins only, `*` rejected), with `Authorization` and `Content-Type` headers and without credentials; only the web origin gets credentials. These origins identify nothing (every Capacitor Android app is `https://localhost`); auth is the bearer token alone.
 - The native app uses bearer tokens only: `POST /api/auth/login` without cookie flags, then `POST /api/auth/refresh`. It sends `Authorization: Bearer`, never cookies, so antiforgery doesn't apply. The access token lives in memory only; the refresh token only in the platform's secure storage (Android Keystore-backed, iOS Keychain), never in `localStorage` or Preferences. On a 401 the app refreshes once (single flight) and retries. The native build calls the absolute `{WebOrigin}` API base; the web build stays relative and same-origin.
 - Bearer tokens belong to a server-side session like cookies (see Sessions below): logout with the bearer token ends that session, and its access and refresh tokens stop working at once. A refresh token also fails once its session ends. Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
-- Discord sign-in, link and merge are browser-only in v2. The app's Settings shows the Discord state and opens `{WebOrigin}/settings` in the system browser to link, and re-reads `GET /api/me` when the app resumes. A Discord-only account can't sign in to the app; the login screen says to create an email login on the web and link Discord there (which merges the accounts).
+- Discord link and merge are browser-only in v2. The app's Settings shows the Discord state and opens `{WebOrigin}/settings` in the system browser to link, and re-reads `GET /api/me` when the app resumes. Discord sign-in works in the app (see "Native Discord sign-in" under Discord).
 - Sign-up, confirm and reset links open the web app (`{WebOrigin}`); the user then signs in in the app.
 
 ### Antiforgery
@@ -100,6 +102,15 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
   - `/link/merge` when the Discord ID belongs to a bot-only account (no password, no email). A pending merge is stored in a data-protected, HttpOnly cookie bound to the signed-in user's ID and security stamp, valid 15 minutes, used once;
   - `/settings?discord=conflict` when it belongs to an account with a password, or this account already has a different Discord login.
 - Any OAuth failure (user cancelled, `access_denied`, remote error) redirects to `/login?discord=error` (login flow) or `/settings?discord=error` (link flow).
+
+#### Native Discord sign-in (Android app)
+
+- The app makes a PKCE verifier (32 random bytes, base64url, kept in memory only) and opens the system browser at `{WebOrigin}/api/auth/discord/login?client=native&challenge=<base64url SHA-256 of the verifier>`. `returnUrl` is not sent; the app keeps it. A challenge that isn't 43 base64url characters redirects straight to the error below.
+- The Discord flow runs in the browser with the same callback (`{WebOrigin}/api/auth/discord/callback`, no extra redirect URI at Discord) and the same accounts rule as the web: a known Discord ID is its account, an unknown one creates the bot-only shaped account. Nothing signs the browser in. It ends in a redirect to the fixed app URL `app.ember.habits://auth/discord?code=<code>` (never a URL from the request); a cancel or failure ends at `app.ember.habits://auth/discord?error=discord`.
+- The code is 32 random bytes (base64url, 43 characters), kept only as a SHA-256 hash in the API process's memory, bound to the user and the challenge, valid 2 minutes, one exchange at a time. The app accepts only that exact URL with exactly one `code` (43 base64url characters) or `error` parameter while a sign-in it started is pending, and ignores any other URL.
+- `POST /api/auth/discord/native/token` `{ code, verifier, twoFactorCode?, twoFactorRecoveryCode? }` (anonymous, no antiforgery, rate-limited like login) → 200 with the same bearer token response as `POST /api/auth/login` (`tokenType`, `accessToken`, `expiresIn`, `refreshToken`), with a new session. An unknown, used or expired code, or a verifier whose SHA-256 isn't the challenge, answers 401 `Failed`; a wrong verifier or an expired code also ends the code. Once used, the code is gone.
+- An account with 2FA: the exchange without a code answers 401 `RequiresTwoFactor`, keeps the code and gives it 5 minutes; the app asks for the second factor and repeats the exchange with the same code and verifier plus `twoFactorCode` or `twoFactorRecoveryCode`. A wrong code answers 401 `Failed`, keeps the code and counts toward lockout as on `POST /api/auth/discord/2fa`; a locked-out account answers `Failed`.
+- Android: `MainActivity` (`singleTask`) has a `VIEW`/`BROWSABLE` intent filter for `app.ember.habits://auth/discord`; the app listens with `@capacitor/app` `appUrlOpen` and closes the browser. Another app can claim the same scheme and see the code, which PKCE makes useless to it.
 - `DELETE /api/me/discord` → 204. 409 `conflict` unless the account has a password and a confirmed email (otherwise it could no longer sign in).
 
 ### Account merge
@@ -285,7 +296,7 @@ Encryption happens only in the client (WebCrypto, available in the browser and t
 - `POST /api/me/2fa/enable` `{ "code", "password"? }` → `{ "recoveryCodes": string[10] }` shown once; wrong code → 400 `validation`. Accounts with a login password must send it (wrong or missing → 400 on `password`), so a stolen session alone can't turn 2FA on and lock the owner out. Discord-only accounts enable with the code alone (no password exists; accepted risk until Nico decides otherwise).
 - `POST /api/me/2fa/disable` `{ "password"?, "code"? }` → 204 (the login password, or for Discord-only accounts a current code); with 2FA already off → 204 without changes.
 - `POST /api/me/2fa/recovery-codes` `{ "code" }` → `{ "recoveryCodes": string[10] }`, replacing the old ones.
-- Sign-in: `POST /api/auth/login` accepts `twoFactorCode` or `twoFactorRecoveryCode`. A correct password without a code answers 401 with `detail: "RequiresTwoFactor"` (only after the password was right, so it reveals nothing new); a wrong code counts toward lockout like a wrong password. Discord sign-in for an account with 2FA ends on `/login?step=2fa` (keeping a safe `returnUrl`: `/login?step=2fa&returnUrl=…`) and needs the code too (`POST /api/auth/discord/2fa` `{ code? , recoveryCode? }`). Native bearer sign-in sends the code in the same login call.
+- Sign-in: `POST /api/auth/login` accepts `twoFactorCode` or `twoFactorRecoveryCode`. A correct password without a code answers 401 with `detail: "RequiresTwoFactor"` (only after the password was right, so it reveals nothing new); a wrong code counts toward lockout like a wrong password. Discord sign-in for an account with 2FA ends on `/login?step=2fa` (keeping a safe `returnUrl`: `/login?step=2fa&returnUrl=…`) and needs the code too (`POST /api/auth/discord/2fa` `{ code? , recoveryCode? }`). Native bearer sign-in sends the code in the same login call; native Discord sign-in sends it with the one-time code.
 - 2FA is independent of the private journal: it protects the login, not the content.
 
 ### No account (device only)
