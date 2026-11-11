@@ -120,7 +120,7 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
     "discord": { "linked": true, "id": "123" },
     "timezone": "Europe/Berlin", "timezoneSet": true, "localToday": "2026-11-01",
     "graceDaysPerWeek": 1, "theme": null,
-    "consent": { "given": true, "policyVersion": "2026-10", "currentPolicyVersion": "2026-10" },
+    "consent": { "given": true, "policyVersion": "2026-11", "currentPolicyVersion": "2026-11" },
     "dmReminders": { "paused": false }
   }
   ```

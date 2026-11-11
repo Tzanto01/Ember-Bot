@@ -11,6 +11,7 @@ function fakeSession(load: () => Promise<Me | null>, consentNeeded = false) {
   return {
     me: new Store<Me | null>(null),
     loadMe: vi.fn(load),
+    hasLoadedMe: vi.fn(() => false),
     takeConsentPrompt: () => {
       if (prompted) return false;
       prompted = true;
@@ -91,6 +92,16 @@ describe('signedIn guard offline', () => {
     forgetUnreachable();
     await signedIn('/today', session);
     expect(session.loadMe).toHaveBeenCalledTimes(3);
+  });
+
+  it('asks the API again right away once a sign-in succeeded after it was unreachable', async () => {
+    const session = fakeSession(offline);
+    expect(await signedIn('/today', session)).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+
+    vi.mocked(session.loadMe).mockResolvedValue(me);
+    vi.mocked(session.hasLoadedMe).mockReturnValue(true);
+    expect(await signedIn('/today', session)).toBeNull();
+    expect(session.loadMe).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the login redirect for a remembered me from another day, after sign-out, and on a server error', async () => {

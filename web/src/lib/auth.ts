@@ -108,6 +108,11 @@ export class AuthService {
     return this.inFlight;
   }
 
+  /** True when `me` came from the API (a load, sign-in or update) rather than from an offline copy. */
+  hasLoadedMe(): boolean {
+    return this.loaded && !!this.me.get();
+  }
+
   /** Replaces the cached `me`, for example with the result of `PATCH /api/me`. */
   setMe(me: Me): void {
     this.me.set(me);

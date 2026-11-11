@@ -65,7 +65,7 @@ export async function signedIn(
 ): Promise<string | null> {
   const recentlyUnreachable = Date.now() < unreachableUntil;
   try {
-    if (recentlyUnreachable) throw new ApiError(0, null);
+    if (recentlyUnreachable && !session.hasLoadedMe()) throw new ApiError(0, null);
     const me = await session.loadMe();
     if (!me) {
       rememberMe(null);

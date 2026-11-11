@@ -15,6 +15,8 @@ COPY web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY web/ ./
 COPY docs/contracts/fixtures/ /docs/contracts/fixtures/
+ARG VITE_PUBLIC_ORIGIN=""
+ENV VITE_PUBLIC_ORIGIN=$VITE_PUBLIC_ORIGIN
 RUN bun --bun run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
