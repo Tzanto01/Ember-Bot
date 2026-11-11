@@ -38,6 +38,12 @@ function failed(message: string): UpgradeResult {
   return { ok: false, reason: 'failed', message };
 }
 
+function sameSorted(a: string[], b: string[]): boolean {
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+}
+
 function customId(mood: MoodKey | null): number | null {
   return mood?.startsWith('custom:') ? Number(mood.slice(7)) : null;
 }
@@ -50,7 +56,7 @@ function customId(mood: MoodKey | null): number | null {
 export class UpgradeService implements UpgradeApi {
   constructor(
     private readonly store: LocalStore,
-    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'updateMe'>,
+    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'listRoutines' | 'updateMe'>,
     private readonly auth: Pick<AuthService, 'me'>,
     private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'moods' | 'addMood' | 'updateMood' | 'save'>,
     private readonly device: Pick<DeviceStore, 'clearUser'>,
@@ -113,7 +119,10 @@ export class UpgradeService implements UpgradeApi {
         const names = (await this.api.listHabits()).map((h) => h.name).sort();
         const local = data.habits.map((h) => h.name).sort();
         const landed =
-          sentBefore && names.length > 0 && names.length === local.length && names.every((name, i) => name === local[i]);
+          sentBefore &&
+          names.length === local.length &&
+          names.every((name, i) => name === local[i]) &&
+          (names.length > 0 || (await this.landedWithoutHabits(data, progress.journalOmitted)));
         if (!landed) {
           if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy };
           const { profile } = data;
@@ -159,6 +168,16 @@ export class UpgradeService implements UpgradeApi {
       }
       return failed(problemToMessage(apiError).message);
     }
+  }
+
+  /** Whether a sent import without habits landed: the account holds its routines and moods, and it sent at least one. */
+  private async landedWithoutHabits(data: LocalData, journalOmitted: boolean): Promise<boolean> {
+    const routines = data.routines.map((r) => r.name);
+    const moods = journalOmitted ? [] : data.moods.map((m) => m.label);
+    if (routines.length + moods.length === 0) return false;
+    const accountRoutines = (await this.api.listRoutines()).map((r) => r.name);
+    const accountMoods = moods.length > 0 ? (await this.journal.moods()).map((m) => m.label) : [];
+    return sameSorted(accountRoutines, routines) && sameSorted(accountMoods, moods);
   }
 
   private async moveJournal(

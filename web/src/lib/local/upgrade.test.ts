@@ -24,6 +24,7 @@ class FakeServer {
   me: Me = { ...baseMe, id: 'account-1' };
   imports: unknown[] = [];
   habitNames: string[] = [];
+  routineNames: string[] = [];
   key: JournalKey | null = null;
   moods = new Map<number, unknown>();
   notes = new Map<string, unknown>();
@@ -63,13 +64,23 @@ class FakeServer {
         return call.respond(429, { type: 'rate_limited' });
       }
       if (this.importRejection) return call.respond(409, { type: 'conflict', detail: this.importRejection });
-      if (this.habitNames.length) return call.respond(409, { type: 'conflict', detail: notEmptyDetail });
+      if (this.habitNames.length || this.routineNames.length || this.moods.size) {
+        return call.respond(409, { type: 'conflict', detail: notEmptyDetail });
+      }
       this.imports.push(body);
       this.habitNames = (body['habits'] as { name: string }[]).map((h) => h.name);
+      this.routineNames = ((body['routines'] ?? []) as { name: string }[]).map((r) => r.name);
+      for (const mood of (body['moods'] ?? []) as { label: string; emoji: string | null; archived: boolean }[]) {
+        const id = this.nextMood++;
+        this.moods.set(id, { id, label: mood.label, emoji: mood.emoji, archived: mood.archived });
+      }
       return this.loseImportAnswer ? call.fail() : call.respond(204);
     }
     if (route === 'GET /api/habits') {
       return call.respond(200, this.habitNames.map((name, i) => ({ ...habit, id: i + 1, name })));
+    }
+    if (route === 'GET /api/routines') {
+      return call.respond(200, this.routineNames.map((name, i) => ({ id: i + 1, name, reminderTime: null, reminderChannels: [], habitIds: [] })));
     }
     if (route === 'GET /api/me') {
       return call.respond(200, {
@@ -226,6 +237,26 @@ describe('UpgradeService', () => {
     expect(second.ok).toBe(true);
     expect(server.imports).toHaveLength(1);
     expect(await store.exists()).toBe(false);
+  });
+
+  it('finishes the retry of a device without habits whose import answer was lost', async () => {
+    await store.update((d) => ({
+      ...d,
+      habits: [],
+      logs: [],
+      routines: [{ id: 1, name: 'Synthetic mornings', reminderTime: null, reminderChannels: [] }],
+    }));
+    server.loseImportAnswer = true;
+    const first = await upgrade.run();
+    server.loseImportAnswer = false;
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true, recoveryCode: null });
+    expect(server.imports).toHaveLength(1);
+    expect(await store.exists()).toBe(false);
+    expect(finishUpgrade).toHaveBeenCalledOnce();
   });
 
   it('encrypts the private journal on the device and resumes after an interruption without a second import', async () => {
