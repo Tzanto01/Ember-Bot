@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './problem';
 import type { AuthService } from './auth';
-import { guest, signedIn } from './guards';
+import { guest, rememberedMe, rememberMe, signedIn } from './guards';
 import { type Me } from './models';
 import { Store } from './store';
 import { me } from './test-support';
@@ -9,6 +9,7 @@ import { me } from './test-support';
 function fakeSession(load: () => Promise<Me | null>, consentNeeded = false) {
   let prompted = false;
   return {
+    me: new Store<Me | null>(null),
     loadMe: vi.fn(load),
     takeConsentPrompt: () => {
       if (prompted) return false;
@@ -52,6 +53,47 @@ describe('signedIn guard', () => {
     expect(await signedIn('/consent?returnUrl=%2Ftoday', session, upgrading)).toBeNull();
     expect(await signedIn('/keep-data', session, upgrading)).toBeNull();
     expect(await signedIn('/today', session, new Store<'account' | 'local' | 'upgrading'>('account'))).toBeNull();
+  });
+});
+
+describe('signedIn guard offline', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+  });
+  const offline = () => Promise.reject(new ApiError(0, null));
+
+  it("lets a user through on today's remembered me when the API can't be reached, and skips the consent step for now", async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-01T12:00:00Z'), toFake: ['Date'] });
+    rememberMe(me);
+    const session = fakeSession(offline, true);
+
+    expect(await signedIn('/today', session)).toBeNull();
+    expect(session.me.get()).toEqual(me);
+    expect(await signedIn('/today', session)).toBeNull();
+    expect(session.loadMe).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the login redirect for a remembered me from another day, after sign-out, and on a server error', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-02T12:00:00Z'), toFake: ['Date'] });
+    rememberMe(me);
+    expect(rememberedMe()).toBeNull();
+    expect(await signedIn('/today', fakeSession(offline))).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+
+    vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    expect(await signedIn('/today', fakeSession(() => Promise.reject(new ApiError(500, null))))).toBe(
+      '/login?returnUrl=%2Ftoday&reason=offline',
+    );
+    rememberMe(null);
+    expect(await signedIn('/today', fakeSession(offline))).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+  });
+
+  it('forgets the remembered me once the server says signed out, so a later offline start asks to sign in', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-01T12:00:00Z'), toFake: ['Date'] });
+    rememberMe(me);
+
+    expect(await signedIn('/today', fakeSession(async () => null))).toBe('/login?returnUrl=%2Ftoday');
+    expect(await signedIn('/today', fakeSession(offline))).toBe('/login?returnUrl=%2Ftoday&reason=offline');
   });
 });
 

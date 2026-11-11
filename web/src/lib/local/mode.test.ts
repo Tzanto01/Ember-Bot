@@ -55,6 +55,16 @@ describe('LocalMode', () => {
     expect(await store.exists()).toBe(true);
   });
 
+  it('asks the browser again to keep the device data when restoring local mode', async () => {
+    const persist = vi.fn(async () => true);
+    vi.stubGlobal('navigator', { ...navigator, storage: { persist } });
+    localStorage.setItem('ember.mode', 'local');
+
+    await mode.init();
+
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the device data while upgrading and returns to it on cancel', async () => {
     await mode.start();
     const userId = auth.me.get()?.id;

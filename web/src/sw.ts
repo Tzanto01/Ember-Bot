@@ -2,7 +2,7 @@
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst } from 'workbox-strategies';
-import { handleNotificationClick, handlePush } from './sw-handlers';
+import { handleMessage, handleNotificationClick, handlePush } from './sw-handlers';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -25,4 +25,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.waitUntil(handleNotificationClick(event.notification, self.clients, self.location.origin));
+});
+
+self.addEventListener('message', (event) => {
+  event.waitUntil(handleMessage(event.data, self));
 });

@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Ember",
   "short_name": "Ember",
   "description": "A gentle habit tracker.",
@@ -7,6 +8,18 @@
   "start_url": "/today",
   "theme_color": "#fbf5ec",
   "background_color": "#fbf5ec",
+  "shortcuts": [
+    {
+      "name": "Today",
+      "url": "/today",
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Add habit",
+      "url": "/habits/new",
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon.svg",
