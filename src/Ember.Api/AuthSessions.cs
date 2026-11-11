@@ -77,13 +77,15 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
     public Task EndAsync(Guid id) => EndManyAsync([id]);
 
     /// <summary>
-    /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, and deletes the user's unused
-    /// reminder "Done" tokens, so a notification already delivered to another device can't log anything.
+    /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, deletes every push subscription not
+    /// registered by <paramref name="keep"/> (including ones without a session) and all of the user's reminder "Done" tokens,
+    /// so a notification already delivered to another device can't log anything.
     /// </summary>
     public async Task EndAllAsync(Guid userId, Guid? keep = null)
     {
         await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync());
-        await db.ReminderActionTokens.Where(t => t.UserId == userId && t.UsedUtc == null).ExecuteDeleteAsync();
+        await db.PushSubscriptions.Where(s => s.UserId == userId && !(keep != null && s.SessionId == keep)).ExecuteDeleteAsync();
+        await db.ReminderActionTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync();
     }
 
     /// <summary>

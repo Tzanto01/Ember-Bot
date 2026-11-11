@@ -377,7 +377,7 @@ v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord", including o
 ### Push subscriptions follow their session
 
 - `POST /api/me/push-subscriptions` records the caller's session with the subscription (re-registering updates it).
-- Ending a session server-side (logout, logout everywhere, a password reset, a security change that signs out the other devices, account delete, merge, signing in again over an existing session, the 50-session cap) deletes the push subscriptions that session registered, whether or not the client unsubscribed. Logout everywhere, a password reset and every other "end all sessions" also delete the account's unused Done tokens.
+- Ending a session server-side (logout, logout everywhere, a password reset, a security change that signs out the other devices, account delete, merge, signing in again over an existing session, the 50-session cap) deletes the push subscriptions that session registered, whether or not the client unsubscribed. Logout everywhere, a password reset and every other "end all sessions" also delete every push subscription not registered by the session that stays (including ones saved without a session) and all of the account's Done tokens.
 - On logout the web app closes the Ember notifications still showing before it unsubscribes.
 
 ### `POST /api/reminders/done`

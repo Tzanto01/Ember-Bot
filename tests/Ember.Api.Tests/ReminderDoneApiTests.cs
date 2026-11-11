@@ -186,6 +186,21 @@ public class ReminderDoneApiTests(PostgresFixture postgres) : ApiTestBase(postgr
     }
 
     [DockerFact]
+    public async Task Logout_everywhere_also_drops_subscriptions_without_a_session_and_used_tokens()
+    {
+        var (user, userId, habitId) = await HabitAsync();
+        await SubscribeAsync(user);
+        await Host.Db(db => db.PushSubscriptions.ExecuteUpdateAsync(s => s.SetProperty(p => p.SessionId, (Guid?)null)));
+        var token = await TokenAsync(userId, habitId);
+        await (await Host.NewClient().Post(Done, new { token })).Expect(HttpStatusCode.NoContent);
+
+        await (await user.Post("/api/auth/logout-everywhere")).Expect(HttpStatusCode.NoContent);
+
+        (await SubscriptionSessionsAsync()).Should().BeEmpty();
+        (await Host.Db(db => db.ReminderActionTokens.CountAsync())).Should().Be(0);
+    }
+
+    [DockerFact]
     public async Task A_password_reset_deletes_the_subscriptions_of_the_ended_sessions_and_the_unused_tokens()
     {
         var (user, userId, habitId) = await HabitAsync();
