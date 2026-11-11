@@ -230,6 +230,21 @@ public class TwoFactorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Disabling_while_2fa_is_off_changes_nothing_and_ends_no_session()
+    {
+        var discordId = ApiHost.NewDiscordId();
+        var client = Host.NewClient();
+        await Host.DiscordAsync(client, DiscordLogin, discordId);
+        await client.RefreshCsrfAsync();
+        var other = Host.NewClient();
+        await Host.DiscordAsync(other, DiscordLogin, discordId);
+
+        await (await client.Post("/api/me/2fa/disable", new { })).Expect(HttpStatusCode.NoContent);
+
+        await (await other.Get("/api/me")).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
     public async Task Wrong_codes_lock_a_discord_only_account_out_of_the_code_step()
     {
         var discordId = ApiHost.NewDiscordId();

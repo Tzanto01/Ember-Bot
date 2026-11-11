@@ -35,8 +35,7 @@ public partial class HabitService
     /// the target a new security stamp. A plaintext source mood whose trimmed label matches a plaintext target mood
     /// (ignoring case) is combined into it: the source's entries pointing at it point at the target's mood and the source mood
     /// is dropped (skipped when the source has encrypted entries, which may reference it inside the ciphertext).
-    /// The habit and routine limits do not apply. Then reschedules the target's reminders in the
-    /// target's timezone. The target's settings are kept. Returns <see cref="AccountMergeResult.JournalConflict"/>
+    /// The habit and routine limits do not apply. The target's settings are kept; the caller reschedules the target's reminders. Returns <see cref="AccountMergeResult.JournalConflict"/>
     /// without changes when both accounts have a journal key.
     /// </summary>
     public async Task<AccountMergeResult> MergeBotOnlyAccountAsync(Guid targetUserId, Guid sourceUserId, ulong discordUserId,
@@ -113,7 +112,6 @@ public partial class HabitService
             await transaction.CommitAsync(cancellationToken);
         }
 
-        await RescheduleRemindersAsync(targetUserId);
         return AccountMergeResult.Merged;
     }
 
