@@ -13,6 +13,7 @@ import { AppShell } from '@/components/app-shell';
 import { CenteredShell } from '@/components/centered-shell';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
+import { env } from '@/lib/env';
 import { guest, signedIn } from '@/lib/guards';
 import { setNavigator } from '@/lib/navigation';
 
@@ -51,6 +52,10 @@ async function requireSignedIn({ request }: LoaderFunctionArgs) {
 async function requireGuest() {
   const target = await guest();
   return target ? redirect(target) : null;
+}
+
+function landingOrToday() {
+  return env.native ? redirect('/today') : requireGuest();
 }
 
 function focusPageHeading(): void {
@@ -129,7 +134,11 @@ export const routes: RouteObject[] = [
     HydrateFallback: StartingUp,
     ErrorBoundary: RouteError,
     children: [
-      { index: true, loader: () => redirect('/today') },
+      {
+        index: true,
+        loader: landingOrToday,
+        ...page('A calm place for your habits', () => import('./pages/landing')),
+      },
       {
         element: <CenteredShell variant="auth" />,
         children: [

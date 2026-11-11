@@ -28,6 +28,8 @@
   --success-foreground: oklch(0.99 0.005 80);
   --done: oklch(0.56 0.135 57);
   --done-foreground: oklch(0.995 0.004 80);
+  --heat-1: oklch(0.66 0.105 57);
+  --heat-2: oklch(0.608 0.121 57);
   --lowday: oklch(0.93 0.03 292);
   --lowday-foreground: oklch(0.44 0.09 290);
   --paused: oklch(0.6 0.035 60);
@@ -85,6 +87,8 @@
   --success-foreground: oklch(0.2 0.016 50);
   --done: oklch(0.74 0.135 62);
   --done-foreground: oklch(0.2 0.016 50);
+  --heat-1: oklch(0.544 0.089 62);
+  --heat-2: oklch(0.642 0.112 62);
   --lowday: oklch(0.31 0.045 290);
   --lowday-foreground: oklch(0.82 0.07 290);
   --paused: oklch(0.6 0.03 60);
