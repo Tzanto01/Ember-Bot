@@ -40,7 +40,7 @@ Ember legt Daten nur an, wenn du eine Funktion nutzt, die sie braucht. Du kannst
 |---|---|
 | E-Mail-Adresse und Passwort (das Passwort nur als nicht umkehrbaren Hash) | Anmeldung, Bestätigung der E-Mail-Adresse und Zurücksetzen des Passworts. Konten, die nur mit Discord angelegt wurden, haben keine E-Mail-Adresse. |
 | Discord-Nutzer-ID, wenn du Discord verbunden hast | Damit du dich mit Discord anmelden kannst und der Discord-Bot dich deinem Konto zuordnet. Ember fragt bei Discord nur die Nutzer-ID ab (Berechtigung „identify“). Name und Profilbild speichern wir nicht. |
-| Zwei-Faktor-Anmeldung: geheimer Schlüssel für deine Authenticator-App und Wiederherstellungscodes [PRÜFEN: Wiederherstellungscodes werden nur gehasht gespeichert] | Damit der Anmeldecode geprüft und die Anmeldung zusätzlich geschützt werden kann. |
+| Zwei-Faktor-Anmeldung: geheimer Schlüssel für deine Authenticator-App und Wiederherstellungscodes. Ein Wiederherstellungscode gilt nur einmal und wird nach der Benutzung entwertet. | Damit der Anmeldecode geprüft und die Anmeldung zusätzlich geschützt werden kann. |
 | Zeitzone, Design, Gnadentage, Einstellung für die zweite Erinnerung | Damit „heute“, Streaks und Erinnerungen nach deiner Uhrzeit laufen. Hast du keine Zeitzone gewählt, übernimmt die App die Zeitzone deines Geräts. |
 | Einwilligungsnachweis: Zeitpunkt, Version der Datenschutzerklärung und der Tag, an dem Ember dich zuletzt gefragt hat | Damit wir nachweisen können, dass du eingewilligt hast (Art. 7 Abs. 1 DSGVO), und dich bei einer neuen Version erneut fragen können. |
 
@@ -94,7 +94,7 @@ Schaltest du das private Tagebuch ein, erzeugt dein Browser oder deine App einen
 
 ### 3.7 Technische Protokolle (Logs)
 
-Die Dienste schreiben technische Protokolle, zum Beispiel wenn eine Erinnerung nicht zugestellt werden kann oder ein Fehler auftritt. Darin stehen Nutzer-IDs, interne Nummern von Habits, Zeitpunkte und Fehlermeldungen. Habit-Namen stehen dort nicht. E-Mail-Adressen stehen dort nicht; bei E-Mails steht nur die Domain des Empfängers. Die Protokolle dienen nur dazu, Fehler zu finden und den Betrieb sicher zu halten. Sie werden derzeit nach Größe rotiert: pro Dienst bleiben drei Dateien mit je 10 MB. [PRÜFEN: Eine feste Löschfrist (zum Beispiel 30 Tage) einrichten und hier nennen, oder diesen Satz ändern.]
+Die Dienste schreiben technische Protokolle, zum Beispiel wenn eine Erinnerung nicht zugestellt werden kann oder ein Fehler auftritt. Darin stehen Nutzer-IDs, interne Nummern von Habits, Zeitpunkte und Fehlermeldungen. Habit-Namen stehen dort nicht. E-Mail-Adressen stehen dort nicht; bei E-Mails steht nur die Domain des Empfängers. Die Protokolle dienen nur dazu, Fehler zu finden und den Betrieb sicher zu halten. Sie werden nach Größe rotiert: pro Dienst bleiben höchstens drei Dateien mit je 10 MB, ältere Einträge werden dabei überschrieben.
 
 ### 3.8 Cookies und Speicher im Browser
 
@@ -102,7 +102,7 @@ Ember setzt keine Cookies für Werbung oder Tracking. Diese Cookies sind technis
 
 | Name | Zweck | Dauer |
 |---|---|---|
-| `__Host-Ember` | Hält dich angemeldet. Nur über HTTPS, für JavaScript nicht lesbar. | Sitzung. Mit „Angemeldet bleiben“ länger. [PRÜFEN: genaue Laufzeit prüfen] |
+| `__Host-Ember` | Hält dich angemeldet. Nur über HTTPS, für JavaScript nicht lesbar. | Bis du den Browser schließt. Mit „Angemeldet bleiben“ 14 Tage, bei jeder Nutzung verlängert. |
 | `XSRF-TOKEN` | Schutz vor Anfragen, die andere Seiten in deinem Namen senden. | Sitzung |
 | ASP.NET-Schutz-Cookie für Formulare | Schutz vor gefälschten Anfragen. | Sitzung |
 | `Identity.External` und Cookies des Discord-Anmeldevorgangs | Nur während der Anmeldung mit Discord. | Minuten |
@@ -201,16 +201,16 @@ Wenn du Web-Push einschaltest, schickt Ember die Nachricht über den Push-Dienst
 
 ### 6.5 Sonst niemand
 
-Wir geben deine Daten an niemanden weiter, verkaufen sie nicht und nutzen sie nicht für Werbung. Ember setzt keine Analyse-, Tracking- oder KI-Dienste ein. Schriften und Skripte lädt Ember nicht von fremden Servern. Eine Weitergabe an Behörden erfolgt nur, wenn ein Gesetz es verlangt.
+Außer an die oben genannten Dienste und an den Speicher für die verschlüsselten Backups (Abschnitt 7) geben wir deine Daten an niemanden weiter. Wir verkaufen sie nicht und nutzen sie nicht für Werbung. Ember setzt keine Analyse-, Tracking- oder KI-Dienste ein. Schriften und Skripte lädt Ember nicht von fremden Servern. Eine Weitergabe an Behörden erfolgt nur, wenn ein Gesetz es verlangt.
 
 ## 7. Wie lange speichert Ember deine Daten?
 
 - **Dein Konto und deine Daten** bleiben gespeichert, bis du sie löschst. Einzelne Habits, Routinen, Check-ins, Tiefs, Tagesnotizen und Stimmungen kannst du in der App oder im Bot entfernen. Die Kontolöschung entfernt alles sofort (Abschnitt 9).
-- **Konten, deren E-Mail-Adresse nie bestätigt wurde,** bleiben gespeichert, bis die Adresse bestätigt oder das Konto gelöscht wird. [PRÜFEN: automatische Löschung nach einer Frist einrichten oder hier nichts ändern.]
+- **Konten, deren E-Mail-Adresse nie bestätigt wurde,** werden nach 7 Tagen automatisch gelöscht.
 - **Erinnerungen in Discord:** Der Eintrag bleibt, bis die Nachricht geschlossen oder ersetzt wird. Danach wird er gelöscht.
 - **Web-Push-Abos:** bis du sie abmeldest, Benachrichtigungen ausschaltest, der Push-Dienst das Abo als ungültig meldet oder dein Konto gelöscht wird. Beim Abmelden entfernt die App das Abo.
 - **Technische Protokolle:** siehe Abschnitt 3.7.
-- **Backups:** Ember sichert die Datenbank regelmäßig. Ältere Sicherungen werden nach einem festen Zyklus überschrieben. Bis dahin können gelöschte Daten noch in einem Backup stehen. Backups nutzen wir nur, um den Betrieb nach einem technischen Ausfall wiederherzustellen. Wird ein Backup eingespielt, können dort gelöschte Daten wieder auftauchen. [PRÜFEN: Zyklus (Vorschlag 30 Tage), Speicherort (außerhalb des Servers?), Verschlüsselung und ob die Sicherung wirklich läuft. Nur veröffentlichen, was tatsächlich läuft.]
+- **Backups:** Die Datenbank wird jede Nacht gesichert. Wir behalten die Sicherungen der letzten 7 Tage und eine Sicherung pro Woche für die letzten 4 Wochen, ältere werden gelöscht. Eine Kopie liegt Ende-zu-Ende verschlüsselt bei Proton Drive (Proton AG, Schweiz; für die Schweiz gilt ein Angemessenheitsbeschluss der EU-Kommission). Bis zur Löschung können gelöschte Daten also bis zu etwa 5 Wochen in einem Backup stehen. Backups nutzen wir nur, um den Betrieb nach einem technischen Ausfall wiederherzustellen. Müssen wir ein Backup einspielen, löschen wir die seitdem gelöschten Konten und Daten danach erneut.
 - **Daten bei Discord:** nach den Regeln von Discord.
 - **Ohne Konto:** auf dem Gerät, bis du sie löschst oder Browser beziehungsweise Betriebssystem sie entfernen.
 
