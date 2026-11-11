@@ -3,7 +3,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { continueAfterCode, EmailCodeForm } from '@/components/auth/email-code-form';
-import { peekSignupEmail, takeSignupEmail } from '@/components/auth/signup-email';
+import { peekSignupEmail, peekSignupKey, takeSignupEmail } from '@/components/auth/signup-email';
 import {
   email as emailRule,
   required,
@@ -28,7 +28,7 @@ function ResendForm() {
   const email = useField(emailRule);
   const [problem, setProblem] = useState<string | null>(null);
   const resend = useMutation({
-    mutationFn: (address: string) => api.resendConfirmationEmail(address),
+    mutationFn: (address: string) => api.resendConfirmationEmail(address, peekSignupKey(address)),
     onError: (error) => setProblem(problemToMessage(asApiError(error)).message),
   });
 
@@ -117,7 +117,7 @@ export default function ConfirmEmailPage() {
   useEffect(() => {
     if (started.current || !link.user || !link.code) return;
     started.current = true;
-    auth.confirmEmailCode({ userId: link.user, code: link.code }).then(
+    auth.confirmEmailCode({ userId: link.user, code: link.code, signupKey: peekSignupKey() ?? undefined }).then(
       (me) => continueAfterCode(navigate, me),
       (error: unknown) => {
         setCodeError(error);
@@ -177,8 +177,12 @@ export default function ConfirmEmailPage() {
   if (state === 'code') {
     return (
       <>
-        <PageHeader title="Enter your code" lede="Type the 6-digit code from the email we sent you." />
-        <EmailCodeForm email={keptEmail} initialError={codeError} />
+        {asApiError(codeError).type === 'password_required' ? (
+          <PageHeader title="One more step" lede="The code from your email is right." />
+        ) : (
+          <PageHeader title="Enter your code" lede="Type the 6-digit code from the email we sent you." />
+        )}
+        <EmailCodeForm email={keptEmail} userId={link.user} code={link.code} initialError={codeError} />
         <Button asChild variant="ghost" block>
           <Link to="/login">Back to sign in</Link>
         </Button>

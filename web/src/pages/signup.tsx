@@ -5,7 +5,7 @@ import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { DiscordButton } from '@/components/auth/discord-button';
 import { EmailCodeForm } from '@/components/auth/email-code-form';
 import { EnvelopeSpark } from '@/components/auth/illustrations';
-import { rememberSignupEmail } from '@/components/auth/signup-email';
+import { newSignupKey, rememberSignupEmail } from '@/components/auth/signup-email';
 import { email as emailRule, minLength, useField, validateAll } from '@/components/auth/use-field';
 import { FormField } from '@/components/form-field';
 import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
@@ -28,9 +28,9 @@ export default function SignupPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
 
   const register = useMutation({
-    mutationFn: (body: Credentials) => api.register(body),
-    onSuccess: (_, body) => {
-      rememberSignupEmail(body.email);
+    mutationFn: ({ body, signupKey }: { body: Credentials; signupKey: string }) => api.register(body, signupKey),
+    onSuccess: (_, { body, signupKey }) => {
+      rememberSignupEmail(body.email, signupKey);
       setSentTo(body.email);
     },
     onError: (error) => setProblem(problemToMessage(asApiError(error), 'register')),
@@ -41,7 +41,7 @@ export default function SignupPage() {
     if (register.isPending) return;
     if (!validateAll(form.current, [email, password])) return;
     setProblem(null);
-    register.mutate({ email: email.value.trim(), password: password.value });
+    register.mutate({ body: { email: email.value.trim(), password: password.value }, signupKey: newSignupKey() });
   }
 
   if (sentTo !== null) {

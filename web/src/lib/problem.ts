@@ -161,7 +161,10 @@ export function problemToMessage(
           "That link or password didn't work. Check the password you chose when you signed up, or reset it.";
         result.offerResend = true;
       } else if (context === 'email-code') {
-        result.message = "That code didn't work. Check the newest email or send a new code.";
+        result.message =
+          error.type === 'password_required'
+            ? 'Enter your password to finish on this device.'
+            : "That code didn't work. Check the newest email or send a new code.";
       } else if (context === 'reset-password') {
         result.message = expiredLink;
       } else {

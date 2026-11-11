@@ -43,14 +43,17 @@ describe('SignupPage', () => {
     await user.type(screen.getByLabelText('Email'), 'new@example.test');
     await user.type(screen.getByLabelText('Password'), 'a long sign-up phrase');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
-    (await fetch.next('POST', '/api/auth/register')).respond(200);
+    const register = await fetch.next('POST', '/api/auth/register');
+    const signupKey = register.headers.get('X-Ember-Signup-Key') ?? '';
+    register.respond(200);
     await screen.findByText('We sent a 6-digit code to new@example.test. Enter it here to finish.');
-    return { user, router };
+    return { user, router, signupKey };
   }
 
   it('signs in with the emailed code as soon as six digits are typed and continues to consent', async () => {
     const fetch = mockFetch();
-    const { user, router } = await signUp(fetch);
+    const { user, router, signupKey } = await signUp(fetch);
+    expect(signupKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
     const code = screen.getByLabelText('6-digit code');
     expect(code).toHaveFocus();
@@ -59,7 +62,8 @@ describe('SignupPage', () => {
     await user.type(code, '123456');
 
     const confirm = await fetch.next('POST', '/api/auth/confirm-email-code?useCookies=true');
-    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456', signupKey });
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     confirm.respond(200);
     (await fetch.next('GET', '/api/auth/antiforgery')).respond(204);
     (await fetch.next('GET', '/api/me')).respond(200, {
@@ -76,14 +80,14 @@ describe('SignupPage', () => {
 
   it.each(['123 456', '123-456'])('takes a pasted code like "%s" as its six digits and signs in with it', async (pasted) => {
     const fetch = mockFetch();
-    const { user } = await signUp(fetch);
+    const { user, signupKey } = await signUp(fetch);
 
     await user.click(screen.getByLabelText('6-digit code'));
     await user.paste(pasted);
 
     expect(screen.getByLabelText('6-digit code')).toHaveValue('123456');
     const confirm = await fetch.next('POST', '/api/auth/confirm-email-code?useCookies=true');
-    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456', signupKey });
   });
 
   it('shows a turned-down code on the field and keeps the user on the page', async () => {
@@ -106,13 +110,42 @@ describe('SignupPage', () => {
     expect(auth.signedIn()).toBe(false);
   });
 
+  it('when the server asks for the password, adds the field and sends the code with it', async () => {
+    const fetch = mockFetch();
+    const { user, signupKey } = await signUp(fetch);
+
+    await user.type(screen.getByLabelText('6-digit code'), '123456');
+    (await fetch.next('POST', '/api/auth/confirm-email-code?useCookies=true')).respond(401, {
+      status: 401,
+      type: 'password_required',
+      detail: 'Enter your password to finish on this device.',
+    });
+
+    const password = await screen.findByLabelText('Password');
+    expect(password).toHaveFocus();
+    expect(password).toHaveAttribute('autocomplete', 'current-password');
+    expect(screen.getByText('Enter your password to finish on this device.')).toBeInTheDocument();
+    expect(screen.getByLabelText('6-digit code')).not.toHaveAttribute('aria-invalid');
+    await user.type(password, 'a long sign-up phrase');
+    await user.click(screen.getByRole('button', { name: 'Finish signing up' }));
+
+    const retry = await fetch.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(retry.body).toEqual({
+      email: 'new@example.test',
+      code: '123456',
+      signupKey,
+      password: 'a long sign-up phrase',
+    });
+  });
+
   it('sends a new code to the address just signed up with', async () => {
     const fetch = mockFetch();
-    const { user } = await signUp(fetch);
+    const { user, signupKey } = await signUp(fetch);
 
     await user.click(screen.getByRole('button', { name: 'Send a new code' }));
     const resend = await fetch.next('POST', '/api/auth/resendConfirmationEmail');
     expect(resend.body).toEqual({ email: 'new@example.test' });
+    expect(resend.headers.get('X-Ember-Signup-Key')).toBe(signupKey);
     resend.respond(200);
 
     expect(await screen.findByText('A new code is on its way. It can take a minute or two to arrive.')).toBeInTheDocument();

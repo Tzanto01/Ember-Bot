@@ -34,9 +34,9 @@ export interface Field {
   };
 }
 
-/** Holds a text field's value and checks it with `validate`. */
-export function useField(validate: Validator): Field {
-  const [value, setValue] = useState('');
+/** Holds a text field's value, starting at `initial`, and checks it with `validate`. */
+export function useField(validate: Validator, initial = ''): Field {
+  const [value, setValue] = useState(initial);
   const [touched, setTouched] = useState(false);
   const message = validate(value);
   return {

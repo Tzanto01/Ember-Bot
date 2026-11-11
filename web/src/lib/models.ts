@@ -180,8 +180,15 @@ export interface Credentials {
   twoFactorRecoveryCode?: string;
 }
 
-/** `POST /api/auth/confirm-email-code` body: the emailed 6-digit code with the account's email or user id. */
-export type EmailCode = ({ email: string; userId?: never } | { userId: string; email?: never }) & { code: string };
+/**
+ * `POST /api/auth/confirm-email-code` body: the emailed 6-digit code with the account's email or user id, the sign-up
+ * key of this device when it has one, and the password when the server asked for it (`password_required`).
+ */
+export type EmailCode = ({ email: string; userId?: never } | { userId: string; email?: never }) & {
+  code: string;
+  signupKey?: string;
+  password?: string;
+};
 
 /** `Routine` (v1.6). `habitIds` is ordered and sets membership. */
 export interface Routine {

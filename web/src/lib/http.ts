@@ -16,6 +16,8 @@ export interface RequestOptions {
   skipBearer?: boolean;
   /** How long this request may take; defaults to {@link requestTimeoutMs}. */
   timeoutMs?: number;
+  /** Extra request headers; undefined values are left out. */
+  headers?: Record<string, string | undefined>;
 }
 
 /** A downloaded body with the response headers (for `Content-Disposition`). */
@@ -245,6 +247,7 @@ export class Http {
     const hasBody = options.body !== undefined && options.body !== null;
     if (hasBody) headers.set('Content-Type', 'application/json');
     if (token) headers.set('Authorization', `Bearer ${token}`);
+    for (const [name, value] of Object.entries(options.headers ?? {})) if (value !== undefined) headers.set(name, value);
     const resolved = this.resolve(url, options.params);
     if (!this.config.native && mutating.has(method) && isSameOrigin(resolved)) {
       const xsrf = readCookie('XSRF-TOKEN');

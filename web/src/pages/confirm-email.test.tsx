@@ -95,11 +95,15 @@ describe('ConfirmEmailPage', () => {
     detail: "That code didn't work. Check the newest email or send a new code.",
   };
 
-  it('with a user and code in the link, signs in right away without asking for a password', async () => {
+  it('with a user and code in the link, signs in right away with this device\'s key and no password', async () => {
+    localStorage.setItem(
+      'ember.signupEmail',
+      JSON.stringify({ email: 'new@example.test', signupKey: 'device-key', at: Date.now() }),
+    );
     const router = renderPage('/confirm-email', ConfirmEmailPage, '/confirm-email?user=u1&code=123456');
 
     const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
-    expect(confirm.body).toEqual({ userId: 'u1', code: '123456' });
+    expect(confirm.body).toEqual({ userId: 'u1', code: '123456', signupKey: 'device-key' });
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     await waitFor(() => expect(router.state.location.search).toBe(''));
     confirm.respond(200);
@@ -121,7 +125,7 @@ describe('ConfirmEmailPage', () => {
     expect(screen.getByText(invalidCode.detail)).toBeInTheDocument();
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Email'), 'new@example.test');
+    await user.type(screen.getByRole('textbox', { name: /^Email/ }), 'new@example.test');
     await user.click(screen.getByRole('button', { name: 'Send a new code' }));
     const resend = await mock.next('POST', '/api/auth/resendConfirmationEmail');
     expect(resend.body).toEqual({ email: 'new@example.test' });
@@ -147,5 +151,23 @@ describe('ConfirmEmailPage', () => {
 
     const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
     expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+  });
+
+  it('opened on another device, the link asks only for the password and sends it with the code', async () => {
+    const user = userEvent.setup();
+    renderPage('/confirm-email', ConfirmEmailPage, '/confirm-email?user=u1&code=123456');
+    const first = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(first.body).toEqual({ userId: 'u1', code: '123456' });
+    first.respond(401, { status: 401, type: 'password_required', detail: 'Enter your password to finish on this device.' });
+
+    const password = await screen.findByLabelText('Password');
+    expect(password).toHaveFocus();
+    expect(screen.getByLabelText('6-digit code')).toHaveValue('123456');
+    expect(screen.queryByRole('textbox', { name: /^Email/ })).not.toBeInTheDocument();
+    await user.type(password, 'a long sign-up phrase');
+    await user.click(screen.getByRole('button', { name: 'Finish signing up' }));
+
+    const retry = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(retry.body).toEqual({ userId: 'u1', code: '123456', password: 'a long sign-up phrase' });
   });
 });
