@@ -1,27 +1,64 @@
+using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using Ember.Core.Data;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Api.Email;
 
 /// <summary>Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host).</summary>
-internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration configuration, TimeProvider time, ILogger<EmberEmailSender> logger)
+internal sealed class EmberEmailSender(
+    IEmailTransport transport, IConfiguration configuration, TimeProvider time, IServiceScopeFactory scopes,
+    IHttpContextAccessor http, ILogger<EmberEmailSender> logger)
     : IEmailSender<User>
 {
     /// <summary>The wait before the one retry of a transient failure.</summary>
     internal static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
+    /// <summary>How long an emailed sign-up code works.</summary>
+    internal static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(15);
+
+    /// <summary>Tries (right or wrong) a sign-up code allows.</summary>
+    internal const int CodeTries = 5;
+
     private string Origin => ApiApp.WebOrigin(configuration)
         ?? throw new InvalidOperationException("Ember:WebOrigin is not configured.");
 
-    /// <summary>Rebuilds Identity's API confirmation link (HTML-encoded) as <c>{WebOrigin}/confirm-email?userId=…&amp;code=…</c>.</summary>
+    /// <summary>The stored form of a sign-up code: SHA-256, upper-case hex.</summary>
+    internal static string CodeHash(string code) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
+
+    /// <summary>The header that carries the sign-up key of the device asking for a code.</summary>
+    internal const string SignupKeyHeader = "X-Ember-Signup-Key";
+
+    /// <summary>The stored form of a sign-up key (see <see cref="CodeHash"/>); null for none or a malformed one (empty, over 128 characters, not base64url).</summary>
+    internal static string? KeyHash(string? key)
+        => key is { Length: > 0 and <= 128 } && key.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') ? CodeHash(key) : null;
+
+    /// <summary>
+    /// Ignores Identity's link: mails a new 6-digit sign-up code (replacing any earlier one, valid for <see cref="CodeLifetime"/>)
+    /// and the link <c>{WebOrigin}/confirm-email?user=…&amp;code=…</c>. The hashes of the code and of the request's <see cref="SignupKeyHeader"/> (null without a valid one) are stored
+    /// before the mail goes out, only while the email is unconfirmed.
+    /// </summary>
     public Task SendConfirmationLinkAsync(User user, string email, string confirmationLink)
     {
-        var query = QueryHelpers.ParseQuery(new Uri(WebUtility.HtmlDecode(confirmationLink)).Query);
-        var link = $"{Origin}/confirm-email?userId={Uri.EscapeDataString(query["userId"].ToString())}&code={Uri.EscapeDataString(query["code"].ToString())}";
+        var code = RandomNumberGenerator.GetInt32(1_000_000).ToString("D6", CultureInfo.InvariantCulture);
+        var hash = CodeHash(code);
+        var keyHash = KeyHash(http.HttpContext?.Request.Headers[SignupKeyHeader].ToString());
+        var expires = (time.GetUtcNow() + CodeLifetime).UtcDateTime;
+        var userId = user.Id;
+        var link = $"{Origin}/confirm-email?user={userId}&code={code}";
         return Send(user.Email ?? email, "Confirm your Ember email address",
-            $"Welcome to Ember.\n\nPlease confirm your email address by opening this link:\n{link}\n\nIf you didn't create an Ember account, you can ignore this email.");
+            $"Welcome to Ember.\n\nYour code:\n\n{code}\n\nEnter it in Ember to confirm your email address and sign in, or open this link:\n{link}\n\nThe code works for 15 minutes. If you didn't create an Ember account, you can ignore this email.",
+            async () =>
+            {
+                using var scope = scopes.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Users.Where(u => u.Id == userId && !u.EmailConfirmed)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailCodeHash, hash).SetProperty(u => u.EmailCodeExpiresAt, expires)
+                        .SetProperty(u => u.EmailCodeKeyHash, keyHash).SetProperty(u => u.EmailCodeTries, 0));
+            });
     }
 
     public Task SendPasswordResetCodeAsync(User user, string email, string resetCode)
@@ -46,11 +83,22 @@ internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration
     /// never reaches the response (either would reveal whether an account exists). A transient failure is retried once after
     /// <see cref="RetryDelay"/>. Failures are logged without the address.
     /// </summary>
-    private Task Send(string to, string subject, string body)
+    /// <param name="prepare">Runs first in the background; when it fails, nothing is sent.</param>
+    private Task Send(string to, string subject, string body, Func<Task>? prepare = null)
     {
         _ = Task.Run(async () =>
         {
             var domain = to[(to.LastIndexOf('@') + 1)..];
+            try
+            {
+                if (prepare is not null) await prepare();
+            }
+            catch (Exception e)
+            {
+                logger.LogError("Preparing \"{Subject}\" to a {Domain} address failed: {ExceptionType}", subject, domain, e.GetType().Name);
+                return;
+            }
+
             try
             {
                 await transport.SendAsync(to, subject, body, CancellationToken.None);

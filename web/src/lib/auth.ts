@@ -1,6 +1,6 @@
 import type { ApiClient } from './api-client';
 import type { JournalApi } from './journal/types';
-import type { Me } from './models';
+import type { EmailCode, Me } from './models';
 import type { Reminders } from './native/reminders';
 import type { TokenStore } from './native/token-store';
 import { navigate } from './navigation';
@@ -170,6 +170,20 @@ export class AuthService {
     this.consentPrompted = true;
     const me = await this.loadMe(true);
     this.setStaySignedIn(staySignedIn && me ? me.id : null);
+    return me;
+  }
+
+  /**
+   * Confirms the email with the emailed 6-digit code and signs in (web: cookie that stays signed in; native: bearer
+   * tokens), refreshes antiforgery and loads `me`. Rejects with `ApiError` (401 `invalid_code`).
+   */
+  async confirmEmailCode(body: EmailCode): Promise<Me | null> {
+    if (this.native) await this.native.tokens.signInWithEmailCode(body);
+    else await this.api.confirmEmailCode(body);
+    await this.refreshAntiforgery();
+    this.consentPrompted = true;
+    const me = await this.loadMe(true);
+    this.setStaySignedIn(me ? me.id : null);
     return me;
   }
 

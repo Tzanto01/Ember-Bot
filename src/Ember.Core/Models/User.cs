@@ -52,6 +52,18 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public DateOnly? ConsentPromptedOn { get; set; }
 
+    /// <summary>SHA-256 (hex) of the newest emailed sign-up code; null when none is pending.</summary>
+    public string? EmailCodeHash { get; set; }
+
+    /// <summary>When (UTC) the code in <see cref="EmailCodeHash"/> stops working.</summary>
+    public DateTime? EmailCodeExpiresAt { get; set; }
+
+    /// <summary>SHA-256 (hex) of the sign-up key of the device that asked for the code in <see cref="EmailCodeHash"/>; null when it sent none.</summary>
+    public string? EmailCodeKeyHash { get; set; }
+
+    /// <summary>Tries spent on the code in <see cref="EmailCodeHash"/>; at the limit it no longer works.</summary>
+    public int EmailCodeTries { get; set; }
+
     public ICollection<IdentityUserLogin<Guid>> Logins { get; set; } = new List<IdentityUserLogin<Guid>>();
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();

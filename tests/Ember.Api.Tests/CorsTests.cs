@@ -11,7 +11,7 @@ public class CorsTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var request = new HttpRequestMessage(HttpMethod.Options, "/api/habits");
         request.Headers.Add("Origin", origin);
         request.Headers.Add("Access-Control-Request-Method", "POST");
-        request.Headers.Add("Access-Control-Request-Headers", "authorization,content-type");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization,content-type,x-ember-signup-key");
         return await Host.NewClient().Http.SendAsync(request);
     }
 
@@ -27,7 +27,7 @@ public class CorsTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
             response.IsSuccessStatusCode.Should().BeTrue(origin);
             Header(response, "Access-Control-Allow-Origin").Should().Be(origin);
-            Header(response, "Access-Control-Allow-Headers")!.ToLowerInvariant().Should().ContainAll("authorization", "content-type");
+            Header(response, "Access-Control-Allow-Headers")!.ToLowerInvariant().Should().ContainAll("authorization", "content-type", "x-ember-signup-key");
             Header(response, "Access-Control-Allow-Credentials").Should().BeNull();
         }
     }

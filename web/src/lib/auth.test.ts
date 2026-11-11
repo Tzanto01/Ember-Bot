@@ -71,6 +71,47 @@ describe('AuthService', () => {
       },
     );
 
+    it('signs the browser in with the emailed code and a cookie that stays, then refreshes antiforgery and loads me', async () => {
+      const auth = setup();
+      const done = auth.confirmEmailCode({ email: 'new@example.test', code: '123456' });
+
+      const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+      expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+      confirm.respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+
+      await expect(done).resolves.toEqual(me);
+      expect(auth.staySignedIn.get()).toBe(me.id);
+    });
+
+    it('in the native build signs in with the emailed code through bearer tokens, without cookie flags', async () => {
+      const http = new Http({ native: true, apiBase: '' });
+      const device = new DeviceStore();
+      queue = new OfflineQueue(device);
+      const api = new ApiClient(http, queue);
+      const memory = memorySecureStore();
+      const tokens = new TokenStore(http, memory.store);
+      http.bearer = tokens;
+      const reminders = new Reminders(api, device, async () => ({
+        LocalNotifications: {} as unknown as LocalNotificationsPlugin,
+      }));
+      const auth = new AuthService(api, queue, null, { tokens, reminders });
+      http.session = auth;
+      const done = auth.confirmEmailCode({ userId: 'u1', code: '123456' });
+
+      const confirm = await mock.next('POST', '/api/auth/confirm-email-code');
+      expect(confirm.body).toEqual({ userId: 'u1', code: '123456' });
+      confirm.respond(200, { tokenType: 'Bearer', accessToken: 'access-1', expiresIn: 900, refreshToken: 'refresh-1' });
+      const meCall = await mock.next('GET', '/api/me');
+      expect(meCall.headers.get('Authorization')).toBe('Bearer access-1');
+      meCall.respond(200, me);
+
+      await expect(done).resolves.toEqual(me);
+      expect(memory.secure.get('ember.refreshToken')).toBe('refresh-1');
+      expect(mock.all.some((c) => c.url.includes('antiforgery'))).toBe(false);
+    });
+
     it('sends the authenticator code or a recovery code with the login after RequiresTwoFactor', async () => {
       const auth = setup();
       const done = auth.login('a@example.test', 'pw', true, { code: '123456' });

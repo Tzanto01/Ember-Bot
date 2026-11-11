@@ -6,6 +6,7 @@ import type {
   DayNoteBody,
   DayStat,
   DeleteAccountRequest,
+  EmailCode,
   ExportFormat,
   Habit,
   HabitPatch,
@@ -82,9 +83,12 @@ export class ApiClient {
     return this.http.request('GET', '/api/auth/antiforgery');
   }
 
-  /** `POST /api/auth/register`: 200 for any well-formed input, whether or not the address is taken. */
-  register(body: Credentials): Promise<void> {
-    return this.http.request('POST', '/api/auth/register', { body });
+  /**
+   * `POST /api/auth/register`: 200 for any well-formed input, whether or not the address is taken. `signupKey` goes in
+   * `X-Ember-Signup-Key` and ties the emailed code to this device.
+   */
+  register(body: Credentials, signupKey: string): Promise<void> {
+    return this.http.request('POST', '/api/auth/register', { body, headers: { 'X-Ember-Signup-Key': signupKey } });
   }
 
   /**
@@ -104,9 +108,22 @@ export class ApiClient {
     });
   }
 
-  /** `POST /api/auth/resendConfirmationEmail`: always 200. */
-  resendConfirmationEmail(email: string): Promise<void> {
-    return this.http.request('POST', '/api/auth/resendConfirmationEmail', { body: { email } });
+  /**
+   * `POST /api/auth/confirm-email-code?useCookies=true`: confirms the email with the emailed 6-digit code and signs the
+   * browser in with the cookie. Send `email` or `userId`, and this device's `signupKey`; another device needs the
+   * `password` (401 `password_required`). Any other failure is 401 `invalid_code`. Prefer
+   * `AuthService.confirmEmailCode()`.
+   */
+  confirmEmailCode(body: EmailCode): Promise<void> {
+    return this.http.request('POST', '/api/auth/confirm-email-code', { body, params: { useCookies: 'true' } });
+  }
+
+  /** `POST /api/auth/resendConfirmationEmail`: always 200. Sends this device's `signupKey` for that address when given. */
+  resendConfirmationEmail(email: string, signupKey?: string | null): Promise<void> {
+    return this.http.request('POST', '/api/auth/resendConfirmationEmail', {
+      body: { email },
+      headers: { 'X-Ember-Signup-Key': signupKey ?? undefined },
+    });
   }
 
   /** `POST /api/auth/forgotPassword`: always 200. */

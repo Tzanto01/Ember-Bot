@@ -61,7 +61,7 @@ public class EmberEmailSenderTests
         var transport = new FlakyTransport(new IOException("connection reset"));
         var time = new FakeTimeProvider();
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Ember:WebOrigin"] = "https://ember.example" }).Build();
-        var sender = new EmberEmailSender(transport, configuration, time, NullLogger<EmberEmailSender>.Instance);
+        var sender = new EmberEmailSender(transport, configuration, time, null!, null!, NullLogger<EmberEmailSender>.Instance);
 
         await sender.SendAlreadyRegisteredAsync("someone@example.test");
         var deadline = DateTime.UtcNow.AddSeconds(10);

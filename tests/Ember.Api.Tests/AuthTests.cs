@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.WebUtilities;
@@ -22,7 +23,7 @@ public class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var mails = await Host.Mail.WaitForAsync(email, 1);
         mails.Should().HaveCount(1);
-        mails[0].Link().Should().StartWith($"{ApiHost.WebOrigin}/confirm-email?userId=").And.Contain("&code=");
+        mails[0].Link().Should().MatchRegex($@"^{Regex.Escape(ApiHost.WebOrigin)}/confirm-email\?user=[0-9a-f-]{{36}}&code=\d{{6}}$");
     }
 
     [DockerFact]

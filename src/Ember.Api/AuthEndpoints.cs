@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 using Ember.Api.Email;
+using Ember.Core.Data;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -8,6 +10,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Api;
 
@@ -26,10 +29,16 @@ internal static class AuthEndpoints
     [
         Register, "/api/auth/login", "/api/auth/refresh", "/api/auth/resendConfirmationEmail",
         ForgotPassword, ResetPassword, ConfirmEmail, "/api/auth/discord/2fa", ReminderEndpoints.DonePath,
-        "/api/auth/discord/native/token",
+        "/api/auth/discord/native/token", "/api/auth/confirm-email-code",
     ];
 
     public sealed record ConfirmEmailRequest(string? UserId, string? Code, string? Password);
+
+    /// <summary>
+    /// An emailed sign-up code for the account with <see cref="Email"/> or <see cref="UserId"/>, with the sign-up key of the device
+    /// that asked for the code or else the account's password.
+    /// </summary>
+    public sealed record ConfirmEmailCodeRequest(string? Email, string? UserId, string? Code, string? SignupKey, string? Password);
 
     public static RouteGroupBuilder MapAuth(this RouteGroupBuilder auth)
     {
@@ -55,6 +64,35 @@ internal static class AuthEndpoints
 
             await users.ResetAccessFailedCountAsync(user);
             return Results.Ok();
+        }).RequireRateLimiting(RateLimits.AuthPolicy);
+
+        auth.MapPost("/confirm-email-code", async (ConfirmEmailCodeRequest request, bool? useCookies, UserManager<User> users,
+            SignInManager<User> signIn, EmberDbContext db, TimeProvider time) =>
+        {
+            var user = Guid.TryParse(request.UserId, out var userId) ? await users.FindByIdAsync(userId.ToString())
+                : string.IsNullOrWhiteSpace(request.Email) ? null : await users.FindByEmailAsync(request.Email.Trim());
+            var now = time.GetUtcNow().UtcDateTime;
+            if (user is not { EmailConfirmed: false, TwoFactorEnabled: false, EmailCodeHash: { } hash }
+                || await db.Users.Where(u => u.Id == user.Id && !u.EmailConfirmed && u.EmailCodeHash == hash
+                        && u.EmailCodeExpiresAt > now && u.EmailCodeTries < EmberEmailSender.CodeTries)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailCodeTries, u => u.EmailCodeTries + 1)) == 0
+                || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(hash), Encoding.ASCII.GetBytes(EmberEmailSender.CodeHash(request.Code?.Trim() ?? ""))))
+                return Problems.InvalidCode();
+
+            var sameDevice = user.EmailCodeKeyHash is { } keyHash && EmberEmailSender.KeyHash(request.SignupKey) is { } sentKeyHash
+                && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(keyHash), Encoding.ASCII.GetBytes(sentKeyHash));
+            if (!sameDevice && string.IsNullOrEmpty(request.Password)) return Problems.PasswordRequired();
+            if (!sameDevice && !await users.CheckPasswordAsync(user, request.Password!)) return Problems.InvalidCode();
+
+            user.EmailCodeHash = null;
+            user.EmailCodeKeyHash = null;
+            user.EmailCodeExpiresAt = null;
+            if (!(await users.ConfirmEmailAsync(user, await users.GenerateEmailConfirmationTokenAsync(user))).Succeeded)
+                return Problems.InvalidCode();
+
+            signIn.AuthenticationScheme = useCookies == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
+            await signIn.SignInAsync(user, isPersistent: useCookies == true);
+            return Results.Empty;
         }).RequireRateLimiting(RateLimits.AuthPolicy);
 
         auth.MapGet("/antiforgery", (HttpContext http, IAntiforgery antiforgery, IHostEnvironment environment) =>

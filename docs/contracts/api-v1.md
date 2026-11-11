@@ -1,4 +1,6 @@
-# Ember API contract v1.10
+# Ember API contract v1.11
+
+v1.11 (2026-11-11, Nico: "We can also make the mail send you a code that you just add in the app instead of using your password"): the confirmation email carries a 6-digit code; entering it (or opening the emailed link) confirms the email and signs in (`POST /api/auth/confirm-email-code`). See "Sign-up code v1.11".
 
 v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord"): one-tap Done on single-habit web push reminders through a one-time token (`POST /api/reminders/done`); push subscriptions follow their sign-in session. See "Reminder Done v1.10".
 
@@ -39,6 +41,7 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 | 404 | `not_found` | Missing, or belongs to another user (never reveal which) |
 | 409 | `habit_limit` | 25 habits already |
 | 409 | `conflict` | Linking, unlinking or merge not allowed; `detail` is a short user-facing reason |
+| 401 | `invalid_code` | An emailed sign-up code that didn't work, for any reason (v1.11) |
 | 410 | `expired` | A reminder action token that can no longer be used (v1.10) |
 | 422 | `before_habit_start` / `in_future` | Day outside the editable range |
 | 429 | `rate_limited` | Too many attempts; `Retry-After` header set |
@@ -65,7 +68,7 @@ Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` (or
 
 - `GET /api/auth/antiforgery` → 204 and sets the `XSRF-TOKEN` cookie (readable by JS). The token is tied to the signed-in identity, so the client fetches it on app start, after login, after Discord sign-in and after logout.
 - The browser sends it as the `X-XSRF-TOKEN` header on every POST, PUT, PATCH and DELETE (Angular `HttpClient` does this by default).
-- Enforced on every unsafe request authenticated by the cookie scheme → 403 `antiforgery`. Exempt: anonymous JSON-only auth POSTs (register, login, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword) and bearer-authenticated requests.
+- Enforced on every unsafe request authenticated by the cookie scheme → 403 `antiforgery`. Exempt: anonymous JSON-only auth POSTs (register, login, confirmEmail, confirm-email-code, resendConfirmationEmail, forgotPassword, resetPassword) and bearer-authenticated requests.
 
 ### Identity endpoints (`/api/auth`)
 
@@ -74,8 +77,8 @@ These keep ASP.NET Core Identity's response shapes:
 - `POST /api/auth/register` `{ email, password }` → 200 for any well-formed request, whether or not the email is taken (a taken address gets an "already registered" email instead). 400 `validation` problem with Identity error codes as `errors` keys (`PasswordTooShort`, `InvalidEmail`, ...) for a bad password or email. Password rule: at least 10 characters, no composition rules.
 - `POST /api/auth/login?useCookies=true` or `?useSessionCookies=true` (when "stay signed in" is off) `{ email, password }` → 200 and the cookie. Failure: 401 problem whose `detail` is `Failed` (wrong credentials, or the account is locked; the two are indistinguishable on purpose) or `NotAllowed` (email not confirmed). The client shows these as a login error, not as a session expiry. Without either flag it returns `{ tokenType, accessToken, expiresIn, refreshToken }`.
 - `POST /api/auth/refresh` `{ refreshToken }` → new tokens.
-- `POST /api/auth/confirmEmail` `{ userId, code, password }` → 200 and the email is confirmed (the client then signs in normally). 401 problem for a bad or expired code or a wrong password (indistinguishable). Rate-limited like login and counted towards lockout. The web page `/confirm-email` asks for the password the user chose at sign-up and links to forgot-password; a successful password reset through the emailed code also confirms the email. `GET` on this path is not supported.
-- `POST /api/auth/resendConfirmationEmail` `{ email }` → 200 always.
+- `POST /api/auth/confirmEmail` `{ userId, code, password }` → 200 and the email is confirmed (the client then signs in normally). 401 problem for a bad or expired code or a wrong password (indistinguishable). Rate-limited like login and counted towards lockout. The web page `/confirm-email` asks for the password the user chose at sign-up and links to forgot-password; a successful password reset through the emailed code also confirms the email. `GET` on this path is not supported. Kept for links in emails sent before v1.11; newer emails carry the sign-up code instead (see "Sign-up code v1.11").
+- `POST /api/auth/resendConfirmationEmail` `{ email }` → 200 always. Mails a new sign-up code that replaces the old one (v1.11).
 - `POST /api/auth/forgotPassword` `{ email }` → 200 always.
 - `POST /api/auth/resetPassword` `{ email, resetCode, newPassword }` → 200, or 400 `validation` problem.
 - `/api/auth/manage/*` is not exposed (404). No email or password change in v2 besides reset.
@@ -90,7 +93,7 @@ Identity options: confirmed email required to sign in, unique emails, lockout af
 
 Emails link to the web app, built from the configured `Ember__WebOrigin` (never the request host), with URL-encoded values: `{WebOrigin}/confirm-email?userId=…&code=…` and `{WebOrigin}/reset-password?email=…&code=…`. The web pages call the API and then remove `code` from the address bar.
 
-Rate limits: per client IP (after forwarded headers) on the credential endpoints only (register, login, refresh, confirmEmail, resendConfirmationEmail, forgotPassword, resetPassword), plus on the mail-sending ones (register, resendConfirmationEmail, forgotPassword): per endpoint, email address and client IP (5 per hour), per email address across clients (20 per hour), per client IP (10 per hour) and in total (200 per day), each answering 429 `rate_limited`. Every other `/api/auth` request (antiforgery, logout, the Discord redirect steps, and any endpoint added later) falls under a loose per-IP cap of 300 per minute instead.
+Rate limits: per client IP (after forwarded headers) on the credential endpoints only (register, login, refresh, confirmEmail, confirm-email-code, resendConfirmationEmail, forgotPassword, resetPassword), plus on the mail-sending ones (register, resendConfirmationEmail, forgotPassword): per endpoint, email address and client IP (5 per hour), per email address across clients (20 per hour), per client IP (10 per hour) and in total (200 per day), each answering 429 `rate_limited`. Every other `/api/auth` request (antiforgery, logout, the Discord redirect steps, and any endpoint added later) falls under a loose per-IP cap of 300 per minute instead.
 
 ### Discord
 
@@ -390,3 +393,29 @@ v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord", including o
 
 - Replaces the v1.6 rule that only named reminders get "Done": every single-habit local notification has the "Done" action, whether or not "Show habit names in reminders" is on; with names off the title stays `Ember` and the body generic. Routine reminders still have none.
 - Android opens the app for a notification action (Capacitor 8 LocalNotifications starts an activity for every action), so "Done" adds one to that habit for the notification's `date` as before, then lands on Today with the short confirmation.
+
+## Sign-up code v1.11
+
+v1.11 (2026-11-11, Nico: "you have to go back to sign in and sign in again, effectively putting your password in 3 times before you get in. We can reduce that. We can also make the mail send you a code that you just add in the app instead of using your password."): the confirmation email's code confirms the email and signs in, without the password.
+
+### Email
+
+- Sent on register and on `resendConfirmationEmail`. Carries a 6-digit numeric code on its own line and the link `{WebOrigin}/confirm-email?user=<userId>&code=<6 digits>`. Plain text: "Welcome to Ember." / "Your code:" / the code / "Enter it in Ember to confirm your email address and sign in, or open this link:" / the link / "The code works for 15 minutes. If you didn't create an Ember account, you can ignore this email."
+- A code works for 15 minutes and for 5 tries (right or wrong). Sending a new code replaces the old one and resets the tries; a burned or expired code needs `resendConfirmationEmail`. The server stores only the code's SHA-256 hash.
+- Links in emails sent before v1.11 (`/confirm-email?userId=…&code=…`) still go to `POST /api/auth/confirmEmail` with the password.
+
+### `POST /api/auth/confirm-email-code`
+
+- Anonymous, antiforgery-exempt, rate-limited like login. Body `{ email?, userId?, code }`: one of `email` (as typed in the app) or `userId` (the link's `user`); `userId` wins when both are sent.
+- `?useCookies=true` (web) → 200 and a persistent cookie, as `/login?useCookies=true`. Without it (native app) → 200 `{ tokenType, accessToken, expiresIn, refreshToken }`, as `/login`. Either way the email is confirmed and a sign-in session starts exactly as on a password sign-in. The client then continues with the normal consent step.
+- Only for an account whose email is not yet confirmed; a confirmed account is never signed in by a code.
+- Every failure (unknown account, wrong, expired, burned or replaced code, already confirmed) → the same 401 problem, `type` `invalid_code`, `detail` "That code didn't work. Check the newest email or send a new code." The answer never reveals whether an account exists.
+- 2FA on → the same `invalid_code` (a code never gets around 2FA).
+
+### Same device only
+
+Nico chose "Same device only": the code alone signs in only on the device that signed up, so nobody can pre-register someone else's address with their own password and have the owner unknowingly activate it.
+
+- The client makes a random `signupKey` (32 random bytes, base64url) when the sign-up form is submitted, keeps it with the sign-up email for 24 hours, and sends it as the header `X-Ember-Signup-Key` on `POST /api/auth/register` and `POST /api/auth/resendConfirmationEmail`. The server stores only its SHA-256 hash next to the code; each new code replaces it with the hash of the key sent with that request, or with none. Values over 128 characters or not base64url count as none.
+- `POST /api/auth/confirm-email-code` takes `signupKey?` and `password?`. A valid code signs in when the key matches the stored hash, or else with the account's password.
+- Valid code, no matching key, no password → 401 problem `type` `password_required`, `detail` "Enter your password to finish on this device." It counts as a try. A valid code with a wrong password → `invalid_code`, also a try.

@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { DiscordButton } from '@/components/auth/discord-button';
+import { peekSignupKey } from '@/components/auth/signup-email';
 import {
   email as emailRule,
   required,
@@ -219,7 +220,7 @@ export default function LoginPage() {
   });
 
   const resend = useMutation({
-    mutationFn: (address: string) => api.resendConfirmationEmail(address),
+    mutationFn: (address: string) => api.resendConfirmationEmail(address, peekSignupKey(address)),
     onError: (error) => setProblem(problemToMessage(asApiError(error))),
   });
 
@@ -334,6 +335,11 @@ export default function LoginPage() {
                   Send the link again
                 </Button>
               ))}
+            {problem.offerResend && (
+              <TapLink to="/confirm-email" state={{ email: email.value.trim() }}>
+                Enter your code
+              </TapLink>
+            )}
           </Notice>
         )}
 
