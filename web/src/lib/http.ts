@@ -14,6 +14,8 @@ export interface RequestOptions {
   replay?: boolean;
   /** The token store's own login and refresh: no bearer token and no refresh on 401. */
   skipBearer?: boolean;
+  /** How long this request may take; defaults to {@link requestTimeoutMs}. */
+  timeoutMs?: number;
 }
 
 /** A downloaded body with the response headers (for `Content-Disposition`). */
@@ -44,6 +46,9 @@ export interface BearerTokens {
 
 /** How long one request may take before it fails as unreachable (status 0). */
 export const requestTimeoutMs = 15000;
+
+/** The timeout for requests that move a whole account (export, import, deletion). */
+export const longRequestTimeoutMs = 120000;
 
 /**
  * Device copies of `GET` answers for an offline cold start: `save` gets every successful answer, `load` is asked when
@@ -95,7 +100,7 @@ async function readJson(response: Response): Promise<unknown> {
  * refresh plus retry on a 401 outside `/api/auth/*`. Both: a 401 outside `/api/auth/*` while signed in ends the
  * session and routes to `/login?returnUrl=…&reason=session`; 403 `consent_required` routes to `/consent`. Those two
  * errors are marked `handled`. A successful non-GET write to `/api/habits` that isn't a replay calls `onHabitWrite`.
- * A request that gets no answer within {@link requestTimeoutMs} fails with status 0.
+ * A request that gets no answer within its timeout ({@link requestTimeoutMs} by default) fails with status 0.
  */
 export class Http {
   /** Set by the composition root once the session exists. */
@@ -116,6 +121,12 @@ export class Http {
   private readonly staleUrls = new Set<string>();
 
   constructor(private readonly config: HttpConfig) {}
+
+  /** Forgets which screens showed device answers, for example once the browser is back online or the user changed. */
+  clearOfflineData(): void {
+    this.staleUrls.clear();
+    this.offlineData.set(false);
+  }
 
   /** Sends a request and resolves with the parsed JSON body (undefined when empty). */
   async request<T>(method: Method, url: string, options: RequestOptions = {}): Promise<T> {
@@ -154,8 +165,8 @@ export class Http {
   }
 
   /** `GET` for a file: the body as a blob with the response headers. */
-  async download(url: string, params?: Record<string, string | undefined>): Promise<Download> {
-    const response = await this.send('GET', url, { params });
+  async download(url: string, params?: Record<string, string | undefined>, timeoutMs?: number): Promise<Download> {
+    const response = await this.send('GET', url, { params, timeoutMs });
     try {
       return { blob: await response.blob(), headers: response.headers };
     } catch {
@@ -244,7 +255,7 @@ export class Http {
       headers,
       body: hasBody ? JSON.stringify(options.body) : undefined,
       credentials: this.config.native ? 'omit' : 'same-origin',
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: AbortSignal.timeout(options.timeoutMs ?? requestTimeoutMs),
     });
   }
 

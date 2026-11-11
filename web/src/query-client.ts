@@ -6,7 +6,7 @@ import type { Store } from './lib/store';
 const dayScreens = new Set<unknown>(['today', 'history', 'year']);
 
 /**
- * The app's query client: no retry on 4xx; queries run while the browser reports offline (so a failure shows the
+ * The app's query client: no retry on 4xx, one retry when the server can't be reached, two on other failures; queries run while the browser reports offline (so a failure shows the
  * error state instead of waiting); only Today, History and Year refetch on window focus, so a tab left open
  * overnight follows the new day.
  */
@@ -18,7 +18,7 @@ export function createQueryClient(): QueryClient {
         refetchOnWindowFocus: (query) => dayScreens.has(query.queryKey[0]),
         retry: (failures, error) => {
           const { status } = asApiError(error);
-          return failures < 2 && !(status >= 400 && status < 500);
+          return failures < (status === 0 ? 1 : 2) && !(status >= 400 && status < 500);
         },
       },
     },

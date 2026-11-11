@@ -121,6 +121,34 @@ describe('AuthService', () => {
     });
   });
 
+  describe('stay signed in', () => {
+    async function signIn(auth: AuthService, stay: boolean) {
+      const done = auth.login('a@example.test', 'pw', stay);
+      (await mock.next('POST', `/api/auth/login?${stay ? 'useCookies' : 'useSessionCookies'}=true`)).respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await done;
+    }
+
+    it('records only a "stay signed in" password sign-in, keeps it across starts and forgets it with the session', async () => {
+      localStorage.clear();
+      const auth = setup();
+
+      await signIn(auth, true);
+      expect(auth.staySignedIn.get()).toBe(me.id);
+      expect(setup().staySignedIn.get()).toBe(me.id);
+
+      auth.clearSession();
+      expect(auth.staySignedIn.get()).toBeNull();
+      expect(setup().staySignedIn.get()).toBeNull();
+
+      await signIn(auth, true);
+      await signIn(auth, false);
+      expect(auth.staySignedIn.get()).toBeNull();
+      expect(setup().staySignedIn.get()).toBeNull();
+    });
+  });
+
   describe('loadMe', () => {
     it('leaves me null when the response arrives after the session was cleared', async () => {
       const auth = setup();

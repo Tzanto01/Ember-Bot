@@ -16,6 +16,16 @@ export interface NativeSession {
   reminders: Reminders;
 }
 
+const staySignedInKey = 'ember.staySignedIn';
+
+function readStaySignedIn(): string | null {
+  try {
+    return localStorage.getItem(staySignedInKey);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Session store. Holds the signed-in user in `me` and owns the auth flows that touch antiforgery, push
  * subscriptions, device state and navigation. `push` is the web build's push service (null in the native build);
@@ -29,6 +39,12 @@ export class AuthService {
 
   /** The signed-in user, or null. */
   readonly me = new Store<Me | null>(null);
+
+  /**
+   * Web build: the id of the user who signed in with a password and "Stay signed in" on this device (kept across app
+   * starts), or null. Only then may the app keep that user's data on the device for an offline start.
+   */
+  readonly staySignedIn = new Store<string | null>(readStaySignedIn());
 
   /** The day journal; its key is restored after `me` loads and forgotten on sign-out, session end and wipe. */
   journal: Pick<JournalApi, 'forget' | 'restore'> | null = null;
@@ -114,11 +130,23 @@ export class AuthService {
     this.inFlight = null;
     this.me.set(null);
     this.loaded = true;
+    this.setStaySignedIn(null);
+  }
+
+  private setStaySignedIn(userId: string | null): void {
+    if (this.native) return;
+    try {
+      if (userId) localStorage.setItem(staySignedInKey, userId);
+      else localStorage.removeItem(staySignedInKey);
+    } catch {
+      userId = null;
+    }
+    this.staySignedIn.set(userId);
   }
 
   /**
    * Signs in with email and password (and, after a `RequiresTwoFactor` answer, `twoFactor`), refreshes antiforgery
-   * and loads `me`. Rejects with `ApiError`; see `requiresTwoFactor()`.
+   * and loads `me`, and records {@link staySignedIn}. Rejects with `ApiError`; see `requiresTwoFactor()`.
    */
   async login(
     email: string,
@@ -135,7 +163,9 @@ export class AuthService {
     }
     await this.refreshAntiforgery();
     this.consentPrompted = true;
-    return this.loadMe(true);
+    const me = await this.loadMe(true);
+    this.setStaySignedIn(staySignedIn && me ? me.id : null);
+    return me;
   }
 
   /** Finishes a Discord sign-in that needs the second factor (`POST /api/auth/discord/2fa`), then loads `me`. */

@@ -3,11 +3,20 @@ import { env } from './env';
 import type { LocalDateString, Me } from './models';
 import type { AppMode } from './local/types';
 import { queryString } from './navigation';
-import { asApiError } from './problem';
+import { ApiError, asApiError } from './problem';
 import { auth, localMode } from './services';
 import type { Store } from './store';
 
 const offlineMeKey = 'ember.offlineMe';
+
+/** How long the signed-in guard trusts an unreachable API before asking it again. */
+export const unreachableMs = 30_000;
+let unreachableUntil = 0;
+
+/** Lets the signed-in guard ask the API again right away, for example once the browser is back online. */
+export function forgetUnreachable(): void {
+  unreachableUntil = 0;
+}
 
 /** Today's date in `timeZone` by this device's clock, or null for an unknown zone. */
 export function deviceToday(timeZone: string, now = new Date()): LocalDateString | null {
@@ -40,19 +49,23 @@ export function rememberedMe(now = new Date()): Me | null {
 
 /**
  * Signed-in route guard for `url` (path plus query): null lets the user through (loads `me` once).
- * Signed out → `/login?returnUrl=…` (forgetting the {@link rememberedMe});
- * Signed out → `/login?returnUrl=…` (forgetting the {@link rememberedMe}); API unreachable → the same with `reason=offline`. Offers the consent step
+ * Signed out → `/login?returnUrl=…` (forgetting the {@link rememberedMe}); API unreachable → the same with
+ * `reason=offline`. Offers the consent step
  * once per app session when consent is missing, which also covers the return from Discord sign-in. While device
  * data waits for the account (mode `upgrading`), sends the user to `/keep-data` (after the consent step).
  * Web build, API unreachable (status 0) with a {@link rememberedMe} from today: lets the user through on that cached
  * `me` (without marking it loaded, so the next navigation asks the server again) and leaves the consent step for later.
+ * After the API was unreachable, the next {@link unreachableMs} of navigations take the offline path without asking
+ * again (on the `me` already shown, else the remembered one).
  */
 export async function signedIn(
   url: string,
   session: AuthService = auth,
   mode: Store<AppMode> = localMode.mode,
 ): Promise<string | null> {
+  const recentlyUnreachable = Date.now() < unreachableUntil;
   try {
+    if (recentlyUnreachable) throw new ApiError(0, null);
     const me = await session.loadMe();
     if (!me) {
       rememberMe(null);
@@ -66,7 +79,9 @@ export async function signedIn(
     }
     return null;
   } catch (error) {
-    const cached = !env.native && asApiError(error).status === 0 ? rememberedMe() : null;
+    const unreachable = asApiError(error).status === 0;
+    if (unreachable && !recentlyUnreachable) unreachableUntil = Date.now() + unreachableMs;
+    const cached = !env.native && unreachable ? (session.me.get() ?? rememberedMe()) : null;
     if (!cached) return `/login?${queryString({ returnUrl: url, reason: 'offline' })}`;
     session.me.set(cached);
     return mode.get() === 'upgrading' && !url.startsWith('/keep-data') ? '/keep-data' : null;

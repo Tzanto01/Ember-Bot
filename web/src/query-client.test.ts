@@ -1,5 +1,6 @@
 import { focusManager, onlineManager, QueryObserver } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from './lib/problem';
 import { Store } from './lib/store';
 import { clearOnUserChange, createQueryClient } from './query-client';
 
@@ -35,6 +36,18 @@ describe('createQueryClient', () => {
 
     await expect(client.fetchQuery({ queryKey: ['history'], queryFn, retry: false })).rejects.toThrow('offline');
     expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries an unreachable server once and other failures twice', async () => {
+    const client = createQueryClient();
+    const unreachable = vi.fn(() => Promise.reject(new ApiError(0, null)));
+    const failing = vi.fn(() => Promise.reject(new ApiError(500, null)));
+
+    await expect(client.fetchQuery({ queryKey: ['a'], queryFn: unreachable, retryDelay: 0 })).rejects.toBeInstanceOf(ApiError);
+    await expect(client.fetchQuery({ queryKey: ['b'], queryFn: failing, retryDelay: 0 })).rejects.toBeInstanceOf(ApiError);
+
+    expect(unreachable).toHaveBeenCalledTimes(2);
+    expect(failing).toHaveBeenCalledTimes(3);
   });
 
   it('refetches Today, History and Year when the window is focused again, but not other screens', async () => {

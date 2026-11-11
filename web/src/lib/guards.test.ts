@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './problem';
 import type { AuthService } from './auth';
-import { guest, rememberedMe, rememberMe, signedIn } from './guards';
+import { forgetUnreachable, guest, rememberedMe, rememberMe, signedIn, unreachableMs } from './guards';
 import { type Me } from './models';
 import { Store } from './store';
 import { me } from './test-support';
@@ -20,6 +20,8 @@ function fakeSession(load: () => Promise<Me | null>, consentNeeded = false) {
 }
 
 describe('signedIn guard', () => {
+  afterEach(() => forgetUnreachable());
+
   it('sends a signed-out user to /login with the return URL', async () => {
     const session = fakeSession(async () => null);
 
@@ -60,6 +62,7 @@ describe('signedIn guard offline', () => {
   afterEach(() => {
     vi.useRealTimers();
     localStorage.clear();
+    forgetUnreachable();
   });
   const offline = () => Promise.reject(new ApiError(0, null));
 
@@ -71,7 +74,23 @@ describe('signedIn guard offline', () => {
     expect(await signedIn('/today', session)).toBeNull();
     expect(session.me.get()).toEqual(me);
     expect(await signedIn('/today', session)).toBeNull();
+  });
+
+  it('takes the offline path without asking the API again for a while after it was unreachable', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-01T12:00:00Z'), toFake: ['Date'] });
+    const session = fakeSession(offline);
+
+    expect(await signedIn('/today', session)).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+    session.me.set(me);
+    expect(await signedIn('/history', session)).toBeNull();
+    expect(session.loadMe).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(Date.now() + unreachableMs);
+    await signedIn('/today', session);
     expect(session.loadMe).toHaveBeenCalledTimes(2);
+    forgetUnreachable();
+    await signedIn('/today', session);
+    expect(session.loadMe).toHaveBeenCalledTimes(3);
   });
 
   it('keeps the login redirect for a remembered me from another day, after sign-out, and on a server error', async () => {
@@ -81,10 +100,12 @@ describe('signedIn guard offline', () => {
     expect(await signedIn('/today', fakeSession(offline))).toBe('/login?returnUrl=%2Ftoday&reason=offline');
 
     vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    forgetUnreachable();
     expect(await signedIn('/today', fakeSession(() => Promise.reject(new ApiError(500, null))))).toBe(
       '/login?returnUrl=%2Ftoday&reason=offline',
     );
     rememberMe(null);
+    forgetUnreachable();
     expect(await signedIn('/today', fakeSession(offline))).toBe('/login?returnUrl=%2Ftoday&reason=offline');
   });
 

@@ -142,6 +142,26 @@ describe('ApiClient export', () => {
     expect(fileName).toBe('ember-export-2026-11-01.csv');
     expect(await blob.text()).toBe('"a,b"');
   });
+  it('gives the export, the import and the account deletion two minutes instead of the default timeout', async () => {
+    const mock = mockFetch();
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const api = new ApiClient(new Http({ native: false, apiBase: '' }), new OfflineQueue(new DeviceStore()));
+
+    const file = api.exportData('json');
+    (await mock.next('GET', '/api/me/export?format=json')).respond(200, {});
+    await file;
+    const imported = api.importData({});
+    (await mock.next('POST', '/api/me/import')).respond(204);
+    await imported;
+    const deleted = api.deleteAccount({ password: 'synthetic-pw', confirm: 'DELETE' });
+    (await mock.next('POST', '/api/me/delete')).respond(204);
+    await deleted;
+    const habits = api.listHabits();
+    (await mock.next('GET', '/api/habits')).respond(200, []);
+    await habits;
+
+    expect(timeout.mock.calls.map(([ms]) => ms)).toEqual([120000, 120000, 120000, 15000]);
+  });
 });
 
 describe('ApiClient me', () => {
