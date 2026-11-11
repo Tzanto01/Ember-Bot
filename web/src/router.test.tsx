@@ -50,6 +50,16 @@ describe('router guards', () => {
     expect(url(router)).toBe('/today');
   });
 
+  it('sends an unreachable /today to the offline login with a single wait for the API', async () => {
+    const router = await visit('/today');
+
+    (await mock.next('GET', '/api/me')).fail();
+
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(url(router)).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+    expect(mock.all.filter((call) => call.url === '/api/me')).toHaveLength(1);
+  });
+
   it('shows the landing page to a signed-out visitor at /', async () => {
     const router = await visit('/');
 

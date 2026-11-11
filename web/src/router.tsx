@@ -49,13 +49,14 @@ async function requireSignedIn({ request }: LoaderFunctionArgs) {
   return target ? redirect(target) : null;
 }
 
-async function requireGuest() {
+async function requireGuest({ request }: LoaderFunctionArgs) {
+  if (new URL(request.url).searchParams.get('reason') === 'offline') return null;
   const target = await guest();
   return target ? redirect(target) : null;
 }
 
-function landingOrToday() {
-  return env.native ? redirect('/today') : requireGuest();
+function landingOrToday(args: LoaderFunctionArgs) {
+  return env.native ? redirect('/today') : requireGuest(args);
 }
 
 function focusPageHeading(): void {
