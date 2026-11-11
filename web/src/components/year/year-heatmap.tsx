@@ -7,8 +7,8 @@ import { type YearDay, type YearTone, yearWeeks } from './year-data';
 
 const toneClass: Record<YearTone, string> = {
   0: 'border-[1.5px] border-empty',
-  1: 'bg-[color-mix(in_oklch,var(--done)_35%,var(--card))]',
-  2: 'bg-[color-mix(in_oklch,var(--done)_65%,var(--card))]',
+  1: 'bg-heat-1',
+  2: 'bg-heat-2',
   3: 'bg-done',
   lowday: 'bg-lowday shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--lowday-foreground)_35%,transparent)]',
   paused: 'border-[1.5px] border-dashed border-paused',
@@ -115,7 +115,7 @@ export function YearHeatmap({
       <table
         ref={tableRef}
         aria-label="Your last 12 months, one column per week"
-        className="[border-collapse:separate] [border-spacing:3px] pointer-coarse:[border-spacing:4px]"
+        className="[border-collapse:separate] [border-spacing:3px] pointer-coarse:[border-spacing:0]"
       >
         <thead>
           <tr>
@@ -164,8 +164,8 @@ export function YearHeatmap({
                       }}
                       onKeyDown={(e) => move(e, date)}
                       className={cn(
-                        'flex rounded-[3px] focus-visible:outline-offset-1 pointer-coarse:rounded-[6px]',
-                        selected === date && 'outline-2 outline-offset-1 outline-foreground',
+                        'flex rounded-[3px] focus-visible:outline-offset-1 pointer-coarse:rounded-[8px] pointer-coarse:p-[2px] pointer-coarse:focus-visible:-outline-offset-1',
+                        selected === date && 'outline-2 outline-offset-1 outline-foreground pointer-coarse:-outline-offset-1',
                       )}
                     >
                       <YearSwatch
