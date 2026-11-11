@@ -16,6 +16,8 @@ export interface FieldControlProps {
   id: string;
   'aria-describedby'?: string;
   'aria-invalid'?: true;
+  /** Set on fields that aren't marked optional. */
+  'aria-required'?: true;
 }
 
 export interface FormFieldProps {
@@ -38,7 +40,8 @@ export interface FormFieldProps {
 
 /**
  * Labelled form field: Label above, hint under the label, the control, then the error with an info icon in
- * `--destructive`. Wires `id`, `aria-describedby` and `aria-invalid` onto the control.
+ * `--destructive` (announced as an alert). Wires `id`, `aria-describedby`, `aria-invalid` and, unless optional,
+ * `aria-required` onto the control.
  *
  * ```tsx
  * <FormField label="Email" error={errors.email}>
@@ -67,9 +70,10 @@ export function FormField({ label, hint, optional, error, id, className, childre
         id: inputId,
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         ...(error ? { 'aria-invalid': true as const } : {}),
+        ...(optional ? {} : { 'aria-required': true as const }),
       })}
       {error && (
-        <p id={errorId} className="flex items-start gap-2 text-[14px] text-destructive">
+        <p id={errorId} role="alert" className="flex items-start gap-2 text-[14px] text-destructive">
           <Info aria-hidden className="mt-[2px] size-[18px] shrink-0" />
           <span>{error}</span>
         </p>
