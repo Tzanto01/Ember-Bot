@@ -10,7 +10,8 @@ namespace Ember.Bot.Services;
 
 /// <summary>
 /// After any successful interaction, asks a user who already has habits but hasn't agreed to the
-/// health-data consent yet, with an ephemeral follow-up, at most once per local day until they agree.
+/// health-data consent yet, with an ephemeral follow-up, at most once per local day until they agree, and not for
+/// <see cref="HabitService.ConsentDeclineBackoffDays"/> after they decline.
 /// </summary>
 public class ConsentPromptNotifier
 {

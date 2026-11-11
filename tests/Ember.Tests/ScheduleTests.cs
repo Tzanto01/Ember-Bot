@@ -115,4 +115,17 @@ public class ScheduleTests
         MissedDayReflectionJob.IsOpenDaily(habit, Today.AddDays(-1), TimeZoneInfo.Utc).Should().BeFalse();
         MissedDayReflectionJob.IsOpenDaily(habit, Today.AddDays(-2), TimeZoneInfo.Utc).Should().BeTrue();
     }
+
+    [Fact]
+    public void DayStatsOn_CountsAWeeklyHabitOnlyOnADayItWasCheckedIn()
+    {
+        var weekly = HabitFactory.Make(createdAtDaysAgo: 30, null, FrequencyType.Weekly, 3);
+        AddLog(weekly, 1, 1);
+        var daily = HabitFactory.Make();
+        AddLog(daily, 2, 1);
+        var habits = new[] { weekly, daily };
+
+        HabitService.DayStatsOn(habits, Today.AddDays(-1), TimeZoneInfo.Utc).Should().Be(new DayStats(Today.AddDays(-1), 2, 1, 0, true));
+        HabitService.DayStatsOn(habits, Today.AddDays(-2), TimeZoneInfo.Utc).Should().Be(new DayStats(Today.AddDays(-2), 1, 1, 0, true));
+    }
 }

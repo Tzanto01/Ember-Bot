@@ -1,3 +1,5 @@
+using System.Reflection;
+using Discord.Interactions;
 using Ember.Bot.Modules;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -34,5 +36,22 @@ public class HelpModuleTests
 
         embed.Fields.Should().NotContain(f => f.Name == "Legal");
         embed.Fields.Select(f => f.Value).Should().NotContain(v => v.Contains("Privacy policy"));
+    }
+
+    [Fact]
+    public void Help_lists_every_slash_command()
+    {
+        var commands = typeof(HelpModule).Assembly.GetTypes()
+            .SelectMany(t => t.GetMethods().Select(m => (Group: t.GetCustomAttribute<GroupAttribute>()?.Name,
+                Command: m.GetCustomAttribute<SlashCommandAttribute>()?.Name)))
+            .Where(c => c.Command is not null)
+            .Select(c => c.Group is null ? $"/{c.Command}" : $"/{c.Group} {c.Command}")
+            .Where(c => c != "/help")
+            .ToList();
+
+        var text = string.Join("\n", HelpModule.HelpEmbed(Config()).Fields.Select(f => f.Value));
+
+        commands.Should().HaveCountGreaterThan(15);
+        commands.Should().OnlyContain(c => text.Contains($"`{c}`"));
     }
 }

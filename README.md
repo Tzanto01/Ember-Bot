@@ -55,7 +55,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 
 | Command | What it does |
 |---|---|
-| `/export [format: csv\|json]` | Get all your data (settings, every habit, every check-in) as CSV (default) or JSON, sent to your DMs |
+| `/export [format: csv\|json]` | Get your settings, habits, check-ins, low days and routines as CSV (default) or JSON, sent to your DMs. Day notes, moods and account details never go to Discord; the full export is in the web app's Settings |
 | `/privacy delete` | Permanently delete everything Ember stores about you, after a confirmation button |
 
 ### 📋 Other
@@ -63,6 +63,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | Command | What it does |
 |---|---|
 | `/help` | See all commands in one place |
+| `/link` | Open the web app (Sign in with Discord lands in the same account), or link Discord to an email account, which offers to move your habits there |
 
 ---
 
@@ -76,7 +77,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | 📋 **Habit templates** | Pre-built habits to get started in seconds |
 | ⏸️ **Pause** | Take a break without losing your streak |
 | 📅 **Daily or weekly habits** | Track every day, or set a weekly target (1×–6×) |
-| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with ✅ / ❌ / ⏰ buttons: one tap to check in or snooze. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
+| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with **Done**, **Skip for today** and **Snooze 1h** buttons: one tap to check in, skip or snooze. If Discord has a hiccup, Ember tries again up to twice, 5 minutes apart. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
 | 🤔 **Gentle check-in** | If yesterday is still unlogged, a DM invites you to log it or call it a low day. A nudge, not a guilt trip |
 | 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
@@ -90,17 +91,17 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 - **Open days:** today and yesterday are always open. An unlogged open day never counts against a streak; a day only counts as a gap once it has closed. Older days can still be filled in later.
 - **Low days:** pick a day in the 🌙 menu under the history grid (or tap **It was a low day** in the check-in DM). A low day protects all your habits: it neither breaks nor extends a streak, and counts as kept in the 7-day and 30-day views. Pick it again to remove it.
 - **Reminder buttons** work until 10:00 the next morning, or until that day is logged anywhere (bot or web), whichever comes first. Then the buttons go away and the message says `✅ Logged.` or `This reminder has closed.`; an old day can still be filled in with `/habit history` or on the web.
-- **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, and there is never a third.
-- **Consent:** habits and low days can say something about your health, so Ember asks once for your OK before storing them. You can withdraw any time with `/privacy delete`.
+- **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, Skip cancels it, and there is never a third.
+- **Consent:** habit names, check-ins, low days, day notes and moods can say something about your health, so Ember asks for your OK before storing them, and again when the privacy policy changes. After "No thanks" it waits 30 days before asking on its own. You can withdraw any time with `/privacy delete`.
 - **Unconfirmed accounts:** a web signup whose email is never confirmed is deleted after 7 days, unless it has a Discord or other linked login or holds any habits or other data.
 
 ---
 
 ## Self-Hosting
 
-Ember is hosted publicly — you don't need to run your own instance.
+Ember runs as a hosted private preview for now; a public bot invite is planned for launch.
 
-If the bot ever goes offline permanently, the source code is here so you can self-host as a fallback.
+You can also run your own instance from this source code.
 
 The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml`). You need Docker with Compose, a Discord bot application, and a PostgreSQL server that the container reaches as host `postgres` on an existing external Docker network named `homeserver-net` (database `emberdb`). Put a `.env` file (gitignored) next to `docker-compose.yml`:
 

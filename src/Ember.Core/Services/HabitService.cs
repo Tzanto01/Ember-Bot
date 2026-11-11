@@ -17,7 +17,10 @@ public partial class HabitService
     /// Version of the privacy policy the health-data consent refers to. Consent given for an
     /// older version no longer counts, so changing this asks every user again.
     /// </summary>
-    public const string CurrentConsentPolicyVersion = "2026-10";
+    public const string CurrentConsentPolicyVersion = "2026-11";
+
+    /// <summary>Days after a "No thanks" before Ember asks for consent again on its own.</summary>
+    public const int ConsentDeclineBackoffDays = 30;
 
     /// <summary>Most check-ins a daily or weekdays habit can need per day (<see cref="Habit.TimesPerDay"/>).</summary>
     public const int MaxTimesPerDay = 10;
@@ -49,7 +52,8 @@ public partial class HabitService
 
     /// <summary>
     /// For a user who already has habits but no current consent: marks today's consent prompt as shown and
-    /// returns true, at most once per local day. Returns false for everyone else.
+    /// returns true, at most once per local day and not within <see cref="ConsentDeclineBackoffDays"/> of a decline.
+    /// Returns false for everyone else.
     /// </summary>
     public async Task<bool> ClaimConsentPromptAsync(Guid userId)
     {
@@ -57,7 +61,7 @@ public partial class HabitService
         return await _db.Users
             .Where(u => u.Id == userId && u.Habits.Any()
                 && (u.HealthDataConsentAt == null || u.ConsentPolicyVersion != CurrentConsentPolicyVersion)
-                && (u.ConsentPromptedOn == null || u.ConsentPromptedOn != today))
+                && (u.ConsentPromptedOn == null || u.ConsentPromptedOn < today))
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today)) == 1;
     }
 
@@ -69,12 +73,24 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, (DateOnly?)null));
     }
 
-    /// <summary>Notes that the consent prompt was shown today. Never creates a user.</summary>
+    /// <summary>
+    /// Notes a "No thanks" to the consent prompt, so <see cref="ClaimConsentPromptAsync"/> waits <see cref="ConsentDeclineBackoffDays"/>
+    /// before asking again. Never creates a user.
+    /// </summary>
+    public async Task DeclineConsentPromptAsync(Guid userId)
+    {
+        var lastQuietDay = (await GetLocalTodayAsync(userId)).AddDays(ConsentDeclineBackoffDays - 1);
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, lastQuietDay));
+    }
+
+    /// <summary>Notes that the consent prompt was shown today, keeping a later decline back-off. Never creates a user.</summary>
     public async Task MarkConsentPromptedAsync(Guid userId)
     {
         var today = await GetLocalTodayAsync(userId);
         await _db.Users
-            .Where(u => u.Id == userId)
+            .Where(u => u.Id == userId && (u.ConsentPromptedOn == null || u.ConsentPromptedOn < today))
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today));
     }
 
@@ -333,8 +349,9 @@ public partial class HabitService
 
     /// <summary>
     /// One local day across <paramref name="habits"/> (with that day's logs loaded): <c>Scheduled</c> counts the habits expected
-    /// that day (from their <see cref="StartDate"/>, not paused, <see cref="IsScheduledOn"/>; low days don't change it, weekly
-    /// habits count every day), <c>Done</c> and <c>Partial</c> the habits whose log reached each state (offdays included),
+    /// that day (from their <see cref="StartDate"/>, not paused, <see cref="IsScheduledOn"/>; low days don't change it, and a weekly
+    /// habit counts only on a day it has a check-in, since any day can serve its target), <c>Done</c> and <c>Partial</c> the habits
+    /// whose log reached each state (offdays included),
     /// and <c>ShowedUp</c> is true when any habit has a check-in that day.
     /// </summary>
     public static DayStats DayStatsOn(IEnumerable<Habit> habits, DateOnly date, TimeZoneInfo tz)
@@ -343,8 +360,11 @@ public partial class HabitService
         var showedUp = false;
         foreach (var habit in habits)
         {
-            if (date >= StartDate(habit, tz) && !IsPausedOn(habit, date) && IsScheduledOn(habit, date)) scheduled++;
-            if (habit.Logs.FirstOrDefault(l => l.Date == date) is not { } log) continue;
+            var log = habit.Logs.FirstOrDefault(l => l.Date == date);
+            if (date >= StartDate(habit, tz) && !IsPausedOn(habit, date) && IsScheduledOn(habit, date)
+                && (habit.FrequencyType != FrequencyType.Weekly || log is { Completed: true } or { Count: > 0 }))
+                scheduled++;
+            if (log is null) continue;
             if (log.Completed) done++;
             else if (log.Count > 0) partial++;
             showedUp |= log.Completed || log.Count > 0;
@@ -604,11 +624,17 @@ public partial class HabitService
 
     /// <summary>
     /// Delays the habit's next reminder by <see cref="SnoozeDelay"/> and drops its pending second reminder. Returns false when the habit isn't the user's or has no reminder,
-    /// or when the reminder was sent (<paramref name="sentAtUtc"/>) more than <see cref="SnoozeWindow"/> ago, so an old DM can't displace the schedule.
+    /// when the reminder was sent (<paramref name="sentAtUtc"/>) more than <see cref="SnoozeWindow"/> ago, so an old DM can't displace the schedule,
+    /// or when the snoozed reminder would land on a later local day than the one the reminder was sent on.
     /// </summary>
     public async Task<bool> SnoozeReminderAsync(Guid userId, int habitId, DateTimeOffset sentAtUtc)
     {
         if (_time.GetUtcNow() - sentAtUtc > SnoozeWindow) return false;
+
+        var tz = await GetUserTzAsync(userId);
+        if (DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(_time.GetUtcNow() + SnoozeDelay, tz).DateTime)
+            != DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(sentAtUtc, tz).DateTime))
+            return false;
 
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId && h.ReminderTime != null);
@@ -827,23 +853,30 @@ public partial class HabitService
         return rows.Select(r => (r.Id, r.Timezone)).ToList();
     }
 
-    /// <summary>The given users (tracked) with their logins, habits, logs and day marks.</summary>
-    public Task<List<User>> GetUsersWithHabitsAsync(List<Guid> userIds, CancellationToken cancellationToken = default)
-        => _db.Users
-            .Include(u => u.Logins)
-            .Include(u => u.Habits)
-                .ThenInclude(h => h.Logs)
+    /// <summary>
+    /// The given users (tracked) with their logins, habits, logs and day marks; with <paramref name="logsSince"/> only the logs on or
+    /// after that day.
+    /// </summary>
+    public Task<List<User>> GetUsersWithHabitsAsync(List<Guid> userIds, CancellationToken cancellationToken = default,
+        DateOnly? logsSince = null)
+    {
+        IQueryable<User> users = logsSince is { } since
+            ? _db.Users.Include(u => u.Logins).Include(u => u.Habits).ThenInclude(h => h.Logs.Where(l => l.Date >= since))
+            : _db.Users.Include(u => u.Logins).Include(u => u.Habits).ThenInclude(h => h.Logs);
+        return users
             .Include(u => u.DayMarks)
             .AsSplitQuery()
             .Where(u => userIds.Contains(u.Id))
             .ToListAsync(cancellationToken);
+    }
 
-    /// <summary>Ids of habits whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
-    public Task<List<int>> GetDueReminderHabitIdsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
-        => _db.Habits
+    /// <summary>Id and due time of each habit whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
+    public async Task<List<(int Id, DateTime DueAt)>> GetDueReminderHabitsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+        => (await _db.Habits
             .Where(h => h.NextReminderUtc != null && h.NextReminderUtc <= nowUtc)
-            .Select(h => h.Id)
-            .ToListAsync(cancellationToken);
+            .Select(h => new { h.Id, DueAt = h.NextReminderUtc!.Value })
+            .ToListAsync(cancellationToken))
+            .Select(h => (h.Id, h.DueAt)).ToList();
 
     /// <summary>
     /// The habit (tracked) with its routine, its user and the user's logins and push subscriptions, regardless of owner.
@@ -867,9 +900,22 @@ public partial class HabitService
     /// <summary>Saves pending changes to entities loaded through this service.</summary>
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => _db.SaveChangesAsync(cancellationToken);
 
-    /// <summary>Sets the habit's next reminder to <paramref name="untilUtc"/> directly in the database.</summary>
-    public Task DeferReminderAsync(int habitId, DateTime untilUtc, CancellationToken cancellationToken = default)
-        => _db.Habits
+    /// <summary>
+    /// Moves the habit's next reminder directly in the database to the first occurrence of its reminder time after
+    /// <paramref name="nowUtc"/> in the user's timezone, or clears it when the habit has no reminder time.
+    /// </summary>
+    public async Task DeferReminderAsync(int habitId, DateTime nowUtc, CancellationToken cancellationToken = default)
+    {
+        var row = await _db.Habits.Where(h => h.Id == habitId)
+            .Select(h => new { h.ReminderTime, h.User.Timezone })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (row is null) return;
+
+        DateTime? next = row.ReminderTime is { } time
+            ? TimezoneHelper.NextOccurrenceUtc(time, TimezoneHelper.Find(row.Timezone) ?? TimeZoneInfo.Utc, nowUtc)
+            : null;
+        await _db.Habits
             .Where(h => h.Id == habitId)
-            .ExecuteUpdateAsync(s => s.SetProperty(h => h.NextReminderUtc, untilUtc), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(h => h.NextReminderUtc, next), cancellationToken);
+    }
 }

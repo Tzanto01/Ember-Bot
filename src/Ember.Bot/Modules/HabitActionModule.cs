@@ -109,23 +109,6 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             }
             catch { /* DMs disabled */ }
         }
-        else
-        {
-            try
-            {
-                var dm = await Context.User.CreateDMChannelAsync();
-                var dmEmbed = new EmbedBuilder()
-                    .WithColor(0xE8873A)
-                    .WithTitle("New habit started")
-                    .WithDescription(
-                        $"**{habit.Name}** is now being tracked.\n\n" +
-                        "Use </habit checkin:0> whenever you're ready to log it.")
-                    .WithFooter("I'll remind you when it's time.")
-                    .Build();
-                await dm.SendMessageAsync(embed: dmEmbed);
-            }
-            catch { /* DMs disabled */ }
-        }
     }
 
     // ── habitaction:checkin:done:{habitId} ────────────────────────────────────

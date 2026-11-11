@@ -118,10 +118,13 @@ public static class ExportBuilder
     /// <summary>
     /// Builds the export. <see cref="ExportDocument.Account"/> needs <see cref="User.Logins"/> loaded for the Discord ID,
     /// <see cref="ExportDocument.PushSubscriptions"/> needs <see cref="User.PushSubscriptions"/>.
+    /// With <paramref name="forDiscord"/> it holds only what the bot shows (settings, habits, logs, day marks and routines):
+    /// account, push subscriptions, day notes, moods and the journal key are left out.
     /// </summary>
-    public static ExportDocument BuildDocument(User user)
+    public static ExportDocument BuildDocument(User user, bool forDiscord = false)
     {
         var habits = user.Habits.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id).ToList();
+        var full = !forDiscord;
         return new ExportDocument(
             new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.Theme,
                 user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
@@ -137,18 +140,24 @@ public static class ExportBuilder
                 h.Id, l.Date, l.Completed, l.GuildId?.ToString(CultureInfo.InvariantCulture), l.Count))).ToList(),
             user.DayMarks.OrderBy(m => m.Date).ThenBy(m => m.Kind)
                 .Select(m => new DayMarkRecord(m.Date, JsonNamingPolicy.SnakeCaseLower.ConvertName(m.Kind.ToString()))).ToList(),
-            new AccountRecord(user.Email, user.DiscordId() is { } discordId ? DiscordLogin.Key(discordId) : null),
-            user.PushSubscriptions.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
-                .Select(p => new PushSubscriptionRecord(p.Endpoint, DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc))).ToList(),
+            full ? new AccountRecord(user.Email, user.DiscordId() is { } discordId ? DiscordLogin.Key(discordId) : null) : null,
+            full
+                ? user.PushSubscriptions.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
+                    .Select(p => new PushSubscriptionRecord(p.Endpoint, DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc))).ToList()
+                : null,
             user.Routines.OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).Select(r => new RoutineRecord(
                 r.Id, r.Name, r.ReminderTime, AsUtc(r.NextReminderUtc), HabitService.ReminderChannelNames(r.ReminderChannels),
                 DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc))).ToList(),
-            user.DayNotes.OrderBy(n => n.Date).Select(n => new DayNoteRecord(
-                n.Date, n.Text, n.Mood, Encrypted(n.CipherVersion, n.CipherIv, n.CipherText))).ToList(),
-            user.Moods.OrderBy(m => m.Id).Select(m => new MoodRecord(
-                m.Id, m.Label, m.Emoji, m.Archived, Encrypted(m.CipherVersion, m.CipherIv, m.CipherText),
-                DateTime.SpecifyKind(m.CreatedAt, DateTimeKind.Utc))).ToList(),
-            user.JournalKey is { } k
+            full
+                ? user.DayNotes.OrderBy(n => n.Date).Select(n => new DayNoteRecord(
+                    n.Date, n.Text, n.Mood, Encrypted(n.CipherVersion, n.CipherIv, n.CipherText))).ToList()
+                : null,
+            full
+                ? user.Moods.OrderBy(m => m.Id).Select(m => new MoodRecord(
+                    m.Id, m.Label, m.Emoji, m.Archived, Encrypted(m.CipherVersion, m.CipherIv, m.CipherText),
+                    DateTime.SpecifyKind(m.CreatedAt, DateTimeKind.Utc))).ToList()
+                : null,
+            full && user.JournalKey is { } k
                 ? new JournalKeyRecord(k.Version, k.TurningOff,
                     new PassphraseWrapRecord(k.PassphraseSalt, k.PassphraseIterations, k.PassphraseIv, k.PassphraseWrapped),
                     new RecoveryWrapRecord(k.RecoverySalt, k.RecoveryIv, k.RecoveryWrapped))
@@ -158,7 +167,8 @@ public static class ExportBuilder
     private static EncryptedRecord? Encrypted(int? version, string? iv, string? ct)
         => version is { } v ? new EncryptedRecord(v, iv ?? "", ct ?? "") : null;
 
-    public static string BuildJson(User user) => JsonSerializer.Serialize(BuildDocument(user), JsonOptions);
+    /// <summary>The export as JSON; see <see cref="BuildDocument"/> for <paramref name="forDiscord"/>.</summary>
+    public static string BuildJson(User user, bool forDiscord = false) => JsonSerializer.Serialize(BuildDocument(user, forDiscord), JsonOptions);
 
     /// <summary>
     /// One CSV file with <see cref="CsvHeader"/> columns: a <c>settings</c> row, one <c>habit</c> row per habit,
@@ -166,11 +176,11 @@ public static class ExportBuilder
     /// one <c>routine</c> row per routine, one <c>day_note</c> row per journal entry, one <c>mood</c> row per own mood and a
     /// <c>journal_key</c> row when the private journal is on (reminder channels are joined with <c>;</c>); columns that don't apply to a record type are empty.
     /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them, except the base64
-    /// cipher and journal key columns, which are written verbatim.
+    /// cipher and journal key columns, which are written verbatim. See <see cref="BuildDocument"/> for <paramref name="forDiscord"/>.
     /// </summary>
-    public static string BuildCsv(User user)
+    public static string BuildCsv(User user, bool forDiscord = false)
     {
-        var doc = BuildDocument(user);
+        var doc = BuildDocument(user, forDiscord);
         var csv = new StringBuilder();
         csv.Append(CsvHeader).Append("\r\n");
 

@@ -13,6 +13,9 @@ namespace Ember.Bot.Services;
 /// </summary>
 public class DiscordDmReminderChannel : IReminderChannel
 {
+    /// <summary>Label of the reminder's Skip button; calm, with no red mark.</summary>
+    public const string SkipLabel = "Skip for today";
+
     /// <summary>Subtext added to a closed reminder whose habits are done for its day.</summary>
     public const string LoggedLine = "-# ✅ Logged.";
 
@@ -65,7 +68,7 @@ public class DiscordDmReminderChannel : IReminderChannel
         var now = _time.GetUtcNow().ToUnixTimeSeconds();
         var components = new ComponentBuilder()
             .WithButton("Done ✅", $"checkin:done:{reminder.HabitId}:{now}", ButtonStyle.Success)
-            .WithButton("Skip ❌", $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
+            .WithButton(SkipLabel, $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .WithButton("Snooze 1h ⏰", $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .Build();
 

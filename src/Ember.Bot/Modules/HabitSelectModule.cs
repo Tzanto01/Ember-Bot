@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Discord.Net;
 using Discord.WebSocket;
 using Ember.Core.Models;
 using Ember.Core.Services;
@@ -31,7 +32,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
 
         var components = new ComponentBuilder()
             .WithButton("✅ Done!", $"habitaction:checkin:done:{habitId}", ButtonStyle.Success)
-            .WithButton("❌ Skipped today", $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
+            .WithButton(Ember.Bot.Services.DiscordDmReminderChannel.SkipLabel, $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
             .Build();
 
         var progress = habit.TimesPerDay > 1
@@ -61,14 +62,23 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id));
         var component = (SocketMessageComponent)Context.Interaction;
 
-        // Acknowledge the component interaction first, then post publicly.
-        await component.UpdateAsync(m =>
+        await component.DeferAsync();
+        string reply;
+        try
         {
-            m.Content    = "Streak card posted! 🔥";
+            await component.FollowupAsync(embed: embed);
+            reply = "Streak card posted! 🔥";
+        }
+        catch (HttpException)
+        {
+            reply = "I couldn't post the card here. 💙 Try again in a moment, or in another channel.";
+        }
+
+        await component.ModifyOriginalResponseAsync(m =>
+        {
+            m.Content    = reply;
             m.Components = new ComponentBuilder().Build();
         });
-
-        await Context.Channel.SendMessageAsync(embed: embed);
     }
 
     // ── habit:select:delete ───────────────────────────────────────────────────

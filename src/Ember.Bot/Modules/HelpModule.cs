@@ -34,7 +34,8 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("Getting started",
                 "`/habit add` — create a new habit\n" +
                 "`/habit template` — pick from pre-built habits\n" +
-                "`/timezone set` — set your local timezone (needed for reminders)",
+                "`/timezone set` — set your local timezone (needed for reminders)\n" +
+                "`/timezone show` — see which timezone Ember uses for you",
                 inline: false)
             .AddField("Daily use",
                 "`/habit checkin` — log today's check-in\n" +
@@ -47,13 +48,17 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 "`/habit delete` — remove a habit\n" +
                 "`/habit pause` — pause temporarily (streak protected)\n" +
                 "`/habit frequency` — daily, weekly or set weekdays, and times per day\n" +
-                "`/habit grace` — set how many flex days you get per week",
+                "`/habit grace` — set how many flex days you get per week\n" +
+                "`/habit second-reminder` — get one more nudge if you haven't checked in yet",
                 inline: false)
             .AddField("Share",
                 "`/habit share` — post a streak card in this channel",
                 inline: false)
+            .AddField("Web app",
+                "`/link` — use Ember in your browser, or add Discord to an email account",
+                inline: false)
             .AddField("Privacy",
-                "`/export` — get all your Ember data by DM\n" +
+                "`/export` — get your habits, check-ins and settings by DM\n" +
                 "`/privacy delete` — permanently delete all your Ember data",
                 inline: false)
             .WithFooter("Progress over perfection. Every check-in counts.");

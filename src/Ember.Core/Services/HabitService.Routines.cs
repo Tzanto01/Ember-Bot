@@ -104,12 +104,13 @@ public partial class HabitService
             .Where(r => r.Id == routineId && r.UserId == userId)
             .ExecuteDeleteAsync() == 1;
 
-    /// <summary>Ids of routines whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
-    public Task<List<int>> GetDueReminderRoutineIdsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
-        => _db.Routines
+    /// <summary>Id and due time of each routine whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
+    public async Task<List<(int Id, DateTime DueAt)>> GetDueReminderRoutinesAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+        => (await _db.Routines
             .Where(r => r.NextReminderUtc != null && r.NextReminderUtc <= nowUtc)
-            .Select(r => r.Id)
-            .ToListAsync(cancellationToken);
+            .Select(r => new { r.Id, DueAt = r.NextReminderUtc!.Value })
+            .ToListAsync(cancellationToken))
+            .Select(r => (r.Id, r.DueAt)).ToList();
 
     /// <summary>
     /// The routine (tracked) with its member habits and their logs of the last two UTC days onward (enough for any local today),
@@ -126,11 +127,24 @@ public partial class HabitService
             .FirstOrDefaultAsync(r => r.Id == routineId, cancellationToken);
     }
 
-    /// <summary>Sets the routine's next reminder to <paramref name="untilUtc"/> directly in the database.</summary>
-    public Task DeferRoutineReminderAsync(int routineId, DateTime untilUtc, CancellationToken cancellationToken = default)
-        => _db.Routines
+    /// <summary>
+    /// Moves the routine's next reminder directly in the database to the first occurrence of its reminder time after
+    /// <paramref name="nowUtc"/> in the user's timezone, or clears it when the routine has no reminder time.
+    /// </summary>
+    public async Task DeferRoutineReminderAsync(int routineId, DateTime nowUtc, CancellationToken cancellationToken = default)
+    {
+        var row = await _db.Routines.Where(r => r.Id == routineId)
+            .Select(r => new { r.ReminderTime, r.User.Timezone })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (row is null) return;
+
+        DateTime? next = row.ReminderTime is { } time
+            ? TimezoneHelper.NextOccurrenceUtc(time, TimezoneHelper.Find(row.Timezone) ?? TimeZoneInfo.Utc, nowUtc)
+            : null;
+        await _db.Routines
             .Where(r => r.Id == routineId)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.NextReminderUtc, untilUtc), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.NextReminderUtc, next), cancellationToken);
+    }
 
     /// <summary>
     /// Makes <paramref name="habitIds"/> the routine's members in that order. Members of a tracked routine must be loaded.

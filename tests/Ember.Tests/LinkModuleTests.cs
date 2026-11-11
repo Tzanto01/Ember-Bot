@@ -22,4 +22,13 @@ public class LinkModuleTests
     {
         LinkModule.ReplyText(Config()).Should().Be(LinkModule.NotAvailableText);
     }
+
+    [Fact]
+    public void Reply_says_signing_in_with_Discord_opens_the_same_habits()
+    {
+        var reply = LinkModule.ReplyText(Config(("Ember:WebOrigin", "https://ember.example")));
+
+        reply.Should().Contain("Open https://ember.example and choose **Sign in with Discord**")
+            .And.Contain("already in the Ember web app");
+    }
 }

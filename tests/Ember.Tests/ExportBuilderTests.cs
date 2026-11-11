@@ -271,4 +271,22 @@ public class ExportBuilderTests
         rows.Should().ContainSingle(r => r["record_type"] == "day_note" && r["cipher_text"] == "+3Q=");
         rows.Should().ContainSingle(r => r["record_type"] == "journal_key" && r["recovery_wrapped"] == "-nc=");
     }
+
+    [Fact]
+    public void DiscordExport_LeavesOutJournalMoodsKeyEmailPushAndLogins()
+    {
+        var user = UserWithV17Data();
+        user.Email = "someone@example.com";
+        user.PushSubscriptions.Add(new PushSubscription { Id = 1, Endpoint = "https://push.example/abc", CreatedAt = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc) });
+
+        var rows = Rows(ExportBuilder.BuildCsv(user, forDiscord: true));
+        using var json = JsonDocument.Parse(ExportBuilder.BuildJson(user, forDiscord: true));
+
+        rows.Select(r => r["record_type"]).Distinct().Should().BeEquivalentTo(["settings", "habit", "log", "day_mark", "routine"]);
+        rows.Should().OnlyContain(r => r["email"] == "" && r["discord_id"] == "");
+        foreach (var key in new[] { "account", "push_subscriptions", "day_notes", "moods", "journal_key" })
+            json.RootElement.GetProperty(key).ValueKind.Should().Be(JsonValueKind.Null, key);
+        json.RootElement.GetProperty("routines").GetArrayLength().Should().Be(1);
+        json.RootElement.GetProperty("logs").GetArrayLength().Should().Be(2);
+    }
 }

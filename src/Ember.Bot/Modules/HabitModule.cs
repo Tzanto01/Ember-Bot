@@ -18,16 +18,12 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         _config = config;
     }
 
-    internal async Task<string> FormatReminderAsync(ulong userId, TimeOnly? localTime)
-    {
-        if (!localTime.HasValue) return "None set";
-        var tz    = await _habits.GetUserTzAsync(userId);
-        var utc   = TimezoneHelper.ToUtc(localTime.Value, tz);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var utcDt = DateTime.SpecifyKind(today.ToDateTime(utc), DateTimeKind.Utc);
-        var unix  = new DateTimeOffset(utcDt).ToUnixTimeSeconds();
-        return $"<t:{unix}:t>";
-    }
+    /// <summary>The reminder time as set, in the user's Ember timezone (not the viewer's device timezone).</summary>
+    internal static string FormatReminder(TimeOnly? localTime)
+        => localTime is { } time ? $"{time:HH\\:mm} your time" : "None set";
+
+    /// <summary>"Streak: **1** day" or "Streak: **n** days".</summary>
+    internal static string StreakText(int streak) => $"Streak: **{streak}** {(streak == 1 ? "day" : "days")}";
 
     internal static string FrequencyLabel(Habit h)
     {
@@ -80,7 +76,9 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
         foreach (var h in habits.Take(25))
         {
-            var label = h.Name.Length > 25 ? h.Name[..25] : h.Name;
+            var label = h.Name.Length > SelectMenuOptionBuilder.MaxSelectLabelLength
+                ? h.Name[..SelectMenuOptionBuilder.MaxSelectLabelLength]
+                : h.Name;
             menu.AddOption(label, h.Id.ToString(), FrequencyLabel(h));
         }
 
@@ -176,7 +174,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             foreach (var h in slice)
             {
                 var todayMark    = DayMark(h, today);
-                var reminderStr  = await FormatReminderAsync(Context.User.Id, h.ReminderTime);
+                var reminderStr  = FormatReminder(h.ReminderTime);
                 var pauseStr     = h.PausedUntil.HasValue && h.PausedUntil >= today
                     ? $" · ⏸️ paused until {h.PausedUntil:MMM d}" : "";
 
@@ -190,7 +188,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 {
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
                     var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
+                    progressStr = $"{StreakText(streak)}{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
                 }
 
                 embed.AddField(
@@ -293,7 +291,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
                     statsText =
-                        $"Streak: **{streak}** days{graceStr}\n" +
+                        $"{StreakText(streak)}{graceStr}\n" +
                         $"Last 7: **{last7}/7** · Last 30: **{last30}/30**\n" +
                         $"Best: **{best}** · Total: **{total}**";
                 }
