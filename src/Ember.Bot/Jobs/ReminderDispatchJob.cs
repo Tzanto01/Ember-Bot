@@ -20,8 +20,8 @@ namespace Ember.Bot.Jobs;
 /// the member habits still pending or partial on the user's local day, and advanced without sending when there are none.
 /// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
 /// reminders pause (still advanced, not sent) until they confirm Ember can reach them again.
-/// A reminder that no channel delivered because a send failed transiently (timeout, 5xx, 429, network), or whose processing threw,
-/// stays due and is retried up to <see cref="ReminderRetries.MaxAttempts"/> attempts in all, <see cref="ReminderRetries.Spacing"/> apart;
+/// A reminder that no channel delivered because a send failed transiently (timeout, 5xx, 429, network), or a first or routine
+/// reminder whose processing threw, stays due and is retried up to <see cref="ReminderRetries.MaxAttempts"/> attempts in all, <see cref="ReminderRetries.Spacing"/> apart;
 /// after that it moves to its next reminder time and, for a Discord send, counts once towards the DM pause.
 /// A delivered regular (not snoozed) reminder schedules one second reminder <see cref="User.SecondReminderMinutes"/> later when that
 /// is on and falls on the same local day; it is sent like the first only if the day is still open then, and never followed by another.
