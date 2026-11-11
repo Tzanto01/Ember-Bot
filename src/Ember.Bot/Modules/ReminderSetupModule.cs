@@ -70,6 +70,7 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:preset:*:*:*")]
     public async Task OnPresetReminderAsync(string habitIdStr, string hour, string minute)
     {
+        var replaced = int.TryParse(habitIdStr, out var id) ? (await _habits.GetHabitAsync(Context.User.Id, id))?.ReminderTimes.ToList() ?? [] : [];
         var habit = await SetPresetReminderAsync(_habits, Context.User.Id, habitIdStr, $"{hour}:{minute}");
         if (habit is null)
         {
@@ -80,7 +81,7 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this.";
+                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this." + ReplacedText(replaced);
                 m.Embed = null;
                 m.Components = new ComponentBuilder().Build();
             });
@@ -94,12 +95,18 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             ? $"\nThis replaces your earlier reminders at {HabitModule.FormatTimes(replaced)}. To get several reminders a day, set the times in the Ember web app."
             : "";
 
-    /// <summary>"every day", or "on Mon, Wed" for a habit on set weekdays (weekly habits get a reminder every day).</summary>
+    /// <summary>
+    /// "every day", "on Mon, Wed" for a habit on set weekdays, or for a weekly habit the days without a check-in until the
+    /// week's target is met.
+    /// </summary>
     internal static string ScheduleText(Habit habit)
-        => habit.FrequencyType == FrequencyType.Weekdays
-            ? "on " + string.Join(", ", ScheduleDayNames.ToNames(habit.Days.GetValueOrDefault())
-                .Select(n => char.ToUpperInvariant(n[0]) + n[1..]))
-            : "every day";
+        => habit.FrequencyType switch
+        {
+            FrequencyType.Weekdays => "on " + string.Join(", ", ScheduleDayNames.ToNames(habit.Days.GetValueOrDefault())
+                .Select(n => char.ToUpperInvariant(n[0]) + n[1..])),
+            FrequencyType.Weekly => $"on days you haven't checked in yet, until you've done it {habit.WeeklyTarget ?? 3} time{(habit.WeeklyTarget == 1 ? "" : "s")} this week,",
+            _ => "every day",
+        };
 
     /// <summary>A reminder time typed as 24-hour (<c>21:30</c>, <c>9:05</c>) or 12-hour (<c>9pm</c>, <c>9:30 PM</c>) clock time.</summary>
     internal static bool TryParseTime(string input, out TimeOnly time)

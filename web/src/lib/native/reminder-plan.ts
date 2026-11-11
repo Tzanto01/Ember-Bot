@@ -167,7 +167,9 @@ export function planReminders(
       const date = addDays(today, offset);
       if (!scheduledOn(habit, date) || doneToday(habit, date) || weekMet(habit, date)) continue;
       const instants = times.map((time) => zonedToUtc(date, time, timeZone));
-      times.forEach((time, i) => plan({ habitId: habit.id, date, time, at: instants[i] }, instants[i + 1]));
+      times.forEach((time, i) => {
+        if (i === 0 || +instants[i] !== +instants[i - 1]) plan({ habitId: habit.id, date, time, at: instants[i] }, instants[i + 1]);
+      });
     }
   }
   for (const routine of routines) {
