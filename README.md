@@ -96,7 +96,7 @@ You use it through menus and buttons. Commands take no parameters, so there is n
 
 ## Self-hosting
 
-Ember currently runs as a hosted private preview. A public bot invite is planned for launch.
+Ember is in public beta at [beta.ember-glow.app](https://beta.ember-glow.app). The [download page](https://beta.ember-glow.app/download) has the Android app and the invite link for the Discord bot.
 
 You can also run your own instance from this source code.
 
