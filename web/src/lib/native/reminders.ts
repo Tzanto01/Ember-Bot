@@ -14,7 +14,7 @@ import { capacitorWidget, type EmberWidgetPlugin, widgetSnapshot } from './widge
 export const reminderBody = 'A gentle nudge from Ember';
 /** Body of the second reminder (contract v1.8). */
 export const secondReminderBody = 'One more nudge, in case the first one got buried.';
-/** The notification action type carrying the "Done" button (single-habit reminders, names on). */
+/** The notification action type carrying the "Done" button (single-habit reminders, with or without names). */
 export const doneActionType = 'ember-done';
 /** The `actionId` of the "Done" button. */
 export const doneAction = 'done';
@@ -250,7 +250,7 @@ export class Reminders {
         body: reminder.second ? secondReminderBody : reminderBody,
         channelId,
         iconColor,
-        actionTypeId: named && reminder.habitId !== undefined ? doneActionType : undefined,
+        actionTypeId: reminder.habitId !== undefined ? doneActionType : undefined,
         extra:
           reminder.habitId !== undefined
             ? { userId, habitId: reminder.habitId, date: reminder.date }

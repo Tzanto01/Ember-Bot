@@ -76,14 +76,24 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
 
     public Task EndAsync(Guid id) => EndManyAsync([id]);
 
-    /// <summary>Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>.</summary>
+    /// <summary>
+    /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, and deletes the user's unused
+    /// reminder "Done" tokens, so a notification already delivered to another device can't log anything.
+    /// </summary>
     public async Task EndAllAsync(Guid userId, Guid? keep = null)
-        => await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync());
+    {
+        await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync());
+        await db.ReminderActionTokens.Where(t => t.UserId == userId && t.UsedUtc == null).ExecuteDeleteAsync();
+    }
 
-    /// <summary>Deletes the sessions and marks them ended for <see cref="CacheFor"/>, so a lookup already past its read drops them.</summary>
+    /// <summary>
+    /// Deletes the sessions and the push subscriptions they registered, and marks the sessions ended for <see cref="CacheFor"/>,
+    /// so a lookup already past its read drops them.
+    /// </summary>
     private async Task EndManyAsync(List<Guid> ids)
     {
         if (ids.Count == 0) return;
+        await db.PushSubscriptions.Where(s => s.SessionId != null && ids.Contains(s.SessionId.Value)).ExecuteDeleteAsync();
         await db.AuthSessions.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
         foreach (var id in ids)
         {

@@ -22,6 +22,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<JournalKey> JournalKeys => Set<JournalKey>();
     public DbSet<ReminderMessage> ReminderMessages => Set<ReminderMessage>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
+    public DbSet<ReminderActionToken> ReminderActionTokens => Set<ReminderActionToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,6 +158,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.Property(s => s.Auth).HasMaxLength(64).IsRequired();
             entity.HasIndex(s => s.Endpoint).IsUnique();
             entity.HasIndex(s => s.UserId);
+            entity.HasIndex(s => s.SessionId);
             entity.HasOne(s => s.User)
                   .WithMany(u => u.PushSubscriptions)
                   .HasForeignKey(s => s.UserId)
@@ -172,6 +174,22 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasOne<User>()
                   .WithMany()
                   .HasForeignKey(s => s.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReminderActionToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.TokenHash).HasMaxLength(32).IsRequired();
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => t.ExpiresUtc);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(t => t.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Habit>()
+                  .WithMany()
+                  .HasForeignKey(t => t.HabitId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

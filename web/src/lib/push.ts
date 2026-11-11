@@ -124,11 +124,15 @@ export class PushService {
   }
 
   /**
-   * Logout: removes this device's subscription on the server (a failure is ignored), then in the browser.
-   * Never throws.
+   * Logout: closes the reminders still showing (so the next person can't tap their "Done"), then removes this device's
+   * subscription on the server (a failure is ignored) and in the browser. Never throws.
    */
   async release(): Promise<void> {
-    const subscription = await this.current(await this.manager());
+    const registration = await this.registration().catch(() => null);
+    try {
+      for (const notification of (await registration?.getNotifications()) ?? []) notification.close();
+    } catch {}
+    const subscription = await this.current(registration?.pushManager ?? null);
     if (!subscription) return;
     await this.api.removePushSubscription(subscription.endpoint).catch(() => undefined);
     await this.forget(subscription);

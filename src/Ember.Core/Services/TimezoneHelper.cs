@@ -61,7 +61,11 @@ public static class TimezoneHelper
         }
     }
 
-    private static DateTime LocalToUtc(DateTime local, TimeZoneInfo tz)
+    /// <summary>
+    /// The UTC instant at which the wall clock in <paramref name="tz"/> shows <paramref name="local"/>. A time inside a
+    /// spring-forward gap moves to the first valid local time after the gap; an ambiguous fall-back time uses its first occurrence.
+    /// </summary>
+    internal static DateTime LocalToUtc(DateTime local, TimeZoneInfo tz)
     {
         local = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
         while (tz.IsInvalidTime(local))

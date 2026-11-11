@@ -14,8 +14,7 @@ export function ReminderNamesSetting() {
         <Label htmlFor={id}>Show habit names in reminders</Label>
         <p id={`${id}-hint`} className="text-[14px] text-muted-foreground">
           Reminders can show on your lock screen, so by default they only say "Ember". With names
-          on, they say which habit or routine is due, and a reminder for a single habit gets a
-          "Done" button.
+          on, they say which habit or routine is due.
         </p>
       </div>
       <Switch

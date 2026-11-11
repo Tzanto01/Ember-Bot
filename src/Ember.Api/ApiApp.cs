@@ -184,6 +184,7 @@ public static class ApiApp
 
         api.MapHabitTemplates();
         api.MapPush();
+        api.MapReminders();
 
         mapExtra?.Invoke(app);
 

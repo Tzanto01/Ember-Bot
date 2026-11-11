@@ -154,12 +154,13 @@ describe('Reminders', () => {
     expect(new Set(notifications.map((n) => n.iconColor))).toEqual(new Set(['#7DD5D8']));
   });
 
-  it('names no habit and offers no action while "Show habit names" is off', async () => {
+  it('names no habit but still offers Done for that habit and day while "Show habit names" is off', async () => {
     const [first] = await rebuildOnline([reminded]);
 
-    expect(first).toMatchObject({ title: 'Ember', body: reminderBody });
-    expect(first.actionTypeId).toBeUndefined();
+    expect(first).toMatchObject({ title: 'Ember', body: reminderBody, actionTypeId: doneActionType });
     expect(first.extra).toEqual({ userId: 'u1', habitId: 1, date: '2026-11-01' });
+    expect(JSON.stringify(first)).not.toContain('Walk');
+    expect(reminders.wasIssued(first.id, first.extra)).toBe(true);
   });
 
   it('names the habit with a Done action, and the routine without one, while "Show habit names" is on', async () => {
@@ -268,12 +269,6 @@ describe('Reminders', () => {
 
     expect(schedule.mock.calls[0][0].notifications[0].extra).toMatchObject({ routineId: 4 });
     expect((await device.habits('u1'))?.routines).toEqual([routine]);
-  });
-
-  it('issues no "Done" while names are off', async () => {
-    const [first] = await rebuildOnline([reminded]);
-
-    expect(reminders.wasIssued(first.id, first.extra)).toBe(false);
   });
 
   it('offline, plans the cached routines too', async () => {

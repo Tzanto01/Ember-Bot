@@ -1,4 +1,6 @@
-# Ember API contract v1.9
+# Ember API contract v1.10
+
+v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord"): one-tap Done on single-habit web push reminders through a one-time token (`POST /api/reminders/done`); push subscriptions follow their sign-in session. See "Reminder Done v1.10".
 
 v1.9 (2026-11-11, Nico: "Android Discord sign-in"): the Android app signs in with Discord through the system browser, PKCE and a one-time code (`POST /api/auth/discord/native/token`). See "Native Discord sign-in".
 
@@ -37,6 +39,7 @@ Shared interface between `src/Ember.Api` (producer, team `api`) and `web/` (cons
 | 404 | `not_found` | Missing, or belongs to another user (never reveal which) |
 | 409 | `habit_limit` | 25 habits already |
 | 409 | `conflict` | Linking, unlinking or merge not allowed; `detail` is a short user-facing reason |
+| 410 | `expired` | A reminder action token that can no longer be used (v1.10) |
 | 422 | `before_habit_start` / `in_future` | Day outside the editable range |
 | 429 | `rate_limited` | Too many attempts; `Retry-After` header set |
 | 500 | `internal` | No detail leaks |
@@ -354,3 +357,36 @@ v1.8 (2026-11-10, Nico): old reminder buttons disappear once they can no longer 
 - Export: `settings.second_reminder_minutes`; import accepts it (missing → 0, invalid → 400 `validation`). The CSV export gets the matching column.
 - Native app: schedules a second local notification `secondReminderMinutes` after each planned reminder, for the same habit or routine and date, same title and "Done" action, body `One more nudge, in case the first one got buried.`, dropped when it would fall on another local day. Both go away together when the day is checked in (the plan already drops done days). No-account mode keeps the setting on the device, with the same choices, and uses it for these local notifications only.
 - Web and app Settings: a "Second reminder" control (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) in the reminder area, explained in one gentle line: `If you haven't checked in yet, Ember nudges you once more.`
+
+## Reminder Done v1.10
+
+v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord", including on Android with habit names hidden): a single-habit reminder can be checked off from the notification on web push and in the native app, while the notification still names no habit.
+
+### Web push payload
+
+- A single-habit reminder (first or second, not a routine) adds a "Done" action and a one-time token; the rest of the payload is unchanged and the title stays `Ember`:
+  `{ "notification": { "title": "Ember", "body": "<text>", "actions": [{ "action": "done", "title": "Done ✅" }], "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } }, "doneToken": "<token>" } } }`. A routine reminder has neither `actions` nor `doneToken`.
+- The service worker shows the action. Tapping the notification itself still opens `/today`. Tapping "Done" posts `{ token }` to `POST /api/reminders/done` without cookies and without opening the app; on 204 it shows a notification titled `Ember` with the body `Logged. Nice work. ✅` (no habit name); on any other answer or a network failure it opens `/today`.
+
+### Tokens
+
+- The bot creates one random 256-bit token (base64url, 43 characters) per sent reminder, shared by the user's push subscriptions. The database stores only its SHA-256 hash, with the user, habit and the reminder's local day; a lookup is by hash. Tokens are never logged.
+- Only push subscriptions registered by a sign-in session that is still live (not ended, not expired) get the token; any other subscription (saved before v1.10, or its session expired) gets the plain nudge without "Done".
+- A token expires when the reminder's Discord buttons would (10:00 local time on the day after the reminder's day, `ReminderDispatchJob.IsExpired`), works once, and is deleted with the user or habit. An account merge moves them with the habits. Expired tokens are purged by the daily account cleanup job. Not part of the export.
+
+### Push subscriptions follow their session
+
+- `POST /api/me/push-subscriptions` records the caller's session with the subscription (re-registering updates it).
+- Ending a session server-side (logout, logout everywhere, a password reset, a security change that signs out the other devices, account delete, merge, signing in again over an existing session, the 50-session cap) deletes the push subscriptions that session registered, whether or not the client unsubscribed. Logout everywhere, a password reset and every other "end all sessions" also delete the account's unused Done tokens.
+- On logout the web app closes the Ember notifications still showing before it unsubscribes.
+
+### `POST /api/reminders/done`
+
+- Anonymous, antiforgery-exempt (the token is its own secret), rate-limited per client IP like the credential endpoints. Body `{ "token": "<token>" }`.
+- Applies the same rule as the Discord "Done" button: adds one check-in to that habit on the token's day (capped at `timesPerDay`), with the usual day rules and the health-data consent.
+- 204: logged now, or the token was already used (nothing is added again). A write that doesn't land (rejected or failed) leaves the token unused. 404 `not_found`: unknown, missing or malformed token, or its habit is gone. 410 `expired`: the token expired or its day can't be logged (for example before the habit's start). 403 `consent_required`: no current consent; nothing is written and the token stays usable.
+
+### Native app
+
+- Replaces the v1.6 rule that only named reminders get "Done": every single-habit local notification has the "Done" action, whether or not "Show habit names in reminders" is on; with names off the title stays `Ember` and the body generic. Routine reminders still have none.
+- Android opens the app for a notification action (Capacitor 8 LocalNotifications starts an activity for every action), so "Done" adds one to that habit for the notification's `date` as before, then lands on Today with the short confirmation.

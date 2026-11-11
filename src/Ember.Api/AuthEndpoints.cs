@@ -25,7 +25,7 @@ internal static class AuthEndpoints
     private static readonly PathString[] AntiforgeryExempt =
     [
         Register, "/api/auth/login", "/api/auth/refresh", "/api/auth/resendConfirmationEmail",
-        ForgotPassword, ResetPassword, ConfirmEmail, "/api/auth/discord/2fa",
+        ForgotPassword, ResetPassword, ConfirmEmail, "/api/auth/discord/2fa", ReminderEndpoints.DonePath,
         "/api/auth/discord/native/token",
     ];
 

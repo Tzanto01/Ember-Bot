@@ -38,7 +38,8 @@ internal static class PushEndpoints
                 errors["keys.auth"] = [$"Must be base64url, at most {MaxAuthLength} characters."];
             if (errors.Count > 0) return Problems.Validation(errors);
 
-            await habits.SavePushSubscriptionAsync(principal.UserId(), request.Endpoint!, request.Keys!.P256dh!, request.Keys.Auth!);
+            await habits.SavePushSubscriptionAsync(principal.UserId(), request.Endpoint!, request.Keys!.P256dh!, request.Keys.Auth!,
+                AuthSessions.IdOf(principal));
             return Results.NoContent();
         }).RequireAuthorization();
 
