@@ -34,8 +34,8 @@ internal static class MergeEndpoints
             if (!await habits.HasHealthDataConsentAsync(user.Id)) return Problems.ConsentRequired();
             if (PendingMerge.Read(http, user) is not { } pending) return Problems.NotFound();
 
-            await sessions.EndAllAsync(pending.SourceUserId);
-            switch (await habits.MergeBotOnlyAccountAsync(user.Id, pending.SourceUserId, pending.DiscordId))
+            await sessions.EndSessionsAsync(pending.SourceUserId);
+            switch (await habits.MergeBotOnlyAccountAsync(user.Id, pending.SourceUserId, pending.DiscordId, AuthSessions.IdOf(http.User)))
             {
                 case AccountMergeResult.Conflict:
                     return Problems.Conflict("This Discord account can no longer be merged into yours.");

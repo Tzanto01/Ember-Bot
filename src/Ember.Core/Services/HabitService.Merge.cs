@@ -31,7 +31,7 @@ public partial class HabitService
     /// In one transaction, after locking both user rows and re-checking that the source is still a bot-only account
     /// owning the Discord login and the target still has no Discord login: moves the source's habits (with their logs),
     /// routines, day marks (one per day and kind when both have it), journal entries (the target's wins on a date both have),
-    /// own moods, journal key, push subscriptions and Discord login to the target, deletes the source and gives
+    /// own moods, journal key, push subscriptions (a subscription without a session joins <paramref name="sessionId"/>) and Discord login to the target, deletes the source and gives
     /// the target a new security stamp. A plaintext source mood whose trimmed label matches a plaintext target mood
     /// (ignoring case) is combined into it: the source's entries pointing at it point at the target's mood and the source mood
     /// is dropped (skipped when the source has encrypted entries, which may reference it inside the ciphertext).
@@ -39,7 +39,7 @@ public partial class HabitService
     /// without changes when both accounts have a journal key.
     /// </summary>
     public async Task<AccountMergeResult> MergeBotOnlyAccountAsync(Guid targetUserId, Guid sourceUserId, ulong discordUserId,
-        CancellationToken cancellationToken = default)
+        Guid? sessionId = null, CancellationToken cancellationToken = default)
     {
         if (targetUserId == sourceUserId) return AccountMergeResult.Conflict;
 
@@ -88,7 +88,7 @@ public partial class HabitService
 
             await _db.PushSubscriptions
                 .Where(s => s.UserId == sourceUserId)
-                .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId), cancellationToken);
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId).SetProperty(p => p.SessionId, p => p.SessionId ?? sessionId), cancellationToken);
             await TrimPushSubscriptionsAsync(targetUserId, cancellationToken);
 
             var key = DiscordLogin.Key(discordUserId);
