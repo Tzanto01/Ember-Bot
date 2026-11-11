@@ -20,6 +20,7 @@ export const doneActionType = 'ember-done';
 export const doneAction = 'done';
 const channelId = 'reminders';
 const issuedKey = 'ember.reminderIssued';
+const plannedKey = 'ember.reminderPlanned';
 
 interface Issued {
   id: number;
@@ -35,6 +36,11 @@ function readIssued(): Issued[] {
   } catch {
     return [];
   }
+}
+
+async function digest(value: unknown): Promise<string> {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)));
+  return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function unreachable(error: unknown): boolean {
@@ -65,7 +71,8 @@ export function checkInTarget(extra: unknown, userId: string): CheckInTarget | n
 
 /**
  * Native build only: keeps the device's local reminder notifications in step with the habits that have the
- * `mobile` channel, so they fire offline. Each rebuild replaces every pending notification with a fresh plan.
+ * `mobile` channel, so they fire offline. A rebuild whose plan differs from the last scheduled one replaces every
+ * pending notification with it; an unchanged plan leaves them alone.
  */
 export class Reminders {
   private chain: Promise<void> = Promise.resolve();
@@ -97,19 +104,6 @@ export class Reminders {
     );
   }
 
-  /** True when reminders can fire at the exact minute (Android 12+ exact alarms); else they arrive a little late. */
-  async exactAllowed(): Promise<boolean> {
-    return (
-      (await (await this.notifications()).LocalNotifications.checkExactNotificationSetting()).exact_alarm ===
-      'granted'
-    );
-  }
-
-  /** Opens the system setting for exact alarms. */
-  async openExactSetting(): Promise<void> {
-    await (await this.notifications()).LocalNotifications.changeExactNotificationSetting();
-  }
-
   /**
    * Cancels every scheduled reminder, clears delivered ones and the widget, and resets "Show habit names in
    * reminders" (sign-out, session end, account deletion).
@@ -117,6 +111,7 @@ export class Reminders {
   async clearAll(): Promise<void> {
     reminderNames.set(false);
     localStorage.removeItem(issuedKey);
+    localStorage.removeItem(plannedKey);
     this.chain = this.chain
       .then(async () => {
         await this.toWidget((widget) => widget.clear());
@@ -235,8 +230,11 @@ export class Reminders {
       });
       this.channelReady = true;
     }
-    await this.cancelPending();
-    if (!plan.length || !(await this.allowed(plugin))) return;
+    if (!plan.length || !(await this.allowed(plugin))) {
+      localStorage.removeItem(plannedKey);
+      await this.cancelPending();
+      return;
+    }
     const iconColor = notificationColor();
     const habitName = new Map(habits.map((habit) => [habit.id, habit.name]));
     const routineName = new Map(routines.map((routine) => [routine.id, routine.name]));
@@ -261,6 +259,8 @@ export class Reminders {
         isExactNotification: false,
       };
     });
+    const planned = await digest(notifications);
+    if (localStorage.getItem(plannedKey) === planned) return;
     const recent = addDays(today, -2);
     const issued = new Map<string, Issued>();
     for (const entry of [
@@ -276,7 +276,12 @@ export class Reminders {
     } catch {
       localStorage.removeItem(issuedKey);
     }
+    localStorage.removeItem(plannedKey);
+    await this.cancelPending();
     await plugin.schedule({ notifications });
+    try {
+      localStorage.setItem(plannedKey, planned);
+    } catch {}
   }
 
   /** True when notifications may show; asks once while Android has never asked (a new phone or a reinstall). */

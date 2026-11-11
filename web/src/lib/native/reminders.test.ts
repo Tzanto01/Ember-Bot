@@ -104,6 +104,27 @@ describe('Reminders', () => {
     expect(notifications.every((n) => n.isExactNotification === false)).toBe(true);
   });
 
+  it('leaves pending reminders alone while the plan is unchanged, and replaces them when it changes', async () => {
+    await rebuildOnline([reminded]);
+    await rebuildOnline([reminded]);
+
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(getPending).toHaveBeenCalledTimes(1);
+
+    await rebuildOnline([{ ...reminded, reminderTime: '21:00' }]);
+
+    expect(schedule).toHaveBeenCalledTimes(2);
+  });
+
+  it('schedules the same plan again after the reminders were cleared', async () => {
+    await rebuildOnline([reminded]);
+    await reminders.clearAll();
+
+    await rebuildOnline([reminded]);
+
+    expect(schedule).toHaveBeenCalledTimes(2);
+  });
+
   it('schedules nothing from the cache when the API answers 401', async () => {
     const done = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(401);
@@ -206,6 +227,7 @@ describe('Reminders', () => {
     localStorage.setItem('ember.reminderIssued', JSON.stringify([stale]));
     await rebuildOnline([reminded]);
     const once = localStorage.getItem('ember.reminderIssued');
+    localStorage.removeItem('ember.reminderPlanned');
 
     const again = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
@@ -216,6 +238,7 @@ describe('Reminders', () => {
     expect(JSON.parse(once ?? '[]')).toHaveLength(planDays);
     expect(reminders.wasIssued(99, stale)).toBe(false);
 
+    localStorage.removeItem('ember.reminderPlanned');
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('full', 'QuotaExceededError');
     });
@@ -278,12 +301,12 @@ describe('Reminders', () => {
       device,
     );
 
-    expect(await native.exactAllowed()).toBe(true);
+    expect(await native.requestPermission()).toBe(true);
   });
 });
 
 vi.mock('@capacitor/local-notifications', async () => ({
   LocalNotifications: (await import('../test-support')).capacitorPlugin({
-    checkExactNotificationSetting: async () => ({ exact_alarm: 'granted' }),
+    checkPermissions: async () => ({ display: 'granted' }),
   }),
 }));

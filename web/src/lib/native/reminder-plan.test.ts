@@ -48,11 +48,11 @@ describe('planReminders', () => {
     expect(plan).toHaveLength(planDays);
   });
 
-  it('plans thirty local days starting today at the reminder time in the account zone', () => {
+  it('plans fourteen local days starting today at the reminder time in the account zone', () => {
     const plan = planReminders([habit()], 'Europe/Berlin', berlinMorning);
 
-    expect(plan).toHaveLength(30);
-    expect(plan.at(-1)?.date).toBe('2026-12-01');
+    expect(plan).toHaveLength(14);
+    expect(plan.at(-1)?.date).toBe('2026-11-15');
     expect(plan.map((r) => r.date).filter(firstWeek)).toEqual([
       '2026-11-02',
       '2026-11-03',
@@ -203,8 +203,8 @@ describe('planReminders', () => {
   });
 
   it('sorts soonest first, numbers ids from 1 and keeps the soonest 400', () => {
-    const habits = Array.from({ length: 20 }, (_, i) =>
-      habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 2)}:${i % 2 ? '30' : '00'}` }),
+    const habits = Array.from({ length: 30 }, (_, i) =>
+      habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 3)}:${['00', '20', '40'][i % 3]}` }),
     );
 
     const plan = planReminders(habits.reverse(), 'Europe/Berlin', berlinMorning);
@@ -214,7 +214,7 @@ describe('planReminders', () => {
     expect(plan.map((r) => r.id)).toEqual(Array.from({ length: 400 }, (_, i) => i + 1));
     expect(plan.map((r) => r.at)).toEqual([...plan.map((r) => r.at)].sort((a, b) => a - b));
     expect(plan[0].habitId).toBe(1);
-    expect(plan[399].date).toBe('2026-11-21');
+    expect(plan[399].date).toBe('2026-11-15');
   });
 
   it('plans a second reminder the chosen minutes after each one, for the same habit or routine and date', () => {
@@ -293,8 +293,8 @@ describe('planReminders', () => {
   });
 
   it('keeps ids unique and the soonest 400 with second reminders on', () => {
-    const habits = Array.from({ length: 10 }, (_, i) =>
-      habit({ id: i + 1, reminderTime: `${String(12 + i).padStart(2, '0')}:00` }),
+    const habits = Array.from({ length: 20 }, (_, i) =>
+      habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 2)}:${i % 2 ? '30' : '00'}` }),
     );
 
     const plan = planReminders(habits, 'Europe/Berlin', berlinMorning, [], 15);
@@ -307,7 +307,7 @@ describe('planReminders', () => {
       second: true,
       at: Date.parse('2026-11-02T11:15:00Z'),
     });
-    expect(plan[planCap - 1].date).toBe('2026-11-21');
+    expect(plan[planCap - 1].date).toBe('2026-11-11');
   });
 });
 

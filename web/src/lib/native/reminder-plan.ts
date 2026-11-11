@@ -14,8 +14,8 @@ export interface PlannedReminder {
   second?: boolean;
 }
 
-/** Days ahead to schedule, today included, so reminders keep coming while the app stays closed. */
-export const planDays = 30;
+/** Days ahead to schedule, today included, so reminders keep coming for two weeks while the app stays closed. */
+export const planDays = 14;
 /** Most notifications kept pending, below Android's limit of 500 alarms per app; the soonest win. */
 export const planCap = 400;
 
