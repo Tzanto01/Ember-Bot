@@ -39,14 +39,16 @@ internal sealed class EmberEmailSender(
 
     /// <summary>
     /// Ignores Identity's link: mails a new 6-digit sign-up code (replacing any earlier one, valid for <see cref="CodeLifetime"/>)
-    /// and the link <c>{WebOrigin}/confirm-email?user=…&amp;code=…</c>. The hashes of the code and of the request's <see cref="SignupKeyHeader"/> (null without a valid one) are stored
-    /// before the mail goes out, only while the email is unconfirmed.
+    /// and the link <c>{WebOrigin}/confirm-email?user=…&amp;code=…</c>. The code's hash is stored before the mail goes out, only while the email is unconfirmed. Only sign-up binds the code to the
+    /// request's <see cref="SignupKeyHeader"/>; a resend keeps that binding when it sends the same key and drops it otherwise, so a
+    /// resend can never tie a code to another device.
     /// </summary>
     public Task SendConfirmationLinkAsync(User user, string email, string confirmationLink)
     {
         var code = RandomNumberGenerator.GetInt32(1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var hash = CodeHash(code);
         var keyHash = KeyHash(http.HttpContext?.Request.Headers[SignupKeyHeader].ToString());
+        var signingUp = http.HttpContext?.Request.Path.Value?.EndsWith("/register", StringComparison.OrdinalIgnoreCase) == true;
         var expires = (time.GetUtcNow() + CodeLifetime).UtcDateTime;
         var userId = user.Id;
         var link = $"{Origin}/confirm-email?user={userId}&code={code}";
@@ -57,7 +59,8 @@ internal sealed class EmberEmailSender(
                 using var scope = scopes.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Users.Where(u => u.Id == userId && !u.EmailConfirmed)
                     .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailCodeHash, hash).SetProperty(u => u.EmailCodeExpiresAt, expires)
-                        .SetProperty(u => u.EmailCodeKeyHash, keyHash).SetProperty(u => u.EmailCodeTries, 0));
+                        .SetProperty(u => u.EmailCodeKeyHash, u => signingUp || u.EmailCodeKeyHash == keyHash ? keyHash : null)
+                        .SetProperty(u => u.EmailCodeTries, 0));
             });
     }
 

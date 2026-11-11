@@ -418,9 +418,9 @@ v1.11 (2026-11-11, Nico: "you have to go back to sign in and sign in again, effe
 
 Nico chose "Same device only": the code alone signs in only on the device that signed up, so nobody can pre-register someone else's address with their own password and have the owner unknowingly activate it.
 
-- The client makes a random `signupKey` (32 random bytes, base64url) when the sign-up form is submitted, keeps it with the sign-up email for 24 hours, and sends it as the header `X-Ember-Signup-Key` on `POST /api/auth/register` and `POST /api/auth/resendConfirmationEmail`. The server stores only its SHA-256 hash next to the code; each new code replaces it with the hash of the key sent with that request, or with none. Values over 128 characters or not base64url count as none.
+- The client makes a random `signupKey` (32 random bytes, base64url) when the sign-up form is submitted, keeps it with the sign-up email for 24 hours, and sends it as the header `X-Ember-Signup-Key` on `POST /api/auth/register` and `POST /api/auth/resendConfirmationEmail`. The server stores only its SHA-256 hash next to the code. Only `register` binds the code to the key it was sent with; a resend keeps the binding when it sends the same key and otherwise drops it (the new code then needs the password), so a resend can't tie a code to another device. Values over 128 characters or not base64url count as none.
 - `POST /api/auth/confirm-email-code` takes `signupKey?` and `password?`. A valid code signs in when the key matches the stored hash, or else with the account's password.
-- Valid code, no matching key, no password → 401 problem `type` `password_required`, `detail` "Enter your password to finish on this device." It counts as a try. A valid code with a wrong password → `invalid_code`, also a try.
+- Valid code, no matching key, no password → 401 problem `type` `password_required`, `detail` "Enter your password to finish on this device." It counts as a try. A valid code with a wrong password → `invalid_code`, also a try (the code's 5 tries are the limit, so this doesn't add to the account's lockout). A locked-out account gets `invalid_code`.
 
 ## Reminder times v1.12
 

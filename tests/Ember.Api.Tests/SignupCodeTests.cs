@@ -213,19 +213,63 @@ public class SignupCodeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
-    public async Task Sending_a_new_code_replaces_the_old_one_and_binds_it_to_the_key_sent_with_it()
+    public async Task A_new_code_from_the_signup_device_replaces_the_old_one_and_stays_passwordless_there()
+    {
+        var key = NewKey();
+        var email = ApiHost.NewEmail();
+        var old = await RegisterAsync(Device(key), email);
+
+        var fresh = await ResendAsync(Device(key), email, 2);
+
+        await ExpectInvalid(await Host.NewClient().Post(CookieUrl, Body(email, old, key)));
+        await (await Host.NewClient().Post(CookieUrl, Body(email, fresh, key))).Expect(HttpStatusCode.OK);
+        (await IsConfirmed(email)).Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task A_new_code_asked_for_from_another_device_needs_the_password_on_every_device()
     {
         var first = NewKey();
         var second = NewKey();
         var email = ApiHost.NewEmail();
-        var old = await RegisterAsync(Device(first), email);
+        await RegisterAsync(Device(first), email);
 
         var fresh = await ResendAsync(Device(second), email, 2);
 
-        await ExpectInvalid(await Host.NewClient().Post(CookieUrl, Body(email, old, first)));
+        await ExpectPasswordRequired(await Host.NewClient().Post(CookieUrl, Body(email, fresh, second)));
         await ExpectPasswordRequired(await Host.NewClient().Post(CookieUrl, Body(email, fresh, first)));
-        await (await Host.NewClient().Post(CookieUrl, Body(email, fresh, second))).Expect(HttpStatusCode.OK);
+        await (await Host.NewClient().Post(CookieUrl, Body(email, fresh, second, ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
         (await IsConfirmed(email)).Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task After_an_attacker_re_registers_a_resend_from_the_victims_device_never_signs_the_victim_into_it()
+    {
+        var email = ApiHost.NewEmail();
+        var victimKey = NewKey();
+        var victim = Device(victimKey);
+        await RegisterAsync(victim, email, Victim);
+        await RegisterAsync(Device(NewKey()), email, Attacker, mailCount: 2);
+
+        var fresh = await ResendAsync(victim, email, 3);
+
+        await ExpectPasswordRequired(await victim.Post(CookieUrl, Body(email, fresh, victimKey)));
+        await ExpectInvalid(await victim.Post(CookieUrl, Body(email, fresh, victimKey, Victim)));
+        (await IsConfirmed(email)).Should().BeFalse();
+        await (await victim.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
+    }
+
+    [DockerFact]
+    public async Task A_locked_out_account_is_not_signed_in_by_its_code()
+    {
+        var email = ApiHost.NewEmail();
+        var key = NewKey();
+        var code = await RegisterAsync(Device(key), email);
+        await Host.Db(db => db.Users.Where(u => u.NormalizedEmail == email.ToUpperInvariant())
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LockoutEnd, DateTimeOffset.UtcNow.AddYears(1))));
+
+        await ExpectInvalid(await Host.NewClient().Post(CookieUrl, Body(email, code, key)));
+        (await IsConfirmed(email)).Should().BeFalse();
     }
 
     [DockerFact]
