@@ -289,7 +289,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
             new ConfirmRequest(query["userId"].ToString(), query["code"].ToString(), ApiClient.Passphrase))).Expect(HttpStatusCode.OK);
         var tokens = await (await http.PostAsJsonAsync("/api/auth/login", new Credentials(email, ApiClient.Passphrase))).ExpectJson();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GetProperty("accessToken").GetString());
-        await (await http.PostAsJsonAsync("/api/me/consent", new { policyVersion = "2026-10" })).Expect(HttpStatusCode.NoContent);
+        await (await http.PostAsJsonAsync("/api/me/consent", new { policyVersion = Ember.Core.Services.HabitService.CurrentConsentPolicyVersion })).Expect(HttpStatusCode.NoContent);
         return http;
     }
 
