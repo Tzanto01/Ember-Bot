@@ -119,8 +119,8 @@ Außerdem speichern die Web-App und die Android-App einige Dinge auf dem Gerät.
 | Browser, Local Storage | `ember.mode` | Ob du mit oder ohne Konto nutzt | Wenn du den Modus wechselst oder die Website-Daten löschst |
 | Browser, Local Storage | `ember.theme`, `ember.accountTheme` | Dein gewähltes Design und das Design, das dein Konto zuletzt hatte | Beim Abmelden oder wenn du die Website-Daten löschst |
 | Browser, Local Storage | `ember.colorScheme` | Hell, dunkel oder System. Nur auf diesem Gerät, nicht im Konto | Wenn du „System“ wählst oder die Website-Daten löschst |
-| Browser, Local Storage | `ember.signupEmail` | E-Mail-Adresse aus der Anmeldung, bis die Bestätigung abgeschlossen ist | Nach der Bestätigung. Wird sie nie abgeschlossen, bleibt die Adresse, bis du die Website-Daten löschst. [PRÜFEN: Löschfrist festlegen] |
-| Browser, Local Storage | `ember.staySignedIn` | Kennung deines Kontos. Nur, wenn du bei der Anmeldung mit E-Mail und Passwort „Stay signed in“ gewählt hast, auch nach der Bestätigung eines neuen Kontos | Beim Abmelden |
+| Browser, Local Storage | `ember.signupEmail` | E-Mail-Adresse aus der Anmeldung, bis die Bestätigung abgeschlossen ist | Nach der Bestätigung, beim Abmelden, spätestens nach einem Tag |
+| Browser, Local Storage | `ember.staySignedIn` | Kennung deines Kontos. Nur, wenn du bei der Anmeldung mit E-Mail und Passwort „Stay signed in“ gewählt hast | Beim Abmelden |
 | Browser, Local Storage | `ember.offlineMe` | Kopie deines Kontostands: E-Mail-Adresse, Zeitzone, Design, Stand der Einwilligung und des Tagebuchs. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft. Die Kopie wird nur am selben Tag genutzt |
 | Browser, Session Storage | `ember.preloadReload` | Zeitpunkt des letzten Neuladens nach einem App-Update | Am Ende der Browser-Sitzung |
 | Browser, IndexedDB `ember-device` | Speicher `cache` | Kopie deiner Habit-Liste. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft |
