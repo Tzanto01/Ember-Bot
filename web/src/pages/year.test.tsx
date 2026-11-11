@@ -103,4 +103,23 @@ describe('YearPage', { timeout: 15_000 }, () => {
     expect(document.querySelector('button[data-date="2026-09-30"]')).toBeNull();
     expect(document.querySelector('button[data-date="2026-10-01"]')).not.toBeNull();
   });
+
+  it('closes the open day with Escape and returns focus to its cell', async () => {
+    const user = userEvent.setup();
+    renderWithJournal(<YearPage />, fakeJournal());
+    await answerStats(f, [stat('2026-11-03', true)]);
+
+    const cell = await dayButton('you showed up, 1 of 1 done');
+    await user.click(cell);
+    const detail = screen.getByRole('region', { name: /3/ });
+    await user.click(screen.getByRole('button', { name: 'Close this day' }));
+    expect(detail).not.toBeInTheDocument();
+    expect(cell).toHaveFocus();
+
+    await user.click(cell);
+    screen.getByRole('link', { name: 'Open in History' }).focus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('link', { name: 'Open in History' })).toBeNull();
+    expect(cell).toHaveFocus();
+  });
 });

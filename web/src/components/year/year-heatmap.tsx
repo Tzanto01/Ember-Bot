@@ -1,4 +1,5 @@
-import { type KeyboardEvent, useLayoutEffect, useRef } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { type KeyboardEvent, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { addDays, formatDate, weekdayLabels } from '@/lib/local-date';
 import type { LocalDateString } from '@/lib/models';
@@ -10,12 +11,12 @@ const toneClass: Record<YearTone, string> = {
   1: 'bg-heat-1',
   2: 'bg-heat-2',
   3: 'bg-done',
-  lowday: 'bg-lowday shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--lowday-foreground)_35%,transparent)]',
+  lowday: 'bg-lowday shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--lowday-foreground)_60%,transparent)]',
   paused: 'border-[1.5px] border-dashed border-paused',
   offday: 'border-[1.5px] border-dotted border-empty',
 };
 
-const cellSize = 'size-[14px] rounded-[3px] pointer-coarse:size-[28px] pointer-coarse:rounded-[6px]';
+const cellSize = 'size-[20px] rounded-[4px] pointer-coarse:size-[28px] pointer-coarse:rounded-[6px]';
 const longDate = new Intl.DateTimeFormat(undefined, {
   weekday: 'long',
   day: 'numeric',
@@ -36,11 +37,11 @@ export function YearSwatch({ tone, mood = false, className }: { tone: YearTone; 
     <span
       aria-hidden="true"
       className={cn(
-        'relative inline-block shrink-0',
+        'relative inline-block shrink-0 forced-color-adjust-none',
         cellSize,
         toneClass[tone],
         mood &&
-          'after:absolute after:-right-[2px] after:-top-[2px] after:size-[6px] after:rounded-full after:bg-foreground after:ring-2 after:ring-card pointer-coarse:after:size-[8px]',
+          'after:absolute after:-right-[2px] after:-top-[2px] after:size-[5px] after:rounded-full after:bg-muted-foreground after:ring-2 after:ring-card pointer-coarse:after:size-[8px]',
         className,
       )}
     />
@@ -69,7 +70,8 @@ const keySteps: Record<string, number> = { ArrowLeft: -7, ArrowRight: 7, ArrowUp
 /**
  * The year as a table: weekday rows (Monday first), one column per week, month labels on top. Every day is a
  * button named with its date and wording; one tab stop, arrow keys move by day and week, Home and End jump to
- * the first and latest day. Scrolls inside its own box on narrow screens, latest week in view first.
+ * the first and latest day; Escape on the open day closes it. Scrolls inside its own box when the year doesn't
+ * fit, latest week in view first, with a line saying earlier months are to the left.
  */
 export function YearHeatmap({
   start,
@@ -85,6 +87,7 @@ export function YearHeatmap({
 }: YearHeatmapProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const [scrollable, setScrollable] = useState(false);
   const weeks = Array.from({ length: yearWeeks }, (_, w) => addDays(start, w * 7));
   const rowNames = weekdayLabels(undefined, 'long');
   const rowShort = weekdayLabels(undefined, 'short');
@@ -94,11 +97,21 @@ export function YearHeatmap({
 
   useLayoutEffect(() => {
     const box = scrollRef.current;
-    if (box) box.scrollLeft = box.scrollWidth;
+    if (!box) return;
+    box.scrollLeft = box.scrollWidth;
+    const measure = () => setScrollable(box.scrollWidth > box.clientWidth + 1);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, [start]);
 
   function move(event: KeyboardEvent, date: LocalDateString) {
     let next: LocalDateString | null = null;
+    if (event.key === 'Escape' && selected === date) {
+      event.preventDefault();
+      onSelect(date);
+      return;
+    }
     if (event.key in keySteps) next = addDays(date, keySteps[event.key]);
     else if (event.key === 'Home') next = first;
     else if (event.key === 'End') next = today;
@@ -111,77 +124,88 @@ export function YearHeatmap({
   }
 
   return (
-    <div ref={scrollRef} className="-mx-1 overflow-x-auto px-1 pb-2">
-      <table
-        ref={tableRef}
-        aria-label="Your last 12 months, one column per week"
-        className="[border-collapse:separate] [border-spacing:3px] pointer-coarse:[border-spacing:0]"
-      >
-        <thead>
-          <tr>
-            <td className="sticky left-0 z-[1] bg-card shadow-[-8px_0_0_var(--card)]" />
-            {weeks.map((monday, w) => {
-              const label = w === 0 && !monthStarts[1] ? monday : w < yearWeeks - 1 ? monthStarts[w] : null;
-              return (
-                <th key={monday} scope="col" className="relative h-[20px] p-0 text-left align-bottom">
-                  {label && (
+    <>
+      {scrollable && (
+        <p className="flex items-center gap-1.5 text-[14px] text-muted-foreground">
+          <ArrowLeft aria-hidden className="size-[16px] shrink-0" />
+          Earlier months are to the left. Scroll sideways to see them.
+        </p>
+      )}
+      <div ref={scrollRef} className="-mx-1 overflow-x-auto px-1 pb-2">
+        <table
+          ref={tableRef}
+          aria-label="Your last 12 months, one column per week"
+          className="[border-collapse:separate] [border-spacing:4px] pointer-coarse:[border-spacing:0]"
+        >
+          <thead>
+            <tr>
+              <td className="sticky left-0 z-[2] bg-card shadow-[-8px_0_0_var(--card)]" />
+              {weeks.map((monday, w) => {
+                const label = w === 0 && !monthStarts[1] ? monday : w < yearWeeks - 1 ? monthStarts[w] : null;
+                if (!label) return <td key={monday} className="h-[20px] p-0" />;
+                return (
+                  <th key={monday} scope="col" className="relative h-[20px] p-0 text-left align-bottom">
                     <span className="absolute bottom-0 left-0 whitespace-nowrap text-[13px] font-normal text-muted-foreground">
                       {formatDate(label, { month: 'short' })}
                     </span>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {rowNames.map((name, row) => (
-            <tr key={name}>
-              <th scope="row" className="sticky left-0 z-[1] bg-card shadow-[-8px_0_0_var(--card)] p-0 pr-1 text-left text-[13px] font-normal text-muted-foreground">
-                <span aria-hidden="true" className={row % 2 === 0 ? undefined : 'invisible'}>
-                  {rowShort[row]}
-                </span>
-                <span className="sr-only">{name}</span>
-              </th>
-              {weeks.map((monday) => {
-                const date = addDays(monday, row);
-                if (date > today || date < first) {
-                  return <td key={date} className="p-0" />;
-                }
-                const day = days.get(date);
-                return (
-                  <td key={date} className="p-0">
-                    <button
-                      type="button"
-                      data-date={date}
-                      tabIndex={date === cursor ? 0 : -1}
-                      aria-label={yearDayName(date, day, showMoods)}
-                      aria-expanded={selected === date}
-                      aria-controls={selected === date ? detailId : undefined}
-                      onClick={() => {
-                        onCursor(date);
-                        onSelect(date);
-                      }}
-                      onKeyDown={(e) => move(e, date)}
-                      className={cn(
-                        'flex rounded-[3px] focus-visible:outline-offset-1 pointer-coarse:rounded-[8px] pointer-coarse:p-[2px] pointer-coarse:focus-visible:-outline-offset-1',
-                        selected === date && 'outline-2 outline-offset-1 outline-foreground pointer-coarse:-outline-offset-1',
-                      )}
-                    >
-                      <YearSwatch
-                        tone={day?.tone ?? 0}
-                        mood={showMoods && !!day?.mood}
-                        className={date === today ? 'ring-2 ring-pending ring-offset-1 ring-offset-card' : undefined}
-                      />
-                    </button>
-                  </td>
+                  </th>
                 );
               })}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rowNames.map((name, row) => (
+              <tr key={name}>
+                <th scope="row" className="sticky left-0 z-[2] bg-card shadow-[-8px_0_0_var(--card)] p-0 pr-1 text-left text-[13px] font-normal text-muted-foreground">
+                  <span aria-hidden="true" className={row % 2 === 0 ? undefined : 'invisible'}>
+                    {rowShort[row]}
+                  </span>
+                  <span className="sr-only">{name}</span>
+                </th>
+                {weeks.map((monday) => {
+                  const date = addDays(monday, row);
+                  if (date > today || date < first) {
+                    return (
+                      <td key={date} className="p-0">
+                        <span className={cn('block', cellSize, 'pointer-coarse:m-[2px]')} />
+                      </td>
+                    );
+                  }
+                  const day = days.get(date);
+                  return (
+                    <td key={date} className="p-0">
+                      <button
+                        type="button"
+                        data-date={date}
+                        tabIndex={date === cursor ? 0 : -1}
+                        aria-label={yearDayName(date, day, showMoods)}
+                        aria-expanded={selected === date}
+                        aria-controls={selected === date ? detailId : undefined}
+                        onClick={() => {
+                          onCursor(date);
+                          onSelect(date);
+                        }}
+                        onKeyDown={(e) => move(e, date)}
+                        className={cn(
+                          'flex rounded-[4px] focus-visible:relative focus-visible:z-[1] focus-visible:outline-offset-1 pointer-coarse:rounded-[8px] pointer-coarse:p-[2px]',
+                          selected === date && 'outline-2 outline-offset-1 outline-foreground pointer-coarse:-outline-offset-1',
+                        )}
+                      >
+                        <YearSwatch
+                          tone={day?.tone ?? 0}
+                          mood={showMoods && !!day?.mood}
+                          className={date === today ? 'ring-2 ring-pending ring-offset-1 ring-offset-card' : undefined}
+                        />
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

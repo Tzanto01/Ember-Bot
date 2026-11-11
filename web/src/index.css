@@ -74,6 +74,12 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-padding-top: calc(56px + env(safe-area-inset-top) + 12px);
+  }
+  @media (width < 48rem) {
+    html {
+      scroll-padding-bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+    }
   }
   body {
     margin: 0;

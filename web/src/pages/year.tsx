@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { type ChangeEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
@@ -82,6 +83,12 @@ export default function YearPage() {
 
   const [selected, setSelected] = useState<LocalDateString | null>(null);
   const [cursor, setCursor] = useState<LocalDateString | null>(null);
+
+  function closeDay() {
+    const date = selected;
+    flushSync(() => setSelected(null));
+    if (date) document.querySelector<HTMLElement>(`[data-date="${date}"]`)?.focus();
+  }
 
   function choose(event: ChangeEvent<HTMLSelectElement>) {
     setHabitId(event.target.value === 'all' ? null : Number(event.target.value));
@@ -199,10 +206,17 @@ export default function YearPage() {
               )}
             </Card>
             {selected && (
-              <Card id={detailId} aria-label={formatDate(selected, longDate)}>
+              <Card
+                id={detailId}
+                role="region"
+                aria-label={formatDate(selected, longDate)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') closeDay();
+                }}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-[22px]">{formatDate(selected, longDate)}</h2>
-                  <Button variant="ghost" size="icon" aria-label="Close this day" onClick={() => setSelected(null)}>
+                  <Button variant="ghost" size="icon" aria-label="Close this day" onClick={closeDay}>
                     <X aria-hidden />
                   </Button>
                 </div>

@@ -49,7 +49,7 @@
   --ember-font-sans: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --ember-font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', system-ui, sans-serif;
   --ember-heading-weight: 800;
-  --ember-heading-tracking: -0.03em;
+  --ember-heading-tracking: -0.015em;
   --ember-dur-fast: 90ms;
   --ember-dur: 160ms;
   --ember-dur-slow: 300ms;

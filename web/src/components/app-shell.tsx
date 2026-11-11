@@ -22,7 +22,7 @@ const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px
 
 /**
  * Signed-in shell: sticky header with the brand, the main nav (top pills from `md`, a fixed bottom tab bar below)
- * and "Sign out"; the offline-queue and dropped-edit notices above the page; legal footer.
+ * and "Sign out" from `md` (Settings has it on phones); the offline-queue and dropped-edit notices above the page; legal footer.
  */
 export function AppShell() {
   const pending = useStore(offlineQueue.pending);
@@ -79,7 +79,7 @@ export function AppShell() {
           {!local && (
             <Button
               variant="ghost"
-              className="ml-auto"
+              className="ml-auto max-md:hidden"
               aria-disabled={signingOut || undefined}
               onClick={() => void signOut()}
             >
@@ -91,7 +91,7 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className={cn('mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
+        className={cn('mx-auto flex min-h-dvh w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
       >
         {signOutFailed && (
           <Notice tone="notice">

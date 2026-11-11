@@ -104,16 +104,31 @@ export function DayPanel({
           </div>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button aria-disabled={busy || undefined} onClick={() => onEdit('done')}>
-          Done
-        </Button>
-        <Button variant="secondary" aria-disabled={busy || undefined} onClick={() => onEdit('notdone')}>
-          Not done
-        </Button>
-        <Button variant="secondary" aria-disabled={busy || undefined} onClick={() => onEdit('clear')}>
-          Clear
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button aria-disabled={busy || undefined} onClick={() => onEdit('done')}>
+            Done
+          </Button>
+          <Button
+            variant="secondary"
+            aria-disabled={busy || undefined}
+            aria-describedby="day-panel-choices"
+            onClick={() => onEdit('notdone')}
+          >
+            Not done
+          </Button>
+          <Button
+            variant="secondary"
+            aria-disabled={busy || undefined}
+            aria-describedby="day-panel-choices"
+            onClick={() => onEdit('clear')}
+          >
+            Clear
+          </Button>
+        </div>
+        <p id="day-panel-choices" className="text-[14px] text-muted-foreground">
+          Not done notes that you let this day go. Clear leaves it empty, as if nothing was entered.
+        </p>
       </div>
       <div className="flex flex-col items-start gap-1">
         <Button variant="ghost" className="-ms-2" aria-disabled={busy || undefined} onClick={onToggleLowDay}>

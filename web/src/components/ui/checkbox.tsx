@@ -8,7 +8,7 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        'relative inline-flex size-[24px] shrink-0 items-center justify-center rounded-sm border-[length:max(1.5px,var(--border-width))] border-input bg-card after:absolute after:-inset-[10px] disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
+        'relative inline-flex size-[24px] shrink-0 items-center justify-center rounded-[min(var(--radius-sm),6px)] border-[length:max(1.5px,var(--border-width))] border-input bg-card after:absolute after:-inset-[10px] disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
         className,
       )}
       {...props}

@@ -55,6 +55,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
   const [touched, setTouched] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const localWeb = useStore(localMode.mode) === 'local' && !env.native;
 
   const save = useMutation({
     mutationFn: (patch: HabitPatch) => api.updateHabit(habit.id, patch),
@@ -120,6 +121,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
         onTouched={() => setTouched(true)}
         errors={fieldErrors}
         savedTimesPerDay={habit.frequency === 'weekly' ? undefined : habit.timesPerDay}
+        showReminder={!localWeb}
         reminderNote={
           routine?.reminderTime &&
           `Your ${routineTitle(routine.name)} reminds you at ${routine.reminderTime} instead, while this habit is part of it.`

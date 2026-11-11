@@ -67,17 +67,18 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
             {members.map((habit, index) => (
               <li
                 key={habit.id}
-                className="flex min-h-[56px] items-center gap-1 rounded-md border-[length:max(1px,var(--border-width))] border-input bg-card py-1 ps-3 pe-1"
+                className="flex min-h-[56px] items-center gap-1 rounded-md max-[379px]:flex-wrap border-[length:max(1px,var(--border-width))] border-input bg-card py-1 ps-3 pe-1"
               >
                 <span aria-hidden="true" className="w-6 shrink-0 text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 break-words">{habit.name}</span>
+                <span className="min-w-0 flex-1 break-words max-[379px]:basis-[calc(100%-1.75rem)]">{habit.name}</span>
                 <Button
                   id={`${id}-up-${habit.id}`}
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="max-[379px]:ms-auto"
                   aria-label={`Move ${habit.name} up`}
                   aria-disabled={index === 0 || undefined}
                   onClick={() => move(index, -1)}

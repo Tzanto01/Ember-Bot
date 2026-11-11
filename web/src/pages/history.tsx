@@ -259,7 +259,7 @@ export default function HistoryPage() {
       daysQuery.isError && !daysQuery.data && !daysQuery.isFetching ? asApiError(daysQuery.error) : null;
     content = (
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6 max-lg:contents">
           {habits.length > 1 ? (
             <div className="flex flex-col gap-2">
               <Label htmlFor="habit-picker">Habit</Label>
@@ -306,7 +306,9 @@ export default function HistoryPage() {
               )
             }
           />
-          <Legend />
+          <div className="max-lg:order-1">
+            <Legend />
+          </div>
         </div>
         <div className="flex flex-col gap-6 lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)]">
           {openDay ? (
