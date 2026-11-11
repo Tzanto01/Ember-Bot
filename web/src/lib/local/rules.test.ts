@@ -473,7 +473,7 @@ describe('weeklySummary', () => {
     const s = summary([habit({ createdAt: ago(3) + 'T10:00:00Z' })], done(1));
     expect(s.habits[0]).toMatchObject({ done: 1, possible: 2 });
     expect(s.headline).toBe('This week you showed up for 1 check-in. Every one of those counts. 💪');
-    expect(s.footer).toBe('More than half — that\'s a win. Keep it up.');
+    expect(s.footer).toBe('More than half, that\'s a win. Keep it up.');
   });
 
   it('counts only the seven days ending yesterday', () => {

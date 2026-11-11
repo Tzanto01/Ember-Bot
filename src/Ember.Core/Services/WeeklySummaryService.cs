@@ -100,7 +100,7 @@ public static class WeeklySummaryService
         var pct = (int)Math.Round(100.0 * totalDone / totalPossible);
         var headline = $"This week you showed up for **{CheckIns(totalDone)}**. Every one of those counts. 💪";
         var footer = pct >= 50
-            ? "More than half — that's a win. Keep it up."
+            ? "More than half, that's a win. Keep it up."
             : "Small steps still move forward. You've got this.";
         return (headline, footer);
     }

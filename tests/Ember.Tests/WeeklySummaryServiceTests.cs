@@ -241,7 +241,7 @@ public class WeeklySummaryServiceTests
         var (headline, footer) = WeeklySummaryService.ToneLines(4, 7); // 57%
 
         headline.Should().Be("This week you showed up for **4 check-ins**. Every one of those counts. 💪");
-        footer.Should().Be("More than half — that's a win. Keep it up.");
+        footer.Should().Be("More than half, that's a win. Keep it up.");
     }
 
     [Fact]

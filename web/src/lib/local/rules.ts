@@ -272,7 +272,7 @@ function toneLines(totalDone: number, totalPossible: number): { headline: string
   const pct = roundHalfEven((100 * totalDone) / totalPossible);
   return {
     headline: `This week you showed up for **${checkIns(totalDone)}**. Every one of those counts. 💪`,
-    footer: pct >= 50 ? "More than half — that's a win. Keep it up." : "Small steps still move forward. You've got this.",
+    footer: pct >= 50 ? "More than half, that's a win. Keep it up." : "Small steps still move forward. You've got this.",
   };
 }
 
