@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { BusyButton } from '@/components/auth/busy-button';
 import type { Validator } from '@/components/auth/use-field';
@@ -86,6 +86,7 @@ function MoodForm({
               {...field}
               value={label}
               autoComplete="off"
+              autoFocus={!!onCancel}
               onChange={(e) => setLabel(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, label: true }))}
             />
@@ -119,10 +120,27 @@ function MoodForm({
 
 type MoodPatch = { label?: string; emoji?: string | null; archived?: boolean };
 
-function MoodRow({ mood, onChange }: { mood: OwnMood; onChange: (patch: MoodPatch, words: string) => Promise<boolean> }) {
+function MoodRow({
+  mood,
+  onChange,
+  focusArchive,
+  onArchived,
+}: {
+  mood: OwnMood;
+  onChange: (patch: MoodPatch, words: string) => Promise<boolean>;
+  /** Focus the Archive / Unarchive button on mount: the row just moved between the lists. */
+  focusArchive: boolean;
+  onArchived: (moodId: number | null) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const changeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!focusArchive) return;
+    document.getElementById(`mood-${mood.id}-archive`)?.focus();
+    onArchived(null);
+  }, []);
 
   function closeEdit() {
     flushSync(() => setEditing(false));
@@ -152,11 +170,12 @@ function MoodRow({ mood, onChange }: { mood: OwnMood; onChange: (patch: MoodPatc
   async function toggleArchive() {
     if (busy) return;
     setBusy(true);
-    await onChange(
+    const ok = await onChange(
       { archived: !mood.archived },
       mood.archived ? `${mood.label} is back in the picker.` : `${mood.label} archived.`,
     );
     setBusy(false);
+    if (ok) onArchived(mood.id);
   }
 
   return (
@@ -169,6 +188,7 @@ function MoodRow({ mood, onChange }: { mood: OwnMood; onChange: (patch: MoodPatc
         Change
       </Button>
       <BusyButton
+        id={`mood-${mood.id}-archive`}
         variant="secondary"
         busy={busy}
         busyLabel={mood.archived ? 'Bringing back…' : 'Archiving…'}
@@ -190,6 +210,7 @@ export function MoodManager() {
   const [formKey, setFormKey] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [movedId, setMovedId] = useState<number | null>(null);
 
   function remember(mood: OwnMood) {
     queryClient.setQueryData<OwnMood[]>(moodsKey, (list) =>
@@ -211,6 +232,10 @@ export function MoodManager() {
     }
   }
 
+  useEffect(() => {
+    if (formKey > 0) document.getElementById('new-mood-label')?.focus();
+  }, [formKey]);
+
   if (state === 'locked') {
     return <JournalLocked>Your own moods are in your private journal, which is locked on this device.</JournalLocked>;
   }
@@ -225,6 +250,8 @@ export function MoodManager() {
           key={mood.id}
           mood={mood}
           onChange={(patch, words) => run(() => journal.updateMood(mood.id, patch), () => words)}
+          focusArchive={movedId === mood.id}
+          onArchived={setMovedId}
         />
       ))}
     </ul>

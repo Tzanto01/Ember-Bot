@@ -233,7 +233,7 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
 
   return (
     <div className="flex flex-col gap-4">
-      <Notice tone="success" heading="Your private journal is on">
+      <Notice tone="info" heading="Your private journal is on">
         <p>
           Here is your recovery code. It opens your journal if you forget your passphrase. Write it
           down or keep it in a password manager: you'll only see it now.
@@ -341,7 +341,7 @@ export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: bo
         </FormField>
       ) : (
         <FormField key="passphrase" label="Journal passphrase" error={error}>
-          {(control) => <PasswordInput {...control} {...passphrase.input} autoComplete="off" />}
+          {(control) => <PasswordInput {...control} {...passphrase.input} autoComplete="current-password" />}
         </FormField>
       )}
       <div>
@@ -436,7 +436,7 @@ export function PassphraseForm({
           label="Current passphrase"
           error={old.error ?? (wrong === 'old' ? wrongPassphrase : null)}
         >
-          {(control) => <PasswordInput {...control} {...old.input} autoComplete="off" />}
+          {(control) => <PasswordInput {...control} {...old.input} autoComplete="current-password" />}
         </FormField>
       )}
       <NewPassphraseFields passphrase={passphrase} confirm={confirm} label="New passphrase" />

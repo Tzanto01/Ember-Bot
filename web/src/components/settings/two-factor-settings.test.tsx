@@ -46,6 +46,23 @@ describe('TwoFactorSettings', () => {
     );
   });
 
+  it('starts setup on the first step, not the code field, and focuses the recovery codes once they appear', async () => {
+    const user = userEvent.setup();
+    const fetch = await open({ enabled: false, recoveryCodesLeft: 0 });
+    await startSetup(fetch);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '1. Add Ember to your authenticator app' })).toHaveFocus(),
+    );
+
+    await user.type(screen.getByLabelText('Code from your authenticator app'), '123456');
+    await user.type(screen.getByLabelText('Your password'), 'synthetic-login-pw');
+    await user.click(screen.getByRole('button', { name: 'Turn on two-step sign-in' }));
+    (await fetch.next('POST', '/api/me/2fa/enable')).respond(200, { recoveryCodes: codes });
+
+    await waitFor(() => expect(screen.getByText('Your recovery codes').closest('[role="status"]')).toHaveFocus());
+  });
+
   it('enables with the typed code and shows the ten recovery codes only until they are saved', async () => {
     const user = userEvent.setup();
     const fetch = await open({ enabled: false, recoveryCodesLeft: 0 });

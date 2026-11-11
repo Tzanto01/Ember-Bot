@@ -48,6 +48,10 @@ export type ThemeId = (typeof themes)[number]['id'];
 
 const storageKey = 'ember.theme';
 const accountKey = 'ember.accountTheme';
+const schemeKey = 'ember.colorScheme';
+
+/** Light or dark on this device; `system` follows `prefers-color-scheme`. Never synced to the account. */
+export type ColorScheme = 'system' | 'light' | 'dark';
 
 /** Bumps whenever `applyTheme` runs, so a mounted picker re-reads `currentTheme()`. */
 export const themeApplied = new Store(0);
@@ -66,11 +70,16 @@ export function notificationColor(): string {
   return find(currentTheme()).notification;
 }
 
-/** Points the light and dark `<meta name="theme-color">` tags at the current theme's background. */
+/**
+ * Points the light and dark `<meta name="theme-color">` tags at the current theme's background; with a fixed
+ * colour scheme both use that scheme's colour.
+ */
 export function syncThemeColor(): void {
   const { colors } = find(currentTheme());
+  const scheme = colorScheme();
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-    meta.content = meta.getAttribute('media')?.includes('dark') ? colors.dark : colors.light;
+    const dark = scheme === 'system' ? !!meta.getAttribute('media')?.includes('dark') : scheme === 'dark';
+    meta.content = dark ? colors.dark : colors.light;
   }
 }
 
@@ -97,6 +106,20 @@ function write(key: string, value: string | null): void {
     if (value) localStorage.setItem(key, value);
     else localStorage.removeItem(key);
   } catch {}
+}
+
+/** This device's colour scheme, as `/theme-init.js` reads it. */
+export function colorScheme(): ColorScheme {
+  const scheme = read(schemeKey);
+  return scheme === 'light' || scheme === 'dark' ? scheme : 'system';
+}
+
+/** Remembers the colour scheme on this device and applies it now. */
+export function chooseColorScheme(scheme: ColorScheme): void {
+  write(schemeKey, scheme === 'system' ? null : scheme);
+  const dark = scheme === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches : scheme === 'dark';
+  document.documentElement.classList.toggle('dark', dark);
+  syncThemeColor();
 }
 
 let picks = 0;

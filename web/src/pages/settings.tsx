@@ -1,12 +1,14 @@
+import { Check } from 'lucide-react';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { MoodManager } from '@/components/journal/mood-manager';
 import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
+import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
 import { TwoFactorSettings } from '@/components/settings/two-factor-settings';
@@ -36,6 +38,7 @@ type Section =
   | 'push'
   | 'appearance'
   | 'export'
+  | 'password'
   | 'signout'
   | 'delete';
 
@@ -48,7 +51,7 @@ const discordOutcomes: Record<string, Message> = {
   linked: { tone: 'success', text: 'Discord is linked. You can sign in with it from now on.' },
   conflict: {
     tone: 'notice',
-    text: 'That Discord account is already connected to another Ember account with a password, or this account already has a different Discord login.',
+    text: "Ember couldn't link that Discord account. It may already belong to another Ember account that has a password. Or this account is already linked to a different Discord account.",
   },
   error: { tone: 'notice', text: "Linking didn't finish. You can try again." },
 };
@@ -117,7 +120,7 @@ function SettingsCard({
       aria-labelledby={`${id}-heading`}
       className={cardVariants({ variant: farewell ? 'farewell' : 'default', className: scrollMargin })}
     >
-      <h2 id={`${id}-heading`} className="text-[22px]">
+      <h2 id={`${id}-heading`} tabIndex={-1} className="text-[22px] focus:outline-none">
         {title}
       </h2>
       {children}
@@ -125,9 +128,17 @@ function SettingsCard({
   );
 }
 
+/** Scrolls to a settings card and focuses its heading. */
+function focusSection(id: string): void {
+  document.getElementById(id)?.scrollIntoView();
+  document.getElementById(`${id}-heading`)?.focus({ preventScroll: true });
+}
+
 /**
- * `/settings`: timezone, grace days, Discord, two-step sign-in, private journal and moods, reminders, push on this
- * device, appearance, export, sign out and account deletion. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
+ * `/settings`: account (who is signed in, change password, sign out), appearance, reminders, push on this device,
+ * grace days, timezone, moods, Discord, two-step sign-in, private journal, export and account deletion. A `#card-id`
+ * in the address scrolls to that card and focuses its heading. Reloads `me` on entry. Every `PATCH /api/me` runs one
+ * at a time, in order.
  */
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -141,7 +152,7 @@ export default function SettingsPage() {
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
   const secondRef = useRef<SecondReminderMinutes | null>(null);
-  const scrolled = useRef(false);
+  const scrolled = useRef<string | null>(null);
   const tzForm = useRef<HTMLFormElement>(null);
   const deleteForm = useRef<HTMLFormElement>(null);
 
@@ -151,7 +162,7 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
   const [second, setSecond] = useState<SecondReminderMinutes | null>(null);
-  const [zone, setZone] = useState('');
+  const [zone, setZone] = useState<string | null>(null);
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
@@ -179,11 +190,11 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (scrolled.current || !me || !location.hash) return;
-    const target = document.getElementById(location.hash.slice(1));
-    if (!target) return;
-    scrolled.current = true;
-    target.scrollIntoView();
+    const id = location.hash.slice(1);
+    if (!me || !id || scrolled.current === id || !document.getElementById(`${id}-heading`)) return;
+    scrolled.current = id;
+    const frame = requestAnimationFrame(() => focusSection(id));
+    return () => cancelAnimationFrame(frame);
   }, [me, pushAvailable, location.hash]);
 
   function start(section: Section): void {
@@ -216,8 +227,13 @@ export default function SettingsPage() {
 
   function savedStatus(section: Section): ReactNode {
     return (
-      <p role="status" className="text-[14px] text-muted-foreground">
-        {saved === section ? 'Saved.' : ''}
+      <p role="status" className="inline-flex items-center gap-1.5 font-medium text-foreground">
+        {saved === section && (
+          <>
+            <Check aria-hidden className="size-[18px] text-primary" />
+            Saved.
+          </>
+        )}
       </p>
     );
   }
@@ -274,16 +290,16 @@ export default function SettingsPage() {
     let next = chosen;
     if (next === undefined) {
       flushSync(() => setZoneTouched(true));
-      if (zoneError(zone)) {
+      if (zoneError(zoneValue)) {
         focusFirstInvalid(tzForm.current);
         return;
       }
-      next = zone.trim();
+      next = zoneValue.trim();
     }
     setZoneServerError(null);
     const error = await patch('timezone', { timezone: next });
     if (!error) {
-      setZone('');
+      setZone(null);
       setZoneTouched(false);
     } else if (error.status === 400) {
       setZoneServerError(unknownZoneText);
@@ -361,6 +377,15 @@ export default function SettingsPage() {
     setExactAllowed((await reminders?.exactAllowed().catch(() => null)) ?? null);
   }
 
+  const changePassword = (email: string) =>
+    act('password', async () => {
+      await api.forgotPassword(email);
+      return {
+        tone: 'success',
+        text: `We sent a link to ${email}. Open it to choose a new password. It can take a minute or two to arrive.`,
+      };
+    });
+
   async function signOut(): Promise<void> {
     if (busyRef.current) return;
     start('signout');
@@ -402,29 +427,29 @@ export default function SettingsPage() {
   const showDm = !local && !!me && (me.dmReminders.paused || message?.section === 'dm');
   const showPush = !local && !env.native && pushAvailable;
   const sections = [
-    ...(local ? [{ id: 'device', title: 'On this device' }] : []),
-    { id: 'timezone', title: 'Timezone' },
+    ...(local ? [{ id: 'device', title: 'On this device' }] : [{ id: 'account', title: 'Account' }]),
+    { id: 'appearance', title: 'Appearance' },
+    ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
+    ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
+    ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
+    { id: 'second-reminder', title: 'Second reminder' },
     { id: 'grace', title: 'Grace days' },
+    { id: 'timezone', title: 'Timezone' },
+    { id: 'moods', title: 'Moods' },
     ...(local
       ? []
       : [
           { id: 'discord', title: 'Discord' },
           { id: 'two-factor', title: 'Two-step sign-in' },
           { id: 'journal', title: 'Private journal' },
+          { id: 'export', title: 'Your data' },
         ]),
-    { id: 'moods', title: 'Moods' },
-    ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
-    ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
-    ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
-    { id: 'second-reminder', title: 'Second reminder' },
-    { id: 'appearance', title: 'Appearance' },
-    ...(local ? [] : [{ id: 'export', title: 'Your data' }]),
-    { id: 'account', title: local ? 'Legal' : 'Account' },
     { id: 'delete', title: local ? 'Delete everything on this device' : 'Delete your account' },
   ];
   const title = (id: string) => sections.find((section) => section.id === id)?.title ?? '';
 
-  const zoneMessage = (zoneTouched ? zoneError(zone) : null) ?? zoneServerError;
+  const zoneValue = zone ?? me?.timezone ?? '';
+  const zoneMessage = (zoneTouched ? zoneError(zoneValue) : null) ?? zoneServerError;
   const suggestZone = !!me && isValidTimeZone(browserZone) && (!me.timezoneSet || me.timezone !== browserZone);
   const graceShown = grace ?? me?.graceDaysPerWeek ?? 0;
   const secondShown = second ?? me?.secondReminderMinutes ?? 0;
@@ -441,14 +466,15 @@ export default function SettingsPage() {
         <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,40rem)] lg:items-start">
           <nav
             aria-label="Settings sections"
-            className="hidden lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)] lg:block"
+            className="lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)]"
           >
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap lg:gap-1">
               {sections.map((section) => (
                 <li key={section.id}>
                   <a
                     href={`#${section.id}`}
-                    className="flex min-h-[44px] items-center rounded-md px-3 text-[14px] text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => focusSection(section.id)}
+                    className="flex min-h-[44px] items-center rounded-full border border-border px-3 text-[14px] text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground lg:rounded-md lg:border-transparent"
                   >
                     {section.title}
                   </a>
@@ -463,6 +489,187 @@ export default function SettingsPage() {
                 <DeviceDataSettings />
               </SettingsCard>
             )}
+
+            {!local && (
+              <SettingsCard id="account" title={title('account')}>
+                <p>
+                  {me.email ? (
+                    <>
+                      Signed in as <strong className="[overflow-wrap:anywhere]">{me.email}</strong>
+                    </>
+                  ) : (
+                    'Signed in with Discord'
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {me.email && me.hasPassword && (
+                    <BusyButton
+                      type="button"
+                      variant="secondary"
+                      busy={busy === 'password'}
+                      busyLabel="Sending…"
+                      onClick={() => void changePassword(me.email ?? '')}
+                    >
+                      Change password
+                    </BusyButton>
+                  )}
+                  <BusyButton
+                    type="button"
+                    variant="secondary"
+                    busy={busy === 'signout'}
+                    busyLabel="Signing out…"
+                    onClick={() => void signOut()}
+                  >
+                    Sign out
+                  </BusyButton>
+                </div>
+                {outcome('password')}
+                {outcome('signout')}
+              </SettingsCard>
+            )}
+
+            <SettingsCard id="appearance" title={title('appearance')}>
+              <p id="appearance-hint">
+                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your choice follows you to your other devices.'}
+              </p>
+              <ColorSchemePicker />
+              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
+              {outcome('appearance')}
+            </SettingsCard>
+
+            {showPush && (
+              <SettingsCard id="push" title={title('push')}>
+                <p>
+                  Get gentle reminders here, even when Ember isn't open. By default a notification doesn't name your
+                  habit, since it can show on a lock screen.
+                </p>
+                {showIosHint && (
+                  <p className="text-muted-foreground">
+                    On iPhone and iPad, notifications work once Ember is on your Home Screen: tap Share, choose "Add to
+                    Home Screen", then open Ember from there.
+                  </p>
+                )}
+                {pushSubscribed && <p>Notifications are on for this device.</p>}
+                <div>
+                  {pushSubscribed ? (
+                    <BusyButton
+                      type="button"
+                      variant="secondary"
+                      busy={busy === 'push'}
+                      busyLabel="Turning off…"
+                      onClick={() => void disablePush()}
+                    >
+                      Turn off notifications
+                    </BusyButton>
+                  ) : (
+                    <BusyButton
+                      type="button"
+                      busy={busy === 'push'}
+                      busyLabel="Turning on…"
+                      onClick={() => void enablePush()}
+                    >
+                      Turn on notifications
+                    </BusyButton>
+                  )}
+                </div>
+                {outcome('push')}
+              </SettingsCard>
+            )}
+
+            {showDm && (
+              <SettingsCard id="dm-reminders" title={title('dm-reminders')}>
+                {me.dmReminders.paused && (
+                  <>
+                    <p>
+                      Ember paused your Discord DM reminders because they couldn't be delivered. This often happens
+                      when DMs from server members are turned off. Once DMs can reach you again, you can turn them back
+                      on.
+                    </p>
+                    <div>
+                      <BusyButton
+                        type="button"
+                        variant="secondary"
+                        busy={busy === 'dm'}
+                        busyLabel="Resuming…"
+                        onClick={() => void resumeDms()}
+                      >
+                        Resume DM reminders
+                      </BusyButton>
+                    </div>
+                  </>
+                )}
+                {outcome('dm')}
+              </SettingsCard>
+            )}
+
+            {env.native && (
+              <SettingsCard id="phone-reminders" title={title('phone-reminders')}>
+                <p>
+                  Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
+                  they arrive even without a connection.
+                </p>
+                <ReminderNamesSetting />
+                {exactAllowed === false && (
+                  <>
+                    <p className="text-[14px] text-muted-foreground">
+                      Your phone may deliver them a few minutes late. Allow exact alarms for Ember to get them right on
+                      time.
+                    </p>
+                    <div>
+                      <Button type="button" variant="secondary" onClick={() => void allowExact()}>
+                        Allow exact reminder times
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </SettingsCard>
+            )}
+
+            <SettingsCard id="second-reminder" title={title('second-reminder')}>
+              <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
+                {(field) => (
+                  <NativeSelect
+                    {...field}
+                    value={String(secondShown)}
+                    onChange={(event) => changeSecond(Number(event.target.value) as SecondReminderMinutes)}
+                  >
+                    {secondReminderChoices.map((n) => (
+                      <option key={n} value={n}>
+                        {secondReminderLabels[n]}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </FormField>
+              {savedStatus('second')}
+              {outcome('second')}
+            </SettingsCard>
+
+            <SettingsCard id="grace" title={title('grace')}>
+              <FormField
+                label="Grace days per week"
+                hint="Up to this many days a week can pass without a check-in and your streak keeps going. Every check-in counts, no matter the gap."
+              >
+                {(field) => (
+                  <NativeSelect
+                    {...field}
+                    value={String(graceShown)}
+                    onChange={(event) => changeGrace(Number(event.target.value))}
+                  >
+                    {graceOptions.map((n) => (
+                      <option key={n} value={n}>
+                        {n === 0 ? 'None' : n === 1 ? '1 day a week' : `${n} days a week`}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </FormField>
+              <p className="text-[14px] text-muted-foreground">
+                Grace days happen on their own. A low day is one you mark yourself, and a pause is for one habit.
+              </p>
+              {savedStatus('grace')}
+              {outcome('grace')}
+            </SettingsCard>
 
             <SettingsCard id="timezone" title={title('timezone')}>
               {me.timezoneSet ? (
@@ -508,7 +715,7 @@ export default function SettingsPage() {
                       list="timezone-list"
                       autoComplete="off"
                       spellCheck={false}
-                      value={zone}
+                      value={zoneValue}
                       onChange={(event) => setZone(event.target.value)}
                       onBlur={() => setZoneTouched(true)}
                     />
@@ -529,27 +736,8 @@ export default function SettingsPage() {
               {outcome('timezone')}
             </SettingsCard>
 
-            <SettingsCard id="grace" title={title('grace')}>
-              <FormField
-                label="Grace days per week"
-                hint="Grace days are flex days: up to this many days a week can pass without a check-in and your streak keeps going. Every check-in counts, no matter the gap."
-              >
-                {(field) => (
-                  <NativeSelect
-                    {...field}
-                    value={String(graceShown)}
-                    onChange={(event) => changeGrace(Number(event.target.value))}
-                  >
-                    {graceOptions.map((n) => (
-                      <option key={n} value={n}>
-                        {n === 0 ? 'None' : n === 1 ? '1 day a week' : `${n} days a week`}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </FormField>
-              {savedStatus('grace')}
-              {outcome('grace')}
+            <SettingsCard id="moods" title={title('moods')}>
+              <MoodManager />
             </SettingsCard>
 
             {!local && (
@@ -606,126 +794,6 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            <SettingsCard id="moods" title={title('moods')}>
-              <MoodManager />
-            </SettingsCard>
-
-            {showDm && (
-              <SettingsCard id="dm-reminders" title={title('dm-reminders')}>
-                {me.dmReminders.paused && (
-                  <>
-                    <p>
-                      Ember paused your Discord DM reminders because they couldn't be delivered. This often happens
-                      when DMs from server members are turned off. Once DMs can reach you again, you can turn them back
-                      on.
-                    </p>
-                    <div>
-                      <BusyButton
-                        type="button"
-                        variant="secondary"
-                        busy={busy === 'dm'}
-                        busyLabel="Resuming…"
-                        onClick={() => void resumeDms()}
-                      >
-                        Resume DM reminders
-                      </BusyButton>
-                    </div>
-                  </>
-                )}
-                {outcome('dm')}
-              </SettingsCard>
-            )}
-
-            {showPush && (
-              <SettingsCard id="push" title={title('push')}>
-                <p>
-                  Get gentle reminders here, even when Ember isn't open. By default a notification doesn't name your
-                  habit, since it can show on a lock screen.
-                </p>
-                {showIosHint && (
-                  <p className="text-muted-foreground">
-                    On iPhone and iPad, notifications work once Ember is on your Home Screen: tap Share, choose "Add to
-                    Home Screen", then open Ember from there.
-                  </p>
-                )}
-                {pushSubscribed && <p>Notifications are on for this device.</p>}
-                <div>
-                  {pushSubscribed ? (
-                    <BusyButton
-                      type="button"
-                      variant="secondary"
-                      busy={busy === 'push'}
-                      busyLabel="Turning off…"
-                      onClick={() => void disablePush()}
-                    >
-                      Turn off notifications
-                    </BusyButton>
-                  ) : (
-                    <BusyButton
-                      type="button"
-                      busy={busy === 'push'}
-                      busyLabel="Turning on…"
-                      onClick={() => void enablePush()}
-                    >
-                      Turn on notifications
-                    </BusyButton>
-                  )}
-                </div>
-                {outcome('push')}
-              </SettingsCard>
-            )}
-
-            {env.native && (
-              <SettingsCard id="phone-reminders" title={title('phone-reminders')}>
-                <p>
-                  Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
-                  they arrive even without a connection.
-                </p>
-                <ReminderNamesSetting />
-                {exactAllowed === false && (
-                  <>
-                    <p className="text-[14px] text-muted-foreground">
-                      Your phone may deliver them a few minutes late. Allow exact alarms for Ember to get them right on
-                      time.
-                    </p>
-                    <div>
-                      <Button type="button" variant="secondary" onClick={() => void allowExact()}>
-                        Allow exact reminder times
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </SettingsCard>
-            )}
-
-            <SettingsCard id="second-reminder" title={title('second-reminder')}>
-              <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
-                {(field) => (
-                  <NativeSelect
-                    {...field}
-                    value={String(secondShown)}
-                    onChange={(event) => changeSecond(Number(event.target.value) as SecondReminderMinutes)}
-                  >
-                    {secondReminderChoices.map((n) => (
-                      <option key={n} value={n}>
-                        {secondReminderLabels[n]}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </FormField>
-              {savedStatus('second')}
-              {outcome('second')}
-            </SettingsCard>
-
-            <SettingsCard id="appearance" title={title('appearance')}>
-              <p id="appearance-hint">
-                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your choice follows you to your other devices.'}
-              </p>
-              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
-              {outcome('appearance')}
-            </SettingsCard>
-
             {!local && (
               <SettingsCard id="export" title={title('export')}>
                 <p>
@@ -755,40 +823,6 @@ export default function SettingsPage() {
                 {outcome('export')}
               </SettingsCard>
             )}
-
-            <SettingsCard id="account" title={title('account')}>
-              <ul aria-label="Legal" className="flex flex-wrap gap-x-5">
-                <li>
-                  <Link to="/legal/privacy" className="inline-flex min-h-[44px] items-center">
-                    Privacy
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/legal/terms" className="inline-flex min-h-[44px] items-center">
-                    Terms
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/legal/imprint" className="inline-flex min-h-[44px] items-center">
-                    Imprint
-                  </Link>
-                </li>
-              </ul>
-              {!local && (
-                <div>
-                  <BusyButton
-                    type="button"
-                    variant="secondary"
-                    busy={busy === 'signout'}
-                    busyLabel="Signing out…"
-                    onClick={() => void signOut()}
-                  >
-                    Sign out
-                  </BusyButton>
-                </div>
-              )}
-              {outcome('signout')}
-            </SettingsCard>
 
             <SettingsCard id="delete" title={title('delete')} farewell>
               {local ? (

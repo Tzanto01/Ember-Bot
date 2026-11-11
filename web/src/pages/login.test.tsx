@@ -142,6 +142,22 @@ describe('LoginPage', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
   });
 
+  it('when Ember could not be reached, offers Try again instead of the form, and the form on request', async () => {
+    const user = userEvent.setup();
+    const router = renderPage('/login', LoginPage, '/login?returnUrl=%2Fhistory&reason=offline');
+
+    expect(screen.getByRole('heading', { name: "Ember can't be reached right now" })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Sign in instead' }));
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).toHaveFocus();
+
+    router.dispose();
+    const retry = renderPage('/login', LoginPage, '/login?returnUrl=%2Fhistory&reason=offline');
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(retry.state.location.pathname).toBe('/history'));
+  });
+
   it('announces a deleted account as a status', () => {
     renderPage('/login', LoginPage, '/login?reason=deleted');
 

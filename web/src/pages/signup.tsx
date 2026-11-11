@@ -2,7 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
+import { DiscordButton } from '@/components/auth/discord-button';
 import { EnvelopeSpark } from '@/components/auth/illustrations';
+import { rememberSignupEmail } from '@/components/auth/signup-email';
 import {
   email as emailRule,
   minLength,
@@ -33,7 +35,10 @@ export default function SignupPage() {
 
   const register = useMutation({
     mutationFn: (body: Credentials) => api.register(body),
-    onSuccess: (_, body) => setSentTo(body.email),
+    onSuccess: (_, body) => {
+      rememberSignupEmail(body.email);
+      setSentTo(body.email);
+    },
     onError: (error) => setProblem(problemToMessage(asApiError(error), 'register')),
   });
 
@@ -125,6 +130,7 @@ export default function SignupPage() {
           Create account
         </BusyButton>
       </form>
+      <DiscordButton>Continue with Discord</DiscordButton>
       <p className="text-center text-muted-foreground">
         Already have an account? <TapLink to="/login">Sign in</TapLink>
       </p>

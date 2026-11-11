@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { reminderNames } from '@/lib/native/reminder-names';
-import { auth, localMode } from '@/lib/services';
+import { auth, localMode, push } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SettingsPage from './settings';
 
@@ -42,6 +42,66 @@ describe('SettingsPage', () => {
     env.native = false;
     reminderNames.set(false);
     localMode.mode.set('account');
+    push.available.set(false);
+    document.documentElement.classList.remove('dark');
+  });
+
+  it('starts with the account: who is signed in, then Appearance, and sends a change-password link', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+
+    const cards = document.querySelectorAll('section');
+    expect(cards[0]).toHaveAccessibleName('Account');
+    expect(cards[1]).toHaveAccessibleName('Appearance');
+    const account = within(cards[0] as HTMLElement);
+    expect(account.getByText(/Signed in as/)).toHaveTextContent('Signed in as a@example.test');
+    expect(account.queryByRole('link', { name: 'Privacy' })).toBeNull();
+
+    await user.click(account.getByRole('button', { name: 'Change password' }));
+    const sent = await fetch.next('POST', '/api/auth/forgotPassword');
+    expect(sent.body).toEqual({ email: 'a@example.test' });
+    sent.respond(200);
+    expect(await account.findByText(/We sent a link to a@example.test/)).toBeInTheDocument();
+  });
+
+  it('for a Discord-only account, says so and offers no password change', async () => {
+    const discordOnly = { ...me, email: null, hasPassword: false, discord: { linked: true, id: '42' } };
+    auth.setMe(discordOnly);
+    const fetch = mockFetch();
+    renderPage('/settings', SettingsPage, '/settings');
+    (await fetch.next('GET', '/api/me')).respond(200, discordOnly);
+
+    expect(await screen.findByText('Signed in with Discord')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
+  });
+
+  it('scrolls to the card named in the address and focuses its heading, as /settings#push', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    push.available.set(true);
+    auth.setMe(me);
+    const fetch = mockFetch();
+    renderPage('/settings', SettingsPage, '/settings#push');
+    (await fetch.next('GET', '/api/me')).respond(200, me);
+
+    const heading = await screen.findByRole('heading', { name: 'Notifications on this device' });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('push'));
+  });
+
+  it('switches between light, dark and the system setting on this device', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => undefined }));
+    const user = userEvent.setup();
+    await open();
+
+    expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+    expect(document.documentElement).toHaveClass('dark');
+    expect(localStorage.getItem('ember.colorScheme')).toBe('dark');
+
+    await user.click(screen.getByRole('radio', { name: 'System' }));
+    expect(document.documentElement).not.toHaveClass('dark');
+    expect(localStorage.getItem('ember.colorScheme')).toBeNull();
   });
 
   it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {
