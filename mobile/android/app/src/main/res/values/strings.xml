@@ -7,6 +7,7 @@
     <string name="widget_name">Today in Ember</string>
     <string name="widget_description">Today\'s habits at a glance. Tap one to check in.</string>
     <string name="widget_signed_out">Open Ember to see today</string>
+    <string name="widget_stale">Open Ember to refresh</string>
     <string name="widget_nothing_today">Nothing planned today. Enjoy the rest.</string>
     <string name="widget_state_done">Done</string>
     <string name="widget_state_partial">%1$d of %2$d</string>

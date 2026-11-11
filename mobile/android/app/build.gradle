@@ -38,12 +38,10 @@ android {
     }
 }
 
-if (!missingSigning.isEmpty()) {
-    def message = "Release signing is not set up. Missing Gradle properties: ${missingSigning.join(', ')}. " +
-        "Set them in ~/.gradle/gradle.properties or as ORG_GRADLE_PROJECT_<name> environment variables (see mobile/STORE.md)."
-    tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
-        doFirst { throw new GradleException(message) }
-    }
+def releaseRequested = gradle.startParameter.taskNames.any { it.tokenize(':').last() in ['assembleRelease', 'bundleRelease'] }
+if (releaseRequested && !missingSigning.isEmpty()) {
+    throw new GradleException("Release signing is not set up. Missing Gradle properties: ${missingSigning.join(', ')}. " +
+        "Set them in ~/.gradle/gradle.properties or as ORG_GRADLE_PROJECT_<name> environment variables (see mobile/STORE.md).")
 }
 
 repositories {

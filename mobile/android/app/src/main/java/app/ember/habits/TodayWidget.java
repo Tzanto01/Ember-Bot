@@ -226,7 +226,11 @@ public class TodayWidget extends AppWidgetProvider {
         int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more")) + (habits == null ? 0 : habits.length() - shown);
         views.setTextViewText(
             R.id.widget_empty,
-            context.getString(snapshot == null ? R.string.widget_signed_out : R.string.widget_nothing_today)
+            context.getString(
+                snapshot != null
+                    ? R.string.widget_nothing_today
+                    : prefs(context).contains(SNAPSHOT) ? R.string.widget_stale : R.string.widget_signed_out
+            )
         );
         views.setViewVisibility(R.id.widget_empty, shown == 0 && more == 0 ? View.VISIBLE : View.GONE);
         for (int i = 0; i < MAX_ROWS; i++) {
