@@ -22,6 +22,7 @@ import { buildMonth, canGoNext, canGoPrevious, monthRange } from '@/lib/calendar
 import { addMonths, formatDate, monthLabel, startOfMonth } from '@/lib/local-date';
 import type { Habit, LocalDateString } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
+import { loadFreshMe } from '@/components/today/fresh-me';
 import { api, auth } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
@@ -29,7 +30,7 @@ const habitsKey = ['history', 'habits'] as const;
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 
 async function loadHabits(): Promise<Habit[]> {
-  await auth.loadMe(true).catch(() => null);
+  await loadFreshMe().catch(() => null);
   return api.listHabits();
 }
 

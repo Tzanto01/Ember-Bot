@@ -92,6 +92,20 @@ describe('TodayPage', () => {
     expect(f.all.some((c) => c.url.includes('2026-11-01'))).toBe(false);
   });
 
+  it('makes no second /api/me request on first load when me is current', async () => {
+    const localToday = new Intl.DateTimeFormat('en-CA', { timeZone: me.timezone }).format(new Date());
+    auth.setMe({ ...me, localToday });
+    renderToday();
+
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+    (await f.next('GET', `/api/low-days?from=${localToday}&to=${localToday}`)).respond(200, []);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
+
+    await checkButton();
+    expect(f.all.filter((c) => c.url === '/api/me')).toHaveLength(0);
+  });
+
   it('checks in, presses the button and announces it', async () => {
     renderToday();
     await answerLoad(f, [habit]);

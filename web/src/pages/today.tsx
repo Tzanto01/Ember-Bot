@@ -24,6 +24,7 @@ import { isOffday } from '@/lib/calendar';
 import { addDays, formatDate } from '@/lib/local-date';
 import type { DayState, Habit, LocalDateString, Routine, WeeklyStats } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
+import { loadFreshMe } from '@/components/today/fresh-me';
 import { api, auth, deviceSync } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
@@ -84,7 +85,7 @@ function weeklyHeadline(weekly: WeeklyStats): string {
 }
 
 async function loadToday(): Promise<TodayData> {
-  await auth.loadMe(true).catch(() => null);
+  await loadFreshMe().catch(() => null);
   const today = auth.me.get()?.localToday ?? null;
   const [habits, lowDays, weekly, routines] = await Promise.allSettled([
     api.listHabits(),

@@ -25,13 +25,14 @@ import { YearHeatmap, YearLegend } from '@/components/year/year-heatmap';
 import { formatDate } from '@/lib/local-date';
 import type { DayEntry, DayStat, Habit, LocalDateString } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
+import { loadFreshMe } from '@/components/today/fresh-me';
 import { api, auth } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
 
 async function loadHabits(): Promise<Habit[]> {
-  await auth.loadMe(true).catch(() => null);
+  await loadFreshMe().catch(() => null);
   return api.listHabits();
 }
 
