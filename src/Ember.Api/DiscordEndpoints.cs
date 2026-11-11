@@ -106,7 +106,7 @@ internal static class DiscordEndpoints
             if (await users.FindByIdAsync(userId.ToString()) is null) return Results.Redirect(NativeError);
 
             var code = Base64Url(RandomNumberGenerator.GetBytes(32));
-            cache.Set(NativeKey(code), new NativeGrant(userId, challenge, time.GetUtcNow() + NativeCodeLifetime), NativeTwoFactorLifetime);
+            cache.Set(NativeKey(code), new NativeGrant(userId, challenge, time.GetUtcNow() + NativeCodeLifetime), NativeCodeLifetime);
             return Results.Redirect($"{NativeRedirect}?code={code}");
         });
 
@@ -132,8 +132,12 @@ internal static class DiscordEndpoints
             {
                 if (request.TwoFactorCode is not { Length: > 0 } && request.TwoFactorRecoveryCode is not { Length: > 0 })
                 {
-                    grant.ExpiresUtc = time.GetUtcNow() + NativeTwoFactorLifetime;
-                    cache.Set(key, grant, NativeTwoFactorLifetime);
+                    if (!grant.TwoFactorPending)
+                    {
+                        grant.TwoFactorPending = true;
+                        grant.ExpiresUtc = time.GetUtcNow() + NativeTwoFactorLifetime;
+                        cache.Set(key, grant, NativeTwoFactorLifetime);
+                    }
                     grant.Release();
                     return TypedResults.Problem("RequiresTwoFactor", statusCode: StatusCodes.Status401Unauthorized);
                 }
@@ -335,6 +339,7 @@ internal static class DiscordEndpoints
         public Guid UserId { get; } = userId;
         public string Challenge { get; } = challenge;
         public DateTimeOffset ExpiresUtc { get; set; } = expiresUtc;
+        public bool TwoFactorPending { get; set; }
 
         public bool TryTake() => Interlocked.Exchange(ref taken, 1) == 0;
 

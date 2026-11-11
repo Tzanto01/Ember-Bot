@@ -128,6 +128,26 @@ public class NativeDiscordTests(PostgresFixture postgres) : ApiTestBase(postgres
     }
 
     [DockerFact]
+    public async Task Asking_again_without_the_second_factor_does_not_extend_the_code()
+    {
+        var discordId = ApiHost.NewDiscordId();
+        var owner = Host.NewClient();
+        await Host.DiscordAsync(owner, Login, discordId);
+        await owner.RefreshCsrfAsync();
+        var key = (await (await owner.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
+        await (await owner.Post("/api/me/2fa/enable", new { code = Totp.Code(key) })).Expect(HttpStatusCode.OK);
+        var (verifier, challenge) = Pkce();
+        var code = await CodeAsync(discordId, challenge);
+
+        (await Detail(await ExchangeAsync(code, verifier))).Should().Be("RequiresTwoFactor");
+        Host.Time.Advance(TimeSpan.FromMinutes(4));
+        (await Detail(await ExchangeAsync(code, verifier))).Should().Be("RequiresTwoFactor");
+        Host.Time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
+
+        (await Detail(await ExchangeAsync(code, verifier, Totp.Code(key)))).Should().Be("Failed");
+    }
+
+    [DockerFact]
     public async Task A_bad_challenge_or_a_cancelled_native_login_redirects_to_the_app_error()
     {
         var response = await Host.NewClient().Get($"{Login}?client=native&challenge=short");
