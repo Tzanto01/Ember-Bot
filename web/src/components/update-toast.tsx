@@ -24,6 +24,7 @@ export function UpdateToast() {
   const offline = useStore(http.offlineData);
   const [updateHidden, setUpdateHidden] = useState(false);
   const [offlineHidden, setOfflineHidden] = useState(false);
+  const [reloading, setReloading] = useState(false);
   useEffect(() => setOfflineHidden(false), [offline]);
 
   const showUpdate = !!reload && !updateHidden;
@@ -43,8 +44,16 @@ export function UpdateToast() {
         <Notice tone="info" className="pointer-events-auto w-full max-w-[28rem] bg-card shadow-md">
           <div className="flex w-full flex-wrap items-center gap-2">
             <p>A new version is ready.</p>
-            <Button variant="secondary" onClick={reload}>
-              Reload
+            <Button
+              variant="secondary"
+              aria-disabled={reloading || undefined}
+              onClick={() => {
+                if (reloading) return;
+                setReloading(true);
+                reload();
+              }}
+            >
+              {reloading ? 'Reloading…' : 'Reload'}
             </Button>
             <Dismiss onClick={() => setUpdateHidden(true)} />
           </div>

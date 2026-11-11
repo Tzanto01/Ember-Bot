@@ -127,3 +127,34 @@ describe('startApp on the web', () => {
     expect(http.offlineData.get()).toBe(false);
   });
 });
+
+describe('activateUpdate', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('reloads once when the new worker takes control', async () => {
+    const target = new EventTarget();
+    vi.stubGlobal('navigator', { serviceWorker: target });
+    const reload = vi.fn();
+    const { activateUpdate } = await import('./startup');
+
+    await activateUpdate(async () => void target.dispatchEvent(new Event('controllerchange')), reload);
+    target.dispatchEvent(new Event('controllerchange'));
+
+    expect(reload).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
+
+  it('still reloads when this page never gets a controllerchange', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('navigator', { serviceWorker: new EventTarget() });
+    const reload = vi.fn();
+    const { activateUpdate } = await import('./startup');
+
+    await activateUpdate(async () => undefined, reload);
+    expect(reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(3000);
+
+    expect(reload).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
+});

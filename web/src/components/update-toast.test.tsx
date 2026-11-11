@@ -22,6 +22,8 @@ describe('UpdateToast', () => {
     act(() => updateReady.set(reload));
     await userEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(reload).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Reloading…' }));
+    expect(reload).toHaveBeenCalledTimes(1);
 
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText('A new version is ready.')).toBeNull();

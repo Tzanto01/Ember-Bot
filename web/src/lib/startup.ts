@@ -49,10 +49,26 @@ function keptUser(): Me | null {
   return me && auth.staySignedIn.get() === me.id ? me : null;
 }
 
+/**
+ * Tells the waiting service worker to take over, then reloads this page once it has (or after 3 seconds at most), so the
+ * page also reloads when it was never controlled by the old worker and gets no `controllerchange` of its own.
+ */
+export async function activateUpdate(skipWaiting: () => Promise<void>, reload = () => location.reload()): Promise<void> {
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    reload();
+  };
+  navigator.serviceWorker?.addEventListener('controllerchange', once, { once: true });
+  setTimeout(once, 3000);
+  await skipWaiting().catch(() => undefined);
+}
+
 function registerServiceWorker(): void {
   const updateSW = registerSW({
     immediate: true,
-    onNeedRefresh: () => updateReady.set(() => void updateSW(true)),
+    onNeedRefresh: () => updateReady.set(() => void activateUpdate(() => updateSW(true))),
     onRegisteredSW: (_url, registration) => {
       if (!registration) return;
       document.addEventListener('visibilitychange', () => {
