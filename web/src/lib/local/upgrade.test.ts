@@ -259,6 +259,20 @@ describe('UpgradeService', () => {
     expect(finishUpgrade).toHaveBeenCalledOnce();
   });
 
+  it('finishes the retry of a device with only moods whose import answer was lost', async () => {
+    await store.update((d) => ({ ...d, habits: [], logs: [] }));
+    server.loseImportAnswer = true;
+    const first = await upgrade.run();
+    server.loseImportAnswer = false;
+
+    const second = await upgrade.run();
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true, recoveryCode: null });
+    expect(server.imports).toHaveLength(1);
+    expect(await store.exists()).toBe(false);
+  });
+
   it('encrypts the private journal on the device and resumes after an interruption without a second import', async () => {
     server.failMoodPosts = 1;
     const secret = { passphrase: 'synthetic harbour lantern', remember: false, password: 'synthetic-pw' };
@@ -427,6 +441,38 @@ describe('UpgradeService', () => {
     expect(await store.exists()).toBe(false);
     expect(await upgrade.pendingRecoveryCode()).toBeNull();
     expect(finishUpgrade).toHaveBeenCalledOnce();
+  });
+
+  it('shows nothing waiting and no recovery code to another account after the move finished', async () => {
+    await upgrade.run({ privateJournal: secret });
+    auth.setMe({ ...server.me, id: 'account-2' });
+
+    expect(await upgrade.summary()).toBeNull();
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect((await store.load())?.upgrade?.recoveryCode).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
+  });
+
+  it('keeps device data added after a finished move instead of returning the old recovery code', async () => {
+    await upgrade.run({ privateJournal: secret });
+    await store.update((d) => ({ ...d, habits: deviceData().habits }));
+    const calls = mock.all.length;
+
+    const result = await upgrade.run();
+
+    expect(result).toMatchObject({ ok: false, reason: 'failed' });
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect((await store.load())?.habits).toHaveLength(1);
+    expect(mock.all.length).toBe(calls);
+  });
+
+  it('clears the device caches of the local user when the recovery code is acknowledged', async () => {
+    await upgrade.run({ privateJournal: secret });
+    const localUser = (await store.load())!.profile.userId;
+    await device.saveHabits({ userId: localUser, timeZone: 'Europe/Berlin', habits: [] });
+
+    await upgrade.acknowledge();
+
+    expect(await device.habits(localUser)).toBeNull();
   });
 
   it('returns the saved recovery code when a retry without the private journal choice finishes', async () => {

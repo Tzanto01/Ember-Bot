@@ -38,6 +38,10 @@ function failed(message: string): UpgradeResult {
   return { ok: false, reason: 'failed', message };
 }
 
+function holdsData(data: LocalData): boolean {
+  return [data.habits, data.logs, data.lowDays, data.routines, data.moods, data.notes].some((list) => list.length > 0);
+}
+
 function sameSorted(a: string[], b: string[]): boolean {
   const x = [...a].sort();
   const y = [...b].sort();
@@ -66,7 +70,7 @@ export class UpgradeService implements UpgradeApi {
 
   async summary(): Promise<UpgradeSummary | null> {
     const data = await this.store.load().catch(() => null);
-    if (!data) return null;
+    if (!data || (data.upgrade?.finished && !holdsData(data))) return null;
     const out = leftOut(data);
     return {
       habits: data.habits.length,
@@ -78,13 +82,16 @@ export class UpgradeService implements UpgradeApi {
   }
 
   async pendingRecoveryCode(): Promise<string | null> {
-    const progress = (await this.store.load().catch(() => null))?.upgrade;
-    const mine = progress?.finished && progress.userId === this.auth.me.get()?.id;
-    return mine ? progress.recoveryCode : null;
+    const data = await this.store.load().catch(() => null);
+    const progress = data?.upgrade;
+    if (!data || !progress?.finished || holdsData(data)) return null;
+    return progress.userId === this.auth.me.get()?.id ? progress.recoveryCode : null;
   }
 
   async acknowledge(): Promise<void> {
+    const userId = (await this.store.load())?.profile.userId;
     await this.store.clear();
+    if (userId) await this.device.clearUser(userId).catch(() => undefined);
     this.localMode.finishUpgrade();
   }
 
@@ -117,7 +124,12 @@ export class UpgradeService implements UpgradeApi {
             archivedMoods: [],
             notesDone: [],
           };
-    if (progress.finished) return { ok: true, recoveryCode: progress.recoveryCode };
+    if (progress.finished) {
+      if (holdsData(data)) {
+        return failed('Sign in to the account you moved your data to and save its recovery code first.');
+      }
+      return { ok: true, recoveryCode: progress.recoveryCode };
+    }
     const save = async (change: Partial<UpgradeProgress>) => {
       progress = { ...progress, ...change };
       const next = progress;

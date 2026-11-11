@@ -64,11 +64,17 @@ export default function KeepDataPage() {
   const [exported, setExported] = useState('');
   useFocusHeadingOnChange(step.step);
 
+  const [checked, setChecked] = useState(false);
+  const meId = me?.id;
   useEffect(() => {
-    void upgrade.pendingRecoveryCode().then((code) => {
-      if (code) setStep({ step: 'recovery', code });
-    });
-  }, []);
+    if (!meId) return;
+    void upgrade
+      .pendingRecoveryCode()
+      .then((code) => {
+        if (code) setStep({ step: 'recovery', code });
+      })
+      .finally(() => setChecked(true));
+  }, [meId]);
 
   const needsPassword = privateJournal && !!me?.hasPassword;
   const passphrase = useField(privateJournal ? passphraseRule : noRule);
@@ -202,7 +208,7 @@ export default function KeepDataPage() {
   return (
     <>
       <PageHeader title="Keep your data" lede="Move what's on this device into your account." />
-      {summary.isPending || !me ? (
+      {summary.isPending || !me || !checked ? (
         <>
           <p role="status" className="sr-only">
             Loading what's on this device…

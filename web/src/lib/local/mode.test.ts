@@ -7,7 +7,7 @@ import { DeviceStore } from '../device-store';
 import { Http } from '../http';
 import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, me, mockFetch } from '../test-support';
-import { LocalBackend } from './backend';
+import { LocalBackend, newLocalData } from './backend';
 import { LocalMode } from './mode';
 import { LocalStore } from './store';
 
@@ -75,6 +75,45 @@ describe('LocalMode', () => {
 
     expect(mode.mode.get()).toBe('local');
     expect(auth.me.get()?.id).toBe(userId);
+  });
+
+  const finishedRecord = () => ({
+    ...newLocalData({ timezone: 'Europe/Berlin', theme: null }, new Date('2026-10-01T00:00:00Z')),
+    upgrade: {
+      userId: 'account-1',
+      importSent: true,
+      imported: true,
+      journalOmitted: true,
+      journalEnabled: true,
+      recoveryCode: 'SYNT-HETI-CCOD',
+      moodIds: {},
+      archivedMoods: [],
+      notesDone: [],
+      finished: true,
+    },
+  });
+
+  it('goes back to upgrading instead of starting on the device while a recovery code waits', async () => {
+    await store.replace(finishedRecord());
+
+    await mode.start();
+
+    expect(mode.mode.get()).toBe('upgrading');
+    expect(localStorage.getItem('ember.mode')).toBe('upgrading');
+    expect(http.local).toBeNull();
+    expect((await store.load())?.upgrade?.recoveryCode).toBe('SYNT-HETI-CCOD');
+  });
+
+  it('keeps a waiting recovery code when cancelling the upgrade', async () => {
+    await store.replace(finishedRecord());
+    localStorage.setItem('ember.mode', 'upgrading');
+    await mode.init();
+
+    await mode.cancelUpgrade();
+
+    expect(mode.mode.get()).toBe('upgrading');
+    expect((await store.load())?.upgrade?.recoveryCode).toBe('SYNT-HETI-CCOD');
+    expect(mock.all).toHaveLength(0);
   });
 
   it('wipes the device data and leaves local mode', async () => {

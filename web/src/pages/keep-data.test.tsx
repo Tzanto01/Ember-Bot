@@ -89,6 +89,21 @@ describe('KeepDataPage', () => {
     expect(screen.queryByText('ABCD EFGH IJKL')).toBeNull();
   });
 
+  it('offers nothing to continue past until the waiting recovery code has been looked up', async () => {
+    let resolveCode = (_code: string) => {};
+    vi.mocked(upgrade.summary).mockResolvedValueOnce(null);
+    vi.mocked(upgrade.pendingRecoveryCode).mockReturnValueOnce(new Promise((resolve) => (resolveCode = resolve)));
+    renderPage('/keep-data', KeepDataPage, '/keep-data');
+
+    await waitFor(() => expect(upgrade.summary).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+
+    resolveCode('ABCD-EFGH-IJKL');
+
+    expect(await screen.findByText('ABCD EFGH IJKL')).toBeInTheDocument();
+  });
+
   it('shows a recovery code that was not acknowledged before the app closed', async () => {
     vi.mocked(upgrade.pendingRecoveryCode).mockResolvedValueOnce('ABCD-EFGH-IJKL');
     renderPage('/keep-data', KeepDataPage, '/keep-data');
