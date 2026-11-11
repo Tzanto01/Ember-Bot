@@ -15,6 +15,7 @@ Deutschland
 
 ## Kontakt
 
+Telefon: +49 176 87943322
 E-Mail: contact@nicowoellnitz.de
 
 ## Umsatzsteuer
@@ -33,7 +34,7 @@ Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren
 
 **Kein Block nach § 18 Abs. 2 MStV:** Ember hat keine journalistisch-redaktionellen Inhalte. Der Abschnitt entfällt.
 
-**Kontakt:** Die Angaben entsprechen dem Impressum deines Portfolios: Anschrift und E-Mail-Adresse. Ob eine Telefonnummer oder ein zweiter Kontaktweg nötig ist, entscheidest du. Der Impressum-Text muss dann dazu passen (siehe docs/legal/README.md). [PRÜFEN: § 5 Abs. 1 Nr. 2 DDG verlangt eine schnelle elektronische Kontaktaufnahme, die E-Mail-Adresse nennt. Ob das bei Abmahnrisiko reicht, entscheiden.]
+**Kontakt:** Die Angaben entsprechen dem Impressum deines Portfolios: Anschrift, Telefon und E-Mail-Adresse. Die Telefonnummer steht nur im Impressum. Impressum und Datenschutzerklärung schickt der Server mit `X-Robots-Tag: noindex`, damit eine Suche nach deinem Namen deine Anschrift nicht anzeigt.
 
 **Ladungsfähige Anschrift:** Die Wohnadresse ist die ladungsfähige Anschrift. Ein Postfach reicht nicht.
 

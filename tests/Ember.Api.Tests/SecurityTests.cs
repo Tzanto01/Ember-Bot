@@ -117,4 +117,14 @@ public class SecurityTests(PostgresFixture postgres) : ApiTestBase(postgres)
             response.Headers.GetValues("Content-Security-Policy").Single().Should().Contain("frame-ancestors 'none'");
         }
     }
+
+    [DockerFact]
+    public async Task Legal_pages_are_kept_out_of_search_engines()
+    {
+        var client = Host.NewClient();
+
+        (await client.Get("/legal/imprint")).Headers.GetValues("X-Robots-Tag").Should().Contain("noindex");
+        (await client.Get("/legal/impressum.md")).Headers.GetValues("X-Robots-Tag").Should().Contain("noindex");
+        (await client.Get("/today")).Headers.Contains("X-Robots-Tag").Should().BeFalse();
+    }
 }
