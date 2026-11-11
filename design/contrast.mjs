@@ -18,7 +18,7 @@ export const COLOR_TOKENS = [
   'primary', 'primary-foreground', 'secondary', 'secondary-foreground', 'muted', 'muted-foreground',
   'accent', 'accent-foreground', 'border', 'input', 'ring', 'destructive', 'destructive-foreground',
   'notice', 'notice-foreground', 'notice-border', 'success', 'success-foreground', 'done',
-  'done-foreground', 'lowday', 'lowday-foreground', 'paused', 'pending', 'empty', 'beforestart',
+  'done-foreground', 'heat-1', 'heat-2', 'lowday', 'lowday-foreground', 'paused', 'pending', 'empty', 'beforestart',
   'flame', 'flame-core', 'chart-1', 'chart-2', 'chart-3',
 ];
 export const OTHER_TOKENS = [
@@ -56,6 +56,8 @@ export const PAIRS = [
   ['success', 'background', 'ui'],
   ['done-foreground', 'done', 'text'],
   ['done', 'card', 'ui'],
+  ['heat-1', 'card', 'ui'],
+  ['heat-2', 'card', 'ui'],
   ['lowday-foreground', 'lowday', 'text'],
   ['paused', 'card', 'ui'],
   ['pending', 'card', 'ui'],

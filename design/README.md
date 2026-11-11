@@ -69,10 +69,10 @@ Every pair from the contract, light and dark, for every theme file in `web/src/t
 <!-- contrast:start -->
 | Theme | Pairs | Light min | Dark min | Result |
 | --- | --- | --- | --- | --- |
-| fieldnotes | 34 × 2 | 1.14× | 1.19× | pass |
-| hearthlight | 34 × 2 | 1.07× | 1.18× | pass |
-| marigold | 34 × 2 | 1.27× | 1.31× | pass |
-| tidepool | 34 × 2 | 1.16× | 1.18× | pass |
+| fieldnotes | 36 × 2 | 1.04× | 1.05× | pass |
+| hearthlight | 36 × 2 | 1.05× | 1.05× | pass |
+| marigold | 36 × 2 | 1.05× | 1.05× | pass |
+| tidepool | 36 × 2 | 1.03× | 1.05× | pass |
 
 "min" is the smallest ratio divided by its required minimum (1.00× = exactly at the bar).
 
@@ -106,6 +106,8 @@ Every pair from the contract, light and dark, for every theme file in `web/src/t
 | success on background | ui 3:1 | 6.45 | 9.20 |
 | done-foreground on done | text 4.5:1 | 5.61 | 8.10 |
 | done on card | ui 3:1 | 5.53 | 7.15 |
+| heat-1 on card | ui 3:1 | 3.13 | 3.15 |
+| heat-2 on card | ui 3:1 | 4.18 | 4.83 |
 | lowday-foreground on lowday | text 4.5:1 | 6.78 | 7.84 |
 | paused on card | ui 3:1 | 4.10 | 4.04 |
 | pending on card | ui 3:1 | 7.16 | 8.00 |
@@ -145,6 +147,8 @@ Every pair from the contract, light and dark, for every theme file in `web/src/t
 | success on background | ui 3:1 | 5.82 | 9.37 |
 | done-foreground on done | text 4.5:1 | 4.80 | 7.62 |
 | done on card | ui 3:1 | 4.77 | 6.75 |
+| heat-1 on card | ui 3:1 | 3.14 | 3.15 |
+| heat-2 on card | ui 3:1 | 3.89 | 4.68 |
 | lowday-foreground on lowday | text 4.5:1 | 6.48 | 7.51 |
 | paused on card | ui 3:1 | 3.90 | 4.04 |
 | pending on card | ui 3:1 | 4.77 | 8.42 |
@@ -184,6 +188,8 @@ Every pair from the contract, light and dark, for every theme file in `web/src/t
 | success on background | ui 3:1 | 6.61 | 9.58 |
 | done-foreground on done | text 4.5:1 | 10.15 | 11.23 |
 | done on card | ui 3:1 | 14.89 | 10.02 |
+| heat-1 on card | ui 3:1 | 3.14 | 3.16 |
+| heat-2 on card | ui 3:1 | 7.07 | 5.91 |
 | lowday-foreground on lowday | text 4.5:1 | 8.69 | 7.75 |
 | paused on card | ui 3:1 | 7.36 | 5.09 |
 | pending on card | ui 3:1 | 15.80 | 10.36 |
@@ -223,6 +229,8 @@ Every pair from the contract, light and dark, for every theme file in `web/src/t
 | success on background | ui 3:1 | 6.00 | 9.43 |
 | done-foreground on done | text 4.5:1 | 5.45 | 8.53 |
 | done on card | ui 3:1 | 5.45 | 7.67 |
+| heat-1 on card | ui 3:1 | 3.09 | 3.15 |
+| heat-2 on card | ui 3:1 | 4.12 | 5.02 |
 | lowday-foreground on lowday | text 4.5:1 | 6.46 | 7.52 |
 | paused on card | ui 3:1 | 3.87 | 4.19 |
 | pending on card | ui 3:1 | 5.45 | 9.70 |

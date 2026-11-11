@@ -36,6 +36,7 @@ Any CSS color (`oklch()` preferred). "text" pairs need WCAG 2.x 4.5:1, "UI" pair
 | `--notice` / `--notice-foreground` / `--notice-border` | text: notice-foreground on notice; UI: notice-border on notice |
 | `--success` / `--success-foreground` | text: success-foreground on success; UI: success on background |
 | `--done` / `--done-foreground` | text: done-foreground on done; UI: done on card |
+| `--heat-1` / `--heat-2` | Year heatmap levels between empty and `--done`, ordered so each step reads further toward `--done`. UI: each on card |
 | `--lowday` / `--lowday-foreground` | text: lowday-foreground on lowday |
 | `--paused` | UI: on card |
 | `--pending` | UI: on card |
