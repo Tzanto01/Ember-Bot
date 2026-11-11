@@ -46,7 +46,10 @@ public class User : IdentityUser<Guid>
     /// <summary>The privacy policy version the consent in <see cref="HealthDataConsentAt"/> was given for.</summary>
     public string? ConsentPolicyVersion { get; set; }
 
-    /// <summary>The user's local day on which Ember last asked for consent, so it asks at most once per day.</summary>
+    /// <summary>
+    /// The user's local day on which Ember last asked for consent, so it asks at most once per day. After a "No thanks" it holds the
+    /// last day of the back-off instead (<see cref="Services.HabitService.ConsentDeclineBackoffDays"/>), so the next ask comes after it.
+    /// </summary>
     public DateOnly? ConsentPromptedOn { get; set; }
 
     public ICollection<IdentityUserLogin<Guid>> Logins { get; set; } = new List<IdentityUserLogin<Guid>>();

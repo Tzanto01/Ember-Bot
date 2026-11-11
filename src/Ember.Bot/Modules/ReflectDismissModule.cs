@@ -12,7 +12,8 @@ namespace Ember.Bot.Modules;
 /// <summary>
 /// Handles the buttons on MissedDayReflectionJob DMs.
 /// Custom IDs: reflect:dismiss:{userId}, reflect:log:{userId}:{yyyyMMdd}, reflect:low:{userId}:{yyyyMMdd},
-/// and the chooser select reflect:pick:{userId}:{yyyyMMdd} (habit id values) shown when several habits are open.
+/// and the chooser select reflect:pick:{userId}:{yyyyMMdd} (habit id values), which replaces the check-in's content when several
+/// habits are open, so picking closes the check-in itself.
 /// </summary>
 public class ReflectDismissModule : InteractionModuleBase<SocketInteractionContext>
 {
@@ -71,8 +72,17 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         foreach (var habit in open.Take(25))
             menu.AddOption(habit.Name.Length > 100 ? habit.Name[..100] : habit.Name, habit.Id.ToString());
 
-        await RespondAsync($"Which habits did you do on {Label(date)}?",
-            components: new ComponentBuilder().WithSelectMenu(menu).Build(), ephemeral: true);
+        var components = new ComponentBuilder()
+            .WithSelectMenu(menu)
+            .WithButton("It was a low day", $"reflect:low:{Context.User.Id}:{dateStr}", ButtonStyle.Secondary, new Emoji("🌙"), row: 1)
+            .WithButton("That's ok, move on", $"reflect:dismiss:{Context.User.Id}", ButtonStyle.Secondary, row: 1)
+            .Build();
+        await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
+        {
+            m.Content    = $"Which habits did you do on {Label(date)}?";
+            m.Embed      = null;
+            m.Components = components;
+        });
     }
 
     [ComponentInteraction("reflect:pick:*:*")]

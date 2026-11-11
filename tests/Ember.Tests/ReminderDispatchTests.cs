@@ -162,16 +162,28 @@ public class ReminderDispatchTests
     }
 
     [Fact]
-    public async Task FailingHabit_DoesNotBlockOthers_AndIsStillAdvanced()
+    public async Task SendThatThrows_DoesNotBlockOthers_AndIsRetriedOnTheNextRunOnce()
     {
-        await using var host = await CreateHostAsync(new FakeTimeProvider(Now), DueHabit(1, 10), DueHabit(2, 20));
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, DueHabit(1, 10), DueHabit(2, 20));
         host.Discord.Deliver = userId => userId == 10 ? throw new HttpRequestException("boom") : DeliveryOutcome.Delivered;
 
         await RunJobAsync(host);
 
         host.Discord.Messages.Select(m => m.UserId).Should().BeEquivalentTo([10UL, 20UL]);
-        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+        (await NextReminderAsync(host, 1)).Should().Be(Now.UtcDateTime);
         (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
+        (await UserAsync(host, 10)).DmFailureCount.Should().Be(0);
+
+        host.Discord.Deliver = _ => DeliveryOutcome.Delivered;
+        time.Advance(TimeSpan.FromMinutes(1));
+        await RunJobAsync(host);
+        time.Advance(TimeSpan.FromMinutes(1));
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Select(m => m.UserId).Should().BeEquivalentTo([10UL, 20UL, 10UL]);
+        host.Discord.Messages[^1].Text.Should().NotContain("Snoozed");
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
     }
 
     private static Task<User> UserAsync(IntegrationTestHost host, long userId)
@@ -285,15 +297,15 @@ public class ReminderDispatchTests
     }
 
     [Fact]
-    public async Task HabitThatFailsBeforeSending_IsDeferredByADay_AndOthersStillGo()
+    public async Task HabitThatFailsBeforeSending_IsDeferredToItsNextReminderTime_AndOthersStillGo()
     {
-        await using var host = await CreateHostAsync(new FakeTimeProvider(Now), new FailingLogQueryInterceptor(habitId: 1),
+        await using var host = await CreateHostAsync(new FakeTimeProvider(Now.AddMinutes(5)), new FailingLogQueryInterceptor(habitId: 1),
             DueHabit(1, 10), DueHabit(2, 20));
 
         await RunJobAsync(host);
 
         host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(20);
-        (await NextReminderAsync(host, 1)).Should().Be(Now.UtcDateTime.AddDays(1));
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
         (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
     }
 

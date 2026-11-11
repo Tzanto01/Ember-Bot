@@ -68,13 +68,13 @@ public static class AppHost
                     q.AddTrigger(opts => opts
                         .ForJob(WeeklySummaryJob.Key)
                         .WithIdentity("weekly-summary-trigger", "summaries")
-                        .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
+                        .WithCronSchedule("0 0/15 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
                     q.AddJob<MissedDayReflectionJob>(opts => opts.WithIdentity(MissedDayReflectionJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts
                         .ForJob(MissedDayReflectionJob.Key)
                         .WithIdentity("missed-day-reflection-trigger", "reflections")
-                        .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
+                        .WithCronSchedule("0 0/15 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
                     q.AddJob<UnconfirmedAccountCleanupJob>(opts => opts.WithIdentity(UnconfirmedAccountCleanupJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts

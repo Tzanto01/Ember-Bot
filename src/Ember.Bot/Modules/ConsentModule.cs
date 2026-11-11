@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 namespace Ember.Bot.Modules;
 
 /// <summary>
-/// Asks for explicit consent to store habit names and check-ins (GDPR Art. 9(2)(a)).
+/// Asks for explicit consent to store habit names, check-ins, low days, day notes and moods (GDPR Art. 9(2)(a)).
 /// Custom IDs: "consent:agree:{discordUserId}", "consent:decline:{discordUserId}".
 /// </summary>
 public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
@@ -32,7 +32,8 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
     internal static Embed PromptEmbed(IConfiguration config)
     {
         var description =
-            "Habit names, check-ins and low days can say something about your health (think \"take my meds\" or \"sleep 8 hours\"). " +
+            "Your habit names, check-ins, low days, day notes and moods can say something about your health " +
+            "(think \"take my meds\" or \"sleep 8 hours\"). " +
             "Ember stores them only to run your habit tracker for you. They're never shared or sold.\n\n" +
             "Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.";
 
@@ -59,13 +60,14 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
     }
 
     /// <summary>
-    /// Applies the owner's answer only when the person clicking is that owner: agreeing records consent,
-    /// declining stores nothing. Returns whether the clicker is the owner.
+    /// Applies the owner's answer only when the person clicking is that owner: agreeing records consent, declining only
+    /// holds back the next automatic prompt (<see cref="HabitService.ConsentDeclineBackoffDays"/>). Returns whether the clicker is the owner.
     /// </summary>
     internal static async Task<bool> TryAnswerAsync(HabitService habits, string ownerIdStr, ulong clickerId, bool agreed)
     {
         if (!ulong.TryParse(ownerIdStr, out var ownerId) || ownerId != clickerId) return false;
         if (agreed) await habits.GiveHealthDataConsentAsync(clickerId);
+        else await habits.DeclineConsentPromptAsync(clickerId);
         return true;
     }
 

@@ -12,12 +12,12 @@ namespace Ember.Bot.Jobs;
 /// Fires once per day at <see cref="LocalSendHour"/>:00 in each user's local time.
 /// Checks whether any daily habits are still unlogged for yesterday, which is
 /// still open (see <see cref="HabitService.OpenDays"/>), or weekly habits are
-/// below target for the week, and sends a low-pressure invitation DM with
-/// "Log yesterday", "It was a low day" and dismiss buttons.
+/// below target for the week and weren't done yesterday, and sends a low-pressure DM with
+/// "Log yesterday" (only when a daily habit is open), "It was a low day" and dismiss buttons.
 ///
-/// Scheduling: a single hourly sweep picks the users whose local hour is
-/// <see cref="LocalSendHour"/>; yesterday and the week start are computed in
-/// each user's own timezone.
+/// Scheduling: a sweep every 15 minutes picks the users whose local time is in the first
+/// quarter hour of <see cref="LocalSendHour"/>, so half- and quarter-hour timezones get it at :00 too;
+/// yesterday and the week start are computed in each user's own timezone.
 /// </summary>
 [DisallowConcurrentExecution]
 public class MissedDayReflectionJob : IJob
@@ -48,13 +48,14 @@ public class MissedDayReflectionJob : IJob
         var candidates = await habits.GetUserTimezonesWithHabitsAsync(context.CancellationToken);
 
         var dueIds = candidates
-            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time).Hour == LocalSendHour)
+            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { Hour: LocalSendHour, Minute: < 15 })
             .Select(u => u.UserId)
             .ToList();
 
         if (dueIds.Count == 0) return;
 
-        var users = await habits.GetUsersWithHabitsAsync(dueIds, context.CancellationToken);
+        var users = await habits.GetUsersWithHabitsAsync(dueIds, context.CancellationToken,
+            logsSince: DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-8));
 
         foreach (var user in users)
         {
@@ -62,6 +63,7 @@ public class MissedDayReflectionJob : IJob
             {
                 // Only Discord users get the reflection DM; a web-only user has nowhere to receive it yet.
                 if (user.DiscordId() is not { } discordId
+                    || user.DmRemindersPausedAt is not null
                     || !await habits.UserExistsAsync(user.Id, context.CancellationToken))
                     continue;
 
@@ -80,7 +82,7 @@ public class MissedDayReflectionJob : IJob
         if (user.DayMarks.Any(m => m.Kind == Ember.Core.Models.DayMarkKind.LowDay && m.Date == yesterday)) return;
 
         var open = new List<string>();
-        var anyDaily = false;
+        var weekly = new List<(string Name, string Progress)>();
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
 
         foreach (var habit in user.Habits)
@@ -88,10 +90,7 @@ public class MissedDayReflectionJob : IJob
             if (habit.FrequencyType != Ember.Core.Models.FrequencyType.Weekly)
             {
                 if (IsOpenDaily(habit, yesterday, tz))
-                {
                     open.Add(habit.Name);
-                    anyDaily = true;
-                }
             }
             else if (HabitService.IsActiveOn(habit, yesterday, tz) && !HabitService.IsPausedOn(habit, yesterday))
             {
@@ -102,17 +101,24 @@ public class MissedDayReflectionJob : IJob
                 var target    = habit.WeeklyTarget ?? 3;
                 var needed    = target - doneCount;
 
-                // Only nudge if they need to catch up and have 1–2 days remaining
-                if (needed > 0 && daysLeft is > 0 and <= 2)
-                    open.Add($"{habit.Name} ({doneCount}/{target} this week)");
+                // Only nudge if they need to catch up, have 1–2 days remaining and didn't just do it yesterday
+                if (needed > 0 && daysLeft is > 0 and <= 2 && !habit.Logs.Any(l => l.Date == yesterday && l.Completed))
+                    weekly.Add((habit.Name, $"{doneCount}/{target}"));
             }
         }
 
-        if (open.Count == 0) return;
+        if (open.Count == 0 && weekly.Count == 0) return;
 
-        var opening = open.Count == 1
-            ? $"Yesterday is still open: want to log **{open[0]}**?"
-            : "Yesterday is still open: want to log any of these?\n" + string.Join("\n", open.Select(m => $"• **{m}**"));
+        var parts = new List<string>();
+        if (open.Count == 1)
+            parts.Add($"Yesterday is still open: want to log **{open[0]}**?");
+        else if (open.Count > 1)
+            parts.Add("Yesterday is still open: want to log any of these?\n" + string.Join("\n", open.Select(m => $"• **{m}**")));
+        if (weekly.Count == 1)
+            parts.Add($"You're at {weekly[0].Progress} for **{weekly[0].Name}** this week.");
+        else if (weekly.Count > 1)
+            parts.Add("Where your weekly habits stand:\n" + string.Join("\n", weekly.Select(w => $"• **{w.Name}**: {w.Progress} this week")));
+        var opening = string.Join("\n\n", parts);
 
         var closingLines = new[]
         {
@@ -122,18 +128,18 @@ public class MissedDayReflectionJob : IJob
             "There's no streak worth burning yourself out for.",
             "If it was a rough day, a low day keeps your streaks safe.",
         };
-        var closing = closingLines[Math.Abs(discordId.GetHashCode()) % closingLines.Length];
+        var closing = closingLines[yesterday.DayNumber % closingLines.Length];
 
         var embed = new EmbedBuilder()
             .WithColor(0x5865F2) // soft indigo — calm, not alarm
             .WithTitle("💙 A gentle check-in")
             .WithDescription($"{opening}\n\n{closing}")
-            .WithFooter("Log it, mark a low day, or just move on.")
+            .WithFooter(open.Count > 0 ? "Log it, mark a low day, or just move on." : "Mark a low day, or just move on.")
             .Build();
 
         var date = yesterday.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
         var components = new ComponentBuilder();
-        if (anyDaily)
+        if (open.Count > 0)
             components.WithButton("Log yesterday", $"reflect:log:{discordId}:{date}", ButtonStyle.Success, new Emoji("✅"));
         components
             .WithButton("It was a low day", $"reflect:low:{discordId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))

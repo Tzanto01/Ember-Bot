@@ -47,11 +47,11 @@ public class AppHostIntegrationTests
         // is Sunday morning) — pinned to UTC explicitly, because Quartz otherwise interprets
         // cron expressions in server-local time.
         var weeklyCron = weeklyTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
-        weeklyCron.CronExpressionString.Should().Be("0 0 * * * ?");
+        weeklyCron.CronExpressionString.Should().Be("0 0/15 * * * ?");
         weeklyCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
 
         var reflectionCron = reflectionTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
-        reflectionCron.CronExpressionString.Should().Be("0 0 * * * ?");
+        reflectionCron.CronExpressionString.Should().Be("0 0/15 * * * ?");
         reflectionCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
     }
 

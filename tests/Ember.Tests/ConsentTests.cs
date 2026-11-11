@@ -126,4 +126,30 @@ public class ConsentTests
 
         (await ClaimAsync(host, 1)).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task NoThanks_KeepsTheAutomaticPromptAwayFor30Days()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
+        await SeedExistingUserAsync(host, 1);
+        (await ClaimAsync(host, 1)).Should().BeTrue();
+
+        await host.WithScopeAsync(sp => ConsentModule.TryAnswerAsync(sp.GetRequiredService<HabitService>(), "1", clickerId: 1, agreed: false));
+
+        time.Advance(TimeSpan.FromDays(1));
+        (await ClaimAsync(host, 1)).Should().BeFalse();
+        time.Advance(TimeSpan.FromDays(28));
+        (await ClaimAsync(host, 1)).Should().BeFalse();
+        time.Advance(TimeSpan.FromDays(1));
+        (await ClaimAsync(host, 1)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Prompt_NamesEveryKindOfHealthDataEmberStores()
+    {
+        var embed = ConsentModule.PromptEmbed(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+
+        embed.Description.Should().ContainEquivalentOf("your habit names, check-ins, low days, day notes and moods");
+    }
 }

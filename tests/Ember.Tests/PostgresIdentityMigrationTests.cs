@@ -25,7 +25,7 @@ public class PostgresIdentityMigrationTests(PostgresFixture postgres)
     private static readonly string ProductionShapedData = $"""
         INSERT INTO "Users" ("DiscordUserId", "Timezone", "GraceDaysPerWeek", "LeaderboardOptIn", "DmFailureCount",
                              "HealthDataConsentAt", "ConsentPolicyVersion")
-        VALUES ({Alice}, 'Europe/Berlin', 2, TRUE, 0, '2026-10-14 08:00:00', '2026-10'),
+        VALUES ({Alice}, 'Europe/Berlin', 2, TRUE, 0, '2026-10-14 08:00:00', '{HabitService.CurrentConsentPolicyVersion}'),
                ({Bob}, 'Asia/Tokyo', 1, FALSE, 3, NULL, NULL),
                ({Carol}, 'UTC', 1, FALSE, 0, NULL, NULL);
         INSERT INTO "Habits" ("Id", "UserId", "Name", "ReminderTime", "CreatedAt", "FrequencyType", "WeeklyTarget", "PausedFrom", "PausedUntil")
@@ -72,7 +72,7 @@ public class PostgresIdentityMigrationTests(PostgresFixture postgres)
         var alice = users.Single(u => u.DiscordId() == Alice);
         alice.Timezone.Should().Be("Europe/Berlin");
         alice.GraceDaysPerWeek.Should().Be(2);
-        alice.ConsentPolicyVersion.Should().Be("2026-10");
+        alice.ConsentPolicyVersion.Should().Be(HabitService.CurrentConsentPolicyVersion);
         alice.Habits.Select(h => h.Name).Should().BeEquivalentTo("Stretch", "Read");
         alice.Habits.Single(h => h.Name == "Stretch").Logs.Should().HaveCount(2).And.Contain(l => l.GuildId == 99 && l.Completed);
         var read = alice.Habits.Single(h => h.Name == "Read");

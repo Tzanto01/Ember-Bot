@@ -13,7 +13,8 @@ namespace Ember.Bot.Modules;
 /// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
 /// Done and skip log the user's local day the reminder was sent on, until the reminder expires
 /// (<see cref="ReminderDispatchJob.IsExpired"/>); after that they close the message instead.
-/// Snooze only works within <see cref="HabitService.SnoozeWindow"/> of the send time.
+/// Snooze only works within <see cref="HabitService.SnoozeWindow"/> of the send time and while the snoozed reminder stays on the local day
+/// the reminder was sent.
 /// A tap that removes a reminder's buttons forgets its <see cref="Core.Models.ReminderMessage"/>.
 /// </summary>
 public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContext>
@@ -61,19 +62,21 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
     /// <summary>
     /// Logs the habit for the user's local day at <paramref name="timestampStr"/> (the reminder's send time, unix seconds),
     /// or for local today when the timestamp is malformed. Done adds one check-in (capped at the habit's times per day).
-    /// A "not done" never overwrites a day already logged as done (<c>KeptDone</c>). Returns the edit result and the day it applied to.
+    /// A "not done" never overwrites a day already logged as done (<c>KeptDone</c>), and on local today drops the habit's pending
+    /// second reminder. Returns the edit result and the day it applied to.
     /// </summary>
     internal static async Task<(DayEditResult Result, DateOnly Day, bool KeptDone)> LogReminderDayAsync(
         HabitService habits, ulong userId, int habitId, string timestampStr, bool completed, ulong? guildId)
     {
         var day = await SentDayAsync(habits, userId, timestampStr) ?? await habits.GetLocalTodayAsync(userId);
 
-        if (!completed && (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && (l.Completed || l.Count > 0)) == true)
-            return (DayEditResult.Saved, day, true);
+        if (completed) return (await habits.AddCheckInAsync(userId, habitId, day, guildId), day, false);
 
-        return (completed
-            ? await habits.AddCheckInAsync(userId, habitId, day, guildId)
-            : await habits.CheckInAsync(userId, habitId, day, completed: false, guildId), day, false);
+        var keptDone = (await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && (l.Completed || l.Count > 0)) == true;
+        var result = keptDone ? DayEditResult.Saved : await habits.CheckInAsync(userId, habitId, day, completed: false, guildId);
+        if (result == DayEditResult.Saved && day == await habits.GetLocalTodayAsync(userId))
+            await habits.ClearSecondReminderAsync(habitId);
+        return (result, day, keptDone);
     }
 
     private async Task LogAsync(string habitIdStr, string timestampStr, bool completed, string todayText, string earlierText)
@@ -109,7 +112,13 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
                 await RespondAsync("Something went wrong with that button.", ephemeral: true);
                 return;
             default:
-                await RespondAsync("Couldn't find that habit.", ephemeral: true);
+                var others = RoutineButtonsAfterDone(component.Message.Components, component.Data.CustomId, done: true);
+                await component.UpdateAsync(msg =>
+                {
+                    if (others is null) msg.Content = $"{component.Message.Content}\n{DiscordDmReminderChannel.ClosedLine}";
+                    msg.Components = others ?? new ComponentBuilder().Build();
+                });
+                await FollowupAsync("That habit isn't in Ember anymore, so there's nothing to log. 💙", ephemeral: true);
                 return;
         }
 
@@ -175,7 +184,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 
         if (!await _habits.SnoozeReminderAsync(Context.User.Id, habitId, DateTimeOffset.FromUnixTimeSeconds(sentUnix)))
         {
-            await RespondAsync("This reminder isn't active anymore, so there's nothing to snooze. 💙", ephemeral: true);
+            await RespondAsync("I can't snooze this one past its day. 💙 Tap Done or Skip whenever you're ready.", ephemeral: true);
             return;
         }
 

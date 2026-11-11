@@ -79,6 +79,9 @@ public partial class HabitService
     public async Task ReleaseConsentPromptAsync(ulong discordUserId)
         => await ReleaseConsentPromptAsync(await FindDiscordUserAsync(discordUserId));
 
+    public async Task DeclineConsentPromptAsync(ulong discordUserId)
+        => await DeclineConsentPromptAsync(await FindDiscordUserAsync(discordUserId));
+
     public async Task MarkConsentPromptedAsync(ulong discordUserId)
         => await MarkConsentPromptedAsync(await FindDiscordUserAsync(discordUserId));
 
