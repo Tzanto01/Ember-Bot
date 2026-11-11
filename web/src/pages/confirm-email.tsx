@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { continueAfterCode, EmailCodeForm } from '@/components/auth/email-code-form';
 import { peekSignupEmail, takeSignupEmail } from '@/components/auth/signup-email';
@@ -73,7 +73,7 @@ function ResendForm() {
 /**
  * `/confirm-email?user=…&code=…`: confirms with the emailed code and signs in right away, then continues to consent or
  * Today; when that fails it shows the code form with the error. Without link values it shows the code form, with the
- * address this device signed up with filled in.
+ * address from the sign-in page (router state `email`) or the one this device signed up with filled in.
  *
  * `/confirm-email?userId=…&code=…` (links from before the code): confirms with the password chosen at sign-up. When this
  * device signed up with an address, it then signs in with it and the same password and continues to consent;
@@ -84,12 +84,16 @@ function ResendForm() {
 export default function ConfirmEmailPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [link] = useState(() => ({ user: params.get('user'), userId: params.get('userId'), code: params.get('code') }));
   const [state, setState] = useState<ConfirmState>(
     link.user && link.code ? 'checking' : link.userId && link.code ? 'password' : 'code',
   );
   const [codeError, setCodeError] = useState<unknown>(undefined);
-  const [keptEmail] = useState(peekSignupEmail);
+  const [keptEmail] = useState(() => {
+    const from = (location.state as { email?: unknown } | null)?.email;
+    return typeof from === 'string' && from ? from : peekSignupEmail();
+  });
   const [problem, setProblem] = useState<string | null>(null);
   const form = useRef<HTMLFormElement>(null);
   const started = useRef(false);

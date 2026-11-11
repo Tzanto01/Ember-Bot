@@ -334,6 +334,11 @@ export default function LoginPage() {
                   Send the link again
                 </Button>
               ))}
+            {problem.offerResend && (
+              <TapLink to="/confirm-email" state={{ email: email.value.trim() }}>
+                Enter your code
+              </TapLink>
+            )}
           </Notice>
         )}
 

@@ -129,7 +129,6 @@ export function EmailCodeForm({ email: knownEmail, initialError }: EmailCodeForm
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
               spellCheck={false}
               className="max-w-[12rem] font-mono tracking-widest"
             />

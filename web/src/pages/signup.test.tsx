@@ -74,6 +74,18 @@ describe('SignupPage', () => {
     expect(fetch.all.filter((c) => c.url.startsWith('/api/auth/confirm-email-code'))).toHaveLength(1);
   });
 
+  it.each(['123 456', '123-456'])('takes a pasted code like "%s" as its six digits and signs in with it', async (pasted) => {
+    const fetch = mockFetch();
+    const { user } = await signUp(fetch);
+
+    await user.click(screen.getByLabelText('6-digit code'));
+    await user.paste(pasted);
+
+    expect(screen.getByLabelText('6-digit code')).toHaveValue('123456');
+    const confirm = await fetch.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+  });
+
   it('shows a turned-down code on the field and keeps the user on the page', async () => {
     const fetch = mockFetch();
     const { user, router } = await signUp(fetch);

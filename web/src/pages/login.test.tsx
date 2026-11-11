@@ -1,11 +1,14 @@
-import { screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { ApiError } from '@/lib/problem';
 import { api, auth, localMode } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
+import ConfirmEmailPage from './confirm-email';
 import LoginPage from './login';
 
 const native = vi.hoisted(() => ({
@@ -70,6 +73,32 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/match/);
     expect(screen.queryByText(/session ended/i)).toBeNull();
     expect(router.state.location.pathname).toBe('/login');
+  });
+
+  it('for an unconfirmed email offers entering the code, with the typed address carried over', async () => {
+    const router = createMemoryRouter(
+      [
+        { path: '/login', element: <main id="main"><LoginPage /></main> },
+        { path: '/confirm-email', element: <main id="main"><ConfirmEmailPage /></main> },
+      ],
+      { initialEntries: ['/login'] },
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    await signIn('a long sign-up phrase');
+    (await mock.next('POST', '/api/auth/login?useCookies=true')).respond(401, { status: 401, detail: 'NotAllowed' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('link', { name: 'Enter your code' }));
+
+    expect(router.state.location.pathname).toBe('/confirm-email');
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('6-digit code'), '123456');
+    const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(confirm.body).toEqual({ email: 'a@example.test', code: '123456' });
   });
 
   it('ignores an off-site returnUrl: Discord and the email sign-in both return to /today', async () => {
