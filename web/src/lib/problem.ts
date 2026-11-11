@@ -41,6 +41,12 @@ export function asApiError(error: unknown): ApiError {
   return new ApiError(0, null);
 }
 
+/** True for the login's 401 `RequiresTwoFactor`: the password was right, the authenticator code is still needed. */
+export function requiresTwoFactor(error: unknown): boolean {
+  const apiError = asApiError(error);
+  return apiError.status === 401 && apiError.problem?.detail === 'RequiresTwoFactor';
+}
+
 /** Which screen is asking: login and email-link failures are form errors, never a session expiry. */
 export type ProblemContext = 'general' | 'login' | 'register' | 'confirm-email' | 'reset-password';
 
@@ -104,7 +110,7 @@ function waitText(seconds: number | null): string {
 
 /**
  * Maps a failed call to gentle copy. Pure: no navigation, no state.
- * Login 401 (`Failed`, `NotAllowed`) and confirm-email 401 are form errors here.
+ * Login 401 (`Failed`, `NotAllowed`, `RequiresTwoFactor`) and confirm-email 401 are form errors here.
  */
 export function problemToMessage(
   error: ApiError,
@@ -144,6 +150,8 @@ export function problemToMessage(
           result.message =
             "Your email isn't confirmed yet. Check your inbox, or we can send the link again.";
           result.offerResend = true;
+        } else if (detail === 'RequiresTwoFactor') {
+          result.message = 'Enter the code from your authenticator app to finish signing in.';
         } else {
           result.message =
             "That email and password don't match. Try again, or reset your password.";

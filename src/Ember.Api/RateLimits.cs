@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -13,13 +15,17 @@ internal sealed class RateLimitSettings
     public int AuthPerIpPerMinute { get; set; } = 30;
     public int AuthOtherPerIpPerMinute { get; set; } = 300;
     public int MailPerEmailPerHour { get; set; } = 5;
+    public int MailPerEmailAnyClientPerHour { get; set; } = 20;
+    public int MailPerIpPerHour { get; set; } = 10;
+    public int MailPerDay { get; set; } = 200;
 }
 
 /// <summary>
 /// Per client IP on the credential endpoints of <c>/api/auth</c> (the strict <see cref="AuthPolicy"/> policy) and on every
 /// other <c>/api/auth</c> request (the loose <see cref="AuthOtherPolicy"/> policy, and the same limit as a global limiter on
-/// the Discord OAuth callback, which the authentication handler answers before any endpoint runs), and per normalized email
-/// address on the mail-sending endpoints (the singleton <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>).
+/// the Discord OAuth callback, which the authentication handler answers before any endpoint runs), and on the mail-sending
+/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day (the singleton
+/// <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/>).
 /// </summary>
 internal static class RateLimits
 {
@@ -27,15 +33,26 @@ internal static class RateLimits
     public const string AuthOtherPolicy = "auth-other";
     private static readonly TimeSpan AuthWindow = TimeSpan.FromMinutes(1);
     public static readonly TimeSpan MailWindow = TimeSpan.FromHours(1);
+    private static readonly TimeSpan MailDayWindow = TimeSpan.FromDays(1);
+    private const string MailIpPrefix = "ip:";
+    private const string MailEmailPrefix = "email:";
+    private const string MailDayKey = "day";
 
     public static IServiceCollection AddEmberRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<RateLimitSettings>(configuration.GetSection("Ember:RateLimits"));
         services.AddSingleton(sp =>
         {
-            var limit = sp.GetRequiredService<IOptions<RateLimitSettings>>().Value.MailPerEmailPerHour;
-            return PartitionedRateLimiter.Create<string, string>(email => RateLimitPartition.GetFixedWindowLimiter(email,
-                _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = MailWindow }));
+            var settings = sp.GetRequiredService<IOptions<RateLimitSettings>>().Value;
+            return PartitionedRateLimiter.Create<string, string>(key => RateLimitPartition.GetFixedWindowLimiter(key, _ => key switch
+            {
+                MailDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerDay, Window = MailDayWindow },
+                _ when key.StartsWith(MailIpPrefix, StringComparison.Ordinal)
+                    => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerIpPerHour, Window = MailWindow },
+                _ when key.StartsWith(MailEmailPrefix, StringComparison.Ordinal)
+                    => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerEmailAnyClientPerHour, Window = MailWindow },
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerEmailPerHour, Window = MailWindow },
+            }));
         });
         services.AddRateLimiter(options =>
         {
@@ -54,6 +71,18 @@ internal static class RateLimits
     private static RateLimitPartition<string> PerIp(HttpContext http, int limit)
         => RateLimitPartition.GetFixedWindowLimiter(ClientKey(http.Connection.RemoteIpAddress),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = AuthWindow });
+
+    /// <summary>
+    /// The mail limiter keys for one mail, in the order to take them: the client IP first (the only partition an unthrottled
+    /// caller can create), then the narrower email keys, and the daily total last, so a request rejected by a narrower limit
+    /// doesn't use up the shared allowance. Emails go into keys as a fixed-size hash, so key memory doesn't grow with input.
+    /// </summary>
+    internal static string[] MailKeys(string endpoint, string normalizedEmail, IPAddress? address)
+    {
+        var client = ClientKey(address);
+        var email = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedEmail)));
+        return [MailIpPrefix + client, $"{endpoint}:{email}:{client}", MailEmailPrefix + email, MailDayKey];
+    }
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
     internal static string ClientKey(IPAddress? address)

@@ -9,7 +9,7 @@ namespace Ember.Bot.Modules;
 
 /// <summary>
 /// The /habit history grid: the last <see cref="Days"/> local days of one habit as buttons, plus a low-day menu.
-/// Custom IDs: "history:day:{ownerId}:{habitId}:{yyyyMMdd}" (cycles not logged → done → not done → not logged)
+/// Custom IDs: "history:day:{ownerId}:{habitId}:{yyyyMMdd}" (cycles not logged → one more check-in until done → not done → not logged)
 /// and the select "history:low:{ownerId}:{habitId}" with yyyyMMdd values (toggles a low day).
 /// </summary>
 public class HistoryModule : InteractionModuleBase<SocketInteractionContext>
@@ -88,13 +88,13 @@ public class HistoryModule : InteractionModuleBase<SocketInteractionContext>
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
             m.Content =
-                $"**{habit.Name}**, last {Days} days. Tap a day to change it: ✅ done, ➖ not done, ▫️ not logged.\n" +
+                $"**{habit.Name}**, last {Days} days. Tap a day to change it: ✅ done, 🔸 partly done, ➖ not done, ▫️ not logged, 💤 rest day.\n" +
                 "Today and yesterday stay open, and older days can be filled in any time.";
             m.Components = BuildGrid(Context.User.Id, habitId, days, lowDays);
         });
     }
 
-    /// <summary>Moves the day's log one step along not logged → done → not done → not logged.</summary>
+    /// <summary>Moves the day's log one step along not logged → one more check-in (until done) → not done → not logged.</summary>
     internal static async Task<DayEditResult> CycleDayAsync(HabitService habits, ulong userId, int habitId, DateOnly date, ulong? guildId)
     {
         var today = await habits.GetLocalTodayAsync(userId);
@@ -105,7 +105,7 @@ public class HistoryModule : InteractionModuleBase<SocketInteractionContext>
 
         return days[0].Completed switch
         {
-            null  => await habits.CheckInAsync(userId, habitId, date, completed: true, guildId),
+            null  => await habits.AddCheckInAsync(userId, habitId, date, guildId),
             true  => await habits.CheckInAsync(userId, habitId, date, completed: false, guildId),
             false => await habits.ClearDayAsync(userId, habitId, date),
         };
@@ -153,12 +153,14 @@ public class HistoryModule : InteractionModuleBase<SocketInteractionContext>
     private static string DayLabel(HabitDay day)
     {
         var date = day.Date.ToString("ddd d", CultureInfo.InvariantCulture);
-        var log = day.Completed switch { true => "✅", false => "➖", null => "▫️" };
+        var unlogged = day.Completed is null && day.Count == 0;
+        var log = day.Completed switch { true => "✅", false => "➖", null => unlogged ? "▫️" : $"🔸{day.Count}" };
         var symbol = day.State switch
         {
             DayState.BeforeStart => "",
-            DayState.LowDay      => day.Completed is null ? "🌙" : "🌙" + log,
-            DayState.Paused      => day.Completed is null ? "⏸️" : "⏸️" + log,
+            DayState.LowDay      => unlogged ? "🌙" : "🌙" + log,
+            DayState.Paused      => unlogged ? "⏸️" : "⏸️" + log,
+            DayState.Offday      => "💤",
             _                    => log,
         };
         return symbol.Length == 0 ? date : $"{date} {symbol}";

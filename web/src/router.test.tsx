@@ -15,6 +15,7 @@ describe('router guards', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.doUnmock('@/lib/env');
   });
 
   async function visit(path: string) {
@@ -49,9 +50,59 @@ describe('router guards', () => {
     expect(url(router)).toBe('/today');
   });
 
+  it('sends an unreachable /today to the offline login with a single wait for the API', async () => {
+    const router = await visit('/today');
+
+    (await mock.next('GET', '/api/me')).fail();
+
+    expect(await screen.findByRole('heading', { name: "Ember can't be reached right now" })).toBeInTheDocument();
+    expect(url(router)).toBe('/login?returnUrl=%2Ftoday&reason=offline');
+    expect(mock.all.filter((call) => call.url === '/api/me')).toHaveLength(1);
+  });
+
+  it('shows the landing page to a signed-out visitor at /', async () => {
+    const router = await visit('/');
+
+    (await mock.next('GET', '/api/me')).respond(401);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'A calm place for your habits.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signup');
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('link', { name: 'Try without an account' })).toHaveAttribute(
+      'href',
+      '/local',
+    );
+    expect(url(router)).toBe('/');
+  });
+
+  it('sends a signed-in visitor at / to /today', async () => {
+    const router = await visit('/');
+
+    (await mock.next('GET', '/api/me')).respond(200, me);
+
+    expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    expect(url(router)).toBe('/today');
+  });
+
+  it('sends / straight to /today in the Android app', async () => {
+    vi.doMock('@/lib/env', async (load) => ({
+      env: { ...(await load<typeof import('@/lib/env')>()).env, native: true },
+    }));
+    const router = await visit('/');
+
+    (await mock.next('GET', '/api/me')).respond(401);
+
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(url(router)).toBe('/login?returnUrl=%2Ftoday');
+  });
+
   it('shows the not-found page for an unknown address', async () => {
     await visit('/no/such/page');
 
-    expect(await screen.findByRole('heading', { name: 'This page wandered off' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'This page wandered off' }),
+    ).toBeInTheDocument();
   });
 });

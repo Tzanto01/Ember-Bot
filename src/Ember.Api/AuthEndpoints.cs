@@ -25,7 +25,8 @@ internal static class AuthEndpoints
     private static readonly PathString[] AntiforgeryExempt =
     [
         Register, "/api/auth/login", "/api/auth/refresh", "/api/auth/resendConfirmationEmail",
-        ForgotPassword, ResetPassword, ConfirmEmail,
+        ForgotPassword, ResetPassword, ConfirmEmail, "/api/auth/discord/2fa", ReminderEndpoints.DonePath,
+        "/api/auth/discord/native/token",
     ];
 
     public sealed record ConfirmEmailRequest(string? UserId, string? Code, string? Password);
@@ -69,9 +70,23 @@ internal static class AuthEndpoints
             return TypedResults.NoContent();
         });
 
-        auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn) =>
+        auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn, AuthSessions sessions) =>
         {
-            if (http.User.Identity?.IsAuthenticated == true) await signIn.SignOutAsync();
+            if (http.User.Identity?.IsAuthenticated != true) return TypedResults.NoContent();
+            if (AuthSessions.IdOf(http.User) is { } session) await sessions.EndAsync(session);
+            await signIn.SignOutAsync();
+            return TypedResults.NoContent();
+        });
+
+        auth.MapPost("/logout-everywhere", async (HttpContext http, SignInManager<User> signIn, AuthSessions sessions) =>
+        {
+            if (http.User.Identity?.IsAuthenticated != true) return TypedResults.NoContent();
+            if (await signIn.UserManager.GetUserAsync(http.User) is { } user)
+            {
+                await sessions.EndAllAsync(user.Id);
+                await signIn.UserManager.UpdateSecurityStampAsync(user);
+            }
+            await signIn.SignOutAsync();
             return TypedResults.NoContent();
         });
 
@@ -108,8 +123,8 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Hides Identity's GET endpoints (confirmEmail, manage/info), whatever the path spelling. Rate-limits each mail-sending
-    /// endpoint per email address. A registration with
+    /// Hides Identity's GET endpoints (confirmEmail, manage/info) and its manage/info and manage/2fa POSTs, whatever the path spelling. Rate-limits each mail-sending
+    /// endpoint (see <see cref="RateLimits.MailKeys"/>). A registration with
     /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
     /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
     /// forgotPassword also mails a reset code to an unconfirmed account, and resetPassword works for one and confirms its email.
@@ -118,12 +133,13 @@ internal static class AuthEndpoints
     private static async ValueTask<object?> IdentityFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
-        if (HttpMethods.IsGet(http.Request.Method)) return Problems.NotFound();
+        if (HttpMethods.IsGet(http.Request.Method) || context.Arguments.Any(argument => argument is InfoRequest or TwoFactorRequest))
+            return Problems.NotFound();
 
         var request = context.Arguments.FirstOrDefault(argument =>
             argument is RegisterRequest or ResendConfirmationEmailRequest or ForgotPasswordRequest or ResetPasswordRequest);
         if (request is ResetPasswordRequest reset)
-            return await ResetPasswordAsync(http.RequestServices.GetRequiredService<UserManager<User>>(), reset);
+            return await ResetPasswordAsync(http.RequestServices.GetRequiredService<UserManager<User>>(), http.RequestServices.GetRequiredService<AuthSessions>(), reset);
 
         var email = request switch
         {
@@ -134,9 +150,13 @@ internal static class AuthEndpoints
         };
         if (request is not null && email is not null)
         {
-            using var lease = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>()
-                .AttemptAcquire($"{request.GetType().Name}:{http.RequestServices.GetRequiredService<ILookupNormalizer>().NormalizeEmail(email.Trim())}");
-            if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
+            var limiter = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>();
+            var normalized = http.RequestServices.GetRequiredService<ILookupNormalizer>().NormalizeEmail(email.Trim());
+            foreach (var key in RateLimits.MailKeys(request.GetType().Name, normalized, http.Connection.RemoteIpAddress))
+            {
+                using var lease = limiter.AttemptAcquire(key);
+                if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
+            }
         }
 
         var result = await next(context);
@@ -176,8 +196,11 @@ internal static class AuthEndpoints
         return result;
     }
 
-    /// <summary>Identity's resetPassword (same request and error shapes) that also accepts an unconfirmed account and confirms it.</summary>
-    private static async Task<IResult> ResetPasswordAsync(UserManager<User> users, ResetPasswordRequest request)
+    /// <summary>
+    /// Identity's resetPassword (same request and error shapes) that also accepts an unconfirmed account and confirms it, and
+    /// lifts a lockout once the password is reset. A reset ends every session of the account.
+    /// </summary>
+    private static async Task<IResult> ResetPasswordAsync(UserManager<User> users, AuthSessions sessions, ResetPasswordRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email ?? "");
         var code = DecodeCode(request.ResetCode);
@@ -186,6 +209,10 @@ internal static class AuthEndpoints
 
         var result = await users.ResetPasswordAsync(user, code, request.NewPassword ?? "");
         if (!result.Succeeded) return IdentityValidation(result);
+
+        await sessions.EndAllAsync(user.Id);
+        await users.SetLockoutEndDateAsync(user, null);
+        await users.ResetAccessFailedCountAsync(user);
 
         if (!user.EmailConfirmed)
         {

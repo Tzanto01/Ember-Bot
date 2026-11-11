@@ -50,11 +50,12 @@ public static class WeeklySummaryService
         var done = habit.Logs.Count(l => l.Completed && l.Date >= from && l.Date <= weekEnd);
 
         // Days in the window the habit could actually have been checked in:
-        // strictly after its creation date, not paused and not a low day.
+        // strictly after its creation date, scheduled, not paused and not a low day.
         var activeDays = 0;
         for (var d = from; d <= weekEnd; d = d.AddDays(1))
         {
-            if (HabitService.IsActiveOn(habit, d, tz) && !HabitService.IsPausedOn(habit, d) && !lowDays.Contains(d))
+            if (HabitService.IsActiveOn(habit, d, tz) && HabitService.IsScheduledOn(habit, d)
+                && !HabitService.IsPausedOn(habit, d) && !lowDays.Contains(d))
                 activeDays++;
         }
 
@@ -66,7 +67,7 @@ public static class WeeklySummaryService
         // more done than possible.
         possible = Math.Max(possible, done);
 
-        var (streak, graceUsed) = habit.FrequencyType == FrequencyType.Daily
+        var (streak, graceUsed) = habit.FrequencyType != FrequencyType.Weekly
             ? HabitService.ConsecutiveStreak(habit, weekEnd.AddDays(1), graceDays, lowDays)
             : (0, 0);
 
@@ -82,7 +83,7 @@ public static class WeeklySummaryService
         if (totalDone == 0)
         {
             return (
-                "It's been a quiet week — and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
+                "It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
                 "No pressure. Progress happens at its own pace.");
         }
 
@@ -92,31 +93,35 @@ public static class WeeklySummaryService
         if (totalDone >= totalPossible)
         {
             return (
-                $"You nailed every single check-in this week 🔥 That's {totalDone}/{Math.Max(totalPossible, totalDone)}. Incredible.",
+                $"You nailed every single check-in this week 🔥 That's {CheckIns(totalDone)}. Incredible.",
                 "You're on fire. Keep going.");
         }
 
         var pct = (int)Math.Round(100.0 * totalDone / totalPossible);
-        var headline = $"This week you completed **{totalDone}/{totalPossible}** check-ins ({pct}%). Every one of those counts. 💪";
+        var headline = $"This week you showed up for **{CheckIns(totalDone)}**. Every one of those counts. 💪";
         var footer = pct >= 50
-            ? "More than half — that's a win. Keep it up."
+            ? "More than half, that's a win. Keep it up."
             : "Small steps still move forward. You've got this.";
         return (headline, footer);
     }
 
+    private static string CheckIns(int count) => count == 1 ? "1 check-in" : $"{count} check-ins";
+
     /// <summary>
-    /// Builds a 7-character dot string like ✅⬜✅✅⬜✅✅ for the window, oldest→newest.
+    /// Builds a 7-dot string like ✅⬜✅🔸▫️✅✅ for the window, oldest→newest: ✅ done, 🔸 partial,
+    /// ▫️ offday (not scheduled, not done), ⬜ otherwise.
     /// </summary>
     public static string BuildDotString(Habit habit, DateOnly from, DateOnly to)
     {
-        var completedDates = habit.Logs
-            .Where(l => l.Completed && l.Date >= from && l.Date <= to)
-            .Select(l => l.Date)
-            .ToHashSet();
-
         var parts = new List<string>();
         for (var d = from; d <= to; d = d.AddDays(1))
-            parts.Add(completedDates.Contains(d) ? "✅" : "⬜");
+        {
+            var log = habit.Logs.FirstOrDefault(l => l.Date == d);
+            parts.Add(log?.Completed == true ? "✅"
+                : log is { Count: > 0 } ? "🔸"
+                : !HabitService.IsScheduledOn(habit, d) ? "▫️"
+                : "⬜");
+        }
 
         return string.Concat(parts);
     }

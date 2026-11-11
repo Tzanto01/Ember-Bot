@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
+import { takeSignupEmail } from '@/components/auth/signup-email';
 import {
   email as emailRule,
   required,
@@ -9,19 +10,18 @@ import {
   useFocusHeadingOnChange,
   validateAll,
 } from '@/components/auth/use-field';
-import { FlameMark } from '@/components/flame-mark';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { asApiError, problemToMessage } from '@/lib/problem';
-import { api } from '@/lib/services';
+import { api, auth } from '@/lib/services';
 
 type ConfirmState = 'password' | 'confirmed' | 'incomplete';
 
 /** "Email for a new link" form; replaced by a success notice once sent. */
-function ResendForm() {
+function ResendForm({ primary = false }: { primary?: boolean }) {
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const [problem, setProblem] = useState<string | null>(null);
@@ -55,8 +55,14 @@ function ResendForm() {
           />
         )}
       </FormField>
-      <BusyButton type="submit" variant="secondary" block busy={resend.isPending} busyLabel="Sending…">
-        Send a new link
+      <BusyButton
+        type="submit"
+        variant={primary ? 'default' : 'secondary'}
+        block
+        busy={resend.isPending}
+        busyLabel="Sending…"
+      >
+        Send me a new link
       </BusyButton>
     </form>
   );
@@ -64,10 +70,12 @@ function ResendForm() {
 
 /**
  * `/confirm-email?userId=…&code=…`: confirms with the password chosen at sign-up. The link values are kept in memory
- * and removed from the address bar on load.
+ * and removed from the address bar on load. When this device signed up with an address, it then signs in with it and
+ * the same password and continues to consent; otherwise, or when that sign-in fails, it shows "You're confirmed".
  */
 export default function ConfirmEmailPage() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const [link] = useState(() => ({ userId: params.get('userId'), code: params.get('code') }));
   const [state, setState] = useState<ConfirmState>(link.userId && link.code ? 'password' : 'incomplete');
   const [problem, setProblem] = useState<string | null>(null);
@@ -89,9 +97,19 @@ export default function ConfirmEmailPage() {
   }, [params, setParams]);
 
   const confirm = useMutation({
-    mutationFn: (body: { userId: string; code: string; password: string }) =>
-      api.confirmEmail(body.userId, body.code, body.password),
-    onSuccess: () => setState('confirmed'),
+    mutationFn: async (body: { userId: string; code: string; password: string }) => {
+      await api.confirmEmail(body.userId, body.code, body.password);
+      const email = takeSignupEmail();
+      if (!email) return false;
+      return auth.login(email, body.password, false).then(
+        (me) => !!me,
+        () => false,
+      );
+    },
+    onSuccess: (signedIn) => {
+      if (!signedIn) setState('confirmed');
+      else void navigate(auth.needsConsent() ? '/consent?returnUrl=%2Ftoday' : '/today');
+    },
     onError: (error) => setProblem(problemToMessage(asApiError(error), 'confirm-email').message),
   });
 
@@ -107,7 +125,6 @@ export default function ConfirmEmailPage() {
     return (
       <>
         <PageHeader title="You're confirmed" lede="Welcome to Ember. Sign in whenever you're ready." />
-        <FlameMark className="size-[64px] self-center" />
         <Button asChild block>
           <Link to="/login">Sign in</Link>
         </Button>
@@ -120,7 +137,7 @@ export default function ConfirmEmailPage() {
       <>
         <PageHeader title="Let's get you a fresh link" />
         <Notice>This link looks incomplete. Open it again from the email, or ask for a new one here.</Notice>
-        <ResendForm />
+        <ResendForm primary />
         <Button asChild variant="ghost" block>
           <Link to="/login">Back to sign in</Link>
         </Button>
@@ -141,7 +158,7 @@ export default function ConfirmEmailPage() {
       )}
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Password" error={password.error}>
-          {(field) => <Input {...field} {...password.input} type="password" autoComplete="current-password" />}
+          {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
         <BusyButton type="submit" block busy={confirm.isPending} busyLabel="Confirming…">
           Confirm email

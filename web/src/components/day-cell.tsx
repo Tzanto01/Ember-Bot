@@ -1,5 +1,6 @@
-import { Check, Moon, Pause } from 'lucide-react';
-import { dayStateWords } from '@/lib/calendar';
+import { Check, Leaf, Moon, Pause } from 'lucide-react';
+import type { CSSProperties } from 'react';
+import { stateWords } from '@/lib/calendar';
 import { formatDate } from '@/lib/local-date';
 import type { DayState, LocalDateString } from '@/lib/models';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,8 @@ export interface DayCellProps {
   expanded?: boolean;
   /** Draws the run connector to the right-hand neighbour; pass `joinsRun(state, next)`. */
   runToNext?: boolean;
+  /** For a `partial` day of a multi-count habit: fills the cell that far and shows "2/3". */
+  progress?: { count: number; target: number };
   className?: string;
 }
 
@@ -44,6 +47,9 @@ const stateClass: Record<DayState | 'future', string> = {
   paused:
     'border-[1.5px] border-dashed border-paused bg-[repeating-linear-gradient(45deg,color-mix(in_oklch,var(--paused)_22%,transparent)_0_4px,transparent_4px_8px)] text-foreground',
   beforestart: 'text-beforestart',
+  offday: 'bg-muted text-muted-foreground',
+  partial:
+    'border-2 border-done bg-[linear-gradient(to_top,color-mix(in_oklch,var(--done)_30%,transparent)_var(--fill,50%),transparent_var(--fill,50%))] text-foreground',
   future: 'text-beforestart',
 };
 
@@ -54,15 +60,21 @@ export function joinsRun(state: DayState | null | undefined, next: DayState | nu
 }
 
 /** "{long date}, {state text}", with "today, " before the state text on today. Never "missed". */
-export function dayCellName(date: LocalDateString, state: DayState | null, isToday = false): string {
-  const words = state === null ? 'not yet' : dayStateWords[state];
+export function dayCellName(
+  date: LocalDateString,
+  state: DayState | null,
+  isToday = false,
+  progress?: { count: number; target: number },
+): string {
+  const words = state === null ? 'not yet' : stateWords(state, progress?.count, progress?.target);
   return `${formatDate(date, longDate)}, ${isToday ? 'today, ' : ''}${words}`;
 }
 
 /**
  * One day in any of the app's day views (History grid, legend, Today pips and slot, auth sample strip).
  * Every state has a non-colour cue: check (done), outline (not checked in), heavy edge plus dot (still open),
- * moon (low day), dashed hatch plus pause (paused), faint number (before start, not yet).
+ * moon (low day), dashed hatch plus pause (paused), faint number (before start, not yet), leaf on a soft fill
+ * (rest day), part fill plus "2/3" (partly done).
  * Editable days render `<button id="day-{date}" data-state aria-expanded>`; everything else is a span without an id.
  */
 export function DayCell({
@@ -73,10 +85,15 @@ export function DayCell({
   onSelect,
   expanded = false,
   runToNext = false,
+  progress,
   className,
 }: DayCellProps) {
   const dataState = state ?? 'future';
   const large = size === 'cell' || size === 'slot';
+  const partial = state === 'partial' && progress && progress.target > 1 ? progress : undefined;
+  const style = partial
+    ? ({ '--fill': `${Math.round((Math.min(partial.count, partial.target) / partial.target) * 100)}%` } as CSSProperties)
+    : undefined;
   const classes = cn(
     'relative inline-flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-cell text-[14px] leading-none transition-colors',
     sizeClass[size],
@@ -94,6 +111,12 @@ export function DayCell({
       )}
       {state === 'done' && <Check aria-hidden className="size-[14px]" />}
       {state === 'lowday' && <Moon aria-hidden className="size-[14px]" />}
+      {state === 'offday' && <Leaf aria-hidden className="size-[14px]" />}
+      {partial && large && (
+        <span aria-hidden="true" className="text-[12px] font-semibold">
+          {partial.count}/{partial.target}
+        </span>
+      )}
       {state === 'paused' && size !== 'swatch' && (
         <Pause aria-hidden className={cn('size-[14px]', size === 'cell' && 'hidden md:block')} />
       )}
@@ -115,11 +138,12 @@ export function DayCell({
         type="button"
         id={`day-${date}`}
         data-state={dataState}
-        aria-label={dayCellName(date, state, isToday)}
+        aria-label={dayCellName(date, state, isToday, partial)}
         aria-current={isToday ? 'date' : undefined}
         aria-expanded={expanded}
         aria-controls={expanded ? 'day-panel' : undefined}
         onClick={onSelect}
+        style={style}
         className={cn(
           classes,
           'cursor-pointer focus-visible:z-10 aria-expanded:z-10 aria-expanded:outline-3 aria-expanded:outline-offset-2 aria-expanded:outline-ring aria-expanded:outline-solid',
@@ -132,15 +156,15 @@ export function DayCell({
 
   if (date) {
     return (
-      <span data-state={dataState} aria-current={isToday ? 'date' : undefined} className={classes}>
+      <span data-state={dataState} aria-current={isToday ? 'date' : undefined} className={classes} style={style}>
         {content}
-        <span className="sr-only">{dayCellName(date, state, isToday)}</span>
+        <span className="sr-only">{dayCellName(date, state, isToday, partial)}</span>
       </span>
     );
   }
 
   return (
-    <span aria-hidden="true" data-state={dataState} className={classes}>
+    <span aria-hidden="true" data-state={dataState} className={classes} style={style}>
       {content}
     </span>
   );

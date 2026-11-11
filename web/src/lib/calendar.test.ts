@@ -18,8 +18,8 @@ describe('buildMonth', () => {
   const weeks = buildMonth(
     month,
     [
-      { date: '2026-11-06', state: 'done', completed: true },
-      { date: '2026-11-08', state: 'paused', completed: null },
+      { date: '2026-11-06', state: 'done', completed: true, count: 1 },
+      { date: '2026-11-08', state: 'paused', completed: null, count: 0 },
     ],
     ['2026-11-07', '2026-11-08', '2026-11-20'],
     startDate,
@@ -109,8 +109,9 @@ describe('dayLabel', () => {
     inMonth: true,
     isToday,
     lowDay: false,
+    count: 0,
   });
-  const states: DayState[] = ['beforestart', 'done', 'notdone', 'pending', 'lowday', 'paused'];
+  const states: DayState[] = ['beforestart', 'done', 'notdone', 'pending', 'lowday', 'paused', 'offday', 'partial'];
 
   it('never says "missed" for any state', () => {
     for (const state of states) {

@@ -302,6 +302,11 @@ describe('Http habit write hook', () => {
     (await mock.next('PUT', '/api/habits/1/days/2026-11-01')).respond(200, {});
     await write;
     expect(onHabitWrite).toHaveBeenCalledTimes(1);
+
+    const routine = http.request('PATCH', '/api/routines/1', { body: { reminderTime: '07:30' } });
+    (await mock.next('PATCH', '/api/routines/1')).respond(200, {});
+    await routine;
+    expect(onHabitWrite).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -503,5 +508,54 @@ describe('Http native bearer with TokenStore', () => {
 
     expect(mock.all.length).toBe(5);
     expect(mock.all.every((c) => c.url.startsWith('https://ember.example/api/'))).toBe(true);
+  });
+});
+
+describe('Http timeout', () => {
+  it('gives up on a request the server never answers and rejects as unreachable', async () => {
+    const timeout = new AbortController();
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+    vi.stubGlobal('fetch', (_url: string, init: RequestInit) =>
+      init.signal
+        ? new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(init.signal!.reason)))
+        : new Promise(() => undefined),
+    );
+    const rejection = new Http(web).request('GET', '/api/me').catch((e: unknown) => e);
+
+    timeout.abort(new DOMException('timed out', 'TimeoutError'));
+
+    expect(((await rejection) as ApiError).status).toBe(0);
+    expect(spy).toHaveBeenCalledWith(15000);
+  });
+});
+
+describe('Http offline cache', () => {
+  function cached(body: unknown) {
+    return { save: vi.fn(), load: vi.fn(async () => body) };
+  }
+
+  it('answers a GET from the device only while unreachable, marks it, and clears the mark once the server answers', async () => {
+    const http = new Http(web);
+    const cache = cached([{ id: 1 }]);
+    http.offlineCache = cache;
+
+    const offline = http.request('GET', '/api/habits');
+    (await mock.next('GET', '/api/habits')).fail();
+    expect(await offline).toEqual([{ id: 1 }]);
+    expect(http.offlineData.get()).toBe(true);
+
+    const online = http.request('GET', '/api/habits');
+    (await mock.next('GET', '/api/habits')).respond(200, [{ id: 2 }]);
+    expect(await online).toEqual([{ id: 2 }]);
+    expect(cache.save).toHaveBeenCalledWith('/api/habits', [{ id: 2 }]);
+    expect(http.offlineData.get()).toBe(false);
+
+    const failed = http.request('GET', '/api/habits').catch((e: unknown) => e);
+    (await mock.next('GET', '/api/habits')).respond(500);
+    expect(((await failed) as ApiError).status).toBe(500);
+    const write = http.request('POST', '/api/habits', { body: {} }).catch((e: unknown) => e);
+    (await mock.next('POST', '/api/habits')).fail();
+    expect(((await write) as ApiError).status).toBe(0);
+    expect(http.offlineData.get()).toBe(false);
   });
 });

@@ -27,6 +27,8 @@
   --success-foreground: oklch(0.98 0.03 95);
   --done: oklch(0.27 0.025 70);
   --done-foreground: oklch(0.87 0.15 88);
+  --heat-1: oklch(0.654 0.018 70);
+  --heat-2: oklch(0.459 0.022 70);
   --lowday: oklch(0.88 0.055 280);
   --lowday-foreground: oklch(0.33 0.1 280);
   --paused: oklch(0.45 0.025 70);
@@ -47,7 +49,7 @@
   --ember-font-sans: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --ember-font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', system-ui, sans-serif;
   --ember-heading-weight: 800;
-  --ember-heading-tracking: -0.03em;
+  --ember-heading-tracking: -0.015em;
   --ember-dur-fast: 90ms;
   --ember-dur: 160ms;
   --ember-dur-slow: 300ms;
@@ -83,6 +85,8 @@
   --success-foreground: oklch(0.19 0.016 70);
   --done: oklch(0.84 0.15 86);
   --done-foreground: oklch(0.19 0.016 70);
+  --heat-1: oklch(0.534 0.084 86);
+  --heat-2: oklch(0.69 0.117 86);
   --lowday: oklch(0.33 0.06 280);
   --lowday-foreground: oklch(0.85 0.07 280);
   --paused: oklch(0.65 0.04 85);

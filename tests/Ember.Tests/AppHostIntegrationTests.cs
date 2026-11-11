@@ -31,6 +31,7 @@ public class AppHostIntegrationTests
         (await scheduler.CheckExists(Ember.Bot.Jobs.WeeklySummaryJob.Key)).Should().BeTrue();
         (await scheduler.CheckExists(Ember.Bot.Jobs.MissedDayReflectionJob.Key)).Should().BeTrue();
         (await scheduler.CheckExists(Ember.Bot.Jobs.ReminderDispatchJob.Key)).Should().BeTrue();
+        (await scheduler.CheckExists(Ember.Bot.Jobs.UnconfirmedAccountCleanupJob.Key)).Should().BeTrue();
 
         var reminderCron = (await host.GetTriggerAsync("reminder-dispatch-trigger", "reminders"))
             .Should().BeAssignableTo<ICronTrigger>().Subject;
@@ -46,11 +47,11 @@ public class AppHostIntegrationTests
         // is Sunday morning) — pinned to UTC explicitly, because Quartz otherwise interprets
         // cron expressions in server-local time.
         var weeklyCron = weeklyTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
-        weeklyCron.CronExpressionString.Should().Be("0 0 * * * ?");
+        weeklyCron.CronExpressionString.Should().Be("0 0/15 * * * ?");
         weeklyCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
 
         var reflectionCron = reflectionTrigger.Should().BeAssignableTo<ICronTrigger>().Subject;
-        reflectionCron.CronExpressionString.Should().Be("0 0 * * * ?");
+        reflectionCron.CronExpressionString.Should().Be("0 0/15 * * * ?");
         reflectionCron.TimeZone.Should().Be(TimeZoneInfo.Utc);
     }
 

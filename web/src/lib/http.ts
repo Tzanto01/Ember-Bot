@@ -1,5 +1,6 @@
 import { currentUrl, navigate, queryString } from './navigation';
 import { ApiError, toApiError } from './problem';
+import { Store } from './store';
 
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -13,6 +14,8 @@ export interface RequestOptions {
   replay?: boolean;
   /** The token store's own login and refresh: no bearer token and no refresh on 401. */
   skipBearer?: boolean;
+  /** How long this request may take; defaults to {@link requestTimeoutMs}. */
+  timeoutMs?: number;
 }
 
 /** A downloaded body with the response headers (for `Content-Disposition`). */
@@ -41,7 +44,22 @@ export interface BearerTokens {
   refresh(): Promise<boolean>;
 }
 
-const reminderInputs = /\/api\/habits(\/|\?|$)/;
+/** How long one request may take before it fails as unreachable (status 0). */
+export const requestTimeoutMs = 15000;
+
+/** The timeout for requests that move a whole account (export, import, deletion). */
+export const longRequestTimeoutMs = 120000;
+
+/**
+ * Device copies of `GET` answers for an offline cold start: `save` gets every successful answer, `load` is asked when
+ * the server can't be reached and resolves undefined when it has nothing usable for `url`.
+ */
+export interface OfflineCache {
+  save(url: string, body: unknown): void;
+  load(url: string): Promise<unknown>;
+}
+
+const reminderInputs = /\/api\/(habits|routines)(\/|\?|$)/;
 const mutating = new Set<Method>(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function isSameOrigin(url: string): boolean {
@@ -61,6 +79,11 @@ function readCookie(name: string): string | null {
   return null;
 }
 
+function withQuery(url: string, params: Record<string, string | undefined> = {}): string {
+  const search = queryString(params);
+  return search ? `${url}${url.includes('?') ? '&' : '?'}${search}` : url;
+}
+
 async function readJson(response: Response): Promise<unknown> {
   try {
     const text = await response.text();
@@ -77,6 +100,7 @@ async function readJson(response: Response): Promise<unknown> {
  * refresh plus retry on a 401 outside `/api/auth/*`. Both: a 401 outside `/api/auth/*` while signed in ends the
  * session and routes to `/login?returnUrl=…&reason=session`; 403 `consent_required` routes to `/consent`. Those two
  * errors are marked `handled`. A successful non-GET write to `/api/habits` that isn't a replay calls `onHabitWrite`.
+ * A request that gets no answer within its timeout ({@link requestTimeoutMs} by default) fails with status 0.
  */
 export class Http {
   /** Set by the composition root once the session exists. */
@@ -85,11 +109,46 @@ export class Http {
   bearer: BearerTokens | null = null;
   /** Called after a successful habit, day or pause write (native reminder rebuild). */
   onHabitWrite: (() => void) | null = null;
+  /**
+   * No-account mode: answers own `/api/` requests in process instead of `fetch` (`url` is the path with its query
+   * string, without the API base). Null sends them to the server.
+   */
+  local: ((method: Method, url: string, body: unknown) => Promise<Response>) | null = null;
+  /** Web build: answers a `GET` from the device when the server can't be reached; null never does. */
+  offlineCache: OfflineCache | null = null;
+  /** True while a screen shows an answer from {@link offlineCache}; false again once that URL loads from the server. */
+  readonly offlineData = new Store(false);
+  private readonly staleUrls = new Set<string>();
 
   constructor(private readonly config: HttpConfig) {}
 
+  /** Forgets which screens showed device answers, for example once the browser is back online or the user changed. */
+  clearOfflineData(): void {
+    this.staleUrls.clear();
+    this.offlineData.set(false);
+  }
+
   /** Sends a request and resolves with the parsed JSON body (undefined when empty). */
   async request<T>(method: Method, url: string, options: RequestOptions = {}): Promise<T> {
+    const cache = method === 'GET' && !options.params && !this.local ? this.offlineCache : null;
+    if (!cache) return this.fetchJson<T>(method, url, options);
+    try {
+      const body = await this.fetchJson<T>(method, url, options);
+      cache.save(url, body);
+      this.staleUrls.delete(url);
+      this.offlineData.set(this.staleUrls.size > 0);
+      return body;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 0) throw error;
+      const cached = await cache.load(url).catch(() => undefined);
+      if (cached === undefined) throw error;
+      this.staleUrls.add(url);
+      this.offlineData.set(true);
+      return cached as T;
+    }
+  }
+
+  private async fetchJson<T>(method: Method, url: string, options: RequestOptions): Promise<T> {
     const response = await this.send(method, url, options);
     let text: string;
     try {
@@ -106,8 +165,8 @@ export class Http {
   }
 
   /** `GET` for a file: the body as a blob with the response headers. */
-  async download(url: string, params?: Record<string, string | undefined>): Promise<Download> {
-    const response = await this.send('GET', url, { params });
+  async download(url: string, params?: Record<string, string | undefined>, timeoutMs?: number): Promise<Download> {
+    const response = await this.send('GET', url, { params, timeoutMs });
     try {
       return { blob: await response.blob(), headers: response.headers };
     } catch {
@@ -166,7 +225,7 @@ export class Http {
       return this.exchange(method, url, options, null);
     }
     const response = await this.exchange(method, url, options, bearer.accessToken);
-    if (response.status !== 401 || url.includes('/api/auth/')) return response;
+    if (response.status !== 401 || (url.includes('/api/auth/') && !url.endsWith('/api/auth/logout-everywhere'))) return response;
     if (await bearer.refresh()) return this.exchange(method, url, options, bearer.accessToken);
     if (bearer.lastTransientError) throw bearer.lastTransientError;
     return response;
@@ -178,6 +237,10 @@ export class Http {
     options: RequestOptions,
     token: string | null,
   ): Promise<Response> {
+    if (this.local && this.isOwnApi(url)) {
+      const path = url.startsWith('/api/') ? url : url.slice(this.config.apiBase.length);
+      return this.local(method, withQuery(path, options.params), options.body ?? null);
+    }
     const headers = new Headers();
     const hasBody = options.body !== undefined && options.body !== null;
     if (hasBody) headers.set('Content-Type', 'application/json');
@@ -192,12 +255,12 @@ export class Http {
       headers,
       body: hasBody ? JSON.stringify(options.body) : undefined,
       credentials: this.config.native ? 'omit' : 'same-origin',
+      signal: AbortSignal.timeout(options.timeoutMs ?? requestTimeoutMs),
     });
   }
 
-  private resolve(url: string, params: Record<string, string | undefined> = {}): string {
-    const search = queryString(params);
-    const full = search ? `${url}${url.includes('?') ? '&' : '?'}${search}` : url;
+  private resolve(url: string, params?: Record<string, string | undefined>): string {
+    const full = withQuery(url, params);
     return this.config.apiBase && url.startsWith('/api/') ? this.config.apiBase + full : full;
   }
 }

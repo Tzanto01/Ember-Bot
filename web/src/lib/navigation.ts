@@ -14,6 +14,11 @@ export function navigate(path: string): void {
   else window.location.assign(path);
 }
 
+/** Leaves the app with a full page load of `url`, for server routes such as the Discord link. */
+export function loadPage(url: string): void {
+  window.location.assign(url);
+}
+
 /** The current path plus query string, for example `/history?month=2026-10`. */
 export function currentUrl(): string {
   return window.location.pathname + window.location.search;

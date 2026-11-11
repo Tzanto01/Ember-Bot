@@ -62,3 +62,36 @@ describe('StatTiles', () => {
     expect(screen.getByText('3 a week')).toBeInTheDocument();
   });
 });
+
+describe('StatTiles kept days', () => {
+  const render7And30 = (last7Days: { kept: number; span: number }, last30Days: { kept: number; span: number }) =>
+    render(<StatTiles habit={habit} monthName="October" doneInMonth={null} lowDaysInMonth={0} last7Days={last7Days} last30Days={last30Days} />);
+
+  it('shows the kept days of the last 7 and 30 days', () => {
+    render7And30({ kept: 6, span: 7 }, { kept: 24, span: 30 });
+
+    expect(screen.getByText('Last 7 days').nextSibling).toHaveTextContent('Kept 6 of 7');
+    expect(screen.getByText('Last 30 days').nextSibling).toHaveTextContent('Kept 24 of 30');
+  });
+
+  it('leaves a window out when nothing was kept in it', () => {
+    render7And30({ kept: 0, span: 7 }, { kept: 3, span: 30 });
+
+    expect(screen.queryByText('Last 7 days')).toBeNull();
+    expect(screen.getByText('Kept 3 of 30')).toBeInTheDocument();
+  });
+
+  it('counts a habit younger than 30 days since it started', () => {
+    render7And30({ kept: 5, span: 7 }, { kept: 9, span: 12 });
+
+    expect(screen.getByText('Since it started').nextSibling).toHaveTextContent('Kept 9 of 12');
+  });
+
+  it('shows one "since it started" tile for a habit younger than a week', () => {
+    render7And30({ kept: 2, span: 3 }, { kept: 2, span: 3 });
+
+    expect(screen.getAllByText('Since it started')).toHaveLength(1);
+    expect(screen.getByText('Kept 2 of 3')).toBeInTheDocument();
+    expect(screen.queryByText(/^Last \d+ days$/)).toBeNull();
+  });
+});

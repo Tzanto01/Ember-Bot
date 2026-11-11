@@ -1,20 +1,23 @@
-import { addDays } from '../local-date';
-import type { Habit, LocalDateString } from '../models';
+import { addDays, weekdayIndex } from '../local-date';
+import { type Habit, type LocalDateString, type Routine, weekdays } from '../models';
 
-/** One local notification to schedule. */
+/** One local notification to schedule: for one habit (`habitId`) or for a routine's pending habits (`routineId`). */
 export interface PlannedReminder {
   /** 1-based, unique within one plan. */
   id: number;
-  habitId: number;
+  habitId?: number;
+  routineId?: number;
   date: LocalDateString;
   /** UTC instant in milliseconds. */
   at: number;
+  /** True for the follow-up planned `secondReminderMinutes` after the first reminder. */
+  second?: boolean;
 }
 
-/** Days ahead to schedule, today included. */
-export const planDays = 7;
-/** Most notifications kept pending (Android and iOS cap pending alarms); the soonest win. */
-export const planCap = 60;
+/** Days ahead to schedule, today included, so reminders keep coming for two weeks while the app stays closed. */
+export const planDays = 14;
+/** Most notifications kept pending, below Android's limit of 500 alarms per app; the soonest win. */
+export const planCap = 400;
 
 const parts = new Map<string, Intl.DateTimeFormat>();
 
@@ -84,27 +87,72 @@ function pausedOn(habit: Habit, date: LocalDateString): boolean {
   );
 }
 
+/** True when `habit` expects a check-in on `date`: started, not paused, and a scheduled weekday for `weekdays` habits. */
+export function scheduledOn(habit: Habit, date: LocalDateString): boolean {
+  if (date < habit.startDate || pausedOn(habit, date)) return false;
+  return habit.frequency !== 'weekdays' || !!habit.days?.includes(weekdays[weekdayIndex(date)]);
+}
+
+function doneToday(habit: Habit, date: LocalDateString): boolean {
+  return (
+    habit.today.date === date &&
+    (habit.today.state === 'done' || habit.today.count >= (habit.timesPerDay ?? 1))
+  );
+}
+
+function pendingOn(habit: Habit, date: LocalDateString): boolean {
+  if (habit.today.date === date) return habit.today.state === 'pending' || habit.today.state === 'partial';
+  return scheduledOn(habit, date);
+}
+
 /**
  * The local notifications for the next {@link planDays} local days in `timeZone` (the account's, never the
- * device's): habits with the `mobile` channel and a reminder time, skipping days before the habit started,
- * paused days, today when it's already done, and instants already past (the bot dispatcher's rules).
- * Sorted soonest first and capped at {@link planCap}.
+ * device's), with the bot dispatcher's rules. Habits with the `mobile` channel and a reminder time fire on
+ * scheduled days only (started, not paused, a listed weekday), not once today is done. A routine with a reminder
+ * time and the `mobile` channel fires once a day while any member habit is still pending or partial (today from
+ * `habit.today`, later days when scheduled); its members' own reminders are skipped. Instants already past are
+ * dropped. With `secondMinutes` above 0 each reminder gets a follow-up (`second`) that many minutes later, unless
+ * it falls on another local day. Sorted soonest first and capped at {@link planCap}.
  */
-export function planReminders(habits: Habit[], timeZone: string, now: number): PlannedReminder[] {
+export function planReminders(
+  habits: Habit[],
+  timeZone: string,
+  now: number,
+  routines: Routine[] = [],
+  secondMinutes = 0,
+): PlannedReminder[] {
   const today = localDate(now, timeZone);
   const planned: Omit<PlannedReminder, 'id'>[] = [];
+  const plan = (reminder: Omit<PlannedReminder, 'id' | 'second'>) => {
+    if (reminder.at > now) planned.push(reminder);
+    if (secondMinutes <= 0) return;
+    const at = reminder.at + secondMinutes * 60_000;
+    if (at > now && localDate(at, timeZone) === reminder.date) planned.push({ ...reminder, at, second: true });
+  };
+  const overridden = new Set(routines.filter((r) => r.reminderTime).flatMap((r) => r.habitIds));
   for (const habit of habits) {
     if (!habit.reminderTime || !habit.reminderChannels?.includes('mobile')) continue;
+    if (overridden.has(habit.id)) continue;
     for (let offset = 0; offset < planDays; offset++) {
       const date = addDays(today, offset);
-      if (date < habit.startDate || pausedOn(habit, date)) continue;
-      if (habit.today.date === date && habit.today.state === 'done') continue;
-      const at = zonedToUtc(date, habit.reminderTime, timeZone);
-      if (at > now) planned.push({ habitId: habit.id, date, at });
+      if (!scheduledOn(habit, date) || doneToday(habit, date)) continue;
+      plan({ habitId: habit.id, date, at: zonedToUtc(date, habit.reminderTime, timeZone) });
+    }
+  }
+  for (const routine of routines) {
+    if (!routine.reminderTime || !routine.reminderChannels.includes('mobile')) continue;
+    const members = habits.filter((habit) => routine.habitIds.includes(habit.id));
+    for (let offset = 0; offset < planDays; offset++) {
+      const date = addDays(today, offset);
+      if (!members.some((habit) => pendingOn(habit, date))) continue;
+      plan({ routineId: routine.id, date, at: zonedToUtc(date, routine.reminderTime, timeZone) });
     }
   }
   return planned
-    .sort((a, b) => a.at - b.at || a.habitId - b.habitId)
+    .sort(
+      (a, b) =>
+        a.at - b.at || (a.habitId ?? 0) - (b.habitId ?? 0) || (a.routineId ?? 0) - (b.routineId ?? 0),
+    )
     .slice(0, planCap)
     .map((reminder, index) => ({ ...reminder, id: index + 1 }));
 }

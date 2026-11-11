@@ -31,6 +31,8 @@
   --color-success-foreground: var(--success-foreground);
   --color-done: var(--done);
   --color-done-foreground: var(--done-foreground);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
   --color-lowday: var(--lowday);
   --color-lowday-foreground: var(--lowday-foreground);
   --color-paused: var(--paused);
@@ -72,6 +74,12 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-padding-top: calc(56px + env(safe-area-inset-top) + 12px);
+  }
+  @media (width < 48rem) {
+    html {
+      scroll-padding-bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+    }
   }
   body {
     margin: 0;

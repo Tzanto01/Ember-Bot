@@ -15,7 +15,7 @@ export function PageHeader({ title, lede, aside, className }: PageHeaderProps) {
   return (
     <header className={cn('flex items-start justify-between gap-4', className)}>
       <div className="flex min-w-0 flex-col gap-2">
-        <h1 tabIndex={-1} className="text-[28px] focus:outline-none md:text-[36px]">
+        <h1 tabIndex={-1} className="text-[28px] [overflow-wrap:anywhere] focus:outline-none md:text-[36px]">
           {title}
         </h1>
         {lede && <p className="max-w-[38rem] text-muted-foreground">{lede}</p>}

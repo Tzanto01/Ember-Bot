@@ -221,7 +221,7 @@ public class WeeklySummaryServiceTests
     {
         var (headline, footer) = WeeklySummaryService.ToneLines(0, 7);
 
-        headline.Should().Contain("quiet week");
+        headline.Should().Be("It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.");
         footer.Should().Be("No pressure. Progress happens at its own pace.");
     }
 
@@ -231,7 +231,7 @@ public class WeeklySummaryServiceTests
         var (headline, footer) = WeeklySummaryService.ToneLines(7, 7);
 
         headline.Should().Contain("nailed every single check-in");
-        headline.Should().Contain("7/7");
+        headline.Should().Contain("That's 7 check-ins").And.NotContain("7/7");
         footer.Should().Be("You're on fire. Keep going.");
     }
 
@@ -240,9 +240,8 @@ public class WeeklySummaryServiceTests
     {
         var (headline, footer) = WeeklySummaryService.ToneLines(4, 7); // 57%
 
-        headline.Should().Contain("**4/7**");
-        headline.Should().Contain("(57%)");
-        footer.Should().Be("More than half — that's a win. Keep it up.");
+        headline.Should().Be("This week you showed up for **4 check-ins**. Every one of those counts. 💪");
+        footer.Should().Be("More than half, that's a win. Keep it up.");
     }
 
     [Fact]
@@ -261,8 +260,7 @@ public class WeeklySummaryServiceTests
     {
         var (headline, footer) = WeeklySummaryService.ToneLines(2, 7); // 29%
 
-        headline.Should().Contain("**2/7**");
-        headline.Should().Contain("(29%)");
+        headline.Should().NotContain("%").And.NotContain("/7").And.Contain("**2 check-ins**");
         footer.Should().Be("Small steps still move forward. You've got this.");
     }
 

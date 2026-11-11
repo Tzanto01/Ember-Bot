@@ -10,8 +10,10 @@ import { Reminders } from './native/reminders';
 import { TokenStore } from './native/token-store';
 import { setNavigator } from './navigation';
 import { OfflineQueue } from './offline-queue';
+import { requiresTwoFactor } from './problem';
 import { PushService } from './push';
 import { type FetchMock, me, memorySecureStore, mockFetch } from './test-support';
+import { chooseTheme } from './theme';
 
 describe('AuthService', () => {
   let mock: FetchMock;
@@ -69,6 +71,44 @@ describe('AuthService', () => {
       },
     );
 
+    it('sends the authenticator code or a recovery code with the login after RequiresTwoFactor', async () => {
+      const auth = setup();
+      const done = auth.login('a@example.test', 'pw', true, { code: '123456' });
+      const login = await mock.next('POST', '/api/auth/login?useCookies=true');
+      expect(login.body).toEqual({
+        email: 'a@example.test',
+        password: 'pw',
+        twoFactorCode: '123456',
+      });
+      login.respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await done;
+
+      const again = auth.login('a@example.test', 'pw', false, { recoveryCode: 'ABCD-EFGH' });
+      const second = await mock.next('POST', '/api/auth/login?useSessionCookies=true');
+      expect(second.body).toEqual({
+        email: 'a@example.test',
+        password: 'pw',
+        twoFactorRecoveryCode: 'ABCD-EFGH',
+      });
+      second.respond(401, { detail: 'RequiresTwoFactor' });
+      await expect(again).rejects.toSatisfy(requiresTwoFactor);
+    });
+
+    it('finishes a Discord sign-in with the second factor, then refreshes antiforgery and loads me', async () => {
+      const auth = setup();
+      const done = auth.completeDiscordTwoFactor({ code: '654321' });
+
+      const post = await mock.next('POST', '/api/auth/discord/2fa');
+      expect(post.body).toEqual({ code: '654321' });
+      post.respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+
+      await expect(done).resolves.toEqual(me);
+    });
+
     it('still loads me when the antiforgery refresh fails', async () => {
       const auth = setup();
       const done = auth.login('a@example.test', 'pw', true);
@@ -78,6 +118,34 @@ describe('AuthService', () => {
       (await mock.next('GET', '/api/me')).respond(200, me);
 
       await expect(done).resolves.toEqual(me);
+    });
+  });
+
+  describe('stay signed in', () => {
+    async function signIn(auth: AuthService, stay: boolean) {
+      const done = auth.login('a@example.test', 'pw', stay);
+      (await mock.next('POST', `/api/auth/login?${stay ? 'useCookies' : 'useSessionCookies'}=true`)).respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await done;
+    }
+
+    it('records only a "stay signed in" password sign-in, keeps it across starts and forgets it with the session', async () => {
+      localStorage.clear();
+      const auth = setup();
+
+      await signIn(auth, true);
+      expect(auth.staySignedIn.get()).toBe(me.id);
+      expect(setup().staySignedIn.get()).toBe(me.id);
+
+      auth.clearSession();
+      expect(auth.staySignedIn.get()).toBeNull();
+      expect(setup().staySignedIn.get()).toBeNull();
+
+      await signIn(auth, true);
+      await signIn(auth, false);
+      expect(auth.staySignedIn.get()).toBeNull();
+      expect(setup().staySignedIn.get()).toBeNull();
     });
   });
 
@@ -92,6 +160,72 @@ describe('AuthService', () => {
 
       await expect(loading).resolves.toBeNull();
       expect(auth.me.get()).toBeNull();
+      expect(auth.signedIn()).toBe(false);
+    });
+  });
+
+  describe('journal key', () => {
+    function withJournal() {
+      const auth = setup();
+      const journal = {
+        forget: vi.fn(async () => undefined),
+        restore: vi.fn(async () => undefined),
+      };
+      auth.journal = journal;
+      return { auth, journal };
+    }
+
+    it('restores the journal key after me loads', async () => {
+      const { auth, journal } = withJournal();
+      const loading = auth.loadMe(true);
+      expect(journal.restore).not.toHaveBeenCalled();
+      (await mock.next('GET', '/api/me')).respond(200, me);
+      await loading;
+
+      expect(journal.restore).toHaveBeenCalledOnce();
+    });
+
+    it('forgets it when the session ends, on account delete (wipeDevice) and on logout', async () => {
+      const { auth, journal } = withJournal();
+      auth.setMe(me);
+      auth.clearSession();
+      expect(journal.forget).toHaveBeenCalledTimes(1);
+
+      auth.setMe(me);
+      await auth.wipeDevice();
+      expect(journal.forget).toHaveBeenCalledTimes(2);
+
+      auth.setMe(me);
+      const out = auth.logout();
+      (await mock.next('POST', '/api/auth/logout')).respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      await expect(out).resolves.toBe(true);
+      expect(journal.forget).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe('clearSession', () => {
+    it('in the native build cancels the reminders but keeps the queued check-ins', async () => {
+      const http = new Http({ native: true, apiBase: '' });
+      const device = new DeviceStore();
+      queue = new OfflineQueue(device);
+      vi.spyOn(queue, 'clear').mockResolvedValue();
+      const api = new ApiClient(http, queue);
+      const tokens = new TokenStore(http, memorySecureStore().store);
+      const cancel = vi.fn(async () => undefined);
+      const plugin = {
+        getPending: async () => ({ notifications: [{ id: 1 }] }),
+        cancel,
+        removeAllDeliveredNotifications: async () => undefined,
+      } as unknown as LocalNotificationsPlugin;
+      const reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
+      const auth = new AuthService(api, queue, null, { tokens, reminders });
+      auth.setMe(me);
+
+      auth.clearSession();
+
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledWith({ notifications: [{ id: 1 }] }));
+      expect(queue.clear).not.toHaveBeenCalled();
       expect(auth.signedIn()).toBe(false);
     });
   });
@@ -147,6 +281,31 @@ describe('AuthService', () => {
       expect(navigate).toHaveBeenCalledWith('/login');
     });
 
+    it('keeps the session and reports failure when sign out everywhere answers 401', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      const done = auth.logout(true);
+
+      (await mock.next('POST', '/api/auth/logout-everywhere')).respond(401);
+
+      await expect(done).resolves.toBe(false);
+      expect(auth.me.get()).toEqual(me);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('forgets the address this device signed up with', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      localStorage.setItem('ember.signupEmail', JSON.stringify({ email: 'new@example.test', at: Date.now() }));
+      const done = auth.logout();
+
+      (await mock.next('POST', '/api/auth/logout')).respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+
+      await expect(done).resolves.toBe(true);
+      expect(localStorage.getItem('ember.signupEmail')).toBeNull();
+    });
+
     it('signs out without touching push endpoints when there is no subscription', async () => {
       const auth = setup(null);
       auth.setMe(me);
@@ -197,7 +356,7 @@ describe('AuthService', () => {
         cancel: async () => void order.push('reminders'),
         removeAllDeliveredNotifications: async () => undefined,
       } as unknown as LocalNotificationsPlugin;
-      const reminders = new Reminders(api, device, async () => plugin);
+      const reminders = new Reminders(api, device, async () => ({ LocalNotifications: plugin }));
       vi.spyOn(queue, 'clear').mockImplementation(async () => {
         order.push(
           localStorage.getItem('ember.channelsBeforePhone.7') ? 'queue' : 'queue after channels',
@@ -216,6 +375,82 @@ describe('AuthService', () => {
       expect(auth.me.get()).toBeNull();
       expect(mock.all).toEqual([]);
       expect(navigate).toHaveBeenCalledWith('/login');
+    });
+  });
+
+  describe('account theme', () => {
+    afterEach(() => {
+      localStorage.clear();
+      document.documentElement.removeAttribute('data-theme');
+    });
+
+    it('applies and stores the theme from /api/me when it differs from this device', async () => {
+      localStorage.setItem('ember.theme', 'hearthlight');
+      document.documentElement.dataset['theme'] = 'hearthlight';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('tidepool');
+      expect(localStorage.getItem('ember.theme')).toBe('tidepool');
+    });
+
+    it('leaves this device as it is when the account has no theme', async () => {
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: null });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('marigold');
+      expect(localStorage.getItem('ember.theme')).toBe('marigold');
+    });
+
+    it('keeps a pick whose save failed and sends it again instead of reverting to the account theme', async () => {
+      localStorage.setItem('ember.accountTheme', 'tidepool');
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup();
+      const loaded = auth.loadMe();
+      (await mock.next('GET', '/api/me')).respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('marigold');
+      const patch = await mock.next('PATCH', '/api/me');
+      expect(patch.body).toEqual({ theme: 'marigold' });
+      patch.respond(200, { ...me, theme: 'marigold' });
+      await vi.waitFor(() => expect(localStorage.getItem('ember.accountTheme')).toBe('marigold'));
+      expect(auth.me.get()?.theme).toBe('marigold');
+    });
+
+    it('ignores the account theme from a load that started before the latest pick', async () => {
+      const auth = setup();
+      const loaded = auth.loadMe();
+      const get = await mock.next('GET', '/api/me');
+      chooseTheme('fieldnotes');
+      get.respond(200, { ...me, theme: 'tidepool' });
+      await loaded;
+
+      expect(document.documentElement.dataset['theme']).toBe('fieldnotes');
+      expect(localStorage.getItem('ember.theme')).toBe('fieldnotes');
+    });
+
+    it('shows the default theme again after sign-out, so the next account starts fresh', async () => {
+      localStorage.setItem('ember.accountTheme', 'marigold');
+      localStorage.setItem('ember.theme', 'marigold');
+      document.documentElement.dataset['theme'] = 'marigold';
+      const auth = setup(null);
+      auth.setMe({ ...me, theme: 'marigold' });
+      const done = auth.logout();
+      (await mock.next('POST', '/api/auth/logout')).respond(200);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+      await done;
+
+      expect(document.documentElement.dataset['theme']).toBe('hearthlight');
+      expect(localStorage.getItem('ember.theme')).toBeNull();
+      expect(localStorage.getItem('ember.accountTheme')).toBeNull();
     });
   });
 });

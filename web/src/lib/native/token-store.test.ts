@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Http } from '../http';
 import { type FetchMock, memorySecureStore, mockFetch } from '../test-support';
-import { TokenStore } from './token-store';
+import { capacitorSecureStore, TokenStore } from './token-store';
 
 const tokens = (access: string, refresh: string) => ({
   tokenType: 'Bearer',
@@ -79,6 +79,31 @@ describe('TokenStore', () => {
     expect(secure.size).toBe(0);
   });
 
+  it('sends the two-factor code in the same bearer login call', async () => {
+    const signedIn = store.signIn('a@example.test', 'pw-synthetic', true, { code: '123456' });
+    const login = await mock.next('POST', '/api/auth/login');
+    expect(login.body).toEqual({
+      email: 'a@example.test',
+      password: 'pw-synthetic',
+      twoFactorCode: '123456',
+    });
+    login.respond(200, tokens('access-1', 'refresh-1'));
+    await signedIn;
+
+    expect(store.accessToken).toBe('access-1');
+  });
+
+  it('exchanges a native Discord code with its verifier and keeps the refresh token in secure storage', async () => {
+    const signedIn = store.signInWithDiscord('code-synthetic', 'verifier-synthetic');
+    const exchange = await mock.next('POST', '/api/auth/discord/native/token');
+    expect(exchange.body).toEqual({ code: 'code-synthetic', verifier: 'verifier-synthetic' });
+    exchange.respond(200, tokens('access-d', 'refresh-d'));
+    await signedIn;
+
+    expect(store.accessToken).toBe('access-d');
+    expect(secure.get('ember.refreshToken')).toBe('refresh-d');
+  });
+
   it('forgets both tokens on clear', async () => {
     secure.set('ember.refreshToken', 'stored-refresh');
 
@@ -86,5 +111,17 @@ describe('TokenStore', () => {
 
     expect(secure.size).toBe(0);
     expect(store.accessToken).toBeNull();
+  });
+});
+
+vi.mock('@aparajita/capacitor-secure-storage', async () => ({
+  SecureStorage: (await import('../test-support')).capacitorPlugin({
+    getItem: async () => 'stored-refresh',
+  }),
+}));
+
+describe('capacitorSecureStore', () => {
+  it('reads through the native plugin proxy without awaiting the proxy itself', async () => {
+    expect(await capacitorSecureStore.get('ember.refreshToken')).toBe('stored-refresh');
   });
 });

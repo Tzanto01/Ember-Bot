@@ -53,6 +53,8 @@ internal static class Problems
 
     public static IResult NotFound() => Problem(StatusCodes.Status404NotFound, "not_found");
 
+    public static IResult Expired() => Problem(StatusCodes.Status410Gone, "expired");
+
     public static IResult HabitLimit() => Problem(StatusCodes.Status409Conflict, "habit_limit");
 
     /// <param name="detail">Short user-facing reason.</param>

@@ -8,7 +8,11 @@
   root.setAttribute('data-theme', themes.indexOf(theme) >= 0 ? theme : 'hearthlight');
   var query = window.matchMedia('(prefers-color-scheme: dark)');
   function apply() {
-    root.classList.toggle('dark', query.matches);
+    var scheme = null;
+    try {
+      scheme = localStorage.getItem('ember.colorScheme');
+    } catch (e) {}
+    root.classList.toggle('dark', scheme === 'dark' || (scheme !== 'light' && query.matches));
   }
   apply();
   query.addEventListener('change', apply);

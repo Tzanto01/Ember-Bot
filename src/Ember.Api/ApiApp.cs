@@ -3,12 +3,14 @@ using Ember.Api.Email;
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Ember.Core.Services;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 
 namespace Ember.Api;
@@ -26,6 +28,7 @@ public static class ApiApp
     public static WebApplicationBuilder CreateBuilder(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 64 * 1024);
         var services = builder.Services;
         var config = builder.Configuration;
 
@@ -53,12 +56,22 @@ public static class ApiApp
             })
             .AddEntityFrameworkStores<EmberDbContext>()
             .AddSignInManager<EmberSignInManager>();
+        services.Replace(ServiceDescriptor.Scoped<IUserValidator<User>, EmberUserValidator>());
         services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
+        services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options =>
+        {
+            options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
+            options.RefreshTokenExpiration = AuthSessions.Lifetime;
+        });
+        services.AddMemoryCache();
+        services.AddScoped<AuthSessions>();
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
+            options.ExpireTimeSpan = AuthSessions.Lifetime;
+            options.Events.OnValidatePrincipal = AuthSessions.ValidateCookie(options.Events.OnValidatePrincipal);
             if (!builder.Environment.IsDevelopment())
             {
                 options.Cookie.Name = "__Host-Ember";
@@ -136,6 +149,8 @@ public static class ApiApp
             {
                 FileProvider = new PhysicalFileProvider(Path.GetFullPath(webRootPath)),
                 ContentTypeProvider = WebContentTypes(),
+                OnPrepareResponse = static context => context.Context.Response.Headers.CacheControl =
+                    context.Context.Request.Path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable" : "no-cache",
             }
             : null;
         if (webRoot is not null) app.UseStaticFiles(webRoot);
@@ -144,6 +159,7 @@ public static class ApiApp
         app.UseCors();
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.Use(AuthSessions.RejectEndedBearer);
         app.Use(AuthEndpoints.EnforceAntiforgery);
         app.UseAuthorization();
 
@@ -156,14 +172,19 @@ public static class ApiApp
 
         var signedIn = api.MapGroup("").RequireAuthorization();
         signedIn.MapMe();
+        signedIn.MapImport();
+        signedIn.MapTwoFactor();
         signedIn.MapDiscordUnlink();
         signedIn.MapMerge();
         signedIn.MapHabits();
+        signedIn.MapRoutines();
         signedIn.MapLowDays();
+        signedIn.MapJournal();
         signedIn.MapStats();
 
         api.MapHabitTemplates();
         api.MapPush();
+        api.MapReminders();
 
         mapExtra?.Invoke(app);
 
@@ -217,20 +238,31 @@ public static class ApiApp
     }
 
     private static string[] KnownProxies(IConfiguration configuration)
-        => configuration.GetSection("Ember:ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+        => Entries(configuration, "Ember:ForwardedHeaders:KnownProxies");
 
     private static string[] KnownNetworks(IConfiguration configuration)
-        => configuration.GetSection("Ember:ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+        => Entries(configuration, "Ember:ForwardedHeaders:KnownNetworks");
 
+    private static string[] Entries(IConfiguration configuration, string key)
+        => configuration.GetSection(key).GetChildren().Select(entry => entry.Value).OfType<string>().Where(value => value.Trim().Length > 0).ToArray();
+
+    /// <summary>
+    /// Security headers on every response. <c>X-Robots-Tag: noindex</c> goes on everything except <c>/</c> and static files
+    /// outside <c>/legal</c>, judged by the path as requested, since the SPA fallback rewrites it to <c>/index.html</c>.
+    /// </summary>
     private static Task SecurityHeaders(HttpContext http, RequestDelegate next)
     {
+        var path = http.Request.Path;
         http.Response.OnStarting(() =>
         {
             var headers = http.Response.Headers;
             headers.XContentTypeOptions = "nosniff";
             headers["Referrer-Policy"] = "no-referrer";
             headers.ContentSecurityPolicy = ContentSecurityPolicy;
-            if (http.Request.Path.StartsWithSegments("/api")) headers.CacheControl = "no-store";
+            if (path.StartsWithSegments("/api")) headers.CacheControl = "no-store";
+            var staticFile = http.GetEndpoint() is null && http.Request.Path == path && http.Response.StatusCode < 400
+                && !path.StartsWithSegments("/legal");
+            if (path != "/" && !staticFile) headers["X-Robots-Tag"] = "noindex";
             return Task.CompletedTask;
         });
         return next(http);

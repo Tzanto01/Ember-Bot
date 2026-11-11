@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { type DayEdit, DeviceStore } from './device-store';
+import { type DayEdit, DeviceStore, type QueueEdit } from './device-store';
 import { OfflineQueue } from './offline-queue';
 import { ApiError } from './problem';
 
@@ -21,20 +21,20 @@ describe('OfflineQueue', () => {
   });
 
   function recorder(failures: Record<number, ApiError> = {}) {
-    const sent: DayEdit[] = [];
-    const send = async (e: DayEdit) => {
+    const sent: QueueEdit[] = [];
+    const send = async (e: QueueEdit) => {
       sent.push(e);
-      if (failures[e.habitId]) throw failures[e.habitId];
+      if (failures[(e as DayEdit).habitId]) throw failures[(e as DayEdit).habitId];
     };
     return { sent, send };
   }
 
   it('sends an edit queued while a replay is running in that same replay', async () => {
     await queue.add(edit(1));
-    const sent: DayEdit[] = [];
-    const send = async (e: DayEdit) => {
+    const sent: QueueEdit[] = [];
+    const send = async (e: QueueEdit) => {
       sent.push(e);
-      if (e.habitId === 1) await queue.add(edit(2));
+      if ((e as DayEdit).habitId === 1) await queue.add(edit(2));
     };
 
     const result = await queue.replay('user-a', send);
@@ -84,6 +84,38 @@ describe('OfflineQueue', () => {
     expect(run.sent).toHaveLength(2);
   });
 
+  it('drops a journal edit and a day edit refused with 400 validation, so nothing blocks the queue', async () => {
+    await queue.add({ kind: 'note', date: '2026-11-01', body: { text: 'Queued before the journal went private.' } });
+    await queue.add(edit(2));
+    const refused = async (_e: QueueEdit) => {
+      throw new ApiError(400, { type: 'validation' });
+    };
+
+    const result = await queue.replay('user-a', refused);
+
+    expect(result).toEqual({ sent: 0, dropped: 2, remaining: 0 });
+    expect(queue.pending.get()).toBe(0);
+    expect(queue.droppedNotes.get()).toEqual([
+      { date: '2026-11-01', text: 'Queued before the journal went private.' },
+    ]);
+  });
+
+  it('replays a journal edit refused with 400 in the form the journal converts it to, in its place', async () => {
+    const encrypted = { encrypted: { v: 1 as const, iv: 'aXY=', ct: 'Y3Q=' } };
+    await queue.add({ kind: 'note', date: '2026-11-01', body: { text: 'Plain' } });
+    await queue.add(edit(2));
+    queue.resealNote = async (note) => ({ edit: { ...note, body: encrypted } });
+    const sent: QueueEdit[] = [];
+    const send = async (e: QueueEdit) => {
+      sent.push(e);
+      if (e.kind === 'note' && !('encrypted' in (e.body ?? {}))) throw new ApiError(400, null);
+    };
+
+    expect(await queue.replay('user-a', send)).toEqual({ sent: 2, dropped: 0, remaining: 0 });
+    expect(sent.slice(1)).toEqual([{ kind: 'note', date: '2026-11-01', body: encrypted }, edit(2)]);
+    expect(queue.droppedNotes.get()).toEqual([]);
+  });
+
   it('drops edits refused with 404 or 422 before_habit_start / in_future and continues', async () => {
     for (const id of [1, 2, 3, 4]) await queue.add(edit(id));
     const run = recorder({
@@ -94,7 +126,7 @@ describe('OfflineQueue', () => {
 
     const result = await queue.replay('user-a', run.send);
 
-    expect(run.sent.map((e) => e.habitId)).toEqual([1, 2, 3, 4]);
+    expect(run.sent.map((e) => (e as DayEdit).habitId)).toEqual([1, 2, 3, 4]);
     expect(result).toEqual({ sent: 1, dropped: 3, remaining: 0 });
     expect(queue.pending.get()).toBe(0);
   });
@@ -106,19 +138,20 @@ describe('OfflineQueue', () => {
     ['500', new ApiError(500, null)],
     ['network failure', new ApiError(0, null)],
     ['422 with another type', new ApiError(422, { type: 'out_of_range' })],
+    ['400 without the validation type', new ApiError(400, null)],
   ])('keeps the edit and stops the replay on %s', async (_name, error) => {
     for (const id of [1, 2, 3]) await queue.add(edit(id));
     const run = recorder({ 2: error });
 
     const result = await queue.replay('user-a', run.send);
 
-    expect(run.sent.map((e) => e.habitId)).toEqual([1, 2]);
+    expect(run.sent.map((e) => (e as DayEdit).habitId)).toEqual([1, 2]);
     expect(result).toEqual({ sent: 1, dropped: 0, remaining: 2 });
     expect(queue.pending.get()).toBe(2);
 
     const retry = recorder();
     await queue.replay('user-a', retry.send);
-    expect(retry.sent.map((e) => e.habitId)).toEqual([2, 3]);
+    expect(retry.sent.map((e) => (e as DayEdit).habitId)).toEqual([2, 3]);
   });
 
   it('never replays one user’s edits for another user', async () => {
@@ -129,10 +162,10 @@ describe('OfflineQueue', () => {
 
     await queue.replay('user-b', run.send);
 
-    expect(run.sent.map((e) => e.habitId)).toEqual([2]);
+    expect(run.sent.map((e) => (e as DayEdit).habitId)).toEqual([2]);
     const forA = recorder();
     await queue.replay('user-a', forA.send);
-    expect(forA.sent.map((e) => e.habitId)).toEqual([1]);
+    expect(forA.sent.map((e) => (e as DayEdit).habitId)).toEqual([1]);
   });
 
   it('clearing one user leaves the other user’s queue', async () => {
@@ -147,7 +180,7 @@ describe('OfflineQueue', () => {
     expect(forA.sent).toEqual([]);
     const forB = recorder();
     await queue.replay('user-b', forB.send);
-    expect(forB.sent.map((e) => e.habitId)).toEqual([2]);
+    expect(forB.sent.map((e) => (e as DayEdit).habitId)).toEqual([2]);
   });
 
   it('resets pending when the signed-in user is cleared', async () => {

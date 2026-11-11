@@ -64,6 +64,49 @@ public class PrivacyDeleteTests
         orphanLogs.Should().Be(4);
     }
 
+    [Fact]
+    public async Task DeleteUserData_RemovesRoutinesDayNotesMoodsAndTheJournalKey_AndLeavesOthersUntouched()
+    {
+        await using var host = await CreateHostWithTwoUsersAsync();
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            foreach (var userId in new long[] { 1, 2 })
+            {
+                var id = TestUsers.Id(userId);
+                var routine = new Routine { UserId = id, Name = "Morning" };
+                db.Routines.Add(routine);
+                await db.SaveChangesAsync();
+                await db.Habits.Where(h => h.UserId == id).ExecuteUpdateAsync(u => u.SetProperty(h => h.RoutineId, routine.Id));
+                db.DayNotes.Add(new DayNote { UserId = id, Date = Day, Text = "A walk" });
+                db.Moods.Add(new Mood { UserId = id, Label = "Proud" });
+                db.JournalKeys.Add(new JournalKey
+                {
+                    UserId = id, Version = 1, PassphraseSalt = "cw==", PassphraseIterations = 600000, PassphraseIv = "aQ==",
+                    PassphraseWrapped = "dw==", RecoverySalt = "cw==", RecoveryIv = "aQ==", RecoveryWrapped = "dw==",
+                });
+            }
+            await db.SaveChangesAsync();
+        });
+
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().DeleteUserDataAsync(TestUsers.Id(1)));
+
+        var counts = await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            return (Routines: await db.Routines.Select(r => r.UserId).ToListAsync(),
+                Notes: await db.DayNotes.Select(n => n.UserId).ToListAsync(),
+                Moods: await db.Moods.Select(m => m.UserId).ToListAsync(),
+                Keys: await db.JournalKeys.Select(k => k.UserId).ToListAsync(),
+                RoutineHabits: await db.Habits.CountAsync(h => h.RoutineId != null));
+        });
+        counts.Routines.Should().Equal(TestUsers.Id(2));
+        counts.Notes.Should().Equal(TestUsers.Id(2));
+        counts.Moods.Should().Equal(TestUsers.Id(2));
+        counts.Keys.Should().Equal(TestUsers.Id(2));
+        counts.RoutineHabits.Should().Be(2);
+    }
+
     [Theory]
     [InlineData("weekly")]
     [InlineData("reflection")]

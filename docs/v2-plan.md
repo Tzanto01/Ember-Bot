@@ -30,19 +30,19 @@ This file is the working plan for the agent that implements it. The phases run i
 | N4 | Fix the confirmed bugs before any new platform work. |
 | N5 | Accounts: normal email + password login, with Discord as an optional linked login. A bot-only user never needs a password. |
 | N6 | Backfill-first. A "low day" can be set after the fact and never requires input on the day itself. |
-| N7 | At public launch, Ember moves off the homeserver to a hosted server (VPS): API, web app, bot and database. |
+| N7 | Public launch stays on the homeserver for now (Nico, 2026-11-03); a VPS (Phase 8) only if the homeserver stops being enough. Public access goes through a Cloudflare Tunnel on `ember-glow.app` (Nico, 2026-11-11, "for now"); a tunnel needs a Cloudflare DNS zone, so `ember.nicowoellnitz.de` (DNS at Hetzner) can't be tunnelled. |
 | N8 | No DiGA, no body doubling, no AI features in v2. |
 
 ## Open decisions (defaults apply until Nico says otherwise)
 
 | # | Question | Default | Needed by |
 |---|---|---|---|
-| D1 | Keep the leaderboard at all? | Keep it opt-in through Phase 1, then **remove it before public launch** unless Nico wants it. It cuts against "no comparison, no guilt". | Start of Phase 1 |
+| D1 | Keep the leaderboard at all? | **Decided (Nico, 2026-11-03): remove it before public launch.** It cuts against "no comparison, no guilt". | Before launch |
 | D2 | License | Keep the current non-commercial license until a paid tier exists. Before taking any outside contribution or charging money, switch to proprietary or source-available. | Phase 10 |
 | D3 | Days that stay open for backfill before counting as missed | 2 local days (today + yesterday). Older days can still be backfilled; that heals the streak retroactively. | Phase 3 |
 | D4 | Desktop companion | No native app. The installed PWA covers desktop. Revisit only on the criteria in Phase 9. | Phase 9 |
 | D5 | Ember+ price and payment provider | Free at launch. Later around €2–3/month via Stripe Billing on the web only. | Phase 10 |
-| D6 | Domain name and VPS provider | Nico picks and pays. Default suggestion: Hetzner (EU, AVV/DPA available). | Phase 8 |
+| D6 | Domain name and VPS provider | Domain: `ember-glow.app` (Nico, 2026-11-03; Cloudflare) for now; the long-term app domain is decided at launch, since Nico may let `ember-glow.app` lapse (~2027-11-03) and keep the app under a subdomain of `nicowoellnitz.de`. Product page: the app's signed-out landing page; `ember.nicowoellnitz.de` redirects to it. VPS: Nico picks and pays. Default suggestion: Hetzner (EU, AVV/DPA available). | Phase 8 |
 
 Escalate to Nico only for these, or for a genuinely new product, security or money decision. Everything else follows this plan.
 
@@ -237,6 +237,7 @@ Acceptance: reminders fire with the phone in airplane mode, and a check-in made 
 6. **Launch checklist:**
    - Phases 1–7 accepted, and the security review done;
    - legal texts published, and a support contact (an email or a small Discord server);
+   - account email moved off Brevo to a transactional-only provider (for example Resend or Postmark; Nico, 2026-11-03). Brevo forces a `List-Unsubscribe` header on every email, so mail clients show Ember's confirmation and reset mail as a mailing list, and one tap on "Unsubscribe" blocks all of Ember's mail to that address. Only the SMTP settings change; the sender domain needs that provider's DNS records;
    - bot profile with description and links;
    - Discord verification and privileged-intent review are needed only at Discord's thresholds. Ember uses no privileged intents, so check the current thresholds at the time.
 

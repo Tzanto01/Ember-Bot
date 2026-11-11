@@ -1,5 +1,9 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ember.Api.Tests;
 
@@ -42,6 +46,32 @@ public class AuthRateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres
         await (await client.Get("/api/auth/antiforgery")).Expect(HttpStatusCode.NoContent);
         (await client.Get("/api/auth/discord/login?returnUrl=/today")).StatusCode.Should().Be(HttpStatusCode.Redirect);
     }
+
+    [DockerFact]
+    public async Task Two_factor_code_endpoints_share_the_credential_limit()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        while ((await WrongLogin(client)).StatusCode != (HttpStatusCode)429) { }
+
+        await (await client.Post("/api/me/2fa/setup")).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/enable", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/disable", new { password = ApiClient.Passphrase })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/2fa/recovery-codes", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await Host.NewClient().Post("/api/auth/discord/2fa", new { code = "123456" })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Get("/api/me/2fa")).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
+    public async Task Journal_key_and_import_endpoints_share_the_credential_limit()
+    {
+        var client = await Host.SignedInAsync(consent: false);
+        while ((await WrongLogin(client)).StatusCode != (HttpStatusCode)429) { }
+
+        await (await client.Put("/api/me/journal-key", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/journal-key/turn-off", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Send(HttpMethod.Delete, "/api/me/journal-key", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+        await (await client.Post("/api/me/import", new { })).ExpectProblem((HttpStatusCode)429, "rate_limited");
+    }
 }
 
 [Collection("Postgres")]
@@ -68,5 +98,47 @@ public class AuthOtherRateLimitTests(PostgresFixture postgres) : ApiTestBase(pos
             (await client.Get("/api/auth/discord/callback?state=x&code=y")).StatusCode.Should().NotBe((HttpStatusCode)429);
 
         await (await client.Get("/api/auth/discord/callback?state=x&code=y")).ExpectProblem((HttpStatusCode)429, "rate_limited");
+    }
+}
+
+[Collection("Postgres")]
+public class TrustedProxyNetworkRateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres)
+{
+    protected override Dictionary<string, string?>? Settings => new()
+    {
+        ["Ember:RateLimits:AuthPerIpPerMinute"] = "2",
+        ["Ember:ForwardedHeaders:KnownNetworks:0"] = "172.18.0.0/16",
+    };
+
+    [DockerFact]
+    public async Task Requests_through_a_proxy_in_a_trusted_network_are_limited_per_forwarded_client_ip()
+    {
+        using var proxied = Host.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new RemoteAddress(IPAddress.Parse("172.18.0.5")))));
+        async Task<HttpStatusCode> WrongLogin(string clientIp)
+        {
+            using var http = proxied.CreateClient();
+            http.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp);
+            return (await http.PostAsJsonAsync("/api/auth/login", new Credentials(ApiHost.NewEmail(), ApiClient.Passphrase))).StatusCode;
+        }
+
+        (await WrongLogin("203.0.113.1")).Should().Be(HttpStatusCode.Unauthorized);
+        (await WrongLogin("203.0.113.1")).Should().Be(HttpStatusCode.Unauthorized);
+        (await WrongLogin("203.0.113.1")).Should().Be((HttpStatusCode)429);
+
+        (await WrongLogin("203.0.113.2")).Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private sealed class RemoteAddress(IPAddress address) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((http, nextMiddleware) =>
+            {
+                http.Connection.RemoteIpAddress = address;
+                return nextMiddleware(http);
+            });
+            next(app);
+        };
     }
 }

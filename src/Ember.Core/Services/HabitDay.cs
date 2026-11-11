@@ -20,7 +20,16 @@ public enum DayState
 
     /// <summary>Inside the habit's paused range: protected, neither breaks nor extends a streak.</summary>
     Paused,
+
+    /// <summary>Not a scheduled day (see <see cref="HabitService.IsScheduledOn"/>) and not done: rest, never missed; streaks step over it.</summary>
+    Offday,
+
+    /// <summary>Some check-ins but fewer than the habit's <see cref="Models.Habit.TimesPerDay"/>; counts as not done for streaks.</summary>
+    Partial,
 }
 
-/// <summary>One local day of a habit: its <see cref="DayState"/> and the raw log (<c>Completed</c> is null when the day has no log).</summary>
-public sealed record HabitDay(DateOnly Date, DayState State, bool? Completed);
+/// <summary>
+/// One local day of a habit: its <see cref="DayState"/>, whether it is done (true), explicitly not done (false, a log with
+/// <c>Count</c> 0) or neither (null: no log, or partial), and the day's check-in <c>Count</c> (0 without a log).
+/// </summary>
+public sealed record HabitDay(DateOnly Date, DayState State, bool? Completed, int Count);

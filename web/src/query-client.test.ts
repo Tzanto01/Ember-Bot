@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { focusManager, onlineManager, QueryObserver } from '@tanstack/react-query';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from './lib/problem';
 import { Store } from './lib/store';
 import { clearOnUserChange, createQueryClient } from './query-client';
 
@@ -18,5 +20,53 @@ describe('clearOnUserChange', () => {
     client.setQueryData(['today'], 'stale');
     me.set({ id: 'b' });
     expect(client.getQueryData(['today'])).toBeUndefined();
+  });
+});
+
+describe('createQueryClient', () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+    focusManager.setFocused(undefined);
+  });
+
+  it('runs a query while the browser reports offline, so its error shows instead of waiting', async () => {
+    onlineManager.setOnline(false);
+    const client = createQueryClient();
+    const queryFn = vi.fn(() => Promise.reject(new Error('offline')));
+
+    await expect(client.fetchQuery({ queryKey: ['history'], queryFn, retry: false })).rejects.toThrow('offline');
+    expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries an unreachable server once and other failures twice', async () => {
+    const client = createQueryClient();
+    const unreachable = vi.fn(() => Promise.reject(new ApiError(0, null)));
+    const failing = vi.fn(() => Promise.reject(new ApiError(500, null)));
+
+    await expect(client.fetchQuery({ queryKey: ['a'], queryFn: unreachable, retryDelay: 0 })).rejects.toBeInstanceOf(ApiError);
+    await expect(client.fetchQuery({ queryKey: ['b'], queryFn: failing, retryDelay: 0 })).rejects.toBeInstanceOf(ApiError);
+
+    expect(unreachable).toHaveBeenCalledTimes(2);
+    expect(failing).toHaveBeenCalledTimes(3);
+  });
+
+  it('refetches Today, History and Year when the window is focused again, but not other screens', async () => {
+    const client = createQueryClient();
+    client.mount();
+    const calls = new Map<string, number>();
+    const observe = (key: string) =>
+      new QueryObserver(client, {
+        queryKey: [key],
+        queryFn: async () => calls.set(key, (calls.get(key) ?? 0) + 1).get(key),
+      }).subscribe(() => undefined);
+    const stops = ['today', 'history', 'year', 'settings'].map(observe);
+    await vi.waitFor(() => expect(calls.size).toBe(4));
+
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+
+    await vi.waitFor(() => expect(Object.fromEntries(calls)).toEqual({ today: 2, history: 2, year: 2, settings: 1 }));
+    stops.forEach((stop) => stop());
+    client.unmount();
   });
 });

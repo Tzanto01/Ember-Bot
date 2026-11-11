@@ -16,10 +16,10 @@ internal static class MeEndpoints
 
     public sealed record MeDto(
         Guid Id, string? Email, bool EmailConfirmed, bool HasPassword, DiscordDto Discord,
-        string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, bool LeaderboardOptIn,
-        ConsentDto Consent, DmRemindersDto DmReminders);
+        string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, string? Theme, int SecondReminderMinutes,
+        ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal);
 
-    public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, bool? LeaderboardOptIn);
+    public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes);
     public sealed record ConsentRequest(string? PolicyVersion);
     public sealed record DeleteRequest(string? Password, string? Confirm);
 
@@ -35,14 +35,15 @@ internal static class MeEndpoints
             TimeZoneInfo? zone = null;
             if (patch.Timezone is not null && (!TimeZoneInfo.TryFindSystemTimeZoneById(patch.Timezone, out zone) || !zone.HasIanaId))
                 errors["timezone"] = ["Unknown IANA timezone."];
-            if (patch.GraceDaysPerWeek is < 0 or > 3)
-                errors["graceDaysPerWeek"] = ["Must be between 0 and 3."];
+            ValidateGraceAndTheme(patch.GraceDaysPerWeek, patch.Theme, errors);
+            ValidateSecondReminder(patch.SecondReminderMinutes, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
             var userId = principal.UserId();
             db.ChangeTracker.Clear();
             if (patch.GraceDaysPerWeek is { } grace) await habits.SetGraceDaysAsync(userId, grace);
-            if (patch.LeaderboardOptIn is { } optIn) await habits.SetLeaderboardOptInAsync(userId, optIn);
+            if (patch.Theme is { } theme) await habits.SetThemeAsync(userId, theme);
+            if (patch.SecondReminderMinutes is { } second) await habits.SetSecondReminderMinutesAsync(userId, second);
             if (zone is not null)
             {
                 await habits.SetTimezoneAsync(userId, zone.Id);
@@ -83,7 +84,7 @@ internal static class MeEndpoints
         });
 
         api.MapPost("/me/delete", async (DeleteRequest request, ClaimsPrincipal principal, UserManager<User> users,
-            SignInManager<User> signIn, HabitService habits) =>
+            SignInManager<User> signIn, HabitService habits, AuthSessions sessions) =>
         {
             var user = await users.GetUserAsync(principal);
             if (user is null) return Problems.Unauthenticated();
@@ -98,12 +99,27 @@ internal static class MeEndpoints
                 return Problems.Validation("confirm", "Type DELETE to confirm.");
             }
 
+            await sessions.EndAllAsync(user.Id);
             await habits.DeleteUserDataAsync(user.Id);
             await signIn.SignOutAsync();
             return Results.NoContent();
         });
 
         return api;
+    }
+
+    internal static void ValidateGraceAndTheme(int? graceDaysPerWeek, string? theme, Dictionary<string, string[]> errors)
+    {
+        if (graceDaysPerWeek is < 0 or > 3)
+            errors["graceDaysPerWeek"] = ["Must be between 0 and 3."];
+        if (theme is not null && !User.Themes.Contains(theme))
+            errors["theme"] = ["Unknown theme."];
+    }
+
+    internal static void ValidateSecondReminder(int? minutes, Dictionary<string, string[]> errors)
+    {
+        if (minutes is { } m && !User.SecondReminderChoices.Contains(m))
+            errors["secondReminderMinutes"] = ["Must be 0, 15, 30, 60 or 120."];
     }
 
     private static async Task<MeDto?> LoadMe(ClaimsPrincipal principal, UserManager<User> users, HabitService habits, TimeProvider time)
@@ -116,8 +132,9 @@ internal static class MeEndpoints
             user.Id, user.Email, user.EmailConfirmed, await users.HasPasswordAsync(user),
             new DiscordDto(discordId is not null, discordId),
             user.Timezone, await habits.HasTimezoneSetAsync(user.Id), TimezoneHelper.LocalToday(user.Timezone, time),
-            user.GraceDaysPerWeek, user.LeaderboardOptIn,
+            user.GraceDaysPerWeek, user.Theme, user.SecondReminderMinutes,
             new ConsentDto(await habits.HasHealthDataConsentAsync(user.Id), user.ConsentPolicyVersion, HabitService.CurrentConsentPolicyVersion),
-            new DmRemindersDto(user.DmRemindersPausedAt is not null));
+            new DmRemindersDto(user.DmRemindersPausedAt is not null),
+            await habits.GetJournalStateAsync(user.Id));
     }
 }

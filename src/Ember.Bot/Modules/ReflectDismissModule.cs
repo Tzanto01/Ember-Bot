@@ -12,7 +12,8 @@ namespace Ember.Bot.Modules;
 /// <summary>
 /// Handles the buttons on MissedDayReflectionJob DMs.
 /// Custom IDs: reflect:dismiss:{userId}, reflect:log:{userId}:{yyyyMMdd}, reflect:low:{userId}:{yyyyMMdd},
-/// and the chooser select reflect:pick:{userId}:{yyyyMMdd} (habit id values) shown when several habits are open.
+/// and the chooser select reflect:pick:{userId}:{yyyyMMdd} (habit id values), which replaces the check-in's content when several
+/// habits are open, so picking closes the check-in itself.
 /// </summary>
 public class ReflectDismissModule : InteractionModuleBase<SocketInteractionContext>
 {
@@ -54,7 +55,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
 
         if (open.Count == 1)
         {
-            if (await _habits.CheckInAsync(Context.User.Id, open[0].Id, date, completed: true) != DayEditResult.Saved)
+            if (await _habits.AddCheckInAsync(Context.User.Id, open[0].Id, date) != DayEditResult.Saved)
             {
                 await RespondAsync("Couldn't find that habit.", ephemeral: true);
                 return;
@@ -71,8 +72,17 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         foreach (var habit in open.Take(25))
             menu.AddOption(habit.Name.Length > 100 ? habit.Name[..100] : habit.Name, habit.Id.ToString());
 
-        await RespondAsync($"Which habits did you do on {Label(date)}?",
-            components: new ComponentBuilder().WithSelectMenu(menu).Build(), ephemeral: true);
+        var components = new ComponentBuilder()
+            .WithSelectMenu(menu)
+            .WithButton("It was a low day", $"reflect:low:{Context.User.Id}:{dateStr}", ButtonStyle.Secondary, new Emoji("🌙"), row: 1)
+            .WithButton("That's ok, move on", $"reflect:dismiss:{Context.User.Id}", ButtonStyle.Secondary, row: 1)
+            .Build();
+        await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
+        {
+            m.Content    = $"Which habits did you do on {Label(date)}?";
+            m.Embed      = null;
+            m.Components = components;
+        });
     }
 
     [ComponentInteraction("reflect:pick:*:*")]
@@ -84,7 +94,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         var logged = 0;
         foreach (var value in values)
             if (int.TryParse(value, out var habitId)
-                && await _habits.CheckInAsync(Context.User.Id, habitId, date, completed: true) == DayEditResult.Saved)
+                && await _habits.AddCheckInAsync(Context.User.Id, habitId, date) == DayEditResult.Saved)
                 logged++;
 
         await CloseAsync($"Logged {logged} habit{(logged == 1 ? "" : "s")} for {Label(date)}. Nice. ✅");
@@ -105,7 +115,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         await CloseAsync($"Marked {Label(date)} as a low day. Your streaks are safe. 💙");
     }
 
-    /// <summary>The user's daily habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>
+    /// <summary>The user's daily and weekdays habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>
     internal static async Task<List<Habit>> OpenHabitsAsync(HabitService habits, ulong userId, DateOnly date)
     {
         var tz = await habits.GetUserTzAsync(userId);

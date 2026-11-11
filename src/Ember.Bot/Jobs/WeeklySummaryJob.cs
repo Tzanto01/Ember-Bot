@@ -1,7 +1,9 @@
 using Discord;
+using Ember.Bot.Modules;
 using Ember.Bot.Services;
 using Ember.Core.Models;
 using Ember.Core.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -9,12 +11,12 @@ using Quartz;
 namespace Ember.Bot.Jobs;
 
 /// <summary>
-/// Runs hourly and sends to every user with at least one habit whose local time is
-/// Sunday at <see cref="LocalSendHour"/>:00.
+/// Runs every 15 minutes and sends to every user with at least one habit whose local time is in the first quarter hour of
+/// Sunday <see cref="LocalSendHour"/>:00, unless their DMs are paused.
 /// Sends a DM recapping the 7-day window ending the user's local yesterday (the last complete day):
-/// per-habit check-in counts, current streaks, and a tone-appropriate line.
+/// per-habit check-in counts, current streaks, a tone-appropriate line and, with <c>Ember:WebOrigin</c> set, a link to the web app.
 ///
-/// Users with zero check-ins in the window still get a DM — a gentle nudge, not
+/// Users with zero check-ins in the window still get a DM (only the soft headline and footer, no per-habit numbers) — a gentle nudge, not
 /// silence: Ember's philosophy is soft re-engagement, and going quiet at exactly the
 /// moment someone disengages is the failure mode to avoid. Users with nothing to
 /// summarise (no habits, or every habit created today / paused all week) are skipped —
@@ -29,16 +31,19 @@ public class WeeklySummaryJob : IJob
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<WeeklySummaryJob> _logger;
     private readonly TimeProvider _time;
+    private readonly IConfiguration _config;
 
     /// <summary>Local hour on Sunday at which each user receives their summary.</summary>
     public const int LocalSendHour = 9;
 
-    public WeeklySummaryJob(IServiceProvider services, IDiscordDmSender discord, ILogger<WeeklySummaryJob> logger, TimeProvider time)
+    public WeeklySummaryJob(IServiceProvider services, IDiscordDmSender discord, ILogger<WeeklySummaryJob> logger, TimeProvider time,
+        IConfiguration config)
     {
         _services = services;
         _discord  = discord;
         _logger   = logger;
         _time     = time;
+        _config   = config;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -49,7 +54,7 @@ public class WeeklySummaryJob : IJob
         var candidates = await habits.GetUserTimezonesWithHabitsAsync(context.CancellationToken);
 
         var dueIds = candidates
-            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { DayOfWeek: DayOfWeek.Sunday, Hour: LocalSendHour })
+            .Where(u => TimezoneHelper.LocalNow(u.Timezone, _time) is { DayOfWeek: DayOfWeek.Sunday, Hour: LocalSendHour, Minute: < 15 })
             .Select(u => u.UserId)
             .ToList();
 
@@ -65,6 +70,7 @@ public class WeeklySummaryJob : IJob
             {
                 // Only Discord users get the summary DM; a web-only user has nowhere to receive it yet.
                 if (user.DiscordId() is not { } discordId
+                    || user.DmRemindersPausedAt is not null
                     || !await habits.UserExistsAsync(user.Id, context.CancellationToken))
                     continue;
 
@@ -89,6 +95,9 @@ public class WeeklySummaryJob : IJob
 
         var (headline, footer) = WeeklySummaryService.ToneLines(summary.TotalDone, summary.TotalPossible);
 
+        if (_config[LinkModule.WebOriginKey] is { Length: > 0 } origin)
+            headline += $"\n\n[See your week in the Ember web app]({origin.TrimEnd('/')}/today)";
+
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
             .WithTitle("🗓️ Your weekly habit summary")
@@ -97,7 +106,7 @@ public class WeeklySummaryJob : IJob
         // Discord caps embeds at EmbedBuilder.MaxFieldCount (25) fields; exceeding it
         // throws and the user would silently get no DM. Reserve the last slot for an
         // overflow line when a user has more habits than fit.
-        var habits = summary.Habits;
+        var habits = summary.TotalDone == 0 ? [] : summary.Habits;
         var overflow = habits.Count > EmbedBuilder.MaxFieldCount
             ? habits.Count - (EmbedBuilder.MaxFieldCount - 1)
             : 0;
@@ -118,6 +127,6 @@ public class WeeklySummaryJob : IJob
             return $"{h.DotString} **{h.Done}/{h.Possible}** · Weekly goal: **{h.Habit.WeeklyTarget ?? 3}**/wk";
 
         var graceStr = h.GraceUsed > 0 ? $" _(+{h.GraceUsed} flex)_" : "";
-        return $"{h.DotString} **{h.Done}/{h.Possible}** · Streak: **{h.CurrentStreak}** days{graceStr}";
+        return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(h.CurrentStreak)}{graceStr}";
     }
 }

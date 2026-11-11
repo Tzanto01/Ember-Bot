@@ -29,6 +29,44 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Patching_me_with_a_theme_stores_it_and_a_patch_without_theme_keeps_it()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("theme").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var patched = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+        await (await user.Patch("/api/me", new { graceDaysPerWeek = 2 })).ExpectJson();
+
+        patched.GetProperty("theme").GetString().Should().Be("tidepool");
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("theme").GetString().Should().Be("tidepool");
+    }
+
+    [DockerFact]
+    public async Task Patching_me_with_the_removed_leaderboard_field_is_accepted_and_ignored()
+    {
+        var user = await Host.SignedInAsync();
+
+        var patched = await (await user.Patch("/api/me", new { graceDaysPerWeek = 2, leaderboardOptIn = true })).ExpectJson();
+
+        patched.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(2);
+        patched.TryGetProperty("leaderboardOptIn", out _).Should().BeFalse();
+    }
+
+    [DockerFact]
+    public async Task Patching_me_with_an_unknown_theme_is_a_400_and_keeps_the_stored_theme()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { theme = "marigold" })).ExpectJson();
+
+        var problem = await (await user.Patch("/api/me", new { theme = "hearth", graceDaysPerWeek = 2 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+
+        problem.GetProperty("errors").Has("theme").Should().BeTrue();
+        var me = await (await user.Get("/api/me")).ExpectJson();
+        me.GetProperty("theme").GetString().Should().Be("marigold");
+        me.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(1);
+    }
+
+    [DockerFact]
     public async Task Patching_me_with_an_iana_zone_stores_it_and_reschedules_existing_reminders_into_it()
     {
         var user = await Host.SignedInAsync();
@@ -86,6 +124,19 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Weekly_stats_have_no_headline_for_a_week_with_nothing_possible()
+    {
+        var user = await Host.SignedInAsync();
+        await user.CreateHabitAsync();
+
+        var stats = await (await user.Get("/api/stats/weekly")).ExpectJson();
+
+        stats.GetProperty("totalPossible").GetInt32().Should().Be(0);
+        stats.GetProperty("headline").GetString().Should().BeEmpty();
+        stats.GetProperty("footer").GetString().Should().BeEmpty();
+    }
+
+    [DockerFact]
     public async Task Weekly_stats_report_both_habit_kinds_with_a_plain_text_headline()
     {
         var user = await Host.SignedInAsync();
@@ -100,7 +151,7 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         stats.GetProperty("totalDone").GetInt32().Should().Be(1);
         stats.GetProperty("totalPossible").GetInt32().Should().Be(4);
         var headline = stats.GetProperty("headline").GetString()!;
-        headline.Should().Contain("1/4").And.NotContain("**");
+        headline.Should().Contain("1 check-in").And.NotContain("**");
         stats.GetProperty("footer").GetString().Should().NotBeNullOrEmpty();
         var habits = stats.GetProperty("habits").EnumerateArray().ToDictionary(h => h.GetProperty("habitId").GetInt32());
         habits[daily].GetProperty("done").GetInt32().Should().Be(1);
@@ -148,7 +199,39 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var account = json.GetProperty("account");
         account.GetProperty("email").GetString().Should().Be(user.Email);
         account.GetProperty("discord_id").GetString().Should().Be(discordId.ToString());
-        csv.Split('\n')[0].Trim().Should().EndWith("email,discord_id");
+        csv.Split('\n')[0].Trim().Should().Contain(",email,discord_id,");
         csv.Should().Contain(user.Email).And.Contain(discordId.ToString());
+    }
+
+    [DockerFact]
+    public async Task Export_includes_the_theme_in_json_and_csv()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { theme = "fieldnotes" })).ExpectJson();
+
+        var json = await (await user.Get("/api/me/export?format=json")).ExpectJson();
+        var csv = await (await user.Get("/api/me/export?format=csv")).Expect(HttpStatusCode.OK);
+
+        json.GetProperty("settings").GetProperty("theme").GetString().Should().Be("fieldnotes");
+        var lines = csv.Split("\r\n");
+        var column = Array.IndexOf(lines[0].Split(','), "theme");
+        column.Should().BePositive();
+        lines.Single(l => l.StartsWith("settings,")).Split(',')[column].Should().Be("fieldnotes");
+    }
+
+    [DockerFact]
+    public async Task Patching_me_with_a_second_reminder_choice_stores_it_and_any_other_value_is_a_400()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("secondReminderMinutes").GetInt32().Should().Be(0);
+
+        var patched = await (await user.Patch("/api/me", new { secondReminderMinutes = 30 })).ExpectJson();
+        var problem = await (await user.Patch("/api/me", new { secondReminderMinutes = 45, graceDaysPerWeek = 2 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var kept = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+
+        patched.GetProperty("secondReminderMinutes").GetInt32().Should().Be(30);
+        problem.GetProperty("errors").Has("secondReminderMinutes").Should().BeTrue();
+        kept.GetProperty("secondReminderMinutes").GetInt32().Should().Be(30);
+        kept.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(1);
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Ember.Bot;
 using Ember.Bot.Jobs;
 using Ember.Bot.Services;
@@ -239,5 +240,149 @@ public class WebPushReminderTests
         var click = payload.GetProperty("data").GetProperty("onActionClick").GetProperty("default");
         click.GetProperty("operation").GetString().Should().Be("navigateLastFocusedOrOpen");
         click.GetProperty("url").GetString().Should().Be("/today");
+    }
+
+    [Fact]
+    public async Task A_single_habit_reminder_carries_a_one_time_done_token_and_a_routine_reminder_does_not()
+    {
+        var (host, push, _) = await CreateAsync(
+            new Seed(20, ReminderChannels.WebPush, [Endpoint("routine")]),
+            new Seed(30, ReminderChannels.WebPush, [Endpoint("habit")]));
+        await using var hostScope = host;
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var routine = new Routine
+            {
+                UserId = TestUsers.Id(20), Name = "A much longer routine name than any habit", ReminderTime = new TimeOnly(9, 0),
+                NextReminderUtc = Now.UtcDateTime, ReminderChannels = ReminderChannels.WebPush,
+            };
+            routine.Habits.Add(await db.Habits.SingleAsync(h => h.Id == 20));
+            db.Routines.Add(routine);
+            await db.SaveChangesAsync();
+        });
+
+        await LinkLiveSessionAsync(host, 20);
+        await LinkLiveSessionAsync(host, 30);
+
+        await RunJobAsync(host);
+
+        push.Endpoints.Should().BeEquivalentTo([Endpoint("routine"), Endpoint("habit")]);
+        var token = await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().ReminderActionTokens.SingleAsync());
+        token.UserId.Should().Be(TestUsers.Id(30));
+        token.HabitId.Should().Be(30);
+        token.Day.Should().Be(new DateOnly(2027, 1, 15));
+        token.ExpiresUtc.Should().Be(new DateTime(2027, 1, 16, 9, 0, 0, DateTimeKind.Utc));
+        token.UsedUtc.Should().BeNull();
+        token.TokenHash.Should().HaveCount(32);
+        var withToken = WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", new string('x', 43));
+        var bodyLength = (string endpoint) => push.Requests.Single(r => r.Endpoint == Endpoint(endpoint)).BodyLength;
+        (bodyLength("habit") - bodyLength("routine")).Should().Be(withToken.Length - WebPushReminderChannel.Payload.Length);
+    }
+
+    /// <summary>Records a sign-in session for the user that expires in <paramref name="expiresIn"/> and ties their subscriptions to it.</summary>
+    private static Task LinkLiveSessionAsync(IntegrationTestHost host, long id, string? endpoint = null, TimeSpan? expiresIn = null)
+        => host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var session = new AuthSession
+            {
+                Id = Guid.NewGuid(), UserId = TestUsers.Id(id), CreatedUtc = Now, ExpiresUtc = Now + (expiresIn ?? TimeSpan.FromDays(14)),
+            };
+            db.AuthSessions.Add(session);
+            await db.SaveChangesAsync();
+            await db.PushSubscriptions.Where(s => s.UserId == session.UserId && (endpoint == null || s.Endpoint == endpoint))
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.SessionId, session.Id));
+        });
+
+    [Fact]
+    public async Task Only_subscriptions_of_a_live_session_get_the_done_token()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(30, ReminderChannels.WebPush, [Endpoint("live"), Endpoint("legacy"), Endpoint("expired")]));
+        await using var hostScope = host;
+        await LinkLiveSessionAsync(host, 30, Endpoint("live"));
+        await LinkLiveSessionAsync(host, 30, Endpoint("expired"), TimeSpan.Zero);
+
+        await RunJobAsync(host);
+
+        (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().ReminderActionTokens.CountAsync())).Should().Be(1);
+        var bodyLength = (string endpoint) => push.Requests.Single(r => r.Endpoint == Endpoint(endpoint)).BodyLength;
+        var extra = WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", new string('x', 43)).Length - WebPushReminderChannel.Payload.Length;
+        (bodyLength("live") - bodyLength("legacy")).Should().Be(extra);
+        bodyLength("expired").Should().Be(bodyLength("legacy"));
+    }
+
+    [Fact]
+    public async Task Without_any_live_session_no_token_is_created()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(30, ReminderChannels.WebPush, [Endpoint("legacy")]));
+        await using var hostScope = host;
+
+        await RunJobAsync(host);
+
+        push.Requests.Should().ContainSingle();
+        (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().ReminderActionTokens.CountAsync())).Should().Be(0);
+    }
+
+    [Fact]
+    public void The_done_payload_adds_the_action_and_token_and_still_names_no_habit()
+    {
+        var plain = JsonNode.Parse(WebPushReminderChannel.Payload)!["notification"]!;
+        var done = JsonNode.Parse(WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", "the-token"))!["notification"]!;
+
+        plain.AsObject().ContainsKey("actions").Should().BeFalse();
+        plain["data"]!.AsObject().ContainsKey("doneToken").Should().BeFalse();
+        done["title"]!.GetValue<string>().Should().Be("Ember");
+        done["actions"]!.ToJsonString().Should().Be(new JsonArray(new JsonObject { ["action"] = "done", ["title"] = "Done ✅" }).ToJsonString());
+        done["data"]!["doneToken"]!.GetValue<string>().Should().Be("the-token");
+        done["data"]!["onActionClick"]!.ToJsonString().Should().Be(plain["data"]!["onActionClick"]!.ToJsonString());
+    }
+
+    [Fact]
+    public void A_second_reminder_has_its_own_body_and_otherwise_the_same_payload()
+    {
+        var first = JsonNode.Parse(WebPushReminderChannel.Payload)!["notification"]!;
+        var second = JsonNode.Parse(WebPushReminderChannel.SecondPayload)!["notification"]!;
+
+        second["body"]!.GetValue<string>().Should().Be("One more nudge, in case the first one got buried.");
+        second["body"] = first["body"]!.GetValue<string>();
+        second.ToJsonString().Should().Be(first.ToJsonString());
+    }
+
+    private static Task SetSecondReminderAsync(IntegrationTestHost host, long id, int minutes)
+        => host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.Where(u => u.Id == TestUsers.Id(id))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.SecondReminderMinutes, minutes)));
+
+    [Fact]
+    public async Task A_second_reminder_goes_out_over_web_push_with_the_second_payload()
+    {
+        var (host, push, time) = await CreateAsync(new Seed(20, ReminderChannels.WebPush, [Endpoint("a")]));
+        await using var hostScope = host;
+        await SetSecondReminderAsync(host, 20, 15);
+
+        await RunJobAsync(host);
+        time.Advance(TimeSpan.FromMinutes(15));
+        await RunJobAsync(host);
+
+        var requests = push.Requests.Should().HaveCount(2).And.Subject.ToList();
+        (requests[1].BodyLength - requests[0].BodyLength).Should()
+            .Be(WebPushReminderChannel.SecondPayload.Length - WebPushReminderChannel.Payload.Length);
+    }
+
+    [Fact]
+    public async Task An_undeliverable_second_reminder_dm_does_not_count_as_another_dm_failure()
+    {
+        var (host, push, time) = await CreateAsync(new Seed(20, Both, [Endpoint("a")]));
+        await using var hostScope = host;
+        await SetSecondReminderAsync(host, 20, 15);
+        host.Discord.Deliver = _ => DeliveryOutcome.Undeliverable;
+
+        await RunJobAsync(host);
+        time.Advance(TimeSpan.FromMinutes(15));
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().HaveCount(2);
+        push.Requests.Should().HaveCount(2);
+        (await UserAsync(host, 20)).DmFailureCount.Should().Be(1);
     }
 }

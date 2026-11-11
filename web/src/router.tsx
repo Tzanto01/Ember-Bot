@@ -13,6 +13,7 @@ import { AppShell } from '@/components/app-shell';
 import { CenteredShell } from '@/components/centered-shell';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
+import { env } from '@/lib/env';
 import { guest, signedIn } from '@/lib/guards';
 import { setNavigator } from '@/lib/navigation';
 
@@ -48,9 +49,14 @@ async function requireSignedIn({ request }: LoaderFunctionArgs) {
   return target ? redirect(target) : null;
 }
 
-async function requireGuest() {
+async function requireGuest({ request }: LoaderFunctionArgs) {
+  if (new URL(request.url).searchParams.get('reason') === 'offline') return null;
   const target = await guest();
   return target ? redirect(target) : null;
+}
+
+function landingOrToday(args: LoaderFunctionArgs) {
+  return env.native ? redirect('/today') : requireGuest(args);
 }
 
 function focusPageHeading(): void {
@@ -129,7 +135,11 @@ export const routes: RouteObject[] = [
     HydrateFallback: StartingUp,
     ErrorBoundary: RouteError,
     children: [
-      { index: true, loader: () => redirect('/today') },
+      {
+        index: true,
+        loader: landingOrToday,
+        ...page('A calm place for your habits', () => import('./pages/landing')),
+      },
       {
         element: <CenteredShell variant="auth" />,
         children: [
@@ -143,6 +153,12 @@ export const routes: RouteObject[] = [
           { path: 'confirm-email', ...page('Confirm your email', () => import('./pages/confirm-email')) },
           { path: 'reset-password', ...page('Choose a new password', () => import('./pages/reset-password')) },
           { path: 'consent', loader: requireSignedIn, ...page('One quick question', () => import('./pages/consent')) },
+          {
+            path: 'local',
+            loader: requireGuest,
+            ...page('Use Ember without an account', () => import('./pages/local-start')),
+          },
+          { path: 'keep-data', loader: requireSignedIn, ...page('Keep your data', () => import('./pages/keep-data')) },
         ],
       },
       {
@@ -158,6 +174,10 @@ export const routes: RouteObject[] = [
           { path: 'history/:habitId', ...page('History', () => import('./pages/history')) },
           { path: 'habits/new', ...page('New habit', () => import('./pages/habit-new')) },
           { path: 'habits/:id/edit', ...page('Edit habit', () => import('./pages/habit-edit')) },
+          { path: 'year', ...page('Your year', () => import('./pages/year')) },
+          { path: 'routines', ...page('Routines', () => import('./pages/routines')) },
+          { path: 'routines/new', ...page('New routine', () => import('./pages/routine-edit')) },
+          { path: 'routines/:id/edit', ...page('Edit routine', () => import('./pages/routine-edit')) },
           { path: 'settings', ...page('Settings', () => import('./pages/settings')) },
           { path: 'link/merge', ...page('Bring your Discord habits over', () => import('./pages/link-merge')) },
         ],

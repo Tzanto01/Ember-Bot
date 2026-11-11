@@ -16,7 +16,7 @@ Deliberately avoided: Discord blurple, cool dark-gray chat layouts, red of any k
 
 ## Palette
 
-Every colour is set for light (`:root[data-theme="<id>"]`) and dark (`:root[data-theme="<id>"].dark`); `public/theme-init.js` sets `data-theme` from `localStorage['ember.theme']` (fallback `hearthlight`) and `.dark` from `prefers-color-scheme`. Ratios are WCAG 2.x contrast against the background named.
+Every colour is set for light (`:root[data-theme="<id>"]`) and dark (`:root[data-theme="<id>"].dark`); `public/theme-init.js` sets `data-theme` from `localStorage['ember.theme']` (fallback `hearthlight`) and `.dark` from `localStorage['ember.colorScheme']` (`light`/`dark`, or `prefers-color-scheme` when unset or `system`). Ratios are WCAG 2.x contrast against the background named.
 
 | Token | Light | Dark | Role | Contrast (light / dark) |
 | --- | --- | --- | --- | --- |

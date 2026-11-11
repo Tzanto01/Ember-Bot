@@ -202,15 +202,4 @@ public class HabitSelectRoutingTests
         parsed.Should().BeInRange(0, 3);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Leaderboard opt-out button
-    // ─────────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void LeaderboardOptOutButton_HasLiteralId()
-    {
-        var buttonId = "leaderboard:optout";
-        // Must match [ComponentInteraction("leaderboard:optout")]
-        buttonId.Should().Be("leaderboard:optout");
-    }
 }

@@ -10,13 +10,16 @@ using Ember.Api.TestHost;
 using Ember.Core.Data;
 using Ember.Core.Services;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -148,6 +151,9 @@ public sealed class ApiHost : WebApplicationFactory<Program>
             ["Ember:RateLimits:AuthPerIpPerMinute"] = "100000",
             ["Ember:RateLimits:AuthOtherPerIpPerMinute"] = "100000",
             ["Ember:RateLimits:MailPerEmailPerHour"] = "1000",
+            ["Ember:RateLimits:MailPerEmailAnyClientPerHour"] = "1000",
+            ["Ember:RateLimits:MailPerIpPerHour"] = "1000",
+            ["Ember:RateLimits:MailPerDay"] = "100000",
         };
         foreach (var (key, value) in extraSettings ?? [])
             _settings[key] = value;
@@ -200,6 +206,15 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         return client;
     }
 
+    /// <summary>Whether the session in <paramref name="client"/>'s cookie is live, as the API's cached lookup sees it.</summary>
+    public async Task<bool> SessionIsLiveAsync(ApiClient client)
+    {
+        using var scope = Services.CreateScope();
+        var cookie = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(IdentityConstants.ApplicationScheme);
+        var ticket = cookie.TicketDataFormat.Unprotect(client.CookieValue(".AspNetCore.Identity.Application"))!;
+        return await scope.ServiceProvider.GetRequiredService<AuthSessions>().IsActiveAsync(ticket.Principal);
+    }
+
     public async Task<T> Db<T>(Func<EmberDbContext, Task<T>> query)
     {
         using var scope = Services.CreateScope();
@@ -223,7 +238,8 @@ public sealed class ApiHost : WebApplicationFactory<Program>
 
     /// <summary>
     /// Drives a Discord flow through the fake: the challenge at <paramref name="startUrl"/>, the callback (with the state from
-    /// the challenge) and the API's own follow-up redirects. Returns the final relative redirect target.
+    /// the challenge) and the API's own follow-up redirects. Returns the final relative redirect target. A link by a client with
+    /// an email first gets its grant with <see cref="ApiClient.Passphrase"/>.
     /// </summary>
     /// <param name="discordId">The Discord user the fake authorizes; null leaves the user-info call failing.</param>
     /// <param name="deny">Ends the authorization as if the user cancelled on Discord.</param>
@@ -232,6 +248,9 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         Func<Task>? beforeComplete = null)
     {
         if (discordId is { } id) Services.GetRequiredService<FakeDiscord>().SetNext(id);
+
+        if (startUrl == "/api/auth/discord/link" && client.Email.Length > 0)
+            await (await client.Post("/api/auth/discord/link/start", new { password = ApiClient.Passphrase })).Expect(HttpStatusCode.NoContent);
 
         var challenge = await client.Get(startUrl);
         challenge.StatusCode.Should().Be(HttpStatusCode.Redirect);
@@ -307,7 +326,7 @@ public sealed partial class ApiClient
     }
 
     public async Task GiveConsentAsync()
-        => await (await Post("/api/me/consent", new { policyVersion = "2026-10" })).Expect(HttpStatusCode.NoContent);
+        => await (await Post("/api/me/consent", new { policyVersion = HabitService.CurrentConsentPolicyVersion })).Expect(HttpStatusCode.NoContent);
 
     public async Task<Guid> IdAsync()
         => Guid.Parse((await (await Get("/api/me")).ExpectJson()).GetProperty("id").GetString()!);
@@ -367,6 +386,7 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
     {
         if (_host is not null)
             await _host.DisposeAsync();
+        NpgsqlConnection.ClearAllPools();
     }
 }
 

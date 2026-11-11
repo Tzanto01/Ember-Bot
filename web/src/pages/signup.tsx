@@ -2,7 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
+import { DiscordButton } from '@/components/auth/discord-button';
 import { EnvelopeSpark } from '@/components/auth/illustrations';
+import { rememberSignupEmail } from '@/components/auth/signup-email';
 import {
   email as emailRule,
   minLength,
@@ -11,9 +13,10 @@ import {
   validateAll,
 } from '@/components/auth/use-field';
 import { FormField } from '@/components/form-field';
+import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import type { Credentials } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
@@ -32,7 +35,10 @@ export default function SignupPage() {
 
   const register = useMutation({
     mutationFn: (body: Credentials) => api.register(body),
-    onSuccess: (_, body) => setSentTo(body.email),
+    onSuccess: (_, body) => {
+      rememberSignupEmail(body.email);
+      setSentTo(body.email);
+    },
     onError: (error) => setProblem(problemToMessage(asApiError(error), 'register')),
   });
 
@@ -88,6 +94,7 @@ export default function SignupPage() {
   return (
     <>
       <PageHeader title="Create your account" lede="A calm place for your habits. It takes a minute." />
+      <UpgradingNotice />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Email" error={email.error ?? problem?.fields['email'] ?? null}>
           {(field) => (
@@ -102,7 +109,7 @@ export default function SignupPage() {
           )}
         </FormField>
         <FormField label="Password" hint={passwordHint} error={password.error ?? problem?.fields['password'] ?? null}>
-          {(field) => <Input {...field} {...password.input} type="password" autoComplete="new-password" />}
+          {(field) => <PasswordInput {...field} {...password.input} autoComplete="new-password" />}
         </FormField>
 
         {problem && <Notice tone="notice">{problem.message}</Notice>}
@@ -123,9 +130,11 @@ export default function SignupPage() {
           Create account
         </BusyButton>
       </form>
+      <DiscordButton>Continue with Discord</DiscordButton>
       <p className="text-center text-muted-foreground">
         Already have an account? <TapLink to="/login">Sign in</TapLink>
       </p>
+      <NoAccountLink />
     </>
   );
 }

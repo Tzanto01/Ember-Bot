@@ -16,11 +16,20 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public int GraceDaysPerWeek { get; set; } = 1;
 
+    /// <summary>The account's app theme id (one of <see cref="Themes"/>); null until the user picks one. The bot ignores it.</summary>
+    public string? Theme { get; set; }
+
     /// <summary>
-    /// When true, this user appears on leaderboards. Off by default: only an explicit
-    /// opt-in (via /privacy optin or the leaderboard button) turns it on.
+    /// Minutes after a sent habit or routine reminder that one second reminder follows while the day is still open; 0 turns it off.
+    /// One of <see cref="SecondReminderChoices"/>.
     /// </summary>
-    public bool LeaderboardOptIn { get; set; }
+    public int SecondReminderMinutes { get; set; }
+
+    /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
+    public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
+
+    /// <summary>The theme ids <see cref="Theme"/> may hold.</summary>
+    public static readonly IReadOnlySet<string> Themes = new HashSet<string> { "hearthlight", "fieldnotes", "tidepool", "marigold" };
 
     /// <summary>Consecutive reminder DMs that Discord refused to deliver. Reset by any delivered reminder.</summary>
     public int DmFailureCount { get; set; }
@@ -37,11 +46,20 @@ public class User : IdentityUser<Guid>
     /// <summary>The privacy policy version the consent in <see cref="HealthDataConsentAt"/> was given for.</summary>
     public string? ConsentPolicyVersion { get; set; }
 
-    /// <summary>The user's local day on which Ember last asked for consent, so it asks at most once per day.</summary>
+    /// <summary>
+    /// The user's local day on which Ember last asked for consent, so it asks at most once per day. After a "No thanks" it holds the
+    /// last day of the back-off instead (<see cref="Services.HabitService.ConsentDeclineBackoffDays"/>), so the next ask comes after it.
+    /// </summary>
     public DateOnly? ConsentPromptedOn { get; set; }
 
     public ICollection<IdentityUserLogin<Guid>> Logins { get; set; } = new List<IdentityUserLogin<Guid>>();
     public ICollection<Habit> Habits { get; set; } = new List<Habit>();
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
     public ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
+    public ICollection<Routine> Routines { get; set; } = new List<Routine>();
+    public ICollection<DayNote> DayNotes { get; set; } = new List<DayNote>();
+    public ICollection<Mood> Moods { get; set; } = new List<Mood>();
+
+    /// <summary>The wrapped private-journal key; null while the private journal is off.</summary>
+    public JournalKey? JournalKey { get; set; }
 }

@@ -1,0 +1,4633 @@
+{
+  "version": 1,
+  "about": "Shared rules fixtures for clients that reimplement Ember Core\u0027s day rules without a server (web/src/lib/local/). Generated from Core by tests/Ember.Tests/RulesFixtureTests.cs, which fails when Core and this file disagree; after a deliberate rule change, regenerate the expected values with EMBER_WRITE_FIXTURES=1 dotnet test --filter RulesFixtureTests (inputs are kept, expected is rewritten). Each case: name, today (the user\u0027s local day), from (first day of the expected days and dayStats ranges, which run through today), timezone, graceDaysPerWeek, lowDays (the user\u0027s low days), habits, routines and expected. A habit: id, frequency (daily|weekly|weekdays), weeklyTarget (weekly only, else null), days (weekdays only: mon..sun, else null), timesPerDay, startDate (the habit was created at 12:00 UTC on this day), pausedFrom and pausedUntil (inclusive pause range; pausedFrom null with pausedUntil set pauses every day up to pausedUntil), routineId, and logs { date, count, completed } where completed is the stored done flag: set when count reached timesPerDay at the time of the check-in, so a day stays done after the target rises (only today is recomputed on a target change, and past days whose count reaches a lowered target become done). A routine: id and habitIds in routine order. expected.days[habitId]: one { date, state, completed, count } per day from..today; state is the first that applies of beforestart, paused, lowday, done, partial, offday, pending (today or yesterday), notdone; completed is the log\u0027s flag (null without a log or when partial). expected.stats[habitId]: exactly the API Habit DTO stats { streak, graceUsed, bestStreak, last7, week }: weekly habits have streak, graceUsed and bestStreak null and week { done, target }; other habits week null. expected.dayStats: one { date, scheduled, done, partial, showedUp } per day from..today. expected.routinePending[routineId]: ids of the member habits a routine reminder today lists (pending or partial today), in routine order. Core also treats an unlogged day on its timezone switchover date (2026-10-11) as protected in streaks; the fixtures use 2027 dates and avoid it.",
+  "cases": [
+    {
+      "name": "daily streak with one grace day used",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 12,
+            "graceUsed": 1,
+            "bestStreak": 12,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "daily streak ends when grace is exhausted",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 7,
+            "graceUsed": 1,
+            "bestStreak": 7,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "daily streak without grace breaks on the first closed gap",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 5,
+            "graceUsed": 0,
+            "bestStreak": 7,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "open days (today and yesterday) stay pending and never break",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 0,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": false,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 12,
+            "graceUsed": 0,
+            "bestStreak": 12,
+            "last7": 5,
+            "week": null
+          },
+          "2": {
+            "streak": 12,
+            "graceUsed": 0,
+            "bestStreak": 12,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 2,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 2,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "low day protects a streak without grace",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [
+        "2027-03-10"
+      ],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 12,
+            "graceUsed": 0,
+            "bestStreak": 12,
+            "last7": 6,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "pause range is protected and paused through today",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": "2027-03-08",
+          "pausedUntil": "2027-03-10",
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": "2027-03-11",
+          "pausedUntil": "2027-03-20",
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 10,
+            "graceUsed": 0,
+            "bestStreak": 10,
+            "last7": 3,
+            "week": null
+          },
+          "2": {
+            "streak": 10,
+            "graceUsed": 0,
+            "bestStreak": 10,
+            "last7": 3,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 2,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "weekdays step over offdays, a done offday extends the streak, an undone offday is rest",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 0,
+              "completed": false
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-07",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-07",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "3": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-06",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-07",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "offday",
+              "completed": false,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "4": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-02",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-04",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-05",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-06",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-07",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 6,
+            "graceUsed": 0,
+            "bestStreak": 6,
+            "last7": 3,
+            "week": null
+          },
+          "2": {
+            "streak": 7,
+            "graceUsed": 0,
+            "bestStreak": 7,
+            "last7": 3,
+            "week": null
+          },
+          "3": {
+            "streak": 6,
+            "graceUsed": 0,
+            "bestStreak": 6,
+            "last7": 3,
+            "week": null
+          },
+          "4": {
+            "streak": 3,
+            "graceUsed": 0,
+            "bestStreak": 3,
+            "last7": 3,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 4,
+            "done": 4,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 4,
+            "done": 4,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 4,
+            "done": 3,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 0,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 4,
+            "done": 4,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 4,
+            "done": 4,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 4,
+            "done": 4,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "times per day: partial days open and closed",
+      "today": "2027-03-14",
+      "from": "2027-03-01",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 3,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-01",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-02",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-03",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-04",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-05",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-06",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-07",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-08",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 2,
+              "completed": false
+            },
+            {
+              "date": "2027-03-13",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-14",
+              "count": 1,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-01",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-02",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-03",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-04",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-05",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-06",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-07",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-12",
+              "state": "partial",
+              "completed": null,
+              "count": 2
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-14",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 1,
+            "graceUsed": 0,
+            "bestStreak": 11,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-01",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-02",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-03",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-04",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-05",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-06",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-07",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "a day done when checked in stays done after the target rose",
+      "today": "2027-03-14",
+      "from": "2027-03-08",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 3,
+          "startDate": "2027-03-08",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 2,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-14",
+              "count": 1,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 2
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-14",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 6,
+            "graceUsed": 0,
+            "bestStreak": 6,
+            "last7": 6,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "a lowered target: counts above it and days that reached it are done",
+      "today": "2027-03-14",
+      "from": "2027-03-08",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 0,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 2,
+          "startDate": "2027-03-08",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 4,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": false
+            },
+            {
+              "date": "2027-03-11",
+              "count": 2,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 3,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": false
+            },
+            {
+              "date": "2027-03-14",
+              "count": 2,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 4
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-10",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 2
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 3
+            },
+            {
+              "date": "2027-03-13",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "done",
+              "completed": true,
+              "count": 2
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 3,
+            "graceUsed": 0,
+            "bestStreak": 3,
+            "last7": 5,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "weekly progress counts this week\u0027s done days",
+      "today": "2027-03-17",
+      "from": "2027-03-08",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "weekly",
+          "weeklyTarget": 3,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-15",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-16",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "weekly",
+          "weeklyTarget": 2,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-15",
+              "count": 0,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-15",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-16",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-17",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-08",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-15",
+              "state": "notdone",
+              "completed": false,
+              "count": 0
+            },
+            {
+              "date": "2027-03-16",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-17",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": null,
+            "graceUsed": null,
+            "bestStreak": null,
+            "last7": 3,
+            "week": {
+              "done": 2,
+              "target": 3
+            }
+          },
+          "2": {
+            "streak": null,
+            "graceUsed": null,
+            "bestStreak": null,
+            "last7": 0,
+            "week": {
+              "done": 0,
+              "target": 2
+            }
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-08",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-15",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-16",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-17",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "days before the start date",
+      "today": "2027-03-14",
+      "from": "2027-03-07",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-10",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-12",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-07",
+              "state": "beforestart",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-08",
+              "state": "beforestart",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "beforestart",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 4,
+            "graceUsed": 0,
+            "bestStreak": 4,
+            "last7": 4,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-07",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-08",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 0,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 1,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 1,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "day stats across mixed habits",
+      "today": "2027-03-14",
+      "from": "2027-03-08",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [
+        "2027-03-12"
+      ],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-09",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "weekly",
+          "weeklyTarget": 2,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-10",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": "2027-03-10",
+          "pausedUntil": "2027-03-11",
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-08",
+              "count": 1,
+              "completed": true
+            },
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 3,
+          "startDate": "2027-03-09",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": [
+            {
+              "date": "2027-03-11",
+              "count": 1,
+              "completed": false
+            },
+            {
+              "date": "2027-03-12",
+              "count": 2,
+              "completed": false
+            },
+            {
+              "date": "2027-03-14",
+              "count": 0,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-10",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-08",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-11",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "3": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "4": [
+            {
+              "date": "2027-03-08",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-09",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-12",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            },
+            {
+              "date": "2027-03-14",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "5": [
+            {
+              "date": "2027-03-08",
+              "state": "beforestart",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-09",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-10",
+              "state": "notdone",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-11",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            },
+            {
+              "date": "2027-03-12",
+              "state": "lowday",
+              "completed": null,
+              "count": 2
+            },
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            },
+            {
+              "date": "2027-03-14",
+              "state": "pending",
+              "completed": false,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 1,
+            "graceUsed": 1,
+            "bestStreak": 2,
+            "last7": 4,
+            "week": null
+          },
+          "2": {
+            "streak": null,
+            "graceUsed": null,
+            "bestStreak": null,
+            "last7": 2,
+            "week": {
+              "done": 1,
+              "target": 2
+            }
+          },
+          "3": {
+            "streak": 1,
+            "graceUsed": 1,
+            "bestStreak": 1,
+            "last7": 2,
+            "week": null
+          },
+          "4": {
+            "streak": 2,
+            "graceUsed": 1,
+            "bestStreak": 2,
+            "last7": 3,
+            "week": null
+          },
+          "5": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 1,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-08",
+            "scheduled": 3,
+            "done": 3,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-09",
+            "scheduled": 3,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-10",
+            "scheduled": 4,
+            "done": 1,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-11",
+            "scheduled": 2,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-12",
+            "scheduled": 4,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-13",
+            "scheduled": 3,
+            "done": 2,
+            "partial": 0,
+            "showedUp": true
+          },
+          {
+            "date": "2027-03-14",
+            "scheduled": 3,
+            "done": 0,
+            "partial": 0,
+            "showedUp": false
+          }
+        ],
+        "routinePending": {}
+      }
+    },
+    {
+      "name": "routine pending lists exclude done, offday and paused habits",
+      "today": "2027-03-13",
+      "from": "2027-03-13",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": [
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": []
+        },
+        {
+          "id": 3,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 2,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": [
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": false
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "frequency": "weekdays",
+          "weeklyTarget": null,
+          "days": [
+            "mon",
+            "wed",
+            "fri"
+          ],
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": []
+        },
+        {
+          "id": 5,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": "2027-03-12",
+          "pausedUntil": "2027-03-14",
+          "routineId": 1,
+          "logs": []
+        },
+        {
+          "id": 6,
+          "frequency": "weekly",
+          "weeklyTarget": 2,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": []
+        },
+        {
+          "id": 7,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 2,
+          "logs": [
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": true
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": null,
+          "logs": []
+        }
+      ],
+      "routines": [
+        {
+          "id": 1,
+          "habitIds": [
+            3,
+            6,
+            1,
+            4,
+            2,
+            5
+          ]
+        },
+        {
+          "id": 2,
+          "habitIds": [
+            7
+          ]
+        }
+      ],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "3": [
+            {
+              "date": "2027-03-13",
+              "state": "partial",
+              "completed": null,
+              "count": 1
+            }
+          ],
+          "4": [
+            {
+              "date": "2027-03-13",
+              "state": "offday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "5": [
+            {
+              "date": "2027-03-13",
+              "state": "paused",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "6": [
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "7": [
+            {
+              "date": "2027-03-13",
+              "state": "done",
+              "completed": true,
+              "count": 1
+            }
+          ],
+          "8": [
+            {
+              "date": "2027-03-13",
+              "state": "pending",
+              "completed": null,
+              "count": 0
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 1,
+            "graceUsed": 0,
+            "bestStreak": 1,
+            "last7": 1,
+            "week": null
+          },
+          "2": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 0,
+            "week": null
+          },
+          "3": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 0,
+            "week": null
+          },
+          "4": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 0,
+            "week": null
+          },
+          "5": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 0,
+            "week": null
+          },
+          "6": {
+            "streak": null,
+            "graceUsed": null,
+            "bestStreak": null,
+            "last7": 0,
+            "week": {
+              "done": 0,
+              "target": 2
+            }
+          },
+          "7": {
+            "streak": 1,
+            "graceUsed": 0,
+            "bestStreak": 1,
+            "last7": 1,
+            "week": null
+          },
+          "8": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 0,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-13",
+            "scheduled": 5,
+            "done": 2,
+            "partial": 1,
+            "showedUp": true
+          }
+        ],
+        "routinePending": {
+          "1": [
+            3,
+            6,
+            2
+          ],
+          "2": []
+        }
+      }
+    },
+    {
+      "name": "routine pending on a low day lists nothing",
+      "today": "2027-03-13",
+      "from": "2027-03-13",
+      "timezone": "UTC",
+      "graceDaysPerWeek": 1,
+      "lowDays": [
+        "2027-03-13"
+      ],
+      "habits": [
+        {
+          "id": 1,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 1,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": []
+        },
+        {
+          "id": 2,
+          "frequency": "daily",
+          "weeklyTarget": null,
+          "days": null,
+          "timesPerDay": 2,
+          "startDate": "2027-03-01",
+          "pausedFrom": null,
+          "pausedUntil": null,
+          "routineId": 1,
+          "logs": [
+            {
+              "date": "2027-03-13",
+              "count": 1,
+              "completed": false
+            }
+          ]
+        }
+      ],
+      "routines": [
+        {
+          "id": 1,
+          "habitIds": [
+            1,
+            2
+          ]
+        }
+      ],
+      "expected": {
+        "days": {
+          "1": [
+            {
+              "date": "2027-03-13",
+              "state": "lowday",
+              "completed": null,
+              "count": 0
+            }
+          ],
+          "2": [
+            {
+              "date": "2027-03-13",
+              "state": "lowday",
+              "completed": null,
+              "count": 1
+            }
+          ]
+        },
+        "stats": {
+          "1": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 1,
+            "week": null
+          },
+          "2": {
+            "streak": 0,
+            "graceUsed": 0,
+            "bestStreak": 0,
+            "last7": 1,
+            "week": null
+          }
+        },
+        "dayStats": [
+          {
+            "date": "2027-03-13",
+            "scheduled": 2,
+            "done": 0,
+            "partial": 1,
+            "showedUp": true
+          }
+        ],
+        "routinePending": {
+          "1": []
+        }
+      }
+    }
+  ]
+}

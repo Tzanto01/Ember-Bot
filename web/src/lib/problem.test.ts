@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProblemDetails } from './models';
-import { ApiError, asApiError, problemToMessage, toApiError } from './problem';
+import { ApiError, asApiError, problemToMessage, requiresTwoFactor, toApiError } from './problem';
 
 const err = (status: number, problem: ProblemDetails | null = null, retry: number | null = null) =>
   new ApiError(status, problem, retry);
@@ -15,6 +15,17 @@ describe('problemToMessage', () => {
       expect(new Set([general.message, failed.message, notAllowed.message]).size).toBe(3);
       expect(failed.offerResend).toBe(false);
       expect(general.offerResend).toBe(false);
+    });
+
+    it('detects the second-factor step and asks for the code instead of calling the password wrong', () => {
+      const twoFactor = err(401, { detail: 'RequiresTwoFactor' });
+      const failed = problemToMessage(err(401, { detail: 'Failed' }), 'login').message;
+
+      expect(requiresTwoFactor(twoFactor)).toBe(true);
+      expect(requiresTwoFactor(err(401, { detail: 'Failed' }))).toBe(false);
+      expect(requiresTwoFactor(err(400, { detail: 'RequiresTwoFactor' }))).toBe(false);
+      expect(problemToMessage(twoFactor, 'login').message).not.toBe(failed);
+      expect(problemToMessage(twoFactor, 'login').message).toMatch(/code/);
     });
 
     it('offers to resend the confirmation link only for an unconfirmed login', () => {

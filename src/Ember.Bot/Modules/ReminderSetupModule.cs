@@ -1,7 +1,9 @@
+using System.Globalization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Services;
+using Ember.Core.Models;
 using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
@@ -20,6 +22,30 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:set:*")]
     public async Task OnSetReminderAsync(string habitIdStr)
     {
+        if (!await _habits.HasTimezoneSetAsync(Context.User.Id))
+        {
+            await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
+            {
+                m.Content    = "Reminders follow your local time, so which timezone are you in? 🌍";
+                m.Embed      = null;
+                m.Components = new ComponentBuilder()
+                    .WithButton("Set my timezone", $"onboard:timezone:{habitIdStr}", ButtonStyle.Primary, new Emoji("🌍"))
+                    .WithButton("I'm on UTC", $"reminder:time:{habitIdStr}", ButtonStyle.Secondary)
+                    .WithButton("Not now", $"reminder:skip:{habitIdStr}", ButtonStyle.Secondary)
+                    .Build();
+            });
+            return;
+        }
+
+        await OpenTimeModalAsync(habitIdStr);
+    }
+
+    /// <summary>"I'm on UTC": the time modal without asking for a timezone first.</summary>
+    [ComponentInteraction("reminder:time:*")]
+    public async Task OnKeepUtcAsync(string habitIdStr) => await OpenTimeModalAsync(habitIdStr);
+
+    private async Task OpenTimeModalAsync(string habitIdStr)
+    {
         // Embed the source message ID in the modal custom ID so the modal
         // handler can update the original button message after confirming.
         var sourceMessageId = ((SocketMessageComponent)Context.Interaction).Message.Id;
@@ -27,9 +53,9 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         var modal = new ModalBuilder()
             .WithTitle("Set a daily reminder")
             .WithCustomId($"reminder:modal:{habitIdStr}:{sourceMessageId}")
-            .AddTextInput("What time? (HH:mm, your local time)", "reminder_time",
-                placeholder: "e.g. 09:00 or 21:30",
-                minLength: 4, maxLength: 5, required: true)
+            .AddTextInput("What time? (your local time)", "reminder_time",
+                placeholder: "e.g. 09:00, 21:30 or 9pm",
+                minLength: 3, maxLength: 8, required: true)
             .Build();
 
         await RespondWithModalAsync(modal);
@@ -54,11 +80,23 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** every day at **{habit.ReminderTime:HH\\:mm}** your time. You've got this.";
+                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this.";
                 m.Embed = null;
                 m.Components = new ComponentBuilder().Build();
             });
     }
+
+    /// <summary>"every day", or "on Mon, Wed" for a habit on set weekdays (weekly habits get a reminder every day).</summary>
+    internal static string ScheduleText(Habit habit)
+        => habit.FrequencyType == FrequencyType.Weekdays
+            ? "on " + string.Join(", ", ScheduleDayNames.ToNames(habit.Days.GetValueOrDefault())
+                .Select(n => char.ToUpperInvariant(n[0]) + n[1..]))
+            : "every day";
+
+    /// <summary>A reminder time typed as 24-hour (<c>21:30</c>, <c>9:05</c>) or 12-hour (<c>9pm</c>, <c>9:30 PM</c>) clock time.</summary>
+    internal static bool TryParseTime(string input, out TimeOnly time)
+        => TimeOnly.TryParseExact(input.Trim().ToUpperInvariant(), ["H:mm", "h:mmtt", "h:mm tt", "htt", "h tt"],
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out time);
 
     /// <summary>Sets a preset reminder time on one of the clicking user's own habits; null if the habit isn't theirs or the input is malformed.</summary>
     internal static async Task<Ember.Core.Models.Habit?> SetPresetReminderAsync(HabitService habits, ulong userId, string habitIdStr, string time)
@@ -134,9 +172,11 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
-        if (!TimeOnly.TryParseExact(modal.ReminderTime.Trim(), ["HH:mm", "H:mm"], out var parsed))
+        if (!TryParseTime(modal.ReminderTime, out var parsed))
         {
-            await RespondAsync("Couldn't parse that time. Use HH:mm format, e.g. `09:00`.", ephemeral: true);
+            await RespondAsync("I couldn't read that time. Try something like `09:00`, `21:30` or `9pm`. 💙",
+                components: new ComponentBuilder().WithButton("Try again", $"reminder:set:{habitId}", ButtonStyle.Primary, new Emoji("⏰")).Build(),
+                ephemeral: true);
             return;
         }
 
@@ -148,17 +188,10 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
-        // Build a Discord timestamp for the reminder time
-        var tz    = await _habits.GetUserTzAsync(Context.User.Id);
-        var utc   = TimezoneHelper.ToUtc(parsed, tz);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var utcDt = DateTime.SpecifyKind(today.ToDateTime(utc), DateTimeKind.Utc);
-        var unix  = new DateTimeOffset(utcDt).ToUnixTimeSeconds();
-
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
             .WithTitle("⏰ Reminder set!")
-            .WithDescription($"I'll remind you to **{habit.Name}** every day at <t:{unix}:t>.")
+            .WithDescription($"I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{parsed:HH\\:mm}** your time.")
             .WithFooter("You've got this. One day at a time.")
             .Build();
 
@@ -170,7 +203,7 @@ public class ReminderModal : IModal
 {
     public string Title => "Set a daily reminder";
 
-    [InputLabel("What time? (HH:mm, your local time)")]
-    [ModalTextInput("reminder_time", placeholder: "e.g. 09:00 or 21:30")]
+    [InputLabel("What time? (your local time)")]
+    [ModalTextInput("reminder_time", placeholder: "e.g. 09:00, 21:30 or 9pm")]
     public string ReminderTime { get; set; } = "";
 }

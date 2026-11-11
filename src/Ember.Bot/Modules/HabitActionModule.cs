@@ -84,6 +84,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
                 .WithButton("Not now", $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
         }
 
+        components.WithButton("Days & times per day", $"freq:menu:{habit.Id}", ButtonStyle.Secondary, new Emoji("📅"), row: 1);
         await RespondAsync(embed: embed, components: components.Build(), ephemeral: true);
 
         // DM confirmation / onboarding
@@ -108,23 +109,6 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             }
             catch { /* DMs disabled */ }
         }
-        else
-        {
-            try
-            {
-                var dm = await Context.User.CreateDMChannelAsync();
-                var dmEmbed = new EmbedBuilder()
-                    .WithColor(0xE8873A)
-                    .WithTitle("New habit started")
-                    .WithDescription(
-                        $"**{habit.Name}** is now being tracked.\n\n" +
-                        "Use </habit checkin:0> whenever you're ready to log it.")
-                    .WithFooter("I'll remind you when it's time.")
-                    .Build();
-                await dm.SendMessageAsync(embed: dmEmbed);
-            }
-            catch { /* DMs disabled */ }
-        }
     }
 
     // ── habitaction:checkin:done:{habitId} ────────────────────────────────────
@@ -136,16 +120,17 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
 
         var guildId = Context.Guild?.Id;
         var today = await _habits.GetLocalTodayAsync(Context.User.Id);
-        if (await _habits.CheckInAsync(Context.User.Id, habitId, today, completed: true, guildId) != DayEditResult.Saved)
+        if (await _habits.AddCheckInAsync(Context.User.Id, habitId, today, guildId) != DayEditResult.Saved)
         {
             await NotFoundAsync();
             return;
         }
 
+        var text = HabitModule.CheckInText(await _habits.GetHabitAsync(Context.User.Id, habitId), today, "Logged! Great work today. ✅");
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = "Logged! Great work today. ✅";
+                m.Content    = text;
                 m.Components = new ComponentBuilder().Build();
             });
     }
@@ -292,7 +277,9 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
         if (freqType != "daily") { await BadIdAsync(); return; }
 
-        var habit = await _habits.SetFrequencyAsync(Context.User.Id, habitId, FrequencyType.Daily, null);
+        var current = await _habits.GetHabitAsync(Context.User.Id, habitId);
+        var habit = current is null ? null
+            : await _habits.SetScheduleAsync(Context.User.Id, habitId, FrequencyType.Daily, null, null, current.TimesPerDay);
 
         if (habit is null) { await NotFoundAsync(); return; }
 

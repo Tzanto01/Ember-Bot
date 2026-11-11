@@ -1,11 +1,18 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Moon, Plus } from 'lucide-react';
+import { CalendarDays, ListOrdered, Moon, Pencil, Plus } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
+import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
+import { isPausedOn } from '@/components/history/kept-days';
+import { DayJournal } from '@/components/journal/day-journal';
+import { DeviceNotices } from '@/components/local/device-notices';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
+import { routineTitle } from '@/components/routines/routine-title';
+import { checkButtonId } from '@/components/today/check-button';
 import { HabitRow } from '@/components/today/habit-row';
 import { HearthIllustration } from '@/components/today/hearth-illustration';
 import { readReward, type RewardKeyword } from '@/components/today/reward';
@@ -14,9 +21,11 @@ import { Button } from '@/components/ui/button';
 import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate } from '@/lib/local-date';
-import type { Habit, LocalDateString, WeeklyStats } from '@/lib/models';
+import { isOffday } from '@/lib/calendar';
+import { addDays, formatDate } from '@/lib/local-date';
+import type { DayState, Habit, LocalDateString, Routine, WeeklyStats } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
+import { loadFreshMe } from '@/components/today/fresh-me';
 import { api, auth, deviceSync } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
@@ -25,6 +34,32 @@ interface TodayData {
   /** Null when the low-day lookup failed; the low-day action is hidden then. */
   lowDayToday: boolean | null;
   weekly: WeeklyStats | null;
+  /** Null when routines didn't load; habits then show ungrouped. */
+  routines: Routine[] | null;
+}
+
+interface HabitGroup {
+  routine: Routine | null;
+  habits: Habit[];
+}
+
+/** Habits grouped by routine in each routine's `habitIds` order, then the habits in no shown routine. */
+function groupHabits(habits: Habit[], routines: Routine[] | null): HabitGroup[] {
+  const byId = new Map(habits.map((h) => [h.id, h]));
+  const placed = new Set<number>();
+  const groups: HabitGroup[] = [];
+  for (const routine of routines ?? []) {
+    const members = routine.habitIds.flatMap((id) => {
+      const habit = byId.get(id);
+      if (!habit || placed.has(id)) return [];
+      placed.add(id);
+      return [habit];
+    });
+    if (members.length) groups.push({ routine, habits: members });
+  }
+  const rest = habits.filter((h) => !placed.has(h.id));
+  if (rest.length) groups.push({ routine: null, habits: rest });
+  return groups;
 }
 
 interface Problem {
@@ -34,19 +69,37 @@ interface Problem {
 
 const todayKey = ['today'] as const;
 
+/** True when nothing was checked in yesterday and it wasn't a low day; ask only when a habit was due yesterday. */
+async function loadYesterdayOpen(yesterday: LocalDateString): Promise<boolean> {
+  const [[stat], lowDays] = await Promise.all([
+    api.dayStats(yesterday, yesterday),
+    api.listLowDays(yesterday, yesterday),
+  ]);
+  return !!stat && !stat.showedUp && !lowDays.includes(yesterday);
+}
+
+/** The weekly card's first line: the count without a grade when some but not all check-ins happened. */
+function weeklyHeadline(weekly: WeeklyStats): string {
+  if (weekly.totalDone === 0 || weekly.totalDone >= weekly.totalPossible) return weekly.headline;
+  const checkIns = weekly.totalDone === 1 ? '1 check-in' : `${weekly.totalDone} check-ins`;
+  return `${checkIns} in the last 7 days. Every one of those counts.`;
+}
+
 async function loadToday(): Promise<TodayData> {
-  await auth.loadMe(true).catch(() => null);
+  await loadFreshMe().catch(() => null);
   const today = auth.me.get()?.localToday ?? null;
-  const [habits, lowDays, weekly] = await Promise.allSettled([
+  const [habits, lowDays, weekly, routines] = await Promise.allSettled([
     api.listHabits(),
     today ? api.listLowDays(today, today) : Promise.reject(new Error('no local day')),
     api.weeklyStats(),
+    api.listRoutines(),
   ]);
   if (habits.status === 'rejected') throw habits.reason;
   return {
     habits: habits.value,
     lowDayToday: lowDays.status === 'fulfilled' && today ? lowDays.value.includes(today) : null,
     weekly: weekly.status === 'fulfilled' ? weekly.value : null,
+    routines: routines.status === 'fulfilled' ? routines.value : null,
   };
 }
 
@@ -59,6 +112,21 @@ export default function TodayPage() {
   const synced = useStore(deviceSync.synced);
   const firstSynced = useRef(synced);
   const reduceMotion = useReducedMotion();
+  const reach = useReminderReach();
+  const reminderHash = useReminderSettingsHash();
+  const yesterday = today ? addDays(today, -1) : null;
+  const tracksYesterday =
+    !!yesterday &&
+    !!data?.habits.some(
+      (h) =>
+        h.frequency !== 'weekly' && h.startDate <= yesterday && !isOffday(h, yesterday) && !isPausedOn(h, yesterday),
+    );
+  const yesterdayQuery = useQuery({
+    queryKey: [...todayKey, 'yesterday', yesterday],
+    queryFn: () => loadYesterdayOpen(yesterday!),
+    enabled: tracksYesterday,
+  });
+  const focusAfter = useRef<string | null>(null);
 
   const inFlight = useRef(new Set<number>());
   const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
@@ -70,6 +138,18 @@ export default function TodayPage() {
   useEffect(() => {
     if (synced !== firstSynced.current) void refetch();
   }, [synced, refetch]);
+
+  useEffect(() => {
+    const target = focusAfter.current && document.getElementById(focusAfter.current);
+    if (!target) return;
+    focusAfter.current = null;
+    target.focus();
+  });
+
+  const nativeCheckIn = useStore(deviceSync.nativeCheckIn);
+  useEffect(() => {
+    if (nativeCheckIn) void refetch();
+  }, [nativeCheckIn, refetch]);
 
   const setData = (fn: (data: TodayData) => TodayData) =>
     queryClient.setQueryData<TodayData>(todayKey, (current) => current && fn(current));
@@ -90,16 +170,34 @@ export default function TodayPage() {
       return next;
     });
 
-  async function toggle(habit: Habit) {
+  async function toggle(habit: Habit, undoOne = false) {
     if (inFlight.current.has(habit.id) || !data) return;
     inFlight.current.add(habit.id);
-    const checkIn = habit.today.state !== 'done';
+    const target = habit.timesPerDay;
+    const multi = target > 1;
+    const current = Math.min(habit.today.count, target);
+    if (undoOne && current === 1) focusAfter.current = checkButtonId(habit.id);
+    const nextCount = !multi
+      ? null
+      : undoOne
+        ? Math.max(current - 1, 0)
+        : habit.today.state === 'done'
+          ? 0
+          : current + 1;
+    const checkIn = nextCount === null ? habit.today.state !== 'done' : nextCount > current;
+    const reaches = nextCount === null ? checkIn : nextCount >= target;
+    const resting: DayState = isOffday(habit, habit.today.date)
+      ? 'offday'
+      : data.lowDayToday
+        ? 'lowday'
+        : 'pending';
     const optimistic: Habit = {
       ...habit,
       today: {
         ...habit.today,
-        state: checkIn ? 'done' : data.lowDayToday ? 'lowday' : 'pending',
-        completed: checkIn ? true : null,
+        state: reaches ? 'done' : nextCount ? 'partial' : resting,
+        completed: reaches ? true : null,
+        count: nextCount ?? (checkIn ? target : 0),
       },
     };
     mark(habit.id, true);
@@ -109,11 +207,22 @@ export default function TodayPage() {
     await queryClient.cancelQueries({ queryKey: todayKey });
     updateHabit(habit.id, () => optimistic);
     try {
-      const updated = checkIn
-        ? await api.setDay(habit.id, habit.today.date, true)
-        : await api.clearDay(habit.id, habit.today.date);
+      const updated =
+        nextCount !== null
+          ? await api.setDayCount(habit.id, habit.today.date, nextCount)
+          : checkIn
+            ? await api.setDay(habit.id, habit.today.date, true)
+            : await api.clearDay(habit.id, habit.today.date);
       updateHabit(habit.id, () => updated);
-      setAnnouncement(checkIn ? `${habit.name}: checked in for today.` : `${habit.name}: check-in cleared.`);
+      setAnnouncement(
+        nextCount === null
+          ? checkIn
+            ? `${habit.name}: checked in for today.`
+            : `${habit.name}: check-in cleared.`
+          : nextCount === 0
+            ? `${habit.name}: check-ins cleared for today.`
+            : `${habit.name}: ${nextCount} of ${target} for today${reaches ? ', done' : ''}.`,
+      );
     } catch (error) {
       updateHabit(habit.id, (current) => (current === optimistic ? habit : current));
       setReward(habit.id, null);
@@ -139,6 +248,7 @@ export default function TodayPage() {
     try {
       if (marking) await api.markLowDay(today);
       else await api.clearLowDay(today);
+      focusAfter.current = marking ? 'clear-low-day' : 'mark-low-day';
       setData((d) => ({ ...d, lowDayToday: marking }));
       setAnnouncement(marking ? 'Today is marked as a low day.' : 'Low day cleared.');
       const habits = await api.listHabits().catch(() => null);
@@ -158,10 +268,48 @@ export default function TodayPage() {
 
   const doneCount = data?.habits.filter((h) => h.today.state === 'done').length ?? 0;
   const lowDay = data?.lowDayToday === true;
+  const allDone =
+    doneCount > 0 &&
+    !!data?.habits.every(
+      (h) =>
+        ['done', 'offday', 'lowday', 'paused', 'beforestart'].includes(h.today.state) ||
+        h.pausedToday ||
+        (h.frequency === 'weekly' && h.today.state === 'pending'),
+    );
+  const oldestStart = data?.habits.reduce<LocalDateString | null>(
+    (min, h) => (min === null || h.startDate < min ? h.startDate : min),
+    null,
+  );
+  const showWeekly =
+    !!data?.weekly && data.weekly.totalPossible > 0 && !!today && !!oldestStart && oldestStart <= addDays(today, -7);
+  const remindersUnheard = reach === 'none' && !!data?.habits.some((h) => h.reminderTime);
   const ember = (className: string) => (
-    <TodaysEmber count={doneCount} lowDay={lowDay} stepping={rewards.size > 0} className={className} />
+    <TodaysEmber
+      count={doneCount}
+      lowDay={lowDay}
+      allDone={allDone}
+      stepping={rewards.size > 0}
+      className={className}
+    />
   );
   const hasHabits = !!data && data.habits.length > 0;
+  const groups = data ? groupHabits(data.habits, data.routines) : [];
+  const habitList = (habits: Habit[], headingLevel: 'h2' | 'h3') => (
+    <ul role="list" className="flex flex-col gap-3">
+      {habits.map((habit) => (
+        <HabitRow
+          key={habit.id}
+          habit={habit}
+          headingLevel={headingLevel}
+          busy={busy.has(habit.id)}
+          reward={rewards.get(habit.id) ?? null}
+          onToggle={() => void toggle(habit)}
+          onUndoOne={() => void toggle(habit, true)}
+          onRewardEnd={() => setReward(habit.id, null)}
+        />
+      ))}
+    </ul>
+  );
 
   let body: ReactNode;
   if (!data) {
@@ -211,23 +359,62 @@ export default function TodayPage() {
           {lowDay && (
             <Notice tone="lowday" heading="Today is a low day">
               <p>Go gently. Checking in is still welcome if you feel like it.</p>
-              <Button variant="ghost" aria-disabled={lowDayBusy || undefined} onClick={() => void toggleLowDay()}>
+              <Button
+                id="clear-low-day"
+                variant="ghost"
+                aria-disabled={lowDayBusy || undefined}
+                onClick={() => void toggleLowDay()}
+              >
                 Clear low day
               </Button>
             </Notice>
           )}
-          <ul role="list" className="flex flex-col gap-3">
-            {data.habits.map((habit) => (
-              <HabitRow
-                key={habit.id}
-                habit={habit}
-                busy={busy.has(habit.id)}
-                reward={rewards.get(habit.id) ?? null}
-                onToggle={() => void toggle(habit)}
-                onRewardEnd={() => setReward(habit.id, null)}
-              />
-            ))}
-          </ul>
+          {yesterdayQuery.data === true && (
+            <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+              <CalendarDays aria-hidden className="size-[18px] shrink-0" />
+              Yesterday is still open, if you'd like to fill it in.
+              <TapLink to="/history">Open History</TapLink>
+            </p>
+          )}
+          {groups.length === 1 && !groups[0].routine ? (
+            habitList(groups[0].habits, 'h2')
+          ) : (
+            groups.map(({ routine, habits }) => (
+              <section
+                key={routine?.id ?? 'other'}
+                aria-labelledby={routine ? `routine-${routine.id}` : 'routine-other'}
+                className="flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h2
+                    id={routine ? `routine-${routine.id}` : 'routine-other'}
+                    className="text-[20px] break-words"
+                  >
+                    {routine?.name ?? 'Other habits'}
+                  </h2>
+                  {!routine && (
+                    <TapLink to="/routines" className="shrink-0 px-2">
+                      Routines
+                    </TapLink>
+                  )}
+                  {routine && (
+                    <Button asChild variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
+                      <Link to={`/routines/${routine.id}/edit`} aria-label={`Edit ${routineTitle(routine.name)}`}>
+                        <Pencil aria-hidden />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+                {habitList(habits, 'h3')}
+              </section>
+            ))
+          )}
+          {remindersUnheard && (
+            <Notice tone="info" heading="Your reminders can't reach you yet">
+              <p>Turn on notifications for this device, or link Discord, and Ember can nudge you at the times you picked.</p>
+              <TapLink to={{ pathname: '/settings', hash: reminderHash }}>Turn on reminders in Settings</TapLink>
+            </Notice>
+          )}
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
             <Button asChild variant="secondary" className="w-full lg:w-auto">
               <Link to="/habits/new">
@@ -235,32 +422,28 @@ export default function TodayPage() {
                 New habit
               </Link>
             </Button>
-            {data.lowDayToday === false && (
-              <Button
-                variant="ghost"
-                className="w-full lg:w-auto"
-                aria-disabled={lowDayBusy || undefined}
-                onClick={() => void toggleLowDay()}
-              >
-                <Moon aria-hidden />
-                Mark today as a low day
-              </Button>
-            )}
+            <Button asChild variant="ghost" className="w-full lg:w-auto">
+              <Link to="/routines">
+                <ListOrdered aria-hidden />
+                Routines
+              </Link>
+            </Button>
           </div>
         </div>
         <div className="flex flex-col gap-6">
           <Card className="hidden lg:flex">{ember('')}</Card>
-          {data.weekly && (
+          {showWeekly && data.weekly && (
             <section aria-labelledby="weekly-heading" className={cardVariants()}>
               <h2 id="weekly-heading" className="text-[22px]">
-                Your week
+                Last 7 days
               </h2>
-              <p className="whitespace-pre-line">{data.weekly.headline}</p>
-              {data.weekly.footer && (
+              <p className="whitespace-pre-line">{weeklyHeadline(data.weekly)}</p>
+              {data.weekly.footer && weeklyHeadline(data.weekly) === data.weekly.headline && (
                 <p className="whitespace-pre-line text-[14px] text-muted-foreground">{data.weekly.footer}</p>
               )}
             </section>
           )}
+          {today && <DayJournal date={today} />}
         </div>
       </div>
     );
@@ -279,12 +462,25 @@ export default function TodayPage() {
         }
         aside={hasHabits ? ember('lg:hidden') : undefined}
       />
+      {hasHabits && data.lowDayToday === false && (
+        <Button
+          id="mark-low-day"
+          variant="ghost"
+          className="-mt-3 self-start"
+          aria-disabled={lowDayBusy || undefined}
+          onClick={() => void toggleLowDay()}
+        >
+          <Moon aria-hidden />
+          Mark today as a low day
+        </Button>
+      )}
       <LiveRegion message={announcement} />
       {problem && (
         <Notice tone="notice" heading={problem.heading}>
           <p>{problem.message}</p>
         </Notice>
       )}
+      <DeviceNotices />
       {body}
     </div>
   );

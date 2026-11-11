@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
   webDir: 'dist/ember-mobile/browser',
   server: { androidScheme: 'https', cleartext: false },
   android: { path: '../mobile/android', allowMixedContent: false },
+  plugins: { LocalNotifications: { smallIcon: 'ic_stat_ember', iconColor: '#F69835' } },
 };
 
 export default config;

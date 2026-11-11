@@ -74,7 +74,7 @@ describe('HistoryPage', () => {
     (await f.next('GET', '/api/habits')).respond(200, [habit]);
 
     await answerMonth(f, 1, '2026-11-01', '2026-11-02');
-    expect(f.all.some((c) => c.url.includes('2026-10-'))).toBe(false);
+    expect(f.all.some((c) => c.url.includes('to=2026-10-'))).toBe(false);
   });
 
   it('marks a day done from the day panel and shows it as done', async () => {
@@ -98,7 +98,7 @@ describe('HistoryPage', () => {
     expect(put.body).toEqual({ completed: true });
     put.respond(200, habit);
     await answerMonth(f, 1, '2026-11-01', '2026-11-04', [
-      { date: '2026-11-03', state: 'done', completed: true },
+      { date: '2026-11-03', state: 'done', completed: true, count: 1 },
     ]);
 
     await waitFor(() => expect(day).toHaveAttribute('data-state', 'done'));
@@ -109,6 +109,7 @@ describe('HistoryPage', () => {
     renderHistory('/history/1');
     await answerHabits(f, [{ ...habit, startDate: '2026-10-15' }]);
     await answerMonth(f, 1, '2026-11-01', '2026-11-04');
+    await answerMonth(f, 1, '2026-10-15', '2026-11-04');
 
     const previous = await screen.findByRole('button', { name: 'Previous month' });
     const next = screen.getByRole('button', { name: 'Next month' });
@@ -142,5 +143,34 @@ describe('HistoryPage', () => {
     await waitFor(() => expect(container.querySelector('#day-2026-11-03')).not.toBeNull());
     expect(container.querySelector('#day-2026-11-03')).toHaveAttribute('aria-expanded', 'false');
     expect(container.querySelector('#day-panel')).toBeNull();
+  });
+  it('names a partly done day "2 of 3 done" and steps its count with an absolute value', async () => {
+    const container = renderHistory();
+    await answerHabits(f, [{ ...habit, timesPerDay: 3 }]);
+    await answerMonth(f, 1, '2026-11-01', '2026-11-04', [
+      { date: '2026-11-03', state: 'partial', completed: null, count: 2 },
+    ]);
+
+    const day = await screen.findByRole('button', { name: /(3 November|November 3).*, 2 of 3 done$/ });
+    await userEvent.click(day);
+    const panel = container.querySelector<HTMLElement>('#day-panel')!;
+    expect(within(panel).getByText('2 of 3 done')).toBeInTheDocument();
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'One more check-in' }));
+    expect((await f.next('PUT', '/api/habits/1/days/2026-11-03')).body).toEqual({ count: 3 });
+  });
+
+  it('shows the kept days of the last 7 and 30 days for a daily habit, low days included', async () => {
+    renderHistory();
+    await answerHabits(f, [habit]);
+    await answerMonth(f, 1, '2026-11-01', '2026-11-04');
+    (await f.next('GET', '/api/habits/1/days?from=2026-10-06&to=2026-11-04')).respond(200, [
+      { date: '2026-10-10', state: 'done', completed: true, count: 1 },
+      { date: '2026-11-03', state: 'done', completed: true, count: 1 },
+    ]);
+    (await f.next('GET', '/api/low-days?from=2026-10-06&to=2026-11-04')).respond(200, ['2026-11-02']);
+
+    expect((await screen.findByText('Last 7 days')).nextSibling).toHaveTextContent('Kept 2 of 7');
+    expect(screen.getByText('Last 30 days').nextSibling).toHaveTextContent('Kept 3 of 30');
   });
 });

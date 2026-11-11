@@ -8,14 +8,13 @@ export interface SecureStore {
   remove(key: string): Promise<void>;
 }
 
-const plugin = () =>
-  import('@aparajita/capacitor-secure-storage').then((m) => m.SecureStorage);
+const plugin = () => import('@aparajita/capacitor-secure-storage');
 
 /** The app's {@link SecureStore}: `@aparajita/capacitor-secure-storage`, loaded on first use (native build only). */
 export const capacitorSecureStore: SecureStore = {
-  get: async (key) => (await plugin()).getItem(key),
-  set: async (key, value) => (await plugin()).setItem(key, value),
-  remove: async (key) => (await plugin()).removeItem(key),
+  get: async (key) => (await plugin()).SecureStorage.getItem(key),
+  set: async (key, value) => (await plugin()).SecureStorage.setItem(key, value),
+  remove: async (key) => (await plugin()).SecureStorage.removeItem(key),
 };
 
 interface TokenResponse {
@@ -50,12 +49,46 @@ export class TokenStore implements BearerTokens {
     return this.access;
   }
 
-  /** `POST /api/auth/login` without cookie flags. Rejects with the login's `ApiError` (401 `Failed`/`NotAllowed`). */
-  async signIn(email: string, password: string, persist: boolean): Promise<void> {
+  /**
+   * `POST /api/auth/login` without cookie flags, with the two-factor code when given. Rejects with the login's
+   * `ApiError` (401 `Failed`/`NotAllowed`/`RequiresTwoFactor`).
+   */
+  async signIn(
+    email: string,
+    password: string,
+    persist: boolean,
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<void> {
     await this.clear();
     const epoch = this.epoch;
-    const tokens = await this.post('/api/auth/login', { email, password });
+    const tokens = await this.post('/api/auth/login', {
+      email,
+      password,
+      twoFactorCode: twoFactor?.code,
+      twoFactorRecoveryCode: twoFactor?.recoveryCode,
+    });
     if (epoch === this.epoch) await this.keep(tokens, persist);
+  }
+
+  /**
+   * Exchanges a native Discord sign-in's one-time code with its PKCE verifier (`POST /api/auth/discord/native/token`),
+   * with the two-factor code when given, and keeps the refresh token in secure storage. Rejects with the `ApiError`
+   * (401 `Failed`/`RequiresTwoFactor`).
+   */
+  async signInWithDiscord(
+    code: string,
+    verifier: string,
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<void> {
+    await this.clear();
+    const epoch = this.epoch;
+    const tokens = await this.post('/api/auth/discord/native/token', {
+      code,
+      verifier,
+      twoFactorCode: twoFactor?.code,
+      twoFactorRecoveryCode: twoFactor?.recoveryCode,
+    });
+    if (epoch === this.epoch) await this.keep(tokens, true);
   }
 
   /**

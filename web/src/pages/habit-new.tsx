@@ -7,11 +7,13 @@ import { focusFirstInvalid } from '@/components/form-field';
 import {
   cadenceText,
   emptyHabitForm,
+  habitDaysError,
   HabitFields,
   habitFormValue,
   habitNameError,
 } from '@/components/habits/habit-fields';
 import { HabitPreview } from '@/components/habits/habit-preview';
+import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
 import { PageHeader } from '@/components/page-header';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,10 @@ export default function HabitNewPage() {
   const [form, setForm] = useState(emptyHabitForm);
   const [touched, setTouched] = useState(false);
   const [problem, setProblem] = useState<FriendlyProblem | null>(null);
+  const submitting = useRef(false);
+  const reach = useReminderReach();
+  const reminderHash = useReminderSettingsHash();
+  const reminders = reach !== 'local';
 
   const create = useMutation({
     mutationFn: (body: NewHabit) => api.createHabit(body),
@@ -42,6 +48,7 @@ export default function HabitNewPage() {
       void navigate('/today');
     },
     onError: (error) => {
+      submitting.current = false;
       const apiError = asApiError(error);
       if (!apiError.handled) setProblem(problemToMessage(apiError));
     },
@@ -55,6 +62,7 @@ export default function HabitNewPage() {
       setForm(
         template
           ? {
+              ...emptyHabitForm,
               name: template.name,
               frequency: template.frequency,
               weeklyTarget: template.weeklyTarget ?? 3,
@@ -80,20 +88,24 @@ export default function HabitNewPage() {
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (create.isPending) return;
+    if (submitting.current) return;
     flushSync(() => setTouched(true));
-    if (habitNameError(form.name)) {
+    if (habitNameError(form.name) || habitDaysError(form)) {
       focusFirstInvalid(root.current);
       return;
     }
     const value = habitFormValue(form);
     const body: NewHabit = { name: value.name, frequency: value.frequency };
+    if (value.days !== null) body.days = value.days;
+    if (value.frequency !== 'weekly') body.timesPerDay = value.timesPerDay;
     if (value.weeklyTarget !== null) body.weeklyTarget = value.weeklyTarget;
-    if (value.reminderTime) body.reminderTime = value.reminderTime;
+    if (value.reminderTime && reminders) body.reminderTime = value.reminderTime;
+    submitting.current = true;
     setProblem(null);
     create.mutate(body);
   }
 
+  const preview = habitFormValue(form);
   const lede = showForm
     ? picked
       ? `Based on ${picked}. Adjust anything you like.`
@@ -117,6 +129,10 @@ export default function HabitNewPage() {
 
       {!showForm && templates.data && (
         <>
+          <Button type="button" variant="secondary" block onClick={() => startForm(null)}>
+            <Plus aria-hidden />
+            Start from scratch
+          </Button>
           <ul className="grid gap-3 md:grid-cols-2">
             {templates.data.map((template) => (
               <li key={template.key} className="flex">
@@ -131,17 +147,13 @@ export default function HabitNewPage() {
                   <span className="font-display text-[18px]">{template.name}</span>
                   <span className="text-muted-foreground">{template.description}</span>
                   <span className="text-[14px] text-muted-foreground">
-                    {cadenceText(template.frequency, template.weeklyTarget)} · reminder at{' '}
-                    {template.suggestedReminderTime}
+                    {cadenceText(template.frequency, template.weeklyTarget)}
+                    {reminders && ` · reminder at ${template.suggestedReminderTime}`}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
-          <Button type="button" variant="secondary" block onClick={() => startForm(null)}>
-            <Plus aria-hidden />
-            Start from scratch
-          </Button>
         </>
       )}
 
@@ -156,6 +168,15 @@ export default function HabitNewPage() {
                 onTouched={() => setTouched(true)}
                 errors={problem?.fields ?? {}}
                 nameId={nameId}
+                showReminder={reminders}
+                reminderNote={
+                  reach === 'none' && (
+                    <>
+                      Reminders reach you through Discord or notifications on this device.{' '}
+                      <Link to={{ pathname: '/settings', hash: reminderHash }}>Turn one on in Settings.</Link>
+                    </>
+                  )
+                }
               />
               {problem && <Notice tone="notice">{problem.message}</Notice>}
               <div className="flex flex-col gap-3">
@@ -183,7 +204,7 @@ export default function HabitNewPage() {
           <HabitPreview
             className="hidden lg:flex"
             name={form.name}
-            cadence={cadenceText(form.frequency, form.frequency === 'weekly' ? form.weeklyTarget : null)}
+            cadence={cadenceText(preview.frequency, preview.weeklyTarget, preview.days, preview.timesPerDay)}
           />
         </div>
       )}

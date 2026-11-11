@@ -18,10 +18,10 @@ public partial class HabitService
 
     /// <summary>
     /// Stores the browser subscription for the user. An endpoint already stored (for this or another account) is moved to the
-    /// user with the new keys and counts as saved now. Afterwards the user keeps at most <see cref="MaxPushSubscriptionsPerUser"/>
+    /// user with the new keys and <paramref name="sessionId"/> and counts as saved now. Afterwards the user keeps at most <see cref="MaxPushSubscriptionsPerUser"/>
     /// subscriptions; the least recently saved ones beyond that are deleted.
     /// </summary>
-    public async Task SavePushSubscriptionAsync(Guid userId, string endpoint, string p256dh, string auth)
+    public async Task SavePushSubscriptionAsync(Guid userId, string endpoint, string p256dh, string auth, Guid? sessionId = null)
     {
         var now = _time.GetUtcNow().UtcDateTime;
         var subscription = await _db.PushSubscriptions.FirstOrDefaultAsync(s => s.Endpoint == endpoint);
@@ -34,6 +34,7 @@ public partial class HabitService
         subscription.UserId = userId;
         subscription.P256dh = p256dh;
         subscription.Auth = auth;
+        subscription.SessionId = sessionId;
         subscription.CreatedAt = now;
         try
         {
@@ -48,6 +49,7 @@ public partial class HabitService
                     .SetProperty(p => p.UserId, userId)
                     .SetProperty(p => p.P256dh, p256dh)
                     .SetProperty(p => p.Auth, auth)
+                    .SetProperty(p => p.SessionId, sessionId)
                     .SetProperty(p => p.CreatedAt, now));
             if (updated == 0) throw;
         }
@@ -75,6 +77,15 @@ public partial class HabitService
     /// <summary>Bot only (reminder delivery): the user's push subscriptions, untracked.</summary>
     public Task<List<PushSubscription>> GetPushSubscriptionsAsync(Guid userId, CancellationToken cancellationToken = default)
         => _db.PushSubscriptions.AsNoTracking().Where(s => s.UserId == userId).OrderBy(s => s.Id).ToListAsync(cancellationToken);
+
+    /// <summary>Bot only: the IDs of the user's sign-in sessions that haven't expired.</summary>
+    public async Task<HashSet<Guid>> GetLiveSessionIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = _time.GetUtcNow();
+        var sessions = await _db.AuthSessions.Where(s => s.UserId == userId).Select(s => new { s.Id, s.ExpiresUtc })
+            .ToListAsync(cancellationToken);
+        return sessions.Where(s => s.ExpiresUtc > now).Select(s => s.Id).ToHashSet();
+    }
 
     /// <summary>Bot only: deletes the subscription with this endpoint whoever owns it, after the push service reported it gone (404/410).</summary>
     public Task DeletePushSubscriptionByEndpointAsync(string endpoint, CancellationToken cancellationToken = default)

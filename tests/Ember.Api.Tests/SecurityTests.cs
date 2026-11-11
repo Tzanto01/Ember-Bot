@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using FluentAssertions;
 
 namespace Ember.Api.Tests;
@@ -55,6 +56,33 @@ public class SecurityTests(PostgresFixture postgres) : ApiTestBase(postgres)
         await bearer.CreateHabitAsync();
 
         bearer.Csrf.Should().BeNull();
+    }
+
+    [DockerFact]
+    public async Task A_bearer_access_token_expires_after_15_minutes()
+    {
+        var user = await Host.ConfirmedUserAsync();
+        var tokens = await (await user.Post("/api/auth/login", new Credentials(user.Email, ApiClient.Passphrase))).ExpectJson();
+        var bearer = Host.NewClient();
+        bearer.Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GetProperty("accessToken").GetString());
+        await (await bearer.Get("/api/me")).Expect(HttpStatusCode.OK);
+
+        Host.Time.Advance(TimeSpan.FromMinutes(16));
+
+        await (await bearer.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
+    }
+
+    [DockerFact]
+    public async Task Request_bodies_over_64_kib_are_refused_with_413()
+    {
+        Host.UseKestrel(0);
+        using var http = Host.CreateClient();
+
+        var huge = await http.PostAsJsonAsync("/api/auth/login", new Credentials(ApiHost.NewEmail(), new string('x', 70 * 1024)));
+        var normal = await http.PostAsJsonAsync("/api/auth/login", new Credentials(ApiHost.NewEmail(), ApiClient.Passphrase));
+
+        huge.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        normal.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [DockerFact]

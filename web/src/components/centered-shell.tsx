@@ -65,7 +65,6 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
             auth ? 'max-w-[28rem] lg:col-span-7 lg:max-w-none lg:justify-center' : 'max-w-[40rem]',
           )}
         >
-          {auth && <FlameMark className="size-[48px] lg:hidden" />}
           <Card className={cn('w-full gap-6',auth && 'lg:max-w-[28rem]')}>
             <Outlet />
           </Card>

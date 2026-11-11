@@ -18,21 +18,48 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         _config = config;
     }
 
-    internal async Task<string> FormatReminderAsync(ulong userId, TimeOnly? localTime)
+    /// <summary>The reminder time as set, in the user's Ember timezone (not the viewer's device timezone).</summary>
+    internal static string FormatReminder(TimeOnly? localTime)
+        => localTime is { } time ? $"{time:HH\\:mm} your time" : "None set";
+
+    /// <summary>"Streak: **1** day" or "Streak: **n** days".</summary>
+    internal static string StreakText(int streak) => $"Streak: **{streak}** {(streak == 1 ? "day" : "days")}";
+
+    internal static string FrequencyLabel(Habit h)
     {
-        if (!localTime.HasValue) return "None set";
-        var tz    = await _habits.GetUserTzAsync(userId);
-        var utc   = TimezoneHelper.ToUtc(localTime.Value, tz);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var utcDt = DateTime.SpecifyKind(today.ToDateTime(utc), DateTimeKind.Utc);
-        var unix  = new DateTimeOffset(utcDt).ToUnixTimeSeconds();
-        return $"<t:{unix}:t>";
+        var times = h.TimesPerDay > 1 ? $" · {h.TimesPerDay}×/day" : "";
+        return h.FrequencyType switch
+        {
+            FrequencyType.Weekly   => $"{h.WeeklyTarget ?? 3}×/week",
+            FrequencyType.Weekdays => string.Join(" ", ScheduleDayNames.ToNames(h.Days.GetValueOrDefault())
+                .Select(n => char.ToUpperInvariant(n[0]) + n[1..])) + times,
+            _                      => "daily" + times,
+        };
     }
 
-    internal static string FrequencyLabel(Habit h) =>
-        h.FrequencyType == FrequencyType.Weekly
-            ? $"{h.WeeklyTarget ?? 3}×/week"
-            : "daily";
+    /// <summary>The habit's status on <paramref name="day"/>: ✅ done, 🔸 2/3 partly done, 💤 rest day (not scheduled), ⬜ otherwise.</summary>
+    internal static string DayMark(Habit h, DateOnly day)
+    {
+        var log = h.Logs.FirstOrDefault(l => l.Date == day);
+        return log?.Completed == true ? "✅"
+            : log is { Count: > 0 } ? $"🔸 {log.Count}/{h.TimesPerDay}"
+            : !HabitService.IsScheduledOn(h, day) ? "💤"
+            : "⬜";
+    }
+
+    /// <summary>
+    /// The reply after a check-in that added one: <paramref name="doneText"/> once the day is done (with the count for
+    /// multi-count habits), else the count so far, for today or for <paramref name="dayLabel"/>.
+    /// </summary>
+    internal static string CheckInText(Habit? habit, DateOnly day, string doneText, string? dayLabel = null)
+    {
+        if (habit is null || habit.TimesPerDay == 1) return doneText;
+        var log = habit.Logs.FirstOrDefault(l => l.Date == day);
+        var count = $"{log?.Count ?? 0}/{habit.TimesPerDay}";
+        return log?.Completed == true
+            ? $"{doneText} ({count})"
+            : $"Logged **{count}** {(dayLabel is null ? "today" : $"for {dayLabel}")}. Every one counts. 🔸";
+    }
 
     // ── Habit select menu builder (shared by several commands) ───────────────
 
@@ -49,7 +76,9 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
         foreach (var h in habits.Take(25))
         {
-            var label = h.Name.Length > 25 ? h.Name[..25] : h.Name;
+            var label = h.Name.Length > SelectMenuOptionBuilder.MaxSelectLabelLength
+                ? h.Name[..SelectMenuOptionBuilder.MaxSelectLabelLength]
+                : h.Name;
             menu.AddOption(label, h.Id.ToString(), FrequencyLabel(h));
         }
 
@@ -144,9 +173,8 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
             foreach (var h in slice)
             {
-                var checkedToday = h.Logs.Any(l => l.Date == today && l.Completed);
-                var todayMark    = checkedToday ? "✅" : "⬜";
-                var reminderStr  = await FormatReminderAsync(Context.User.Id, h.ReminderTime);
+                var todayMark    = DayMark(h, today);
+                var reminderStr  = FormatReminder(h.ReminderTime);
                 var pauseStr     = h.PausedUntil.HasValue && h.PausedUntil >= today
                     ? $" · ⏸️ paused until {h.PausedUntil:MMM d}" : "";
 
@@ -160,7 +188,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 {
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
                     var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"Streak: **{streak}** days{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
+                    progressStr = $"{StreakText(streak)}{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
                 }
 
                 embed.AddField(
@@ -263,7 +291,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
                     statsText =
-                        $"Streak: **{streak}** days{graceStr}\n" +
+                        $"{StreakText(streak)}{graceStr}\n" +
                         $"Last 7: **{last7}/7** · Last 30: **{last30}/30**\n" +
                         $"Best: **{best}** · Total: **{total}**";
                 }
@@ -393,6 +421,38 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             components: components,
             ephemeral: true);
     }
+
+    // ── /habit second-reminder ────────────────────────────────────────────────
+
+    [SlashCommand("second-reminder", "Get one more nudge after a reminder if you haven't checked in yet")]
+    public async Task SecondReminderAsync([Summary("delay", "How long after a reminder")] SecondReminderDelay delay)
+    {
+        var minutes = (int)delay;
+        await _habits.SetSecondReminderMinutesAsync(Context.User.Id, minutes);
+
+        await RespondAsync(minutes == 0
+                ? "Second reminder off. One reminder it is. 💙"
+                : $"Got it. If you haven't checked in yet, I'll nudge you once more **{SecondReminderLabel(delay)}** after a reminder. 💙",
+            ephemeral: true);
+    }
+
+    private static string SecondReminderLabel(SecondReminderDelay delay) => delay switch
+    {
+        SecondReminderDelay.FifteenMinutes => "15 minutes",
+        SecondReminderDelay.ThirtyMinutes => "30 minutes",
+        SecondReminderDelay.OneHour => "1 hour",
+        _ => "2 hours",
+    };
+}
+
+/// <summary>The <c>/habit second-reminder</c> choices; each value is <see cref="Core.Models.User.SecondReminderMinutes"/>.</summary>
+public enum SecondReminderDelay
+{
+    [ChoiceDisplay("Off")] Off = 0,
+    [ChoiceDisplay("15 minutes")] FifteenMinutes = 15,
+    [ChoiceDisplay("30 minutes")] ThirtyMinutes = 30,
+    [ChoiceDisplay("1 hour")] OneHour = 60,
+    [ChoiceDisplay("2 hours")] TwoHours = 120,
 }
 
 public enum PauseDuration

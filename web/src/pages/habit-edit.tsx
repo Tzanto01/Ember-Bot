@@ -4,10 +4,10 @@ import { Link, useParams } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
 import {
-  ChannelsSection,
   DeleteSection,
   DetailsSection,
   DriftingSpark,
+  HabitChannelsSection,
   PauseSection,
 } from '@/components/habits/habit-edit-sections';
 import { PageHeader } from '@/components/page-header';
@@ -53,6 +53,14 @@ export default function HabitEditPage() {
   const error = query.isError ? asApiError(query.error) : null;
   const habit = query.data;
   const onChange = (updated: Habit) => queryClient.setQueryData(queryKey, updated);
+  const routineId = habit?.routineId ?? null;
+  const routines = useQuery({
+    queryKey: ['routines'],
+    queryFn: () => api.listRoutines(),
+    enabled: routineId !== null,
+    retry: false,
+  });
+  const routine = routines.data?.find((r) => r.id === routineId) ?? null;
 
   let content: ReactNode;
   if (!valid || error?.status === 404) {
@@ -73,9 +81,9 @@ export default function HabitEditPage() {
     content = (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,40rem)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
-          <DetailsSection key={habit.id} habit={habit} onChange={onChange} />
+          <DetailsSection key={habit.id} habit={habit} onChange={onChange} routine={routine} />
           {habit.reminderChannels && (
-            <ChannelsSection habit={habit} channels={habit.reminderChannels} onChange={onChange} />
+            <HabitChannelsSection habit={habit} channels={habit.reminderChannels} onChange={onChange} />
           )}
           <PauseSection habit={habit} onChange={onChange} />
           <DeleteSection habit={habit} />
