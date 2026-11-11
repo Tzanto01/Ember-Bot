@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
 import { type DayAction, DayPanel } from '@/components/history/day-panel';
 import { CalendarIllustration, NotebookIllustration } from '@/components/history/illustrations';
+import { keptDays, windowStart } from '@/components/history/kept-days';
 import { Legend } from '@/components/history/legend';
 import { MonthCalendar } from '@/components/history/month-calendar';
 import { StatTiles } from '@/components/history/stat-tiles';
@@ -81,6 +82,24 @@ export default function HistoryPage() {
     enabled: !!selected && !!month && !!today,
   });
 
+  const windowFrom = selected && today ? windowStart(selected, today, 30) : null;
+  const windowQuery = useQuery({
+    queryKey: ['history', 'window', selected?.id, windowFrom, today],
+    queryFn: async () => {
+      if (!selected || !windowFrom || !today) return { days: [], lowDays: [] };
+      const [days, lowDays] = await Promise.all([
+        api.getDays(selected.id, windowFrom, today),
+        api.listLowDays(windowFrom, today),
+      ]);
+      return { days, lowDays };
+    },
+    enabled: !!selected && selected.frequency !== 'weekly' && !!today && !!windowFrom && windowFrom <= today,
+  });
+  const kept = (window: number) =>
+    windowQuery.data && selected && today
+      ? keptDays(selected, windowQuery.data.days, windowQuery.data.lowDays, today, window)
+      : null;
+
   const [open, setOpen] = useState<{ key: string; date: LocalDateString } | null>(null);
   const openDate = open?.key === monthKey ? open.date : null;
   const busyRef = useRef(false);
@@ -145,6 +164,7 @@ export default function HistoryPage() {
     setDayProblem(null);
     try {
       const message = await action();
+      void queryClient.invalidateQueries({ queryKey: ['history', 'window'] });
       await daysQuery.refetch();
       setAnnouncement(message);
       if (done) setReward(done);
@@ -280,6 +300,8 @@ export default function HistoryPage() {
             monthName={formatDate(month, { month: 'long' })}
             doneInMonth={daysQuery.data ? inMonth.filter((d) => d.state === 'done').length : null}
             lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
+            last7Days={kept(7)}
+            last30Days={kept(30)}
           />
           <MonthCalendar
             title={monthLabel(month)}
