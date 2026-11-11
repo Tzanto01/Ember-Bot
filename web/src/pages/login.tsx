@@ -349,6 +349,11 @@ export default function LoginPage() {
         New to Ember? <TapLink to="/signup">Create an account</TapLink>
       </p>
       <NoAccountLink />
+      {!env.native && (
+        <p className="text-center">
+          <TapLink to="/download">Get the app</TapLink>
+        </p>
+      )}
     </>
   );
 }

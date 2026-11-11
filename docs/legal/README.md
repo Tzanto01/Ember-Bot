@@ -42,7 +42,7 @@ Security review: `REPORT.md`, section "Legal text vs code mismatches" (items 1 t
 | 10 | Logs described too narrowly | Added: Discord user IDs, push subscription IDs, stack traces |
 | 11 | Deletion and other devices | Added: local copies stay on other devices until they reach the server. Discord reminder buttons stay after deletion |
 | 12 | Logout | Text describes per-device logout and "Sign out everywhere". Code on `v2/fix-api` with tests in `SessionTests.cs` |
-| 13 | Brevo, backups, Proton Drive, Cloudflare DPA | Not in the repository. Markers kept |
+| 13 | Resend, backups, Proton Drive, Cloudflare DPA | Not in the repository. Markers kept |
 
 Also changed:
 
@@ -62,7 +62,7 @@ Also changed:
 - **Search engines:** the server sends `X-Robots-Tag: noindex` on `/legal/*`, so a search for the name does not show the address.
 - **Umsatzsteuer:** Kleinunternehmer under § 19 UStG, no USt-IdNr.
 - **Hosting:** self-hosted in Germany at the operator's home. The public app is reached through a Cloudflare Tunnel on ember-glow.app, so Cloudflare, Inc. is a processor (section 6.2 of the privacy policy).
-- **E-mail:** Brevo (Sendinblue SAS, France) today. Section 6.3 changes when the switch to a transactional provider (Resend or Postmark, not chosen) happens.
+- **E-mail:** Resend (Resend, Inc., USA) since 2026-11-11, section 6.3. Brevo before.
 - **Discord:** the bot uses no privileged intents and reads no messages. "Sign in with Discord" asks for the `identify` scope. Ember keeps only the Discord user ID. The Discord sign-in lasts 14 days.
 - **Sessions:** every sign-in gets a server-side session (14 days, sliding). Logout ends this device only. "Sign out everywhere" ends all of them. A password reset, a change to two-factor sign-in, linking or unlinking Discord and an account merge end the other sessions.
 - **Health data (Art. 9):** habit names, check-ins, low days, day notes and moods, under consent (policy version `2026-11`). Routines, habit renames and push subscriptions are not gated (question 12).
@@ -85,7 +85,7 @@ The markers are inline. Each category has a question below.
 | Backups, Proton Drive | Privacy policy, section 7 | 9 |
 | Sitzungen und Signup-Adresse auf dem Gerät | Privacy policy, sections 3.8 and 7 | 17 |
 | Export-Lücken | Privacy policy, section 9 | 16 |
-| Brevo, Tracking | Privacy policy, section 6.3 | 7 |
+| Resend, Tracking | Privacy policy, section 6.3 | 7 |
 | Cloudflare | Privacy policy, section 6.2 | 6 |
 | Discord als Verantwortlicher, Drittlandübermittlung | Privacy policy, section 6.1 and 6.4 | 5 |
 | Android-Push | Privacy policy, section 3.5 | (check before release) |
@@ -117,7 +117,7 @@ The markers are inline. Each category has a question below.
 | Sessions end as described (logout, sign out everywhere, reset, 2FA, merge) | Done on `v2/fix-api` (`SessionTests.cs`). Expired sessions are purged only at the next sign-in (question 17) |
 | Signup address is kept on the device only until confirmation | Done on `v2/fix-account` (`ember.signupEmail`). Not cleared if the account is never confirmed (question 17) |
 | Offline copy of the account and habits only with "Stay signed in" | Done on `v2/fix-platform` (`ember.offlineMe`, IndexedDB `cache`). Confirmation signs the user in with "Stay signed in" on (question 18) |
-| Mail tracking off at Brevo; Brevo agreement; Proton Drive; Cloudflare DPA | Not in the repository. Check by hand (questions 6, 7, 9) |
+| Mail tracking off at Resend; Resend agreement; Proton Drive; Cloudflare DPA | Not in the repository. Check by hand (questions 6, 7, 9) |
 
 ## Open questions
 
@@ -127,7 +127,7 @@ The markers are inline. Each category has a question below.
 4. **Minimum age.** Set `[PRÜFEN: Mindestalter]` (suggestion 16). Ember cannot verify age.
 5. **Discord's role.** The drafts treat Discord as an independent controller. Check whether a joint-controllership argument applies to a bot, which Discord entity to name for EEA users, and the transfer basis (DPF or SCCs). Fill the `[PRÜFEN]` markers in sections 6.1 and 6.4.
 6. **Cloudflare (before launch).** Accept Cloudflare's DPA in the Cloudflare dashboard before the public launch. At launch, confirm the Data Privacy Framework certification and the SCC fallback, and confirm section 6.2. Cloudflare ends TLS, so it can read request content.
-7. **Brevo.** Check the processing agreement (AVV), Brevo's retention period, and that click and open tracking are off for transactional mail. Otherwise links are rewritten and codes pass through Brevo's redirect. When the switch to Resend or Postmark happens, change section 6.3 and check that provider's agreement.
+7. **Resend.** Check the processing agreement (AVV) and its transfer basis (SCCs, DPF), the processing region chosen for ember-glow.app, Resend's retention period, and that click and open tracking are off for the domain. Otherwise links are rewritten and codes pass through a redirect. Section 6.3.
 8. **Logs and retention.** Logs rotate by size only, with no time limit. Decide: add a cleanup that keeps the 30-day promise, or change section 3.7 to the period you choose. The same goes for reverse-proxy and Cloudflare access logs, which can hold IP addresses.
 9. **Backups.** The repository defines no backup job. Confirm the cycle (the draft says daily, 7 days plus 4 weekly), where the off-site copy lives (Proton Drive is named), the encryption, and whether a cloud provider is involved (that would make it a processor). Publish only what actually runs.
 10. **Backups after deletion.** Deleted accounts stay in backups until they rotate out. A restored backup brings them back. Decide whether a re-deletion process is needed, and how to do it without keeping a list of deleted Discord IDs.
