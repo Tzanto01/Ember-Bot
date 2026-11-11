@@ -52,7 +52,7 @@ Browser: cookie auth. Mobile (Phase 7): bearer tokens from `/api/auth/login` and
 
 - The Capacitor app runs the same Angular build from the origins `https://localhost` (Android) and `capacitor://localhost` (iOS). CORS allows these in addition to `Ember__WebOrigin`, configurable as `Ember__NativeOrigins` (comma-separated, exact origins only, `*` rejected), with `Authorization` and `Content-Type` headers and without credentials; only the web origin gets credentials. These origins identify nothing (every Capacitor Android app is `https://localhost`); auth is the bearer token alone.
 - The native app uses bearer tokens only: `POST /api/auth/login` without cookie flags, then `POST /api/auth/refresh`. It sends `Authorization: Bearer`, never cookies, so antiforgery doesn't apply. The access token lives in memory only; the refresh token only in the platform's secure storage (Android Keystore-backed, iOS Keychain), never in `localStorage` or Preferences. On a 401 the app refreshes once (single flight) and retries. The native build calls the absolute `{WebOrigin}` API base; the web build stays relative and same-origin.
-- Bearer sessions aren't revoked server-side by logout: the refresh token stays valid until it expires or the security stamp changes (password reset, link, unlink, merge, delete). The access token lives 15 minutes and isn't checked against the security stamp, so only refresh is revoked on a stamp change. Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
+- A refresh token stays valid until it expires or the security stamp changes (logout on any device, password reset, link, unlink, merge, delete). The access token lives 15 minutes and isn't checked against the security stamp, so only refresh is revoked on a stamp change. Native logout and account delete wipe the stored tokens and the device's local state for that user (scheduled notifications, cached habits, queued offline edits).
 - Discord sign-in, link and merge are browser-only in v2. The app's Settings shows the Discord state and opens `{WebOrigin}/settings` in the system browser to link, and re-reads `GET /api/me` when the app resumes. A Discord-only account can't sign in to the app; the login screen says to create an email login on the web and link Discord there (which merges the accounts).
 - Sign-up, confirm and reset links open the web app (`{WebOrigin}`); the user then signs in in the app.
 
@@ -77,7 +77,7 @@ These keep ASP.NET Core Identity's response shapes:
 
 Custom:
 
-- `POST /api/auth/logout` → 204, clears the cookie.
+- `POST /api/auth/logout` → 204, clears the cookie and rotates the security stamp, which signs the account out everywhere: other cookies stop working within a minute (the stamp check interval), refresh tokens at their next refresh, access tokens when they expire (15 minutes).
 
 Identity options: confirmed email required to sign in, unique emails, lockout after 5 failures for 15 minutes; a successful password reset lifts the lockout. Security stamp changes on password reset, Discord link, unlink and merge; cookies revalidate the stamp every 5 minutes.
 
@@ -166,7 +166,7 @@ Endpoints:
 
 - `GET /api/low-days?from&to` → `string[]` of dates (default: the last 366 days).
 - `PUT /api/low-days/{date}` → 204. `in_future` after the local today, `before_habit_start` before the user's earliest habit start. `DELETE /api/low-days/{date}` → 204.
-- `GET /api/stats/weekly` → `{ totalDone, totalPossible, headline, footer, habits: [{ habitId, name, done, possible, streak }] }` for the 7 days ending yesterday (Core `WeeklySummaryService`). `headline` and `footer` are plain text: Discord markdown stripped, emoji kept. `streak` is null for weekly habits.
+- `GET /api/stats/weekly` → `{ totalDone, totalPossible, headline, footer, habits: [{ habitId, name, done, possible, streak }] }` for the 7 days ending yesterday (Core `WeeklySummaryService`). `headline` and `footer` are plain text: Discord markdown stripped, emoji kept. `streak` is null for weekly habits. When nothing was possible that week (`totalPossible` 0, Core `HasSummarableWeek` false, the bot sends no summary), `headline` and `footer` are empty strings.
 
 ## Web push (Phase 6 server slice)
 
