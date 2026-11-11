@@ -26,6 +26,7 @@ internal static class AuthEndpoints
     [
         Register, "/api/auth/login", "/api/auth/refresh", "/api/auth/resendConfirmationEmail",
         ForgotPassword, ResetPassword, ConfirmEmail, "/api/auth/discord/2fa",
+        "/api/auth/discord/native/token",
     ];
 
     public sealed record ConfirmEmailRequest(string? UserId, string? Code, string? Password);
