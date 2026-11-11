@@ -967,7 +967,7 @@ export default function SettingsPage() {
                     ) : (
                       <div>
                         {env.native ? (
-                          <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
+                          <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings/account#discord')}>
                             Link Discord on the web
                           </Button>
                         ) : me.hasPassword ? (
@@ -1017,7 +1017,7 @@ export default function SettingsPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {env.native ? (
-                    <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
+                    <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings/privacy#export')}>
                       Download on the web
                     </Button>
                   ) : (
