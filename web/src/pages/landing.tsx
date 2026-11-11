@@ -82,6 +82,9 @@ export default function LandingPage() {
               <Button asChild variant="ghost">
                 <Link to="/local">Try without an account</Link>
               </Button>
+              <Button asChild variant="ghost">
+                <Link to="/download">Get the app</Link>
+              </Button>
             </div>
             <p className="text-muted-foreground">Free. Made by Nico, a developer in Germany.</p>
           </div>

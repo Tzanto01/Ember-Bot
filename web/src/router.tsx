@@ -163,7 +163,12 @@ export const routes: RouteObject[] = [
       },
       {
         element: <CenteredShell />,
-        children: [legal('privacy', 'Privacy'), legal('terms', 'Terms'), legal('imprint', 'Imprint')],
+        children: [
+          legal('privacy', 'Privacy'),
+          legal('terms', 'Terms'),
+          legal('imprint', 'Imprint'),
+          { path: 'download', ...page('Get Ember', () => import('./pages/download')) },
+        ],
       },
       {
         Component: AppShell,

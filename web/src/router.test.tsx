@@ -98,6 +98,14 @@ describe('router guards', () => {
     expect(url(router)).toBe('/login?returnUrl=%2Ftoday');
   });
 
+  it('shows the download page without asking who is signed in', async () => {
+    const router = await visit('/download');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Get Ember' })).toBeInTheDocument();
+    expect(url(router)).toBe('/download');
+    expect(mock.all.some((call) => call.url === '/api/me')).toBe(false);
+  });
+
   it('shows the not-found page for an unknown address', async () => {
     await visit('/no/such/page');
 
