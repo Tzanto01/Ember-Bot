@@ -55,7 +55,7 @@ describe('router guards', () => {
 
     (await mock.next('GET', '/api/me')).fail();
 
-    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: "Ember can't be reached right now" })).toBeInTheDocument();
     expect(url(router)).toBe('/login?returnUrl=%2Ftoday&reason=offline');
     expect(mock.all.filter((call) => call.url === '/api/me')).toHaveLength(1);
   });
