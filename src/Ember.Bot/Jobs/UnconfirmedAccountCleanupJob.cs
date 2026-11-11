@@ -8,7 +8,8 @@ namespace Ember.Bot.Jobs;
 /// <summary>
 /// Runs daily and deletes email signups that were never confirmed within
 /// <see cref="HabitService.UnconfirmedAccountLifetime"/> (see <see cref="HabitService.DeleteStaleUnconfirmedAccountsAsync"/>),
-/// and expired sign-in sessions (see <see cref="HabitService.DeleteExpiredSessionsAsync"/>).
+/// expired sign-in sessions (see <see cref="HabitService.DeleteExpiredSessionsAsync"/>) and expired reminder action tokens
+/// (see <see cref="HabitService.DeleteExpiredReminderActionTokensAsync"/>).
 /// </summary>
 [DisallowConcurrentExecution]
 public class UnconfirmedAccountCleanupJob : IJob
@@ -34,5 +35,8 @@ public class UnconfirmedAccountCleanupJob : IJob
         var sessions = await habits.DeleteExpiredSessionsAsync(context.CancellationToken);
         if (sessions > 0)
             _logger.LogInformation("UnconfirmedAccountCleanupJob: deleted {Count} expired sessions.", sessions);
+        var tokens = await habits.DeleteExpiredReminderActionTokensAsync(context.CancellationToken);
+        if (tokens > 0)
+            _logger.LogInformation("UnconfirmedAccountCleanupJob: deleted {Count} expired reminder action tokens.", tokens);
     }
 }

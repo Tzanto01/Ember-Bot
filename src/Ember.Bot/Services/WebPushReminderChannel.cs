@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Ember.Bot.Jobs;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Lib.Net.Http.WebPush;
@@ -15,6 +17,8 @@ namespace Ember.Bot.Services;
 /// Sends reminders as Web Push notifications (VAPID, aes128gcm) to every push subscription of the user.
 /// The notification names no habit, since it can show on a lock screen. A subscription the push service reports
 /// as gone (404/410) is deleted. Delivered when at least one subscription accepted the message.
+/// A single-habit reminder also carries a "Done ✅" action with a one-time token (<see cref="HabitService.CreateReminderActionTokenAsync"/>)
+/// that expires with the reminder (<see cref="ReminderDispatchJob.IsExpired"/>); a routine reminder doesn't.
 /// </summary>
 public sealed class WebPushReminderChannel : IReminderChannel
 {
@@ -24,21 +28,32 @@ public sealed class WebPushReminderChannel : IReminderChannel
     /// <summary>How long (seconds) a push service keeps an undelivered reminder; a later one is pointless.</summary>
     public const int TimeToLiveSeconds = 12 * 60 * 60;
 
+    private static readonly JsonSerializerOptions PayloadJson = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
     /// <summary>The Angular service worker notification payload.</summary>
-    public static readonly string Payload = BuildPayload("A gentle nudge from Ember");
+    public static readonly string Payload = BuildPayload(FirstBody);
 
     /// <summary>The payload of a second reminder: the same notification with its own body.</summary>
-    public static readonly string SecondPayload = BuildPayload("One more nudge, in case the first one got buried.");
+    public static readonly string SecondPayload = BuildPayload(SecondBody);
 
-    private static string BuildPayload(string body) => JsonSerializer.Serialize(new
+    private const string FirstBody = "A gentle nudge from Ember";
+    private const string SecondBody = "One more nudge, in case the first one got buried.";
+
+    /// <summary>The notification payload with <paramref name="body"/>, plus the "Done" action when <paramref name="doneToken"/> is set.</summary>
+    internal static string BuildPayload(string body, string? doneToken = null) => JsonSerializer.Serialize(new
     {
         notification = new
         {
             title = "Ember",
             body,
-            data = new { onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/today" } } },
+            actions = doneToken is null ? null : new[] { new { action = "done", title = "Done ✅" } },
+            data = new
+            {
+                onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/today" } },
+                doneToken,
+            },
         },
-    });
+    }, PayloadJson);
 
     private readonly IServiceScopeFactory _scopes;
     private readonly IHttpClientFactory _httpClients;
@@ -94,12 +109,19 @@ public sealed class WebPushReminderChannel : IReminderChannel
     public async Task<DeliveryOutcome> SendAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
         List<Core.Models.PushSubscription> subscriptions;
+        string payload;
         using (var scope = _scopes.CreateScope())
         {
-            subscriptions = await scope.ServiceProvider.GetRequiredService<HabitService>()
-                .GetPushSubscriptionsAsync(reminder.UserId, cancellationToken);
+            var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
+            subscriptions = await habits.GetPushSubscriptionsAsync(reminder.UserId, cancellationToken);
+            if (subscriptions.Count == 0) return DeliveryOutcome.UserNotFound;
+
+            var doneToken = reminder.PendingHabits is null
+                ? await habits.CreateReminderActionTokenAsync(reminder.UserId, reminder.HabitId, reminder.Day,
+                    reminder.Day.AddDays(1).ToDateTime(new TimeOnly(MissedDayReflectionJob.LocalSendHour, 0)), cancellationToken)
+                : null;
+            payload = BuildPayload(reminder.Second ? SecondBody : FirstBody, doneToken);
         }
-        if (subscriptions.Count == 0) return DeliveryOutcome.UserNotFound;
 
         var client = new PushServiceClient(_httpClients.CreateClient(HttpClientName))
         {
@@ -116,7 +138,7 @@ public sealed class WebPushReminderChannel : IReminderChannel
 
             try
             {
-                await client.RequestPushMessageDeliveryAsync(target, new PushMessage(reminder.Second ? SecondPayload : Payload) { TimeToLive = TimeToLiveSeconds },
+                await client.RequestPushMessageDeliveryAsync(target, new PushMessage(payload) { TimeToLive = TimeToLiveSeconds },
                     cancellationToken);
                 delivered = true;
             }

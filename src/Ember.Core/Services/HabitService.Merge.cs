@@ -98,6 +98,8 @@ public partial class HabitService
 
             await _db.ReminderMessages.Where(m => m.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, targetUserId), cancellationToken);
+            await _db.ReminderActionTokens.Where(t => t.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UserId, targetUserId), cancellationToken);
 
             await _db.Users.Where(u => u.Id == sourceUserId).ExecuteDeleteAsync(cancellationToken);
 
