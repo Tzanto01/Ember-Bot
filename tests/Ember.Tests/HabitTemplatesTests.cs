@@ -52,4 +52,16 @@ public class HabitTemplatesTests
     {
         HabitTemplates.Find(null!).Should().BeNull();
     }
+
+    [Fact]
+    public void AllTemplates_UseSentenceCase_NoEmDash_AndDontSoundLikeARoutine()
+    {
+        foreach (var t in HabitTemplates.All)
+        {
+            var words = t.DisplayName[(t.DisplayName.IndexOf(' ') + 1)..];
+            words[1..].Should().NotContainAny(Enumerable.Range('A', 26).Select(c => ((char)c).ToString()), t.Key);
+            (t.DisplayName + t.Description).Should().NotContain("—", t.Key);
+            t.DisplayName.Should().NotContainEquivalentOf("routine", t.Key);
+        }
+    }
 }

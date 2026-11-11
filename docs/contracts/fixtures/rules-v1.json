@@ -3551,70 +3551,70 @@
         "dayStats": [
           {
             "date": "2027-03-08",
-            "scheduled": 2,
+            "scheduled": 1,
             "done": 1,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-09",
-            "scheduled": 2,
+            "scheduled": 0,
             "done": 0,
             "partial": 0,
             "showedUp": false
           },
           {
             "date": "2027-03-10",
-            "scheduled": 2,
+            "scheduled": 1,
             "done": 1,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-11",
-            "scheduled": 2,
+            "scheduled": 0,
             "done": 0,
             "partial": 0,
             "showedUp": false
           },
           {
             "date": "2027-03-12",
-            "scheduled": 2,
+            "scheduled": 0,
             "done": 0,
             "partial": 0,
             "showedUp": false
           },
           {
             "date": "2027-03-13",
-            "scheduled": 2,
+            "scheduled": 1,
             "done": 1,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-14",
-            "scheduled": 2,
+            "scheduled": 0,
             "done": 0,
             "partial": 0,
             "showedUp": false
           },
           {
             "date": "2027-03-15",
-            "scheduled": 2,
+            "scheduled": 1,
             "done": 1,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-16",
-            "scheduled": 2,
+            "scheduled": 1,
             "done": 1,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-17",
-            "scheduled": 2,
+            "scheduled": 0,
             "done": 0,
             "partial": 0,
             "showedUp": false
@@ -4186,14 +4186,14 @@
         "dayStats": [
           {
             "date": "2027-03-08",
-            "scheduled": 4,
+            "scheduled": 3,
             "done": 3,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-09",
-            "scheduled": 4,
+            "scheduled": 3,
             "done": 1,
             "partial": 0,
             "showedUp": true
@@ -4207,28 +4207,28 @@
           },
           {
             "date": "2027-03-11",
-            "scheduled": 3,
+            "scheduled": 2,
             "done": 0,
             "partial": 1,
             "showedUp": true
           },
           {
             "date": "2027-03-12",
-            "scheduled": 5,
+            "scheduled": 4,
             "done": 0,
             "partial": 1,
             "showedUp": true
           },
           {
             "date": "2027-03-13",
-            "scheduled": 4,
+            "scheduled": 3,
             "done": 2,
             "partial": 0,
             "showedUp": true
           },
           {
             "date": "2027-03-14",
-            "scheduled": 4,
+            "scheduled": 3,
             "done": 0,
             "partial": 0,
             "showedUp": false
@@ -4514,7 +4514,7 @@
         "dayStats": [
           {
             "date": "2027-03-13",
-            "scheduled": 6,
+            "scheduled": 5,
             "done": 2,
             "partial": 1,
             "showedUp": true

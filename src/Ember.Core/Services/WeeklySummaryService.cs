@@ -83,7 +83,7 @@ public static class WeeklySummaryService
         if (totalDone == 0)
         {
             return (
-                "It's been a quiet week — and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
+                "It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
                 "No pressure. Progress happens at its own pace.");
         }
 
@@ -93,17 +93,19 @@ public static class WeeklySummaryService
         if (totalDone >= totalPossible)
         {
             return (
-                $"You nailed every single check-in this week 🔥 That's {totalDone}/{Math.Max(totalPossible, totalDone)}. Incredible.",
+                $"You nailed every single check-in this week 🔥 That's {CheckIns(totalDone)}. Incredible.",
                 "You're on fire. Keep going.");
         }
 
         var pct = (int)Math.Round(100.0 * totalDone / totalPossible);
-        var headline = $"This week you completed **{totalDone}/{totalPossible}** check-ins ({pct}%). Every one of those counts. 💪";
+        var headline = $"This week you showed up for **{CheckIns(totalDone)}**. Every one of those counts. 💪";
         var footer = pct >= 50
             ? "More than half — that's a win. Keep it up."
             : "Small steps still move forward. You've got this.";
         return (headline, footer);
     }
+
+    private static string CheckIns(int count) => count == 1 ? "1 check-in" : $"{count} check-ins";
 
     /// <summary>
     /// Builds a 7-dot string like ✅⬜✅🔸▫️✅✅ for the window, oldest→newest: ✅ done, 🔸 partial,

@@ -130,7 +130,7 @@ public class ReminderMessageTests
         var sent = Now.ToUnixTimeSeconds().ToString();
         var buttons = new ComponentBuilder()
             .WithButton("Done ✅", $"checkin:done:1:{sent}", ButtonStyle.Success)
-            .WithButton("Skip ❌", $"checkin:skip:1:{sent}", ButtonStyle.Secondary)
+            .WithButton("Skip for today", $"checkin:skip:1:{sent}", ButtonStyle.Secondary)
             .Build().Components;
         Task<string?> ExpiredLine(string timestamp) => host.WithScopeAsync(sp =>
             CheckInButtonModule.ExpiredLineAsync(sp.GetRequiredService<HabitService>(), time, DiscordUser, timestamp, buttons));

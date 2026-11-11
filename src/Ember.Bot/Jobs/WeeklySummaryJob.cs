@@ -16,7 +16,7 @@ namespace Ember.Bot.Jobs;
 /// Sends a DM recapping the 7-day window ending the user's local yesterday (the last complete day):
 /// per-habit check-in counts, current streaks, a tone-appropriate line and, with <c>Ember:WebOrigin</c> set, a link to the web app.
 ///
-/// Users with zero check-ins in the window still get a DM — a gentle nudge, not
+/// Users with zero check-ins in the window still get a DM (only the soft headline and footer, no per-habit numbers) — a gentle nudge, not
 /// silence: Ember's philosophy is soft re-engagement, and going quiet at exactly the
 /// moment someone disengages is the failure mode to avoid. Users with nothing to
 /// summarise (no habits, or every habit created today / paused all week) are skipped —
@@ -106,7 +106,7 @@ public class WeeklySummaryJob : IJob
         // Discord caps embeds at EmbedBuilder.MaxFieldCount (25) fields; exceeding it
         // throws and the user would silently get no DM. Reserve the last slot for an
         // overflow line when a user has more habits than fit.
-        var habits = summary.Habits;
+        var habits = summary.TotalDone == 0 ? [] : summary.Habits;
         var overflow = habits.Count > EmbedBuilder.MaxFieldCount
             ? habits.Count - (EmbedBuilder.MaxFieldCount - 1)
             : 0;

@@ -74,6 +74,8 @@ public class ReminderDispatchTests
             .Should().Equal($"checkin:done:1:{Now.ToUnixTimeSeconds()}",
                             $"checkin:skip:1:{Now.ToUnixTimeSeconds()}",
                             $"checkin:snooze:1:{Now.ToUnixTimeSeconds()}");
+        dm.Components.Components.OfType<ActionRowComponent>().SelectMany(row => row.Components)
+            .OfType<ButtonComponent>().Select(b => b.Label).Should().Equal("Done ✅", "Skip for today", "Snooze 1h ⏰");
         (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
 
         await RunJobAsync(host);

@@ -349,8 +349,9 @@ public partial class HabitService
 
     /// <summary>
     /// One local day across <paramref name="habits"/> (with that day's logs loaded): <c>Scheduled</c> counts the habits expected
-    /// that day (from their <see cref="StartDate"/>, not paused, <see cref="IsScheduledOn"/>; low days don't change it, weekly
-    /// habits count every day), <c>Done</c> and <c>Partial</c> the habits whose log reached each state (offdays included),
+    /// that day (from their <see cref="StartDate"/>, not paused, <see cref="IsScheduledOn"/>; low days don't change it, and a weekly
+    /// habit counts only on a day it has a check-in, since any day can serve its target), <c>Done</c> and <c>Partial</c> the habits
+    /// whose log reached each state (offdays included),
     /// and <c>ShowedUp</c> is true when any habit has a check-in that day.
     /// </summary>
     public static DayStats DayStatsOn(IEnumerable<Habit> habits, DateOnly date, TimeZoneInfo tz)
@@ -359,8 +360,11 @@ public partial class HabitService
         var showedUp = false;
         foreach (var habit in habits)
         {
-            if (date >= StartDate(habit, tz) && !IsPausedOn(habit, date) && IsScheduledOn(habit, date)) scheduled++;
-            if (habit.Logs.FirstOrDefault(l => l.Date == date) is not { } log) continue;
+            var log = habit.Logs.FirstOrDefault(l => l.Date == date);
+            if (date >= StartDate(habit, tz) && !IsPausedOn(habit, date) && IsScheduledOn(habit, date)
+                && (habit.FrequencyType != FrequencyType.Weekly || log is { Completed: true } or { Count: > 0 }))
+                scheduled++;
+            if (log is null) continue;
             if (log.Completed) done++;
             else if (log.Count > 0) partial++;
             showedUp |= log.Completed || log.Count > 0;

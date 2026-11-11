@@ -99,9 +99,9 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 
 ## Self-Hosting
 
-Ember is hosted publicly — you don't need to run your own instance.
+Ember runs as a hosted private preview for now; a public bot invite is planned for launch.
 
-If the bot ever goes offline permanently, the source code is here so you can self-host as a fallback.
+You can also run your own instance from this source code.
 
 The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml`). You need Docker with Compose, a Discord bot application, and a PostgreSQL server that the container reaches as host `postgres` on an existing external Docker network named `homeserver-net` (database `emberdb`). Put a `.env` file (gitignored) next to `docker-compose.yml`:
 

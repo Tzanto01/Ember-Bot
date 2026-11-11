@@ -33,7 +33,7 @@ public class RoutineDmButtonTests
     {
         var reminder = new ComponentBuilder()
             .WithButton("Done ✅", "checkin:done:1:100", ButtonStyle.Success)
-            .WithButton("Skip ❌", "checkin:skip:1:100", ButtonStyle.Secondary)
+            .WithButton("Skip for today", "checkin:skip:1:100", ButtonStyle.Secondary)
             .Build();
 
         CheckInButtonModule.RoutineButtonsAfterDone(reminder.Components, "checkin:done:1:100", done: true).Should().BeNull();

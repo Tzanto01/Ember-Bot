@@ -45,8 +45,8 @@ public class JobIntegrationTests
         message.Embed.Should().NotBeNull();
         message.Embed!.Title.Should().Be("🗓️ Your weekly habit summary");
 
-        // 2 of 7 possible check-ins → tone line for an under-half week (29%).
-        message.Embed.Description.Should().Contain("**2/7**").And.Contain("(29%)");
+        // 2 of 7 possible check-ins → tone line for an under-half week, without a percentage.
+        message.Embed.Description.Should().Contain("**2 check-ins**").And.NotContain("%");
         message.Embed.Footer!.Value.Text.Should().Be("Small steps still move forward. You've got this.");
 
         // Per-habit line: dot history (oldest→newest), count, and the *current* streak —
@@ -99,6 +99,7 @@ public class JobIntegrationTests
         message.UserId.Should().Be(77);
         message.Embed.Should().NotBeNull();
         message.Embed!.Description.Should().Contain("quiet week").And.Contain("that's okay");
+        message.Embed.Fields.Should().BeEmpty();
         message.Embed.Footer!.Value.Text.Should().Be("No pressure. Progress happens at its own pace.");
     }
 
@@ -124,6 +125,7 @@ public class JobIntegrationTests
                     CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-10).AddMinutes(i)
                 });
             }
+            user.Habits.First().Logs.Add(new HabitLog { Date = DateOnly.FromDateTime(SundayMorningUtc.UtcDateTime).AddDays(-1), Completed = true });
 
             db.Users.Add(user);
             await db.SaveChangesAsync();
