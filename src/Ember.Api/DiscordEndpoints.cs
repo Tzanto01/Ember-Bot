@@ -213,9 +213,9 @@ internal static class DiscordEndpoints
         http.Response.Cookies.Delete(name, GrantCookieOptions(http, null));
 
         var key = GrantKey(token);
-        if (!cache.TryGetValue(key, out LinkGrant? grant)) return false;
+        if (!cache.TryGetValue(key, out LinkGrant? grant) || grant is null) return false;
         cache.Remove(key);
-        return grant is not null && grant.UserId == user.Id && grant.ExpiresUtc > time.GetUtcNow();
+        return Interlocked.Exchange(ref grant.Taken, 1) == 0 && grant.UserId == user.Id && grant.ExpiresUtc > time.GetUtcNow();
     }
 
     private static string GrantKey(string token) => $"discord-link-grant:{token}";
@@ -227,7 +227,7 @@ internal static class DiscordEndpoints
     private static CookieOptions GrantCookieOptions(HttpContext http, TimeSpan? maxAge) => new()
     {
         HttpOnly = true,
-        SameSite = SameSiteMode.Lax,
+        SameSite = SameSiteMode.Strict,
         Secure = http.Request.IsHttps || !IsDevelopment(http),
         Path = LinkPath,
         MaxAge = maxAge,
@@ -235,7 +235,10 @@ internal static class DiscordEndpoints
     };
 
     /// <summary>A password check that lets <see cref="UserId"/> start one Discord link until <see cref="ExpiresUtc"/>.</summary>
-    private sealed record LinkGrant(Guid UserId, DateTimeOffset ExpiresUtc);
+    private sealed record LinkGrant(Guid UserId, DateTimeOffset ExpiresUtc)
+    {
+        public int Taken;
+    }
 
     private static IResult Failed() => TypedResults.Problem("Failed", statusCode: StatusCodes.Status401Unauthorized);
 
