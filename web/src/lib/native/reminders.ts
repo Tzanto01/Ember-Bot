@@ -225,7 +225,7 @@ export class Reminders {
       });
       await plugin.registerActionTypes({
         types: [
-          { id: doneActionType, actions: [{ id: doneAction, title: 'Done', foreground: true }] },
+          { id: doneActionType, actions: [{ id: doneAction, title: 'Done ✅', foreground: true }] },
         ],
       });
       this.channelReady = true;
