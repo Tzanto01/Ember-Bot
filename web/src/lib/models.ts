@@ -180,6 +180,9 @@ export interface Credentials {
   twoFactorRecoveryCode?: string;
 }
 
+/** `POST /api/auth/confirm-email-code` body: the emailed 6-digit code with the account's email or user id. */
+export type EmailCode = ({ email: string; userId?: never } | { userId: string; email?: never }) & { code: string };
+
 /** `Routine` (v1.6). `habitIds` is ordered and sets membership. */
 export interface Routine {
   id: number;

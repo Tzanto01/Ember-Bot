@@ -3,15 +3,10 @@ import { type FormEvent, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { DiscordButton } from '@/components/auth/discord-button';
+import { EmailCodeForm } from '@/components/auth/email-code-form';
 import { EnvelopeSpark } from '@/components/auth/illustrations';
 import { rememberSignupEmail } from '@/components/auth/signup-email';
-import {
-  email as emailRule,
-  minLength,
-  useField,
-  useFocusHeadingOnChange,
-  validateAll,
-} from '@/components/auth/use-field';
+import { email as emailRule, minLength, useField, validateAll } from '@/components/auth/use-field';
 import { FormField } from '@/components/form-field';
 import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
 import { PageHeader } from '@/components/page-header';
@@ -24,14 +19,13 @@ import { api } from '@/lib/services';
 
 const passwordHint = "At least 10 characters. A short phrase you'll remember works well.";
 
-/** `/signup`: email and password, then the "Check your inbox" view with a resend action. */
+/** `/signup`: email and password, then the "Check your inbox" view with the emailed code and a resend action. */
 export default function SignupPage() {
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const password = useField(minLength(10));
   const [problem, setProblem] = useState<FriendlyProblem | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
-  useFocusHeadingOnChange(sentTo);
 
   const register = useMutation({
     mutationFn: (body: Credentials) => api.register(body),
@@ -42,11 +36,6 @@ export default function SignupPage() {
     onError: (error) => setProblem(problemToMessage(asApiError(error), 'register')),
   });
 
-  const resend = useMutation({
-    mutationFn: (address: string) => api.resendConfirmationEmail(address),
-    onError: (error) => setProblem(problemToMessage(asApiError(error))),
-  });
-
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (register.isPending) return;
@@ -55,38 +44,15 @@ export default function SignupPage() {
     register.mutate({ email: email.value.trim(), password: password.value });
   }
 
-  function resendLink(address: string) {
-    if (resend.isPending) return;
-    setProblem(null);
-    resend.mutate(address);
-  }
-
   if (sentTo !== null) {
     return (
       <>
-        <PageHeader
-          title="Check your inbox"
-          lede={`We sent an email to ${sentTo}. Open the link inside to finish setting up.`}
-        />
+        <PageHeader title="Check your inbox" lede={`We sent a 6-digit code to ${sentTo}. Enter it here to finish.`} />
         <EnvelopeSpark className="self-center" />
-        {resend.isSuccess && <Notice tone="success">Sent again. It can take a minute or two to arrive.</Notice>}
-        {problem && <Notice tone="notice">{problem.message}</Notice>}
-        <p className="text-muted-foreground">Nothing there? Check your spam folder, or we can send it again.</p>
-        <div className="flex flex-col gap-3">
-          <BusyButton
-            type="button"
-            variant="secondary"
-            block
-            busy={resend.isPending}
-            busyLabel="Sending…"
-            onClick={() => resendLink(sentTo)}
-          >
-            Send it again
-          </BusyButton>
-          <Button asChild variant="ghost" block>
-            <Link to="/login">Back to sign in</Link>
-          </Button>
-        </div>
+        <EmailCodeForm email={sentTo} />
+        <Button asChild variant="ghost" block>
+          <Link to="/login">Back to sign in</Link>
+        </Button>
       </>
     );
   }

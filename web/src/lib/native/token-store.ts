@@ -1,4 +1,5 @@
 import type { BearerTokens, Http } from '../http';
+import type { EmailCode } from '../models';
 import { type ApiError, asApiError } from '../problem';
 
 /** Where the refresh token lives: the platform's secure storage (Android Keystore, iOS Keychain). */
@@ -88,6 +89,17 @@ export class TokenStore implements BearerTokens {
       twoFactorCode: twoFactor?.code,
       twoFactorRecoveryCode: twoFactor?.recoveryCode,
     });
+    if (epoch === this.epoch) await this.keep(tokens, true);
+  }
+
+  /**
+   * Confirms the email with the emailed code (`POST /api/auth/confirm-email-code` without cookie flags) and keeps the
+   * refresh token in secure storage. Rejects with the `ApiError` (401 `invalid_code`).
+   */
+  async signInWithEmailCode(body: EmailCode): Promise<void> {
+    await this.clear();
+    const epoch = this.epoch;
+    const tokens = await this.post('/api/auth/confirm-email-code', body);
     if (epoch === this.epoch) await this.keep(tokens, true);
   }
 

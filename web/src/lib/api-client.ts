@@ -6,6 +6,7 @@ import type {
   DayNoteBody,
   DayStat,
   DeleteAccountRequest,
+  EmailCode,
   ExportFormat,
   Habit,
   HabitPatch,
@@ -102,6 +103,15 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/confirmEmail', {
       body: { userId, code, password },
     });
+  }
+
+  /**
+   * `POST /api/auth/confirm-email-code?useCookies=true`: confirms the email with the emailed 6-digit code and signs the
+   * browser in with the cookie. Send `email` or `userId`. Any failure is 401 `invalid_code`. Prefer
+   * `AuthService.confirmEmailCode()`.
+   */
+  confirmEmailCode(body: EmailCode): Promise<void> {
+    return this.http.request('POST', '/api/auth/confirm-email-code', { body, params: { useCookies: 'true' } });
   }
 
   /** `POST /api/auth/resendConfirmationEmail`: always 200. */

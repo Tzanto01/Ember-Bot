@@ -48,7 +48,7 @@ export function requiresTwoFactor(error: unknown): boolean {
 }
 
 /** Which screen is asking: login and email-link failures are form errors, never a session expiry. */
-export type ProblemContext = 'general' | 'login' | 'register' | 'confirm-email' | 'reset-password';
+export type ProblemContext = 'general' | 'login' | 'register' | 'confirm-email' | 'email-code' | 'reset-password';
 
 /** A gentle, user-facing reading of a failed call. */
 export interface FriendlyProblem {
@@ -110,7 +110,7 @@ function waitText(seconds: number | null): string {
 
 /**
  * Maps a failed call to gentle copy. Pure: no navigation, no state.
- * Login 401 (`Failed`, `NotAllowed`, `RequiresTwoFactor`) and confirm-email 401 are form errors here.
+ * Login 401 (`Failed`, `NotAllowed`, `RequiresTwoFactor`), confirm-email and email-code 401 are form errors here.
  */
 export function problemToMessage(
   error: ApiError,
@@ -160,6 +160,8 @@ export function problemToMessage(
         result.message =
           "That link or password didn't work. Check the password you chose when you signed up, or reset it.";
         result.offerResend = true;
+      } else if (context === 'email-code') {
+        result.message = "That code didn't work. Check the newest email or send a new code.";
       } else if (context === 'reset-password') {
         result.message = expiredLink;
       } else {

@@ -88,4 +88,64 @@ describe('ConfirmEmailPage', () => {
     expect(screen.getByRole('link', { name: 'Reset your password' })).toHaveAttribute('href', '/forgot-password');
     expect(screen.getByLabelText('Email for a new link')).toBeInTheDocument();
   });
+
+  const invalidCode = {
+    status: 401,
+    type: 'invalid_code',
+    detail: "That code didn't work. Check the newest email or send a new code.",
+  };
+
+  it('with a user and code in the link, signs in right away without asking for a password', async () => {
+    const router = renderPage('/confirm-email', ConfirmEmailPage, '/confirm-email?user=u1&code=123456');
+
+    const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(confirm.body).toEqual({ userId: 'u1', code: '123456' });
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    confirm.respond(200);
+    (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+    (await mock.next('GET', '/api/me')).respond(200, me);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+    expect(mock.all.filter((c) => c.url.startsWith('/api/auth/confirm-email-code'))).toHaveLength(1);
+  });
+
+  it('when the link code fails, shows the code form with the error, asks for the email and sends a new code', async () => {
+    const user = userEvent.setup();
+    const router = renderPage('/confirm-email', ConfirmEmailPage, '/confirm-email?user=u1&code=111111');
+    (await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true')).respond(401, invalidCode);
+
+    const code = await screen.findByLabelText('6-digit code');
+    expect(code).toHaveAttribute('aria-invalid', 'true');
+    expect(code).toHaveFocus();
+    expect(screen.getByText(invalidCode.detail)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Email'), 'new@example.test');
+    await user.click(screen.getByRole('button', { name: 'Send a new code' }));
+    const resend = await mock.next('POST', '/api/auth/resendConfirmationEmail');
+    expect(resend.body).toEqual({ email: 'new@example.test' });
+    resend.respond(200);
+    expect(await screen.findByText('A new code is on its way. It can take a minute or two to arrive.')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('6-digit code'), '222222');
+    const retry = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(retry.body).toEqual({ email: 'new@example.test', code: '222222' });
+    retry.respond(200);
+    (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+    (await mock.next('GET', '/api/me')).respond(200, me);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'));
+  });
+
+  it('without a link, fills in the address this device signed up with and signs in with the typed code', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('ember.signupEmail', JSON.stringify({ email: 'new@example.test', at: Date.now() }));
+    renderPage('/confirm-email', ConfirmEmailPage, '/confirm-email');
+
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('6-digit code'), '12 34 56');
+
+    const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
+    expect(confirm.body).toEqual({ email: 'new@example.test', code: '123456' });
+  });
 });
