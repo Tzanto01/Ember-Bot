@@ -27,12 +27,13 @@ export async function signUp(page: Page, email: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
 }
 
+/** Opens the emailed link and confirms; the same browser signed up, so it is signed in and lands on consent. */
 export async function confirmEmail(page: Page, email: string): Promise<void> {
   const link = await findOutboxLink(page.request, email, '/confirm-email?');
   await page.goto(link);
   await page.getByLabel('Password', { exact: true }).fill(SECRET);
   await page.getByRole('button', { name: 'Confirm email' }).click();
-  await expect(page.getByRole('heading', { name: "You're confirmed" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'One quick question' })).toBeVisible();
 }
 
 export async function logIn(page: Page, email: string): Promise<void> {
@@ -56,11 +57,10 @@ export async function agreeToConsentIfAsked(page: Page): Promise<void> {
   await expect(today).toBeVisible();
 }
 
-/** Sign up, confirm by email link, log in and give consent; ends on Today. */
+/** Sign up, confirm by email link (which signs in) and give consent; ends on Today. */
 export async function createWebUser(page: Page, email = uniqueEmail()): Promise<string> {
   await signUp(page, email);
   await confirmEmail(page, email);
-  await logIn(page, email);
   await agreeToConsent(page);
   return email;
 }

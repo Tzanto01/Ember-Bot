@@ -192,8 +192,10 @@ export default function SettingsPage() {
   useEffect(() => {
     const id = location.hash.slice(1);
     if (!me || !id || scrolled.current === id || !document.getElementById(`${id}-heading`)) return;
-    scrolled.current = id;
-    const frame = requestAnimationFrame(() => focusSection(id));
+    const frame = requestAnimationFrame(() => {
+      scrolled.current = id;
+      focusSection(id);
+    });
     return () => cancelAnimationFrame(frame);
   }, [me, pushAvailable, location.hash]);
 

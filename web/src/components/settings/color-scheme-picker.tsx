@@ -29,7 +29,7 @@ export function ColorSchemePicker() {
         aria-describedby="color-scheme-hint"
         value={scheme}
         onValueChange={choose}
-        className="grid grid-cols-3 gap-2"
+        className="flex flex-wrap gap-2"
       >
         {choices.map((choice) => (
           <label

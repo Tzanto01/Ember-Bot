@@ -78,14 +78,19 @@ describe('SettingsPage', () => {
   it('scrolls to the card named in the address and focuses its heading, as /settings#push', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
+    const frames = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.set(frames.size + 1, callback).size);
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
     push.available.set(true);
     auth.setMe(me);
     const fetch = mockFetch();
     renderPage('/settings', SettingsPage, '/settings#push');
-    (await fetch.next('GET', '/api/me')).respond(200, me);
-
     const heading = await screen.findByRole('heading', { name: 'Notifications on this device' });
-    await waitFor(() => expect(heading).toHaveFocus());
+    (await fetch.next('GET', '/api/me')).respond(200, { ...me });
+    await settle();
+
+    frames.forEach((callback) => callback(0));
+    expect(heading).toHaveFocus();
     expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('push'));
   });
 
