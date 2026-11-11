@@ -234,8 +234,9 @@ export function dayStats(data: LocalData, from: LocalDateString, to: LocalDateSt
     let partial = 0;
     let showedUp = false;
     for (const { habit, start } of habits) {
-      if (date >= start && !isPausedOn(habit, date) && isScheduledOn(habit, date)) scheduled++;
       const log = logs.get(`${habit.id}|${date}`);
+      if (date >= start && !isPausedOn(habit, date) && isScheduledOn(habit, date)
+        && (habit.frequency !== 'weekly' || (log && (log.completed || log.count > 0)))) scheduled++;
       if (!log) continue;
       if (log.completed) done++;
       else if (log.count > 0) partial++;
@@ -251,22 +252,26 @@ function roundHalfEven(value: number): number {
   return rounded - value === 0.5 && rounded % 2 !== 0 ? rounded - 1 : rounded;
 }
 
+function checkIns(count: number): string {
+  return count === 1 ? '1 check-in' : `${count} check-ins`;
+}
+
 function toneLines(totalDone: number, totalPossible: number): { headline: string; footer: string } {
   if (totalDone === 0) {
     return {
-      headline: "It's been a quiet week — and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
+      headline: "It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
       footer: 'No pressure. Progress happens at its own pace.',
     };
   }
   if (totalDone >= totalPossible) {
     return {
-      headline: `You nailed every single check-in this week 🔥 That's ${totalDone}/${Math.max(totalPossible, totalDone)}. Incredible.`,
+      headline: `You nailed every single check-in this week 🔥 That's ${checkIns(totalDone)}. Incredible.`,
       footer: "You're on fire. Keep going.",
     };
   }
   const pct = roundHalfEven((100 * totalDone) / totalPossible);
   return {
-    headline: `This week you completed **${totalDone}/${totalPossible}** check-ins (${pct}%). Every one of those counts. 💪`,
+    headline: `This week you showed up for **${checkIns(totalDone)}**. Every one of those counts. 💪`,
     footer: pct >= 50 ? "More than half — that's a win. Keep it up." : "Small steps still move forward. You've got this.",
   };
 }

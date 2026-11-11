@@ -402,24 +402,24 @@ describe('dayStats', () => {
   ];
   const logs = [L(1, 1, true, 1), L(2, 1, true, 1), L(3, 1, false, 0), L(4, 1, false, 1), L(5, 1, true, 1)];
 
-  it('counts scheduled habits and done and partial check-ins, offdays and paused days included in done', () => {
+  it('counts scheduled habits and done and partial check-ins, offdays and paused days included in done, weekly habits only on a check-in day', () => {
     const [stat] = dayStats(data(habits, logs), ago(1), ago(1), TODAY);
-    expect(stat).toEqual({ date: ago(1), scheduled: 3, done: 3, partial: 1, showedUp: true });
+    expect(stat).toEqual({ date: ago(1), scheduled: 2, done: 3, partial: 1, showedUp: true });
   });
 
   it('a habit becomes scheduled on its start day', () => {
-    expect(dayStats(data(habits, []), ago(0), ago(0), TODAY)[0].scheduled).toBe(4);
+    expect(dayStats(data(habits, []), ago(0), ago(0), TODAY)[0].scheduled).toBe(3);
   });
 
   it('low days do not change scheduled', () => {
     const [stat] = dayStats(data(habits, logs, { lowDays: [ago(1)] }), ago(1), ago(1), TODAY);
-    expect(stat.scheduled).toBe(3);
+    expect(stat.scheduled).toBe(2);
   });
 
   it('an explicit not-done day or an empty day is not showing up', () => {
     const [a, b] = dayStats(data([ids(1), ids(3, { frequency: 'weekly', weeklyTarget: 2 })], [L(3, 3, false, 0)]), ago(3), ago(2), TODAY);
-    expect(a).toEqual({ date: ago(3), scheduled: 2, done: 0, partial: 0, showedUp: false });
-    expect(b).toEqual({ date: ago(2), scheduled: 2, done: 0, partial: 0, showedUp: false });
+    expect(a).toEqual({ date: ago(3), scheduled: 1, done: 0, partial: 0, showedUp: false });
+    expect(b).toEqual({ date: ago(2), scheduled: 1, done: 0, partial: 0, showedUp: false });
   });
 
   it('a checked-in offday alone is showing up', () => {
@@ -450,7 +450,7 @@ describe('weeklySummary', () => {
     expect(s).toEqual({
       totalDone: 7,
       totalPossible: 7,
-      headline: 'You nailed every single check-in this week 🔥 That\'s 7/7. Incredible.',
+      headline: 'You nailed every single check-in this week 🔥 That\'s 7 check-ins. Incredible.',
       footer: 'You\'re on fire. Keep going.',
       habits: [{ habitId: 1, name: 'Water', done: 7, possible: 7, streak: 7 }],
     });
@@ -459,20 +459,20 @@ describe('weeklySummary', () => {
   it('nudges gently after a week without check-ins', () => {
     const s = summary([habit()], done(0));
     expect(s.totalDone).toBe(0);
-    expect(s.headline).toBe('It\'s been a quiet week — and that\'s okay. 💙\nWhenever you\'re ready, your habits are here waiting.');
+    expect(s.headline).toBe('It\'s been a quiet week, and that\'s okay. 💙\nWhenever you\'re ready, your habits are here waiting.');
     expect(s.footer).toBe('No pressure. Progress happens at its own pace.');
   });
 
   it('shows the rate with markdown stripped, and encourages below half', () => {
     const s = summary([habit()], done(1, 3, 5));
-    expect(s.headline).toBe('This week you completed 3/7 check-ins (43%). Every one of those counts. 💪');
+    expect(s.headline).toBe('This week you showed up for 3 check-ins. Every one of those counts. 💪');
     expect(s.footer).toBe('Small steps still move forward. You\'ve got this.');
   });
 
   it('exactly half is more than half', () => {
     const s = summary([habit({ createdAt: ago(3) + 'T10:00:00Z' })], done(1));
     expect(s.habits[0]).toMatchObject({ done: 1, possible: 2 });
-    expect(s.headline).toBe('This week you completed 1/2 check-ins (50%). Every one of those counts. 💪');
+    expect(s.headline).toBe('This week you showed up for 1 check-in. Every one of those counts. 💪');
     expect(s.footer).toBe('More than half — that\'s a win. Keep it up.');
   });
 
