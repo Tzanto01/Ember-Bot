@@ -122,7 +122,7 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Hides Identity's GET endpoints (confirmEmail, manage/info), whatever the path spelling. Rate-limits each mail-sending
+    /// Hides Identity's GET endpoints (confirmEmail, manage/info) and its manage/info and manage/2fa POSTs, whatever the path spelling. Rate-limits each mail-sending
     /// endpoint (see <see cref="RateLimits.MailKeys"/>). A registration with
     /// a taken address answers like a new one: an account that never confirmed its email (so it was never signed in) is
     /// replaced by the new registration; a confirmed one stays and its owner gets the "already registered" email.
@@ -132,7 +132,8 @@ internal static class AuthEndpoints
     private static async ValueTask<object?> IdentityFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
-        if (HttpMethods.IsGet(http.Request.Method)) return Problems.NotFound();
+        if (HttpMethods.IsGet(http.Request.Method) || context.Arguments.Any(argument => argument is InfoRequest or TwoFactorRequest))
+            return Problems.NotFound();
 
         var request = context.Arguments.FirstOrDefault(argument =>
             argument is RegisterRequest or ResendConfirmationEmailRequest or ForgotPasswordRequest or ResetPasswordRequest);

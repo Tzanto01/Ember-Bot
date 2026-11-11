@@ -50,8 +50,8 @@ internal static class TwoFactorEndpoints
                 return Problems.Validation("code", WrongCode);
 
             await users.SetTwoFactorEnabledAsync(user, true);
-            var codes = await users.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount);
             await signIn.RefreshSignInAsync(user);
+            var codes = await users.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount);
             return Results.Ok(new RecoveryCodesDto(codes!.ToArray()));
         }).RequireRateLimiting(RateLimits.AuthPolicy);
 
@@ -59,13 +59,14 @@ internal static class TwoFactorEndpoints
         {
             var user = await users.GetUserAsync(principal);
             if (user is null) return Problems.Unauthenticated();
+            if (!user.TwoFactorEnabled) return Results.NoContent();
 
             if (await users.HasPasswordAsync(user))
             {
                 if (!(await signIn.CheckPasswordSignInAsync(user, request.Password ?? "", lockoutOnFailure: true)).Succeeded)
                     return Problems.Validation("password", "The password is not correct.");
             }
-            else if (user.TwoFactorEnabled && !await CheckCodeAsync(users, user, request.Code))
+            else if (!await CheckCodeAsync(users, user, request.Code))
             {
                 return Problems.Validation("code", WrongCode);
             }

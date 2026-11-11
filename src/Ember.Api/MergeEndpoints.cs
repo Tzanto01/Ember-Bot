@@ -46,6 +46,7 @@ internal static class MergeEndpoints
             PendingMerge.Clear(http);
             db.ChangeTracker.Clear();
             if (await users.FindByIdAsync(user.Id.ToString()) is { } merged) await signIn.RefreshSignInAsync(merged);
+            await habits.RescheduleRemindersAsync(user.Id);
             return Results.NoContent();
         });
 
