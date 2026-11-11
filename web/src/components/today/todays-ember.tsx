@@ -7,6 +7,8 @@ export interface TodaysEmberProps {
   /** Habits checked in today. */
   count: number;
   lowDay: boolean;
+  /** Every habit due today is checked in. */
+  allDone?: boolean;
   /** True while a check-in reward plays; only then does the flame animate its step. */
   stepping: boolean;
   className?: string;
@@ -14,10 +16,10 @@ export interface TodaysEmberProps {
 
 /**
  * The Today's ember summary: a flame that grows one step per check-in today (0.85 + 0.05 each, capped at 1.1,
- * glow rising with it) and a plain line of text: "{n} checked in today", "Resting today" on a quiet low day,
- * nothing at zero.
+ * glow rising with it) and a plain line of text: "{n} checked in today" (plus "That's everything for today." once
+ * all are done), "Resting today" on a quiet low day, "Nothing checked in yet today" at zero otherwise.
  */
-export function TodaysEmber({ count, lowDay, stepping, className }: TodaysEmberProps) {
+export function TodaysEmber({ count, lowDay, allDone = false, stepping, className }: TodaysEmberProps) {
   const reduce = useReducedMotion();
   const scale = Math.min(0.85 + 0.05 * count, 1.1);
   const glow = Math.min(0.08 + 0.06 * count, 0.4);
@@ -48,14 +50,22 @@ export function TodaysEmber({ count, lowDay, stepping, className }: TodaysEmberP
         </motion.g>
       </svg>
       {count > 0 ? (
-        <p className="text-[14px] leading-snug">{count} checked in today</p>
+        <p className="text-[14px] leading-snug">
+          {count} checked in today
+          {allDone && (
+            <>
+              <br />
+              That's everything for today.
+            </>
+          )}
+        </p>
+      ) : lowDay ? (
+        <p className="flex items-center gap-1.5 text-[14px] leading-snug">
+          <Moon aria-hidden className="size-[16px] shrink-0" />
+          Resting today
+        </p>
       ) : (
-        lowDay && (
-          <p className="flex items-center gap-1.5 text-[14px] leading-snug">
-            <Moon aria-hidden className="size-[16px] shrink-0" />
-            Resting today
-          </p>
-        )
+        <p className="text-[14px] leading-snug">Nothing checked in yet today</p>
       )}
     </div>
   );

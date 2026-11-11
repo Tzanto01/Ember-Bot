@@ -4,7 +4,11 @@ import { Spinner } from '@/components/spinner';
 import { cn } from '@/lib/utils';
 import type { RewardKeyword } from './reward';
 
+/** The id of a habit's check button on Today, so focus can return to it. */
+export const checkButtonId = (habitId: number) => `check-${habitId}`;
+
 export interface CheckButtonProps {
+  id?: string;
   habitName: string;
   pressed: boolean;
   busy: boolean;
@@ -21,9 +25,10 @@ export interface CheckButtonProps {
 /**
  * Today's 56 px check-in toggle (`aria-pressed`, "Check in {habit} for today"). Unpressed: open `--pending` edge,
  * no tick. Pressed: `--done` fill with a check. Busy: `aria-disabled`, and a spinner once no reward is playing.
- * Multi-count: the name adds "(2 of 3)", the face shows "2/3" with a `--done` edge once started.
+ * Multi-count: the name adds "(2/3)", the face shows "2/3" with a `--done` edge once started.
  */
 export function CheckButton({
+  id,
   habitName,
   pressed,
   busy,
@@ -40,9 +45,10 @@ export function CheckButton({
   const started = multi && !pressed && count > 0;
   return (
     <button
+      id={id}
       type="button"
       aria-pressed={pressed}
-      aria-label={`Check in ${habitName} for today${multi ? ` (${Math.min(count, target)} of ${target})` : ''}`}
+      aria-label={`Check in ${habitName} for today${multi ? ` (${Math.min(count, target)}/${target})` : ''}`}
       aria-disabled={busy || undefined}
       onClick={onToggle}
       onAnimationEnd={ended}

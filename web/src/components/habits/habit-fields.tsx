@@ -133,6 +133,8 @@ export interface HabitFieldsProps {
   savedTimesPerDay?: number;
   /** Shown under the reminder time, for example when a routine's reminder replaces this one. */
   reminderNote?: ReactNode;
+  /** False hides the reminder time, where reminders can't go out (no-account mode on the web). */
+  showReminder?: boolean;
 }
 
 /**
@@ -148,6 +150,7 @@ export function HabitFields({
   nameId,
   savedTimesPerDay,
   reminderNote,
+  showReminder = true,
 }: HabitFieldsProps) {
   const id = useId();
   const legendId = `${id}-often`;
@@ -284,23 +287,27 @@ export function HabitFields({
         </FormField>
       )}
 
-      <FormField
-        label="Reminder time"
-        optional
-        hint="Ember sends a gentle nudge at this time."
-        error={errors['reminderTime'] ?? null}
-      >
-        {(field) => (
-          <Input
-            {...field}
-            type="time"
-            className="max-w-[12rem]"
-            value={value.reminderTime}
-            onChange={(event) => onChange({ ...value, reminderTime: event.target.value })}
-          />
-        )}
-      </FormField>
-      {reminderNote && <p className="-mt-3 text-[14px] text-muted-foreground">{reminderNote}</p>}
+      {showReminder && (
+        <>
+          <FormField
+            label="Reminder time"
+            optional
+            hint="Ember sends a gentle nudge at this time."
+            error={errors['reminderTime'] ?? null}
+          >
+            {(field) => (
+              <Input
+                {...field}
+                type="time"
+                className="max-w-[12rem]"
+                value={value.reminderTime}
+                onChange={(event) => onChange({ ...value, reminderTime: event.target.value })}
+              />
+            )}
+          </FormField>
+          {reminderNote && <p className="-mt-3 text-[14px] text-muted-foreground">{reminderNote}</p>}
+        </>
+      )}
     </div>
   );
 }

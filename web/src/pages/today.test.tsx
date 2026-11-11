@@ -92,6 +92,20 @@ describe('TodayPage', () => {
     expect(f.all.some((c) => c.url.includes('2026-11-01'))).toBe(false);
   });
 
+  it('makes no second /api/me request on first load when me is current', async () => {
+    const localToday = new Intl.DateTimeFormat('en-CA', { timeZone: me.timezone }).format(new Date());
+    auth.setMe({ ...me, localToday });
+    renderToday();
+
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+    (await f.next('GET', `/api/low-days?from=${localToday}&to=${localToday}`)).respond(200, []);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
+
+    await checkButton();
+    expect(f.all.filter((c) => c.url === '/api/me')).toHaveLength(0);
+  });
+
   it('checks in, presses the button and announces it', async () => {
     renderToday();
     await answerLoad(f, [habit]);
@@ -127,7 +141,7 @@ describe('TodayPage', () => {
     const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
 
     act(() => deviceSync.synced.update((n) => n + 1));
-    await answerLoad(f, [doneHabit], { stats: { ...weekly, headline: 'Synced week.' } });
+    await answerLoad(f, [doneHabit], { stats: { ...weekly, totalPossible: 7, headline: 'Synced week.' } });
     expect(await screen.findByText('Synced week.')).toBeInTheDocument();
 
     put.respond(500, { title: 'Server error' });
@@ -226,10 +240,10 @@ describe('TodayPage', () => {
     renderToday();
     await answerLoad(f, [water]);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Check in Water for today (1 of 3)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Check in Water for today (1/3)' }));
     const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
     expect(put.body).toEqual({ count: 2 });
-    expect(screen.getByRole('button', { name: 'Check in Water for today (2 of 3)' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Check in Water for today (2/3)' })).toHaveAttribute('aria-pressed', 'false');
 
     put.respond(200, { ...water, today: { ...water.today, count: 2 } });
     expect(await screen.findByText('Water: 2 of 3 for today.')).toBeInTheDocument();
@@ -263,7 +277,7 @@ describe('TodayPage', () => {
 
     await screen.findByRole('heading', { name: 'Morning' });
     const headings = screen.getAllByRole('heading').map((h) => `${h.tagName} ${h.textContent}`);
-    expect(headings.slice(1)).toEqual(['H2 Morning', 'H3 Water', 'H3 Walk', 'H2 Other habits', 'H3 Read', 'H2 Your week', 'H2 How was today?']);
+    expect(headings.slice(1)).toEqual(['H2 Morning', 'H3 Water', 'H3 Walk', 'H2 Other habits', 'H3 Read', 'H2 How was today?']);
     expect(screen.getByRole('link', { name: 'Edit Morning routine' })).toHaveAttribute('href', '/routines/5/edit');
   });
 
@@ -304,5 +318,157 @@ describe('TodayPage', () => {
     expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
     expect(backup.markBackedUp).toHaveBeenCalledOnce();
     expect(screen.queryByText(/It's been a while since your last backup/)).toBeNull();
+  });
+
+  it('moves focus to "Clear low day" after marking, and back to the mark button after clearing', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark today as a low day' }));
+    (await f.next('PUT', '/api/low-days/2026-11-01')).respond(204);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Clear low day' })).toHaveFocus());
+    (await f.next('GET', '/api/habits')).respond(200, [habit]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear low day' }));
+    (await f.next('DELETE', '/api/low-days/2026-11-01')).respond(204);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark today as a low day' })).toHaveFocus());
+  });
+
+  it('moves focus to the check button when the last check-in is taken off', async () => {
+    const water = { ...habit, name: 'Water', timesPerDay: 3, today: { ...habit.today, state: 'partial' as const, count: 1 } };
+    renderToday();
+    await answerLoad(f, [water]);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Take one check-in off Water' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Check in Water for today (0/3)' })).toHaveFocus());
+  });
+
+  it('says so when every habit is done for today', async () => {
+    renderToday();
+    await answerLoad(f, [habit, { ...doneHabit, id: 2, name: 'Read' }]);
+    await checkButton();
+    expect(screen.queryByText(/That's everything for today/)).toBeNull();
+
+    await userEvent.click(await checkButton());
+    (await f.next('PUT', '/api/habits/1/days/2026-11-01')).respond(200, doneHabit);
+
+    expect((await screen.findAllByText(/That's everything for today/)).length).toBeGreaterThan(0);
+  });
+
+  it('titles the weekly card "Last 7 days" and gives the count without a percentage', async () => {
+    renderToday();
+    await answerLoad(f, [habit], {
+      stats: { totalDone: 5, totalPossible: 7, headline: 'This week you completed 5/7 check-ins (71%).', footer: 'Keep it up.', habits: [] },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Last 7 days' })).toBeInTheDocument();
+    expect(screen.getByText('5 check-ins in the last 7 days. Every one of those counts.')).toBeInTheDocument();
+    expect(screen.queryByText(/71%/)).toBeNull();
+    expect(screen.queryByText('Keep it up.')).toBeNull();
+  });
+
+  it('hides the weekly card while there is nothing to summarise or the oldest habit is under 7 days old', async () => {
+    const stats = { totalDone: 0, totalPossible: 5, headline: "It's been a quiet week.", footer: '', habits: [] };
+    renderToday();
+    await answerLoad(f, [{ ...habit, startDate: '2026-10-28' }], { stats });
+
+    await checkButton();
+    expect(screen.queryByRole('heading', { name: 'Last 7 days' })).toBeNull();
+    expect(screen.queryByText("It's been a quiet week.")).toBeNull();
+  });
+
+  it('asks to turn on reminders when a habit has a reminder time and nothing can deliver it', async () => {
+    renderToday();
+    await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+
+    expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Turn on reminders in Settings' })).toHaveAttribute('href', '/settings#discord');
+  });
+
+  it('counts Discord with paused DM reminders as not reaching the user', async () => {
+    renderToday();
+    (await f.next('GET', '/api/me')).respond(200, {
+      ...me,
+      localToday: '2026-11-01',
+      discord: { ...me.discord, linked: true },
+      dmReminders: { paused: true },
+    });
+    (await f.next('GET', '/api/habits')).respond(200, [{ ...habit, reminderTime: '08:00' }]);
+    (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, []);
+    (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
+    (await f.next('GET', '/api/routines')).respond(200, []);
+
+    expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
+  });
+
+  it('shows no reminder warning when the push check failed in a browser that supports push', async () => {
+    vi.stubGlobal('PushManager', class {});
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { getRegistration: async () => undefined } });
+    try {
+      renderToday();
+      await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+
+      await checkButton();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByText("Your reminders can't reach you yet")).toBeNull();
+    } finally {
+      Reflect.deleteProperty(navigator, 'serviceWorker');
+    }
+  });
+
+  it('says yesterday is still open when nothing was checked in on a planned day', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    (await f.next('GET', '/api/stats/days?from=2026-10-31&to=2026-10-31')).respond(200, [
+      { date: '2026-10-31', scheduled: 1, done: 0, partial: 0, showedUp: false },
+    ]);
+    (await f.next('GET', '/api/low-days?from=2026-10-31&to=2026-10-31')).respond(200, []);
+
+    expect(await screen.findByText(/Yesterday is still open/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open History' })).toHaveAttribute('href', '/history');
+  });
+
+  it("doesn't say yesterday is open when it was a low day", async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+
+    (await f.next('GET', '/api/stats/days?from=2026-10-31&to=2026-10-31')).respond(200, [
+      { date: '2026-10-31', scheduled: 1, done: 0, partial: 0, showedUp: false },
+    ]);
+    (await f.next('GET', '/api/low-days?from=2026-10-31&to=2026-10-31')).respond(200, ['2026-10-31']);
+
+    await checkButton();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText(/Yesterday is still open/)).toBeNull();
+  });
+
+  it("doesn't ask about yesterday when only a weekly habit or a rest day was on it", async () => {
+    renderToday();
+    await answerLoad(f, [
+      { ...habit, frequency: 'weekly', weeklyTarget: 3 },
+      { ...habit, id: 2, name: 'Read', frequency: 'weekdays', days: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+    ]);
+
+    await screen.findByRole('button', { name: 'Check in Read for today' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(f.all.some((c) => c.url.startsWith('/api/stats/days'))).toBe(false);
+  });
+
+  it("doesn't ask about yesterday when the only daily habit was paused then", async () => {
+    renderToday();
+    await answerLoad(f, [{ ...habit, pausedFrom: '2026-10-30', pausedUntil: '2026-10-31' }]);
+
+    await checkButton();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(f.all.some((c) => c.url.startsWith('/api/stats/days'))).toBe(false);
+  });
+
+  it('says everything is done while a weekly habit is still open today', async () => {
+    renderToday();
+    await answerLoad(f, [doneHabit, { ...habit, id: 2, name: 'Swim', frequency: 'weekly', weeklyTarget: 2 }]);
+
+    expect((await screen.findAllByText(/That's everything for today/)).length).toBeGreaterThan(0);
   });
 });

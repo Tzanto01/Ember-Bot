@@ -94,12 +94,8 @@ test('signing out locks the journal until the passphrase is entered again', asyn
   await expect(page).toHaveURL(/\/today$/);
   await expect(page.getByText('Your private journal is locked on this device.')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Unlock it in Settings' }).click();
-  const section = journalSection(page);
-  await section.getByLabel('Journal passphrase').fill(passphrase);
-  await section.getByRole('button', { name: 'Unlock', exact: true }).click();
-  await expect(section.getByRole('status').filter({ hasText: 'Unlocked on this device.' })).toBeVisible();
-  await openPage(page, 'Today');
+  await page.getByLabel('Journal passphrase').fill(passphrase);
+  await page.getByRole('button', { name: 'Unlock', exact: true }).click();
   await expect(page.getByLabel('A few words')).toHaveValue(note);
 });
 

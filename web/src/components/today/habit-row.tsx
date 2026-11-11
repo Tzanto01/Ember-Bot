@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { formatDate } from '@/lib/local-date';
 import type { Habit } from '@/lib/models';
 import { cn } from '@/lib/utils';
-import { CheckButton } from './check-button';
+import { CheckButton, checkButtonId } from './check-button';
 import type { RewardKeyword } from './reward';
 import { RollingNumber } from './rolling-number';
 
@@ -163,6 +163,7 @@ export function HabitRow({
         </div>
         {checkable ? (
           <CheckButton
+            id={checkButtonId(habit.id)}
             habitName={habit.name}
             pressed={done}
             busy={busy}

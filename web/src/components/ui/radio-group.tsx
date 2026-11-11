@@ -17,7 +17,7 @@ export function RadioGroupItem({ className, ...props }: ComponentProps<typeof Ra
       )}
       {...props}
     >
-      <RadioGroupPrimitive.Indicator className="size-[12px] rounded-full bg-primary" />
+      <RadioGroupPrimitive.Indicator className="size-[12px] rounded-full bg-primary forced-colors:bg-[CanvasText]" />
     </RadioGroupPrimitive.Item>
   );
 }

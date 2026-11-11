@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
 import { type DayAction, DayPanel } from '@/components/history/day-panel';
 import { CalendarIllustration, NotebookIllustration } from '@/components/history/illustrations';
+import { keptDays, windowStart } from '@/components/history/kept-days';
 import { Legend } from '@/components/history/legend';
 import { MonthCalendar } from '@/components/history/month-calendar';
 import { StatTiles } from '@/components/history/stat-tiles';
@@ -22,6 +23,7 @@ import { buildMonth, canGoNext, canGoPrevious, monthRange } from '@/lib/calendar
 import { addMonths, formatDate, monthLabel, startOfMonth } from '@/lib/local-date';
 import type { Habit, LocalDateString } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
+import { loadFreshMe } from '@/components/today/fresh-me';
 import { api, auth } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
@@ -29,7 +31,7 @@ const habitsKey = ['history', 'habits'] as const;
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 
 async function loadHabits(): Promise<Habit[]> {
-  await auth.loadMe(true).catch(() => null);
+  await loadFreshMe().catch(() => null);
   return api.listHabits();
 }
 
@@ -79,6 +81,24 @@ export default function HistoryPage() {
     },
     enabled: !!selected && !!month && !!today,
   });
+
+  const windowFrom = selected && today ? windowStart(selected, today, 30) : null;
+  const windowQuery = useQuery({
+    queryKey: ['history', 'window', selected?.id, windowFrom, today],
+    queryFn: async () => {
+      if (!selected || !windowFrom || !today) return { days: [], lowDays: [] };
+      const [days, lowDays] = await Promise.all([
+        api.getDays(selected.id, windowFrom, today),
+        api.listLowDays(windowFrom, today),
+      ]);
+      return { days, lowDays };
+    },
+    enabled: !!selected && selected.frequency !== 'weekly' && !!today && !!windowFrom && windowFrom <= today,
+  });
+  const kept = (window: number) =>
+    windowQuery.data && selected && today
+      ? keptDays(selected, windowQuery.data.days, windowQuery.data.lowDays, today, window)
+      : null;
 
   const [open, setOpen] = useState<{ key: string; date: LocalDateString } | null>(null);
   const openDate = open?.key === monthKey ? open.date : null;
@@ -144,6 +164,7 @@ export default function HistoryPage() {
     setDayProblem(null);
     try {
       const message = await action();
+      void queryClient.invalidateQueries({ queryKey: ['history', 'window'] });
       await daysQuery.refetch();
       setAnnouncement(message);
       if (done) setReward(done);
@@ -259,7 +280,7 @@ export default function HistoryPage() {
       daysQuery.isError && !daysQuery.data && !daysQuery.isFetching ? asApiError(daysQuery.error) : null;
     content = (
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6 max-lg:contents">
           {habits.length > 1 ? (
             <div className="flex flex-col gap-2">
               <Label htmlFor="habit-picker">Habit</Label>
@@ -279,6 +300,8 @@ export default function HistoryPage() {
             monthName={formatDate(month, { month: 'long' })}
             doneInMonth={daysQuery.data ? inMonth.filter((d) => d.state === 'done').length : null}
             lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
+            last7Days={kept(7)}
+            last30Days={kept(30)}
           />
           <MonthCalendar
             title={monthLabel(month)}
@@ -306,7 +329,9 @@ export default function HistoryPage() {
               )
             }
           />
-          <Legend />
+          <div className="max-lg:order-1">
+            <Legend />
+          </div>
         </div>
         <div className="flex flex-col gap-6 lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)]">
           {openDay ? (

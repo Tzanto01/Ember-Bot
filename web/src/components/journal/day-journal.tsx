@@ -4,6 +4,7 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { FormField } from '@/components/form-field';
+import { PassphraseForm, UnlockForm } from '@/components/settings/journal-forms';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { controlClass } from '@/components/ui/input';
@@ -41,21 +42,52 @@ export function JournalLocked({ children }: { children?: string }) {
 }
 
 type Draft = { text: string; mood: MoodKey | null };
-type Status = 'saved' | 'queued' | 'cleared' | null;
+type Status = 'saved' | 'queued' | 'cleared' | 'mood' | 'moodCleared' | null;
+
+const statusText: Record<Exclude<Status, 'queued' | null>, string> = {
+  saved: 'Saved',
+  cleared: 'Cleared',
+  mood: 'Mood saved',
+  moodCleared: 'Mood cleared',
+};
 
 /**
- * The journal card for one local day (today or any past day): a mood picker and free text, saved with an
- * explicit Save. Both empty deletes the day's entry. While the private journal is locked it shows only the
- * locked message.
+ * The journal card for one local day (today or any past day): a mood picker that saves on tap (with the day's
+ * saved text) and free text saved with an explicit Save. Both empty deletes the day's entry. While the private
+ * journal is locked it shows the locked message with the unlock form, then the new-passphrase step after a
+ * recovery-code unlock.
  */
 export function DayJournal({ date, className }: { date: LocalDateString; className?: string }) {
   const journal = useJournal();
   const queryClient = useQueryClient();
   const state = useStore(journal.state);
   const changed = useStore(journal.changed);
-  const today = useStore(auth.me)?.localToday;
+  const turningOff = useStore(journal.turningOff);
+  const me = useStore(auth.me);
+  const today = me?.localToday;
   const moodLabelId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const [newPassphrase, setNewPassphrase] = useState(false);
+  const [unlockStatus, setUnlockStatus] = useState('');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useRef(false);
+
+  useEffect(() => {
+    if (!focusHeading.current) return;
+    focusHeading.current = false;
+    headingRef.current?.focus();
+  });
+
+  function step(message: string) {
+    setUnlockStatus(message);
+    focusHeading.current = true;
+  }
+
+  async function expired() {
+    await journal.forget();
+    setNewPassphrase(false);
+    step('That took a while, so the journal locked again. Unlock it with your recovery code once more.');
+  }
 
   const queryKey = [...journalKey, 'day', date];
   const query = useQuery({
@@ -92,18 +124,53 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     setStatus(null);
     setProblem(null);
     setTooLong(false);
+    setUnlockStatus('');
   }
 
   const heading = date === today ? 'How was today?' : `How was ${formatDate(date, longDate)}?`;
   const privacy = 'Only you see this. It never appears in reminders.';
 
-  if (state === 'locked') {
+  if (state === 'locked' || (newPassphrase && me)) {
     return (
       <Card className={className}>
-        <h2 className="text-[22px]">
+        <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
           {heading}
         </h2>
-        <JournalLocked />
+        <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+          {unlockStatus}
+        </p>
+        {newPassphrase && me ? (
+          <>
+            <p>
+              Your recovery code worked. Choose a new passphrase to finish unlocking; your recovery code stays the
+              same.
+            </p>
+            <PassphraseForm
+              me={me}
+              current={false}
+              submitLabel="Save new passphrase"
+              onDone={() => {
+                setNewPassphrase(false);
+                step('Your new passphrase is set. Your journal is unlocked on this device.');
+              }}
+              onExpired={() => void expired()}
+            />
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-3 text-muted-foreground">
+              <Lock aria-hidden className="mt-[3px] size-[18px] shrink-0" />
+              <p>Your private journal is locked on this device.</p>
+            </div>
+            <UnlockForm
+              onUnlocked={(needsNew) => {
+                const next = needsNew && !turningOff;
+                setNewPassphrase(next);
+                step(next ? 'Your recovery code worked.' : 'Unlocked on this device.');
+              }}
+            />
+          </>
+        )}
       </Card>
     );
   }
@@ -120,25 +187,21 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     setProblem(null);
   }
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (busy) return;
-    const trimmed = text.trim();
-    if (trimmed.length > maxJournalText) {
-      setTooLong(true);
-      formRef.current?.querySelector<HTMLElement>('textarea')?.focus();
-      return;
-    }
-    const entry = { text: trimmed || null, mood };
+  async function persist(entry: { text: string | null; mood: MoodKey | null }, onMood: boolean, base = entry.text ?? '') {
     setBusy(true);
     setProblem(null);
     try {
       const { queued } = await journal.save(date, entry);
       const saved: DayNote | null = entry.text === null && entry.mood === null ? null : { date, ...entry };
       queryClient.setQueryData<typeof query.data>(queryKey, (old) => (old ? { ...old, note: saved } : old));
-      setDraft(null);
-      setTooLong(false);
-      setStatus(queued ? 'queued' : saved ? 'saved' : 'cleared');
+      if (onMood) {
+        setDraft((current) => (current && current.text !== base ? { ...current, mood: entry.mood } : null));
+        setStatus(queued ? 'queued' : entry.mood ? 'mood' : 'moodCleared');
+      } else {
+        setDraft(null);
+        setTooLong(false);
+        setStatus(queued ? 'queued' : saved ? 'saved' : 'cleared');
+      }
     } catch (error) {
       if (error instanceof JournalLockedError) {
         setProblem(error.message);
@@ -149,6 +212,34 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     } finally {
       setBusy(false);
     }
+  }
+
+  function save(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    const trimmed = text.trim();
+    if (trimmed.length > maxJournalText) {
+      setTooLong(true);
+      formRef.current?.querySelector<HTMLElement>('textarea')?.focus();
+      return;
+    }
+    void persist({ text: trimmed || null, mood }, false);
+  }
+
+  async function pickMood(next: MoodKey | null) {
+    if (busy) return;
+    edit({ mood: next });
+    setBusy(true);
+    const fresh = await journal
+      .notes(date, date)
+      .then(({ notes }) => notes.find((n) => n.date === date) ?? null)
+      .catch(() => note);
+    await persist({ text: fresh?.text ?? null, mood: next }, true, note?.text ?? '');
+  }
+
+  function clearMood() {
+    formRef.current?.querySelector<HTMLElement>('[role="radio"]')?.focus();
+    void pickMood(null);
   }
 
   function clearAll() {
@@ -178,7 +269,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   } else {
     const choices = moodChoices(query.data.moods, mood);
     body = (
-      <form ref={formRef} noValidate onSubmit={(e) => void save(e)} className="flex flex-col gap-4">
+      <form ref={formRef} noValidate onSubmit={save} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <p id={moodLabelId} className="font-medium">
             Mood <span className="font-normal text-muted-foreground">(optional)</span>
@@ -186,7 +277,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
           <RadioGroupPrimitive.Root
             aria-labelledby={moodLabelId}
             value={mood ?? ''}
-            onValueChange={(value) => edit({ mood: value as MoodKey })}
+            onValueChange={(value) => void pickMood(value as MoodKey)}
             className="flex flex-wrap gap-2"
           >
             {choices.map((choice) => (
@@ -205,7 +296,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
             ))}
           </RadioGroupPrimitive.Root>
           {mood && (
-            <Button type="button" variant="link" className="self-start px-0" onClick={() => edit({ mood: null })}>
+            <Button type="button" variant="link" className="self-start px-0" onClick={clearMood}>
               Clear mood
             </Button>
           )}
@@ -252,7 +343,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
             ) : status ? (
               <>
                 <Check aria-hidden className="size-[18px] shrink-0" />
-                {status === 'saved' ? 'Saved' : 'Cleared'}
+                {statusText[status]}
               </>
             ) : null}
           </p>
@@ -263,9 +354,12 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
 
   return (
     <Card className={className}>
-      <h2 className="text-[22px]">
+      <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
         {heading}
       </h2>
+      <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+        {unlockStatus}
+      </p>
       {body}
     </Card>
   );
