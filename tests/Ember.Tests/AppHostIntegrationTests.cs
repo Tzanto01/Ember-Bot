@@ -31,6 +31,7 @@ public class AppHostIntegrationTests
         (await scheduler.CheckExists(Ember.Bot.Jobs.WeeklySummaryJob.Key)).Should().BeTrue();
         (await scheduler.CheckExists(Ember.Bot.Jobs.MissedDayReflectionJob.Key)).Should().BeTrue();
         (await scheduler.CheckExists(Ember.Bot.Jobs.ReminderDispatchJob.Key)).Should().BeTrue();
+        (await scheduler.CheckExists(Ember.Bot.Jobs.UnconfirmedAccountCleanupJob.Key)).Should().BeTrue();
 
         var reminderCron = (await host.GetTriggerAsync("reminder-dispatch-trigger", "reminders"))
             .Should().BeAssignableTo<ICronTrigger>().Subject;

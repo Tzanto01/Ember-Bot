@@ -92,6 +92,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 - **Reminder buttons** work until 10:00 the next morning, or until that day is logged anywhere (bot or web), whichever comes first. Then the buttons go away and the message says `✅ Logged.` or `This reminder has closed.`; an old day can still be filled in with `/habit history` or on the web.
 - **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, and there is never a third.
 - **Consent:** habits and low days can say something about your health, so Ember asks once for your OK before storing them. You can withdraw any time with `/privacy delete`.
+- **Unconfirmed accounts:** a web signup whose email is never confirmed is deleted after 7 days, unless it has a Discord or other linked login or holds any habits or other data.
 
 ---
 
@@ -108,6 +109,12 @@ The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml
 | `BOT_TOKEN` | Discord bot token |
 | `DB_USER`, `DB_PASSWORD` | PostgreSQL login |
 | `DEV_GUILD_ID` | Optional. Also registers the slash commands to this server, where changes show up instantly |
+| `PRIVACY_POLICY_URL` | Optional. Privacy policy link shown in the consent prompt and `/help`; when it ends in `/legal/privacy`, `/help` also links that site's `/legal/imprint` |
+| `WEB_ORIGIN` | Public origin of the web app; the bot links to it, and the API (required there) uses it for links in emails and CORS |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional. Web Push keys and contact; without them no push reminders are sent |
+| `API_KNOWN_PROXY` | API only. Address of the reverse proxy whose forwarded headers the API trusts |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | API only. Mail server login and sender address for account emails; the port defaults to 587 |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | API only. Discord OAuth application for signing in with and linking Discord |
 
 Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
 

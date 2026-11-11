@@ -1,12 +1,31 @@
 using Discord;
 using Discord.Interactions;
+using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
 
 public class HelpModule : InteractionModuleBase<SocketInteractionContext>
 {
+    private const string PrivacyPath = "/legal/privacy";
+
+    private readonly IConfiguration _config;
+
+    public HelpModule(IConfiguration config)
+    {
+        _config = config;
+    }
+
     [SlashCommand("help", "See everything Ember can do")]
     public async Task HelpAsync()
+    {
+        await RespondAsync(embed: HelpEmbed(_config), ephemeral: true);
+    }
+
+    /// <summary>
+    /// The command guide. With a configured privacy policy URL it ends with a link to it, plus an imprint link when that URL is
+    /// the web app's <c>/legal/privacy</c> page (the web app serves the imprint at <c>/legal/imprint</c>).
+    /// </summary>
+    internal static Embed HelpEmbed(IConfiguration config)
     {
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
@@ -37,9 +56,16 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 "`/export` — get all your Ember data by DM\n" +
                 "`/privacy delete` — permanently delete all your Ember data",
                 inline: false)
-            .WithFooter("Progress over perfection. Every check-in counts.")
-            .Build();
+            .WithFooter("Progress over perfection. Every check-in counts.");
 
-        await RespondAsync(embed: embed, ephemeral: true);
+        if (config[ConsentModule.PolicyUrlKey] is { Length: > 0 } url)
+        {
+            var links = $"[Privacy policy]({url})";
+            if (url.TrimEnd('/').EndsWith(PrivacyPath, StringComparison.OrdinalIgnoreCase))
+                links += $" · [Imprint]({url.TrimEnd('/')[..^PrivacyPath.Length]}/legal/imprint)";
+            embed.AddField("Legal", links, inline: false);
+        }
+
+        return embed.Build();
     }
 }

@@ -658,6 +658,37 @@ public partial class HabitService
             .ExecuteDeleteAsync();
     }
 
+    /// <summary>How long an email signup may stay unconfirmed before <see cref="DeleteStaleUnconfirmedAccountsAsync"/> removes it.</summary>
+    public static readonly TimeSpan UnconfirmedAccountLifetime = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Permanently deletes email signups older than <see cref="UnconfirmedAccountLifetime"/> whose email was never confirmed and that
+    /// hold nothing a user made: no Discord or other external login, habits, routines, day marks, notes, moods, push subscriptions
+    /// or journal key. The creation time is read from the account's UUIDv7 ID; an account with any other ID version is kept.
+    /// Returns how many accounts were deleted.
+    /// </summary>
+    public async Task<int> DeleteStaleUnconfirmedAccountsAsync(CancellationToken cancellationToken = default)
+    {
+        var deletable = _db.Users.Where(u => !u.EmailConfirmed && u.Email != null && u.PasswordHash != null
+            && !u.Logins.Any() && !u.Habits.Any() && !u.Routines.Any() && !u.DayMarks.Any() && !u.DayNotes.Any()
+            && !u.Moods.Any() && !u.PushSubscriptions.Any() && u.JournalKey == null);
+
+        var cutoff = _time.GetUtcNow() - UnconfirmedAccountLifetime;
+        var stale = (await deletable.Select(u => u.Id).ToListAsync(cancellationToken))
+            .Where(id => id.Version == 7 && UuidV7Time(id) < cutoff)
+            .ToList();
+        if (stale.Count == 0) return 0;
+
+        return await deletable.Where(u => stale.Contains(u.Id)).ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private static DateTimeOffset UuidV7Time(Guid id)
+    {
+        Span<byte> bytes = stackalloc byte[16];
+        id.TryWriteBytes(bytes, bigEndian: true, out _);
+        return DateTimeOffset.FromUnixTimeMilliseconds(System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes) >>> 16);
+    }
+
     /// <summary>Undoes <see cref="ClaimDmPauseNoticeAsync"/> when the notice couldn't be shown, so the next interaction shows it.</summary>
     public async Task ReleaseDmPauseNoticeAsync(Guid userId)
     {

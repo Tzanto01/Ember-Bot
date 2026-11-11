@@ -75,6 +75,12 @@ public static class AppHost
                         .ForJob(MissedDayReflectionJob.Key)
                         .WithIdentity("missed-day-reflection-trigger", "reflections")
                         .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
+
+                    q.AddJob<UnconfirmedAccountCleanupJob>(opts => opts.WithIdentity(UnconfirmedAccountCleanupJob.Key).StoreDurably());
+                    q.AddTrigger(opts => opts
+                        .ForJob(UnconfirmedAccountCleanupJob.Key)
+                        .WithIdentity("unconfirmed-account-cleanup-trigger", "accounts")
+                        .WithCronSchedule("0 30 3 * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
                 });
                 services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
                 services.AddSingleton<IReminderChannel, DiscordDmReminderChannel>();
