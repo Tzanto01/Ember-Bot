@@ -33,6 +33,21 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     private Task<bool> UserExists(Guid id) => Host.Db(db => db.Users.AnyAsync(u => u.Id == id));
 
     [DockerFact]
+    public async Task Merging_ends_the_bot_accounts_sessions_at_once()
+    {
+        var user = await Host.SignedInAsync();
+        var bot = await BotOnlyAsync([]);
+        var botDevice = Host.NewClient();
+        await Host.DiscordAsync(botDevice, "/api/auth/discord/login", bot.DiscordId);
+        await (await botDevice.Get("/api/me")).Expect(HttpStatusCode.OK);
+        await StartMergeAsync(user, bot.DiscordId);
+
+        await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
+
+        (await Host.SessionIsLiveAsync(botDevice)).Should().BeFalse();
+    }
+
+    [DockerFact]
     public async Task Preview_counts_what_would_move_and_shows_the_signed_in_accounts_settings()
     {
         var user = await Host.SignedInAsync();

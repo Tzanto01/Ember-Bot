@@ -10,13 +10,16 @@ using Ember.Api.TestHost;
 using Ember.Core.Data;
 using Ember.Core.Services;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -201,6 +204,15 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         await client.LoginAsync();
         if (consent) await client.GiveConsentAsync();
         return client;
+    }
+
+    /// <summary>Whether the session in <paramref name="client"/>'s cookie is live, as the API's cached lookup sees it.</summary>
+    public async Task<bool> SessionIsLiveAsync(ApiClient client)
+    {
+        using var scope = Services.CreateScope();
+        var cookie = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(IdentityConstants.ApplicationScheme);
+        var ticket = cookie.TicketDataFormat.Unprotect(client.CookieValue(".AspNetCore.Identity.Application"))!;
+        return await scope.ServiceProvider.GetRequiredService<AuthSessions>().IsActiveAsync(ticket.Principal);
     }
 
     public async Task<T> Db<T>(Func<EmberDbContext, Task<T>> query)

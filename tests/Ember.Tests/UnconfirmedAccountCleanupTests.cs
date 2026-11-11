@@ -66,4 +66,26 @@ public class UnconfirmedAccountCleanupTests
 
         (await SurvivesCleanupAsync(user)).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Expired_sign_in_sessions_are_deleted_and_live_ones_kept()
+    {
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: new FakeTimeProvider(Now));
+        var remaining = await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var user = Signup(daysOld: 1, confirmed: true);
+            db.Users.Add(user);
+            db.AuthSessions.AddRange(
+                new AuthSession { Id = Guid.NewGuid(), UserId = user.Id, CreatedUtc = Now.AddDays(-15), ExpiresUtc = Now.AddMinutes(-1) },
+                new AuthSession { Id = Guid.NewGuid(), UserId = user.Id, CreatedUtc = Now.AddDays(-1), ExpiresUtc = Now.AddDays(13) });
+            await db.SaveChangesAsync();
+
+            await sp.GetRequiredService<HabitService>().DeleteExpiredSessionsAsync();
+
+            return await db.AuthSessions.Where(s => s.UserId == user.Id).Select(s => s.ExpiresUtc).ToListAsync();
+        });
+
+        remaining.Should().Equal(Now.AddDays(13));
+    }
 }

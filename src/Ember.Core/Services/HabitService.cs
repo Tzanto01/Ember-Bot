@@ -682,6 +682,13 @@ public partial class HabitService
         return await deletable.Where(u => stale.Contains(u.Id)).ExecuteDeleteAsync(cancellationToken);
     }
 
+    /// <summary>Deletes every expired sign-in session (<see cref="AuthSession"/>). Returns how many were deleted.</summary>
+    public Task<int> DeleteExpiredSessionsAsync(CancellationToken cancellationToken = default)
+    {
+        var now = _time.GetUtcNow();
+        return _db.AuthSessions.Where(s => s.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
+    }
+
     private static DateTimeOffset UuidV7Time(Guid id)
     {
         Span<byte> bytes = stackalloc byte[16];

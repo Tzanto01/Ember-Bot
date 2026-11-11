@@ -27,13 +27,14 @@ internal static class MergeEndpoints
         });
 
         api.MapPost("/account/merge", async (HttpContext http, UserManager<User> users, SignInManager<User> signIn,
-            HabitService habits, EmberDbContext db) =>
+            HabitService habits, EmberDbContext db, AuthSessions sessions) =>
         {
             var user = await users.GetUserAsync(http.User);
             if (user is null) return Problems.Unauthenticated();
             if (!await habits.HasHealthDataConsentAsync(user.Id)) return Problems.ConsentRequired();
             if (PendingMerge.Read(http, user) is not { } pending) return Problems.NotFound();
 
+            await sessions.EndAllAsync(pending.SourceUserId);
             switch (await habits.MergeBotOnlyAccountAsync(user.Id, pending.SourceUserId, pending.DiscordId))
             {
                 case AccountMergeResult.Conflict:
