@@ -27,7 +27,7 @@ internal static class TwoFactorEndpoints
                 ? Results.Ok(new TwoFactorState(user.TwoFactorEnabled, await users.CountRecoveryCodesAsync(user)))
                 : Problems.Unauthenticated());
 
-        api.MapPost("/me/2fa/setup", async (ClaimsPrincipal principal, UserManager<User> users, SignInManager<User> signIn) =>
+        api.MapPost("/me/2fa/setup", async (ClaimsPrincipal principal, UserManager<User> users) =>
         {
             var user = await users.GetUserAsync(principal);
             if (user is null) return Problems.Unauthenticated();
@@ -35,7 +35,6 @@ internal static class TwoFactorEndpoints
 
             await users.SetLockoutEnabledAsync(user, true);
             await users.ResetAuthenticatorKeyAsync(user);
-            await signIn.RefreshSignInAsync(user);
             var key = (await users.GetAuthenticatorKeyAsync(user))!;
             var label = Uri.EscapeDataString("Ember:" + (user.Email ?? "Ember account"));
             return Results.Ok(new SetupDto(key, $"otpauth://totp/{label}?secret={key}&issuer=Ember&digits=6"));

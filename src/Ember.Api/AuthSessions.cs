@@ -13,7 +13,8 @@ namespace Ember.Api;
 /// Server-side sign-in sessions (<see cref="AuthSession"/>). Every sign-in starts one and carries its ID in the
 /// <see cref="ClaimType"/> claim of the cookie and of the bearer access and refresh tokens. A cookie or token is accepted only
 /// while its session exists and hasn't expired; one without the claim is never accepted. Lookups are cached for up to
-/// <see cref="CacheFor"/>; ending a session drops the cached entry at once.
+/// <see cref="CacheFor"/>; ending a session drops the cached entry at once, and a lookup that read the session before it ended
+/// doesn't cache it. A user keeps at most <see cref="MaxPerUser"/> sessions; a new one ends the oldest.
 /// </summary>
 internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimeProvider time)
 {
@@ -24,6 +25,7 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
 
     private static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan TouchEvery = TimeSpan.FromMinutes(5);
+    private const int MaxPerUser = 50;
 
     private sealed record Entry(Guid UserId, DateTimeOffset ExpiresUtc);
 
@@ -31,11 +33,13 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
     public static Guid? IdOf(ClaimsPrincipal? principal)
         => Guid.TryParse(principal?.FindFirstValue(ClaimType), out var id) ? id : null;
 
-    /// <summary>Starts a session for <paramref name="userId"/> and deletes every expired session.</summary>
+    /// <summary>Starts a session for <paramref name="userId"/>, ending its oldest beyond <see cref="MaxPerUser"/>, and deletes every expired session.</summary>
     public async Task<Guid> StartAsync(Guid userId)
     {
         var now = time.GetUtcNow();
         await db.AuthSessions.Where(s => s.ExpiresUtc <= now).ExecuteDeleteAsync();
+        await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId).OrderByDescending(s => s.CreatedUtc)
+            .Skip(MaxPerUser - 1).Select(s => s.Id).ToListAsync());
         var id = Guid.NewGuid();
         db.AuthSessions.Add(new AuthSession { Id = id, UserId = userId, CreatedUtc = now, ExpiresUtc = now + Lifetime, LastSeenUtc = now });
         await db.SaveChangesAsync();
@@ -53,28 +57,39 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
             var row = await db.AuthSessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
             if (row is not null && row.ExpiresUtc > now && (row.LastSeenUtc is not { } seen || now - seen >= TouchEvery))
             {
-                row.ExpiresUtc = now + Lifetime;
-                await db.AuthSessions.Where(s => s.Id == id)
-                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.ExpiresUtc, row.ExpiresUtc).SetProperty(x => x.LastSeenUtc, now));
+                var expires = now + Lifetime;
+                var touched = await db.AuthSessions.Where(s => s.Id == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.ExpiresUtc, expires).SetProperty(x => x.LastSeenUtc, now));
+                if (touched == 0) row = null;
+                else row.ExpiresUtc = expires;
             }
             entry = row is null ? null : new Entry(row.UserId, row.ExpiresUtc);
             cache.Set(Key(id), entry, CacheFor);
+            if (cache.TryGetValue(EndedKey(id), out _))
+            {
+                cache.Remove(Key(id));
+                return false;
+            }
         }
         return entry is not null && entry.UserId == userId && entry.ExpiresUtc > now;
     }
 
-    public async Task EndAsync(Guid id)
-    {
-        await db.AuthSessions.Where(s => s.Id == id).ExecuteDeleteAsync();
-        cache.Remove(Key(id));
-    }
+    public Task EndAsync(Guid id) => EndManyAsync([id]);
 
     /// <summary>Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>.</summary>
     public async Task EndAllAsync(Guid userId, Guid? keep = null)
+        => await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync());
+
+    /// <summary>Deletes the sessions and marks them ended for <see cref="CacheFor"/>, so a lookup already past its read drops them.</summary>
+    private async Task EndManyAsync(List<Guid> ids)
     {
-        var ids = await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync();
+        if (ids.Count == 0) return;
         await db.AuthSessions.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
-        foreach (var id in ids) cache.Remove(Key(id));
+        foreach (var id in ids)
+        {
+            cache.Set(EndedKey(id), true, CacheFor);
+            cache.Remove(Key(id));
+        }
     }
 
     /// <summary>
@@ -104,4 +119,6 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
         };
 
     private static string Key(Guid id) => "auth-session:" + id;
+
+    private static string EndedKey(Guid id) => "auth-session-ended:" + id;
 }

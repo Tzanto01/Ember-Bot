@@ -16,8 +16,8 @@ namespace Ember.Api;
 /// count, so wrong passwords and wrong codes (authenticator or recovery) add up towards lockout; a locked-out account reports
 /// <see cref="SignInResult.Failed"/> there too. A browser is never remembered, so every sign-in needs the code.
 /// Sessions (<see cref="AuthSessions"/>): every sign-in starts one; a refresh of the cookie (after a security stamp change) or of
-/// a bearer token keeps the session it came from. A security stamp change followed by <see cref="RefreshSignInAsync"/> ends every
-/// other session of the user.
+/// a bearer token keeps the session it came from. A new cookie sign-in ends the session of the cookie it replaces. A security
+/// stamp change followed by <see cref="RefreshSignInAsync"/> ends every other session of the user.
 /// </summary>
 internal sealed class EmberSignInManager(
     UserManager<User> userManager,
@@ -37,6 +37,10 @@ internal sealed class EmberSignInManager(
 
     public override async Task SignInWithClaimsAsync(User user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
+        if (refreshedSession is null && AuthenticationScheme == IdentityConstants.ApplicationScheme
+            && AuthSessions.IdOf((await Context.AuthenticateAsync(IdentityConstants.ApplicationScheme)).Principal) is { } replaced)
+            await sessions.EndAsync(replaced);
+
         var session = refreshedSession ?? (await sessions.StartAsync(user.Id)).ToString();
         carriedSession = null;
         await base.SignInWithClaimsAsync(user, authenticationProperties, [.. additionalClaims, new Claim(AuthSessions.ClaimType, session)]);
@@ -59,12 +63,16 @@ internal sealed class EmberSignInManager(
         }
     }
 
-    /// <summary>Also requires a live session; the session carries over to the next <see cref="CreateUserPrincipalAsync"/>.</summary>
+    /// <summary>
+    /// Accepts a principal whose session is live, whatever its security stamp: every stamp change that signs devices out ends
+    /// their sessions, so the device that made the change (cookie or bearer) keeps working. The session carries over to the
+    /// next <see cref="CreateUserPrincipalAsync"/>.
+    /// </summary>
     public override async Task<User?> ValidateSecurityStampAsync(ClaimsPrincipal? principal)
     {
         carriedSession = null;
         if (principal is null || !await sessions.IsActiveAsync(principal)) return null;
-        var user = await base.ValidateSecurityStampAsync(principal);
+        var user = await UserManager.GetUserAsync(principal);
         if (user is not null) carriedSession = principal.FindFirstValue(AuthSessions.ClaimType);
         return user;
     }

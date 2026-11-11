@@ -84,7 +84,7 @@ internal static class MeEndpoints
         });
 
         api.MapPost("/me/delete", async (DeleteRequest request, ClaimsPrincipal principal, UserManager<User> users,
-            SignInManager<User> signIn, HabitService habits) =>
+            SignInManager<User> signIn, HabitService habits, AuthSessions sessions) =>
         {
             var user = await users.GetUserAsync(principal);
             if (user is null) return Problems.Unauthenticated();
@@ -99,6 +99,7 @@ internal static class MeEndpoints
                 return Problems.Validation("confirm", "Type DELETE to confirm.");
             }
 
+            await sessions.EndAllAsync(user.Id);
             await habits.DeleteUserDataAsync(user.Id);
             await signIn.SignOutAsync();
             return Results.NoContent();
