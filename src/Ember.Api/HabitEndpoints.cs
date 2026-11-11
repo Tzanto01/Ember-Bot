@@ -16,14 +16,15 @@ internal static class HabitEndpoints
     public sealed record HabitDto(
         int Id, string Name, string Frequency, int? WeeklyTarget, string? ReminderTime,
         DateOnly? PausedFrom, DateOnly? PausedUntil, bool PausedToday, DateTime CreatedAt, DateOnly StartDate,
-        DayDto Today, StatsDto Stats, List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId);
+        DayDto Today, StatsDto Stats, List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId,
+        List<string> ReminderTimes);
 
     public sealed record TemplateDto(string Key, string Name, string Description, string SuggestedReminderTime, string Frequency, int? WeeklyTarget);
 
     public sealed record CreateHabitRequest(string? Name, string? ReminderTime, string? Frequency, int? WeeklyTarget,
-        string?[]? Days, int? TimesPerDay);
+        string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes, string?[]? ReminderChannels);
     public sealed record UpdateHabitRequest(string? Name, string? ReminderTime, bool? ClearReminder, string? Frequency, int? WeeklyTarget,
-        string?[]? ReminderChannels, string?[]? Days, int? TimesPerDay);
+        string?[]? ReminderChannels, string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes);
     public sealed record PauseRequest(string? Until);
     public sealed record DayRequest(bool? Completed, int? Count);
 
@@ -46,20 +47,22 @@ internal static class HabitEndpoints
         {
             var errors = new Dictionary<string, string[]>();
             var name = ValidName(request.Name, errors);
-            var reminder = ParseReminder(request.ReminderTime, errors);
+            var reminder = request.ReminderTimes is null ? ParseReminder(request.ReminderTime, errors) : null;
             var frequency = ParseFrequency(request.Frequency);
             if (frequency is null) errors["frequency"] = [FrequencyMessage];
             ValidateWeeklyTarget(request.WeeklyTarget, frequency, errors);
             var days = ValidateDays(request.Days, frequency, null, errors);
             var timesPerDay = ValidateTimesPerDay(request.TimesPerDay ?? 1, frequency, errors);
+            var reminderTimes = ParseReminderTimes(request.ReminderTimes, timesPerDay, errors);
+            var channels = ParseReminderChannels(request.ReminderChannels, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
             var userId = principal.UserId();
             Habit habit;
             try
             {
-                habit = await habits.AddHabitAsync(userId, name!, reminder, frequency!.Value, request.WeeklyTarget, ReminderChannels.WebPush,
-                    days, timesPerDay);
+                habit = await habits.AddHabitAsync(userId, name!, reminder, frequency!.Value, request.WeeklyTarget,
+                    channels ?? ReminderChannels.WebPush, days, timesPerDay, reminderTimes);
             }
             catch (ConsentRequiredException)
             {
@@ -81,9 +84,11 @@ internal static class HabitEndpoints
 
             var errors = new Dictionary<string, string[]>();
             var name = request.Name is null ? null : ValidName(request.Name, errors);
-            var reminder = ParseReminder(request.ReminderTime, errors);
+            var reminder = request.ReminderTimes is null ? ParseReminder(request.ReminderTime, errors) : null;
             if (request.ReminderTime is not null && request.ClearReminder == true)
                 errors["reminderTime"] = ["Can't be combined with clearReminder."];
+            if (request.ReminderTimes is not null && request.ClearReminder == true)
+                errors["reminderTimes"] = ["Can't be combined with clearReminder."];
             var frequency = ParseFrequency(request.Frequency);
             if (request.Frequency is not null && frequency is null) errors["frequency"] = [FrequencyMessage];
             var newFrequency = request.Frequency is null ? habit.FrequencyType : frequency;
@@ -91,13 +96,14 @@ internal static class HabitEndpoints
             var days = ValidateDays(request.Days, newFrequency, habit.Days, errors);
             var timesPerDay = ValidateTimesPerDay(
                 request.TimesPerDay ?? (newFrequency == FrequencyType.Weekly ? 1 : habit.TimesPerDay), newFrequency, errors);
+            var reminderTimes = ParseReminderTimes(request.ReminderTimes, timesPerDay, errors);
             var channels = ParseReminderChannels(request.ReminderChannels, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
-            if (name is not null || reminder is not null || request.ClearReminder == true || channels is not null)
-                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true, channels);
             if (frequency is not null || request.WeeklyTarget is not null || request.Days is not null || request.TimesPerDay is not null)
                 await habits.SetScheduleAsync(userId, id, newFrequency!.Value, request.WeeklyTarget ?? habit.WeeklyTarget, days, timesPerDay);
+            if (name is not null || reminder is not null || reminderTimes is not null || request.ClearReminder == true || channels is not null)
+                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true, channels, reminderTimes);
 
             return await HabitResult(habits, userId, id);
         });
@@ -205,7 +211,7 @@ internal static class HabitEndpoints
             ToDayDto(HabitService.DayOn(habit, user.Today, user.Today, user.Tz, user.LowDays)), stats,
             HabitService.ReminderChannelNames(habit.ReminderChannels),
             habit.FrequencyType == FrequencyType.Weekdays && habit.Days is { } days ? ScheduleDayNames.ToNames(days) : null,
-            habit.TimesPerDay, habit.RoutineId);
+            habit.TimesPerDay, habit.RoutineId, habit.ReminderTimes.Select(Formats.Time).ToList());
     }
 
     private static DayDto ToDayDto(HabitDay day) => new(day.Date, Lower(day.State), day.Completed, day.Count);
@@ -225,6 +231,31 @@ internal static class HabitEndpoints
         if (value is null) return null;
         if (Formats.TryParseTime(value, out var time)) return time;
         errors["reminderTime"] = ["Must be a time as HH:mm."];
+        return null;
+    }
+
+    /// <summary>
+    /// The reminder times in <paramref name="values"/> sorted ascending, or null when <paramref name="values"/> is null or invalid:
+    /// each must be HH:mm, without repeats, and at most <paramref name="timesPerDay"/> of them. Empty clears the reminder.
+    /// </summary>
+    internal static List<TimeOnly>? ParseReminderTimes(string?[]? values, int timesPerDay, Dictionary<string, string[]> errors)
+    {
+        if (values is null) return null;
+        var times = new List<TimeOnly>();
+        foreach (var value in values)
+        {
+            if (value is null || !Formats.TryParseTime(value, out var time))
+            {
+                errors["reminderTimes"] = ["Each must be a time as HH:mm."];
+                return null;
+            }
+            times.Add(time);
+        }
+
+        var max = Math.Min(timesPerDay, HabitService.MaxTimesPerDay);
+        if (times.Distinct().Count() != times.Count) errors["reminderTimes"] = ["Each time can appear only once."];
+        else if (times.Count > max) errors["reminderTimes"] = [$"At most {max}, the habit's timesPerDay."];
+        else return times.Order().ToList();
         return null;
     }
 

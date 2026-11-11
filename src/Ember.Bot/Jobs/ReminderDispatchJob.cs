@@ -11,7 +11,8 @@ namespace Ember.Bot.Jobs;
 /// Runs every minute and sends every reminder whose <see cref="Habit.NextReminderUtc"/> is due once to each of the habit's
 /// <see cref="Habit.ReminderChannels"/> the user can receive (Discord: a Discord login and DM reminders not paused;
 /// web push: the channel is registered and the user has push subscriptions), then advances it once to the next local
-/// occurrence of the habit's ReminderTime. Only the Discord outcome counts towards the DM pause.
+/// occurrence of any of the habit's <see cref="Habit.ReminderTimes"/>, so a habit with several times sends at each of them while
+/// its day is still open. Only the Discord outcome counts towards the DM pause.
 /// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
 /// native app schedules those reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
@@ -24,7 +25,8 @@ namespace Ember.Bot.Jobs;
 /// reminder whose processing threw, stays due and is retried up to <see cref="ReminderRetries.MaxAttempts"/> attempts in all, <see cref="ReminderRetries.Spacing"/> apart;
 /// after that it moves to its next reminder time and, for a Discord send, counts once towards the DM pause.
 /// A delivered regular (not snoozed) reminder schedules one second reminder <see cref="User.SecondReminderMinutes"/> later when that
-/// is on and falls on the same local day; it is sent like the first only if the day is still open then, and never followed by another.
+/// is on, falls on the same local day and comes before the habit's next regular reminder; it is sent like the first only if the day
+/// is still open then, and never followed by another.
 /// Each run then closes the open Discord reminder messages whose habits are done for their day, or whose buttons expired
 /// (<see cref="IsExpired"/>).
 /// </summary>
@@ -342,18 +344,16 @@ public class ReminderDispatchJob : IJob
         {
             var weekAgo = today.AddDays(-7);
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, weekAgo, today, cancellationToken);
-            var snoozed = habit.ReminderTime is not { } time
-                || TimezoneHelper.NextOccurrenceUtc(time, tz, dueAt.AddTicks(-1)) != dueAt;
+            var snoozed = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, dueAt.AddTicks(-1)) != dueAt;
             var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed, today);
             delivery = await DeliverAsync(targets, reminder, user, now, (HabitKind, habit.Id, dueAt), cancellationToken);
-            if (delivery == Delivery.Delivered && !snoozed)
-                habit.SecondReminderUtc = SecondReminderAt(user, tz, today, now);
+            if (delivery == Delivery.Delivered && !snoozed && SecondReminderAt(user, tz, today, now) is { } second
+                && (TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, now) is not { } next || next > second))
+                habit.SecondReminderUtc = second;
         }
 
         if (delivery != Delivery.Retry)
-            habit.NextReminderUtc = habit.ReminderTime is { } reminderTime
-                ? TimezoneHelper.NextOccurrenceUtc(reminderTime, tz, now)
-                : null;
+            habit.NextReminderUtc = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, now);
         await habits.SaveChangesAsync(send ? CancellationToken.None : cancellationToken);
         if (delivery != Delivery.Retry) _retries.Forget(HabitKind, habitId, dueAt);
     }

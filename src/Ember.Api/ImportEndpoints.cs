@@ -18,7 +18,7 @@ internal static class ImportEndpoints
     public sealed record ImportSettings(int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes);
     public sealed record ImportHabit(int? Id, string? Name, string? Frequency, int? WeeklyTarget, TimeOnly? ReminderTime,
         DateOnly? PausedUntil, DateOnly? PausedFrom, DateTimeOffset? CreatedAt, string?[]? ReminderChannels, string?[]? Days,
-        int? TimesPerDay, int? RoutineId, int? RoutinePosition);
+        int? TimesPerDay, int? RoutineId, int? RoutinePosition, TimeOnly[]? ReminderTimes);
     public sealed record ImportLog(int? HabitId, DateOnly? Date, bool? Completed, int? Count);
     public sealed record ImportDayMark(DateOnly? Date, string? Kind);
     public sealed record ImportRoutine(int? Id, string? Name, TimeOnly? ReminderTime, string?[]? ReminderChannels);
@@ -118,11 +118,14 @@ internal static class ImportEndpoints
             if (h.RoutineId is { } routineId && !routineById.TryGetValue(routineId, out routine))
                 local["routine_id"] = ["Must be the id of a routine in this file."];
             if (h.RoutinePosition < 0) local["routine_position"] = ["Can't be negative."];
+            var reminderTimes = h.ReminderTimes ?? (h.ReminderTime is { } single ? [single] : []);
+            var timesTarget = frequency == FrequencyType.Weekly ? 1 : timesPerDay;
+            if (reminderTimes.Distinct().Count() > timesTarget) local["reminder_times"] = [$"At most {timesTarget}, the habit's times_per_day."];
 
             var habit = new Habit
             {
                 Name = name ?? "",
-                ReminderTime = h.ReminderTime,
+                ReminderTimes = HabitService.NormalizeReminderTimes(reminderTimes, timesTarget),
                 PausedFrom = h.PausedFrom,
                 PausedUntil = h.PausedUntil,
                 FrequencyType = frequency ?? FrequencyType.Daily,

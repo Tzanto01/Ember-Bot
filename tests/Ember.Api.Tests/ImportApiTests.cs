@@ -98,7 +98,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var today = Host.Today;
         await (await source.Patch("/api/me", new { graceDaysPerWeek = 2, theme = "tidepool", secondReminderMinutes = 30 })).Expect(HttpStatusCode.OK);
         int Id(JsonElement e) => e.GetProperty("id").GetInt32();
-        var water = Id(await (await source.Post("/api/habits", new { name = "Water", frequency = "daily", timesPerDay = 3, reminderTime = "09:00" }))
+        var water = Id(await (await source.Post("/api/habits", new { name = "Water", frequency = "daily", timesPerDay = 3, reminderTimes = new[] { "20:00", "09:00" } }))
             .ExpectJson(HttpStatusCode.Created));
         var gym = Id(await (await source.Post("/api/habits", new { name = "Gym", frequency = "weekdays", days = new[] { "mon", "wed", "fri" } }))
             .ExpectJson(HttpStatusCode.Created));
@@ -137,7 +137,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var expected = Comparable(exported);
         JsonNode.Parse(expected)!["logs"]!.AsArray().Should().HaveCount(5);
         expected.Should().Contain("\"completed\":true,\"guild_id\":null,\"count\":3").And.Contain("\"routine_position\":1")
-            .And.Contain("\"archived\":true").And.Contain("\"paused_until\"").And.Contain("\"next_reminder_utc\":\"20")
+            .And.Contain("\"archived\":true").And.Contain("\"reminder_times\":[\"09:00:00\",\"20:00:00\"]").And.Contain("\"paused_until\"").And.Contain("\"next_reminder_utc\":\"20")
             .And.Contain("\"second_reminder_minutes\":30");
         Comparable(reexported).Should().Be(expected);
     }

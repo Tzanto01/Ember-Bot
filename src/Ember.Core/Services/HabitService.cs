@@ -96,10 +96,13 @@ public partial class HabitService
 
     /// <exception cref="ConsentRequiredException">The user hasn't agreed to the current health-data consent.</exception>
     /// <exception cref="HabitLimitReachedException">The user already tracks <see cref="MaxHabitsPerUser"/> habits.</exception>
-    /// <remarks><paramref name="days"/> is stored for <see cref="FrequencyType.Weekdays"/> habits only; weekly habits always get <paramref name="timesPerDay"/> 1.</remarks>
+    /// <remarks>
+    /// <paramref name="days"/> is stored for <see cref="FrequencyType.Weekdays"/> habits only; weekly habits always get <paramref name="timesPerDay"/> 1.
+    /// <paramref name="reminderTimes"/>, when given, replaces <paramref name="reminderTime"/> and is kept as <see cref="NormalizeReminderTimes"/> does.
+    /// </remarks>
     public async Task<Habit> AddHabitAsync(Guid userId, string name, TimeOnly? reminderTime,
         FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, ReminderChannels channels = ReminderChannels.Discord,
-        ScheduleDays? days = null, int timesPerDay = 1)
+        ScheduleDays? days = null, int timesPerDay = 1, IReadOnlyCollection<TimeOnly>? reminderTimes = null)
     {
         if (!await HasHealthDataConsentAsync(userId))
             throw new ConsentRequiredException();
@@ -118,6 +121,7 @@ public partial class HabitService
             ReminderChannels = channels,
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
+        if (reminderTimes is not null) habit.ReminderTimes = NormalizeReminderTimes(reminderTimes, habit.TimesPerDay);
         habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
         _db.Habits.Add(habit);
         await _db.SaveChangesAsync();
@@ -540,8 +544,8 @@ public partial class HabitService
     /// Sets the habit's schedule: <paramref name="weeklyTarget"/> (default 3) is kept for weekly habits only, <paramref name="days"/>
     /// for <see cref="FrequencyType.Weekdays"/> habits only, and weekly habits always get <paramref name="timesPerDay"/> 1.
     /// A day that was done stays done: when the target per day changes, days whose count reaches the new target become done, counts
-    /// above a lowered target are clamped to it, and only the user's local today is recomputed against it.
-    /// Null when the habit isn't the user's.
+    /// above a lowered target are clamped to it, and only the user's local today is recomputed against it. Reminder times beyond the
+    /// new target are dropped, keeping the earliest. Null when the habit isn't the user's.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="timesPerDay"/> is outside 1 to <see cref="MaxTimesPerDay"/>.</exception>
     /// <exception cref="ArgumentException">A weekdays habit without any <paramref name="days"/>.</exception>
@@ -564,6 +568,11 @@ public partial class HabitService
         habit.WeeklyTarget = type == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null;
         habit.Days = type == FrequencyType.Weekdays ? days : null;
         habit.TimesPerDay = target;
+        if (habit.ReminderTimes.Count > target)
+        {
+            habit.ReminderTimes = habit.ReminderTimes.Take(target).ToList();
+            habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
+        }
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
         await _db.SaveChangesAsync();
@@ -592,9 +601,13 @@ public partial class HabitService
         return true;
     }
 
-    /// <summary>Edits the user's habit; null arguments keep the current value. Null when the habit isn't the user's.</summary>
+    /// <summary>
+    /// Edits the user's habit; null arguments keep the current value. <paramref name="newReminderTime"/> replaces all reminder times
+    /// with that one; <paramref name="newReminderTimes"/> replaces them with those (empty clears the reminder), kept as
+    /// <see cref="NormalizeReminderTimes"/> does. Null when the habit isn't the user's.
+    /// </summary>
     public async Task<Habit?> EditHabitAsync(Guid userId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder,
-        ReminderChannels? channels = null)
+        ReminderChannels? channels = null, IReadOnlyCollection<TimeOnly>? newReminderTimes = null)
     {
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
@@ -608,6 +621,11 @@ public partial class HabitService
         {
             habit.ReminderTime = null;
             habit.NextReminderUtc = null;
+        }
+        else if (newReminderTimes is not null)
+        {
+            habit.ReminderTimes = NormalizeReminderTimes(newReminderTimes, habit.TimesPerDay);
+            habit.NextReminderUtc = NextReminderUtc(habit, await GetUserTzAsync(userId));
         }
         else if (newReminderTime.HasValue)
         {
@@ -637,7 +655,7 @@ public partial class HabitService
             return false;
 
         var habit = await _db.Habits
-            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId && h.ReminderTime != null);
+            .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId && h.ReminderTimes.Count > 0);
 
         if (habit is null) return false;
 
@@ -652,7 +670,7 @@ public partial class HabitService
     {
         var tz = await GetUserTzAsync(userId);
         var habits = await _db.Habits
-            .Where(h => h.UserId == userId && h.ReminderTime != null)
+            .Where(h => h.UserId == userId && h.ReminderTimes.Count > 0)
             .ToListAsync();
 
         foreach (var habit in habits)
@@ -742,9 +760,14 @@ public partial class HabitService
     }
 
     private DateTime? NextReminderUtc(Habit habit, TimeZoneInfo tz)
-        => habit.ReminderTime is { } time
-            ? TimezoneHelper.NextOccurrenceUtc(time, tz, _time.GetUtcNow().UtcDateTime)
-            : null;
+        => TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, _time.GetUtcNow().UtcDateTime);
+
+    /// <summary>
+    /// The reminder times sorted ascending without repeats, keeping the earliest <paramref name="max"/>
+    /// (a habit's <see cref="Habit.TimesPerDay"/>).
+    /// </summary>
+    public static List<TimeOnly> NormalizeReminderTimes(IEnumerable<TimeOnly> times, int max)
+        => times.Distinct().Order().Take(max).ToList();
 
     /// <summary>
     /// Pauses the habit through the local day <paramref name="pausedUntil"/>, or resumes it when null.
@@ -908,19 +931,17 @@ public partial class HabitService
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => _db.SaveChangesAsync(cancellationToken);
 
     /// <summary>
-    /// Moves the habit's next reminder directly in the database to the first occurrence of its reminder time after
+    /// Moves the habit's next reminder directly in the database to the first occurrence of any of its reminder times after
     /// <paramref name="nowUtc"/> in the user's timezone, or clears it when the habit has no reminder time.
     /// </summary>
     public async Task DeferReminderAsync(int habitId, DateTime nowUtc, CancellationToken cancellationToken = default)
     {
         var row = await _db.Habits.Where(h => h.Id == habitId)
-            .Select(h => new { h.ReminderTime, h.User.Timezone })
+            .Select(h => new { h.ReminderTimes, h.User.Timezone })
             .FirstOrDefaultAsync(cancellationToken);
         if (row is null) return;
 
-        DateTime? next = row.ReminderTime is { } time
-            ? TimezoneHelper.NextOccurrenceUtc(time, TimezoneHelper.Find(row.Timezone) ?? TimeZoneInfo.Utc, nowUtc)
-            : null;
+        var next = TimezoneHelper.NextOccurrenceUtc(row.ReminderTimes, TimezoneHelper.Find(row.Timezone) ?? TimeZoneInfo.Utc, nowUtc);
         await _db.Habits
             .Where(h => h.Id == habitId)
             .ExecuteUpdateAsync(s => s.SetProperty(h => h.NextReminderUtc, next), cancellationToken);

@@ -127,14 +127,14 @@ public static class AppHost
 
         var now = host.Services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         var habits = await db.Habits
-            .Where(h => h.ReminderTime != null && h.NextReminderUtc == null)
+            .Where(h => h.ReminderTimes.Count > 0 && h.NextReminderUtc == null)
             .Include(h => h.User)
             .ToListAsync(cancellationToken);
 
         foreach (var habit in habits)
         {
             var tz = TimezoneHelper.Find(habit.User.Timezone) ?? TimeZoneInfo.Utc;
-            habit.NextReminderUtc = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTime!.Value, tz, now);
+            habit.NextReminderUtc = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, now);
         }
 
         await db.SaveChangesAsync(cancellationToken);

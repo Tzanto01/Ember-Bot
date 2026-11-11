@@ -1,4 +1,6 @@
-# Ember API contract v1.10
+# Ember API contract v1.12
+
+v1.12 (2026-11-11, after v1.11, Nico: "we need the option to set when that happens throughout the day"): a habit has several reminder times a day (`reminderTimes`), up to its `timesPerDay`; `POST /api/habits` takes `reminderChannels`. See "Reminder times v1.12".
 
 v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord"): one-tap Done on single-habit web push reminders through a one-time token (`POST /api/reminders/done`); push subscriptions follow their sign-in session. See "Reminder Done v1.10".
 
@@ -390,3 +392,20 @@ v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord", including o
 
 - Replaces the v1.6 rule that only named reminders get "Done": every single-habit local notification has the "Done" action, whether or not "Show habit names in reminders" is on; with names off the title stays `Ember` and the body generic. Routine reminders still have none.
 - Android opens the app for a notification action (Capacitor 8 LocalNotifications starts an activity for every action), so "Done" adds one to that habit for the notification's `date` as before, then lands on Today with the short confirmation.
+
+## Reminder times v1.12
+
+`Habit` gains:
+
+```json
+{ "reminderTimes": ["08:00", "13:00", "20:00"] }
+```
+
+- `reminderTimes`: `"HH:mm"` local times, sorted ascending, without repeats, 0 to `timesPerDay` entries (so never more than 10; weekly habits have at most 1). Empty means no reminder. `reminderTime` stays in responses as the first entry, or null, for older clients.
+- `POST /api/habits` and `PATCH /api/habits/{id}` take `reminderTimes?: string[]`. When present it wins and `reminderTime` is ignored; an empty array clears the reminder. A request with only `reminderTime` sets `[reminderTime]` (on PATCH this replaces all times), and PATCH `clearReminder: true` clears them all. Input in any order is accepted and stored sorted. 400 `validation` on `reminderTimes`: an entry that isn't `HH:mm`, a repeated time, more entries than the habit's `timesPerDay` (the request's `timesPerDay` when it sends one), or `reminderTimes` combined with `clearReminder: true`.
+- Lowering `timesPerDay` (also by switching to `weekly`) keeps the earliest `timesPerDay` times. A PATCH that sends both `timesPerDay` and `reminderTimes` checks the times against the new `timesPerDay`.
+- Dispatch: the next reminder is the next of any of the times in the user's timezone. Each time sends like a single reminder (same channels, buttons, Done token, skip rules): only while the day is still open (`count < timesPerDay`), not paused and scheduled. A second reminder (v1.8) still follows a delivered regular reminder, but is skipped when the habit's next regular reminder comes first or at the same time. Routines keep one `reminderTime`; a habit in a routine with a reminder still sends none of its own.
+- The native app schedules one local notification per entry for habits with the `mobile` channel.
+- Discord shows all times (`Reminders: 08:00, 13:00, 20:00 your time` in `/habit list`). Setting a reminder in Discord still sets one time: it replaces all of the habit's times with it, and the bot's reply names the times it replaced when there were several.
+- Export: JSON `habits[]` gains `reminder_times` (`["08:00:00", …]`, sorted; `reminder_time` stays as the first). The CSV `reminder_time` column of a habit row lists all times joined with `;`. Import reads `reminder_times` (wins) or else `reminder_time`; more distinct times than the habit's `times_per_day` → 400 on `reminder_times`. Account merge moves habits with their times.
+- `POST /api/habits` also takes `reminderChannels?` with the same values and validation as `PATCH /api/habits/{id}` (`discord`, `webpush`, `mobile`; empty means no reminders; an unknown value → 400 `validation`). Without it a web-created habit gets `webpush`, as before.

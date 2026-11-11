@@ -18,9 +18,18 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         _config = config;
     }
 
-    /// <summary>The reminder time as set, in the user's Ember timezone (not the viewer's device timezone).</summary>
-    internal static string FormatReminder(TimeOnly? localTime)
-        => localTime is { } time ? $"{time:HH\\:mm} your time" : "None set";
+    /// <summary>The "Reminder:" line with the reminder times as set, in the user's Ember timezone (not the viewer's device timezone).</summary>
+    internal static string FormatReminder(IReadOnlyList<TimeOnly> localTimes)
+        => localTimes.Count switch
+        {
+            0 => "Reminder: None set",
+            1 => $"Reminder: {FormatTimes(localTimes)} your time",
+            _ => $"Reminders: {FormatTimes(localTimes)} your time",
+        };
+
+    /// <summary>The times as <c>08:00, 13:00, 20:00</c>.</summary>
+    internal static string FormatTimes(IEnumerable<TimeOnly> times)
+        => string.Join(", ", times.Select(t => t.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)));
 
     /// <summary>"Streak: **1** day" or "Streak: **n** days".</summary>
     internal static string StreakText(int streak) => $"Streak: **{streak}** {(streak == 1 ? "day" : "days")}";
@@ -174,7 +183,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
             foreach (var h in slice)
             {
                 var todayMark    = DayMark(h, today);
-                var reminderStr  = FormatReminder(h.ReminderTime);
+                var reminderStr  = FormatReminder(h.ReminderTimes);
                 var pauseStr     = h.PausedUntil.HasValue && h.PausedUntil >= today
                     ? $" · ⏸️ paused until {h.PausedUntil:MMM d}" : "";
 
@@ -193,7 +202,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
                 embed.AddField(
                     $"{todayMark} {h.Name}{pauseStr} _({FrequencyLabel(h)})_",
-                    $"{progressStr}\nReminder: {reminderStr}",
+                    $"{progressStr}\n{reminderStr}",
                     inline: false);
             }
 

@@ -110,6 +110,30 @@ public class PostgresMigrationTests(PostgresFixture postgres)
         habits[2].PausedFrom!.Value.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
     }
 
+    [DockerFact]
+    public async Task HabitReminderTimesMigration_CarriesEachReminderTimeOver()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20261111163159_PushSubscriptionSession");
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"AspNetUsers\" (\"Id\", \"Timezone\", \"GraceDaysPerWeek\", \"DmFailureCount\", \"EmailConfirmed\", " +
+            "\"PhoneNumberConfirmed\", \"TwoFactorEnabled\", \"LockoutEnabled\", \"AccessFailedCount\", \"SecondReminderMinutes\") " +
+            "VALUES ('00000000-0000-0000-0000-000000000001', 'Europe/Berlin', 1, 0, FALSE, FALSE, FALSE, FALSE, 0, 0);" +
+            "INSERT INTO \"Habits\" (\"Id\", \"UserId\", \"Name\", \"ReminderTime\", \"CreatedAt\", \"FrequencyType\", \"ReminderChannels\", \"RoutinePosition\") VALUES " +
+            "(1, '00000000-0000-0000-0000-000000000001', 'Stretch', '07:30', now(), 0, 1, 0), " +
+            "(2, '00000000-0000-0000-0000-000000000001', 'Read', NULL, now(), 0, 1, 0)");
+
+        await migrator.MigrateAsync();
+
+        var habits = await db.Habits.AsNoTracking().OrderBy(h => h.Id).ToListAsync();
+        habits[0].ReminderTimes.Should().Equal(new TimeOnly(7, 30));
+        habits[1].ReminderTimes.Should().BeEmpty();
+    }
+
     private static async Task<DateOnly> CurrentDateAsync(EmberDbContext db)
         => (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
 
