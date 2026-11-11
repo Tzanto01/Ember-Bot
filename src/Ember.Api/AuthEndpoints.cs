@@ -69,10 +69,22 @@ internal static class AuthEndpoints
             return TypedResults.NoContent();
         });
 
-        auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn) =>
+        auth.MapPost("/logout", async (HttpContext http, SignInManager<User> signIn, AuthSessions sessions) =>
         {
             if (http.User.Identity?.IsAuthenticated != true) return TypedResults.NoContent();
-            if (await signIn.UserManager.GetUserAsync(http.User) is { } user) await signIn.UserManager.UpdateSecurityStampAsync(user);
+            if (AuthSessions.IdOf(http.User) is { } session) await sessions.EndAsync(session);
+            await signIn.SignOutAsync();
+            return TypedResults.NoContent();
+        });
+
+        auth.MapPost("/logout-everywhere", async (HttpContext http, SignInManager<User> signIn, AuthSessions sessions) =>
+        {
+            if (http.User.Identity?.IsAuthenticated != true) return TypedResults.NoContent();
+            if (await signIn.UserManager.GetUserAsync(http.User) is { } user)
+            {
+                await sessions.EndAllAsync(user.Id);
+                await signIn.UserManager.UpdateSecurityStampAsync(user);
+            }
             await signIn.SignOutAsync();
             return TypedResults.NoContent();
         });
@@ -125,7 +137,7 @@ internal static class AuthEndpoints
         var request = context.Arguments.FirstOrDefault(argument =>
             argument is RegisterRequest or ResendConfirmationEmailRequest or ForgotPasswordRequest or ResetPasswordRequest);
         if (request is ResetPasswordRequest reset)
-            return await ResetPasswordAsync(http.RequestServices.GetRequiredService<UserManager<User>>(), reset);
+            return await ResetPasswordAsync(http.RequestServices.GetRequiredService<UserManager<User>>(), http.RequestServices.GetRequiredService<AuthSessions>(), reset);
 
         var email = request switch
         {
@@ -184,9 +196,9 @@ internal static class AuthEndpoints
 
     /// <summary>
     /// Identity's resetPassword (same request and error shapes) that also accepts an unconfirmed account and confirms it, and
-    /// lifts a lockout once the password is reset.
+    /// lifts a lockout once the password is reset. A reset ends every session of the account.
     /// </summary>
-    private static async Task<IResult> ResetPasswordAsync(UserManager<User> users, ResetPasswordRequest request)
+    private static async Task<IResult> ResetPasswordAsync(UserManager<User> users, AuthSessions sessions, ResetPasswordRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email ?? "");
         var code = DecodeCode(request.ResetCode);
@@ -196,6 +208,7 @@ internal static class AuthEndpoints
         var result = await users.ResetPasswordAsync(user, code, request.NewPassword ?? "");
         if (!result.Succeeded) return IdentityValidation(result);
 
+        await sessions.EndAllAsync(user.Id);
         await users.SetLockoutEndDateAsync(user, null);
         await users.ResetAccessFailedCountAsync(user);
 

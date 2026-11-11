@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,9 @@ namespace Ember.Api;
 /// Two-factor: <see cref="SignInResult.TwoFactorRequired"/> only follows the right password, which doesn't reset the failure
 /// count, so wrong passwords and wrong codes (authenticator or recovery) add up towards lockout; a locked-out account reports
 /// <see cref="SignInResult.Failed"/> there too. A browser is never remembered, so every sign-in needs the code.
+/// Sessions (<see cref="AuthSessions"/>): every sign-in starts one; a refresh of the cookie (after a security stamp change) or of
+/// a bearer token keeps the session it came from. A security stamp change followed by <see cref="RefreshSignInAsync"/> ends every
+/// other session of the user.
 /// </summary>
 internal sealed class EmberSignInManager(
     UserManager<User> userManager,
@@ -22,10 +26,59 @@ internal sealed class EmberSignInManager(
     IOptions<IdentityOptions> optionsAccessor,
     ILogger<SignInManager<User>> logger,
     IAuthenticationSchemeProvider schemes,
-    IUserConfirmation<User> confirmation)
+    IUserConfirmation<User> confirmation,
+    AuthSessions sessions)
     : SignInManager<User>(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
 {
     private static string? dummyHash;
+
+    private string? carriedSession;
+    private string? refreshedSession;
+
+    public override async Task SignInWithClaimsAsync(User user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
+    {
+        var session = refreshedSession ?? (await sessions.StartAsync(user.Id)).ToString();
+        carriedSession = null;
+        await base.SignInWithClaimsAsync(user, authenticationProperties, [.. additionalClaims, new Claim(AuthSessions.ClaimType, session)]);
+    }
+
+    public override async Task RefreshSignInAsync(User user)
+    {
+        var current = UserManager.GetUserId(Context.User) == user.Id.ToString() ? AuthSessions.IdOf(Context.User) : null;
+        if (Context.User.FindFirstValue(Options.ClaimsIdentity.SecurityStampClaimType) != user.SecurityStamp)
+            await sessions.EndAllAsync(user.Id, keep: current);
+
+        refreshedSession = current?.ToString();
+        try
+        {
+            await base.RefreshSignInAsync(user);
+        }
+        finally
+        {
+            refreshedSession = null;
+        }
+    }
+
+    /// <summary>Also requires a live session; the session carries over to the next <see cref="CreateUserPrincipalAsync"/>.</summary>
+    public override async Task<User?> ValidateSecurityStampAsync(ClaimsPrincipal? principal)
+    {
+        carriedSession = null;
+        if (principal is null || !await sessions.IsActiveAsync(principal)) return null;
+        var user = await base.ValidateSecurityStampAsync(principal);
+        if (user is not null) carriedSession = principal.FindFirstValue(AuthSessions.ClaimType);
+        return user;
+    }
+
+    public override async Task<ClaimsPrincipal> CreateUserPrincipalAsync(User user)
+    {
+        var principal = await base.CreateUserPrincipalAsync(user);
+        if (carriedSession is { } session)
+        {
+            carriedSession = null;
+            ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(AuthSessions.ClaimType, session));
+        }
+        return principal;
+    }
 
     public override async Task<SignInResult> PasswordSignInAsync(string userName, string password, bool isPersistent, bool lockoutOnFailure)
     {

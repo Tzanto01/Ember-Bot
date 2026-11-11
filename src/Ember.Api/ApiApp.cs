@@ -58,12 +58,20 @@ public static class ApiApp
             .AddSignInManager<EmberSignInManager>();
         services.Replace(ServiceDescriptor.Scoped<IUserValidator<User>, EmberUserValidator>());
         services.AddAuthentication().AddEmberDiscord(config, builder.Environment);
-        services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options => options.BearerTokenExpiration = TimeSpan.FromMinutes(15));
-        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
+        services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options =>
+        {
+            options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
+            options.RefreshTokenExpiration = AuthSessions.Lifetime;
+        });
+        services.AddMemoryCache();
+        services.AddScoped<AuthSessions>();
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
+            options.ExpireTimeSpan = AuthSessions.Lifetime;
+            options.Events.OnValidatePrincipal = AuthSessions.ValidateCookie(options.Events.OnValidatePrincipal);
             if (!builder.Environment.IsDevelopment())
             {
                 options.Cookie.Name = "__Host-Ember";
@@ -151,6 +159,7 @@ public static class ApiApp
         app.UseCors();
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.Use(AuthSessions.RejectEndedBearer);
         app.Use(AuthEndpoints.EnforceAntiforgery);
         app.UseAuthorization();
 

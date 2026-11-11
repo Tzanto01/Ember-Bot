@@ -21,6 +21,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<Mood> Moods => Set<Mood>();
     public DbSet<JournalKey> JournalKeys => Set<JournalKey>();
     public DbSet<ReminderMessage> ReminderMessages => Set<ReminderMessage>();
+    public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -158,6 +159,18 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasIndex(s => s.UserId);
             entity.HasOne(s => s.User)
                   .WithMany(u => u.PushSubscriptions)
+                  .HasForeignKey(s => s.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuthSession>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Id).ValueGeneratedNever();
+            entity.HasIndex(s => s.UserId);
+            entity.HasIndex(s => s.ExpiresUtc);
+            entity.HasOne<User>()
+                  .WithMany()
                   .HasForeignKey(s => s.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
