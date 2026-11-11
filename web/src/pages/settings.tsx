@@ -40,6 +40,7 @@ type Section =
   | 'export'
   | 'password'
   | 'signout'
+  | 'everywhere'
   | 'delete';
 
 interface Message {
@@ -155,6 +156,8 @@ export default function SettingsPage() {
   const scrolled = useRef<string | null>(null);
   const tzForm = useRef<HTMLFormElement>(null);
   const deleteForm = useRef<HTMLFormElement>(null);
+  const everywhereButton = useRef<HTMLButtonElement>(null);
+  const everywhereText = useRef<HTMLParagraphElement>(null);
 
   const [busy, setBusy] = useState<Section | null>(null);
   const [saved, setSaved] = useState<Section | null>(null);
@@ -165,6 +168,7 @@ export default function SettingsPage() {
   const [zone, setZone] = useState<string | null>(null);
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
+  const [confirmEverywhere, setConfirmEverywhere] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
   const [notificationsOff, setNotificationsOff] = useState(false);
   const [browserZone] = useState(browserTimeZone);
@@ -395,6 +399,22 @@ export default function SettingsPage() {
     show('signout', { tone: 'notice', text: "Ember couldn't sign you out. Check your connection and try again." });
   }
 
+  function askEverywhere(open: boolean): void {
+    flushSync(() => setConfirmEverywhere(open));
+    (open ? everywhereText : everywhereButton).current?.focus();
+  }
+
+  async function signOutEverywhere(): Promise<void> {
+    if (busyRef.current) return;
+    start('everywhere');
+    if (await auth.logout(true)) return;
+    finish();
+    show('everywhere', {
+      tone: 'notice',
+      text: "Ember couldn't sign you out everywhere. Check your connection and try again.",
+    });
+  }
+
   async function deleteAccount(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busyRef.current || !me) return;
@@ -523,9 +543,41 @@ export default function SettingsPage() {
                   >
                     Sign out
                   </BusyButton>
+                  {!confirmEverywhere && (
+                    <Button
+                      ref={everywhereButton}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => askEverywhere(true)}
+                    >
+                      Sign out everywhere
+                    </Button>
+                  )}
                 </div>
+                {confirmEverywhere && (
+                  <div className="flex flex-col gap-3 rounded-md border-[length:var(--border-width)] border-border p-3">
+                    <p ref={everywhereText} tabIndex={-1} className="focus:outline-none">
+                      This signs you out on every device, including this one.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <BusyButton
+                        type="button"
+                        variant="secondary"
+                        busy={busy === 'everywhere'}
+                        busyLabel="Signing out…"
+                        onClick={() => void signOutEverywhere()}
+                      >
+                        Yes, sign out everywhere
+                      </BusyButton>
+                      <Button type="button" variant="ghost" onClick={() => askEverywhere(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {outcome('password')}
                 {outcome('signout')}
+                {outcome('everywhere')}
               </SettingsCard>
             )}
 

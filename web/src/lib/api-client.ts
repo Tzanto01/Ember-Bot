@@ -124,6 +124,11 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/logout');
   }
 
+  /** `POST /api/auth/logout-everywhere`: ends every session on every device. Prefer `AuthService.logout(true)`. */
+  logoutEverywhere(): Promise<void> {
+    return this.http.request('POST', '/api/auth/logout-everywhere');
+  }
+
   /** URL for a full-page navigation to Discord sign-in. `returnUrl` must already be a safe local path. */
   discordLoginUrl(returnUrl: string): string {
     return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}`;

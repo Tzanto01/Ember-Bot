@@ -260,6 +260,34 @@ describe('SettingsPage', () => {
     expect(auth.me.get()).toBeNull();
   });
 
+  it('signs out everywhere only after the confirmation, and ends signed out', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+
+    await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
+    expect(screen.getByText('This signs you out on every device, including this one.')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Yes, sign out everywhere' }));
+    (await fetch.next('POST', '/api/auth/logout-everywhere')).respond(204);
+    (await fetch.next('GET', '/api/auth/antiforgery')).respond(204);
+
+    await waitFor(() => expect(auth.me.get()).toBeNull());
+    expect(fetch.all.some((call) => call.url === '/api/auth/logout')).toBe(false);
+  });
+
+  it('cancelling sign out everywhere sends nothing and keeps the session', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open();
+
+    await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('This signs you out on every device, including this one.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sign out everywhere' })).toHaveFocus();
+    await settle();
+    expect(fetch.all.some((call) => call.url.startsWith('/api/auth/logout'))).toBe(false);
+    expect(auth.me.get()).not.toBeNull();
+  });
+
   it('says it could not sign out and stays when the server cannot end the session', async () => {
     const user = userEvent.setup();
     const { fetch, router } = await open();
