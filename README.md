@@ -109,6 +109,12 @@ The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml
 | `BOT_TOKEN` | Discord bot token |
 | `DB_USER`, `DB_PASSWORD` | PostgreSQL login |
 | `DEV_GUILD_ID` | Optional. Also registers the slash commands to this server, where changes show up instantly |
+| `PRIVACY_POLICY_URL` | Optional. Privacy policy link shown in the consent prompt and `/help`; when it ends in `/legal/privacy`, `/help` also links that site's `/legal/imprint` |
+| `WEB_ORIGIN` | Public origin of the web app; the bot links to it, and the API (required there) uses it for links in emails and CORS |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional. Web Push keys and contact; without them no push reminders are sent |
+| `API_KNOWN_PROXY` | API only. Address of the reverse proxy whose forwarded headers the API trusts |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | API only. Mail server login and sender address for account emails; the port defaults to 587 |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | API only. Discord OAuth application for signing in with and linking Discord |
 
 Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
 
