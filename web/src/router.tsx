@@ -178,7 +178,7 @@ export const routes: RouteObject[] = [
           { path: 'routines', ...page('Routines', () => import('./pages/routines')) },
           { path: 'routines/new', ...page('New routine', () => import('./pages/routine-edit')) },
           { path: 'routines/:id/edit', ...page('Edit routine', () => import('./pages/routine-edit')) },
-          { path: 'settings', ...page('Settings', () => import('./pages/settings')) },
+          { path: 'settings/:group?', ...page('Settings', () => import('./pages/settings')) },
           { path: 'link/merge', ...page('Bring your Discord habits over', () => import('./pages/link-merge')) },
         ],
       },

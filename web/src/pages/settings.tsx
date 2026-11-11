@@ -1,7 +1,15 @@
-import { Check } from 'lucide-react';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -11,6 +19,7 @@ import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
+import { settingsGroupOf, settingsGroups } from '@/components/settings/settings-groups';
 import { ConfirmForm, TwoFactorSettings } from '@/components/settings/two-factor-settings';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
@@ -29,6 +38,7 @@ import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, localMode, push } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
+import { cn } from '@/lib/utils';
 
 type Section =
   | 'timezone'
@@ -78,6 +88,7 @@ const secondReminderLabels: Record<SecondReminderMinutes, string> = {
 };
 const exportFormats: ExportFormat[] = ['json', 'csv'];
 const scrollMargin = 'scroll-mt-[calc(56px+env(safe-area-inset-top)+1.5rem)]';
+const wideQuery = '(min-width: 48rem)';
 
 function zoneError(value: string): string | null {
   const zone = value.trim();
@@ -104,6 +115,17 @@ function isStandalone(): boolean {
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
+}
+
+function subscribeWide(change: () => void): () => void {
+  const query = window.matchMedia(wideQuery);
+  query.addEventListener('change', change);
+  return () => query.removeEventListener('change', change);
+}
+
+/** Whether the screen is `md` or wider, where Settings docks its groups in a side rail. */
+function useWide(): boolean {
+  return useSyncExternalStore(subscribeWide, () => window.matchMedia(wideQuery).matches);
 }
 
 function SettingsCard({
@@ -138,14 +160,18 @@ function focusSection(id: string): void {
 }
 
 /**
- * `/settings`: account (who is signed in, change password, sign out), appearance, reminders, push on this device,
- * grace days, timezone, moods, Discord, two-step sign-in, private journal, export and account deletion. A `#card-id`
- * in the address scrolls to that card and focuses its heading. Reloads `me` on entry. Every `PATCH /api/me` runs one
- * at a time, in order.
+ * `/settings` and `/settings/:group`: account (who is signed in, change password, sign out), appearance, reminders,
+ * push on this device, grace days, timezone, moods, Discord, two-step sign-in, private journal, export and account
+ * deletion, in the groups of `settingsGroups`. On phones `/settings` lists the groups and `/settings/:group` shows one
+ * with a way back; from `md` a side rail picks the group and `/settings` opens the first. A `#card-id` in the address
+ * (also the older `/settings#card-id`) opens that card's group, scrolls to the card and focuses its heading;
+ * `?discord=` opens the Discord card's group. Reloads `me` on entry. Every `PATCH /api/me` runs one at a time, in order.
  */
 export default function SettingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams();
+  const wide = useWide();
   const me = useStore(auth.me);
   const local = useStore(localMode.mode) === 'local';
   const pushAvailable = useStore(push.available);
@@ -195,21 +221,7 @@ export default function SettingsPage() {
         .then(({ LocalNotifications }) => LocalNotifications.checkPermissions())
         .then((status) => setNotificationsOff(status.display === 'denied'), () => undefined);
     }
-    if (!discordNotice) return;
-    params.delete('discord');
-    const search = params.toString();
-    void navigate({ search: search ? `?${search}` : '', hash: location.hash }, { replace: true });
   }, []);
-
-  useEffect(() => {
-    const id = location.hash.slice(1);
-    if (!me || !id || scrolled.current === id || !document.getElementById(`${id}-heading`)) return;
-    const frame = requestAnimationFrame(() => {
-      scrolled.current = id;
-      focusSection(id);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [me, pushAvailable, location.hash]);
 
   function start(section: Section): void {
     busyRef.current = section;
@@ -484,6 +496,46 @@ export default function SettingsPage() {
     { id: 'delete', title: local ? 'Delete everything on this device' : 'Delete your account' },
   ];
   const title = (id: string) => sections.find((section) => section.id === id)?.title ?? '';
+  const groups = settingsGroups
+    .map((group) => ({ ...group, cards: sections.filter((section) => group.cards.includes(section.id)) }))
+    .filter((group) => group.cards.length > 0);
+  const visibleGroup = (slug?: string) => groups.find((group) => group.slug === slug);
+  const query = new URLSearchParams(location.search);
+  const discordPending = !!discordNotice && query.has('discord');
+  const current =
+    visibleGroup(settingsGroupOf(location.hash.slice(1))?.slug) ??
+    visibleGroup(params['group']) ??
+    (discordPending ? visibleGroup(settingsGroupOf('discord')?.slug) : undefined) ??
+    (wide ? groups[0] : undefined);
+  const shown = (id: string) => !!current?.cards.some((card) => card.id === id);
+  query.delete('discord');
+  const pathname = current ? `/settings/${current.slug}` : '/settings';
+  const search = query.toString();
+  const redirect =
+    pathname !== location.pathname || discordPending
+      ? `${pathname}${search ? `?${search}` : ''}${location.hash}`
+      : null;
+  const fromList = (location.state as { fromList?: boolean } | null)?.fromList === true;
+
+  useEffect(() => {
+    if (redirect) void navigate(redirect, { replace: true });
+  }, [redirect]);
+
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (redirect || !me || !id || scrolled.current === id || !document.getElementById(`${id}-heading`)) return;
+    const frame = requestAnimationFrame(() => {
+      scrolled.current = id;
+      focusSection(id);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [me, pushAvailable, location.hash, redirect]);
+
+  function backToList(event: MouseEvent<HTMLAnchorElement>): void {
+    if (!fromList) return;
+    event.preventDefault();
+    void navigate(-1);
+  }
 
   const zoneValue = zone ?? me?.timezone ?? '';
   const zoneMessage = (zoneTouched ? zoneError(zoneValue) : null) ?? zoneServerError;
@@ -491,43 +543,103 @@ export default function SettingsPage() {
   const graceShown = grace ?? me?.graceDaysPerWeek ?? 0;
   const secondShown = second ?? me?.secondReminderMinutes ?? 0;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Settings" />
-      {discordNotice && (
-        <Notice tone={discordNotice.tone}>
-          <p>{discordNotice.text}</p>
-        </Notice>
-      )}
-      {me ? (
-        <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,40rem)] lg:items-start">
-          <nav
-            aria-label="Settings sections"
-            className="lg:sticky lg:top-[calc(56px+env(safe-area-inset-top)+1.5rem)]"
-          >
-            <ul className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap lg:gap-1">
-              {sections.map((section) => (
-                <li key={section.id}>
-                  <a
-                    href={`#${section.id}`}
-                    onClick={() => focusSection(section.id)}
-                    className="flex min-h-[44px] items-center rounded-full border border-border px-3 text-[14px] text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground lg:rounded-md lg:border-transparent"
-                  >
-                    {section.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+  const notice = discordNotice && (
+    <Notice tone={discordNotice.tone}>
+      <p>{discordNotice.text}</p>
+    </Notice>
+  );
 
-          <div className="flex min-w-0 flex-col gap-6">
-            {local && (
+  if (!current) {
+    return (
+      <div className="flex max-w-[40rem] flex-col gap-6">
+        <PageHeader title="Settings" />
+        {notice}
+        <nav aria-label="Settings groups">
+          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border-[length:var(--border-width)] border-border bg-card text-card-foreground shadow-card">
+            {groups.map((group) => (
+              <li key={group.slug}>
+                <Link
+                  to={`/settings/${group.slug}`}
+                  state={{ fromList: true }}
+                  aria-labelledby={`group-${group.slug}-name`}
+                  aria-describedby={`group-${group.slug}-summary`}
+                  className="flex min-h-[64px] items-center gap-4 px-4 py-3 text-card-foreground no-underline hover:bg-accent hover:text-accent-foreground focus-visible:-outline-offset-3"
+                >
+                  <group.icon aria-hidden className="size-[22px] shrink-0 text-primary" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span id={`group-${group.slug}-name`} className="font-semibold">
+                      {group.name}
+                    </span>
+                    <span id={`group-${group.slug}-summary`} className="text-[14px] text-muted-foreground">
+                      {group.summary ?? group.cards.map((card) => card.title).join(', ')}
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden className="size-[18px] shrink-0 text-muted-foreground" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-6', wide && 'grid grid-cols-[14rem_minmax(0,40rem)] items-start gap-8')}>
+      {wide && (
+        <nav
+          aria-labelledby="settings-rail-label"
+          className="sticky top-[calc(56px+env(safe-area-inset-top)+1.5rem)] flex flex-col gap-2"
+        >
+          <p id="settings-rail-label" className="px-3 text-[14px] font-semibold text-muted-foreground">
+            Settings
+          </p>
+          <ul className="flex flex-col gap-1">
+            {groups.map((group) => (
+              <li key={group.slug}>
+                <Link
+                  to={`/settings/${group.slug}`}
+                  aria-current={group.slug === current.slug ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-[44px] items-center gap-3 rounded-md px-3 text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground',
+                    group.slug === current.slug &&
+                      'bg-secondary font-semibold text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground',
+                  )}
+                >
+                  <group.icon aria-hidden className="size-[18px] shrink-0" />
+                  {group.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
+      <div className="flex min-w-0 flex-col gap-6">
+        {!wide && (
+          <div>
+            <Link
+              to="/settings"
+              onClick={backToList}
+              aria-label="Back to Settings"
+              className="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 font-medium text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground"
+            >
+              <ChevronLeft aria-hidden className="size-[18px]" />
+              Settings
+            </Link>
+          </div>
+        )}
+        <PageHeader title={current.name} />
+        {notice}
+        {me ? (
+          <>
+            {shown('device') && (
               <SettingsCard id="device" title={title('device')}>
                 <DeviceDataSettings />
               </SettingsCard>
             )}
 
-            {!local && (
+            {shown('account') && (
               <SettingsCard id="account" title={title('account')}>
                 <p>
                   {me.email ? (
@@ -597,16 +709,18 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            <SettingsCard id="appearance" title={title('appearance')}>
-              <p id="appearance-hint">
-                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your theme follows you to your other devices.'}
-              </p>
-              <ColorSchemePicker />
-              <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
-              {outcome('appearance')}
-            </SettingsCard>
+            {shown('appearance') && (
+              <SettingsCard id="appearance" title={title('appearance')}>
+                <p id="appearance-hint">
+                  {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your theme follows you to your other devices.'}
+                </p>
+                <ColorSchemePicker />
+                <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
+                {outcome('appearance')}
+              </SettingsCard>
+            )}
 
-            {showPush && (
+            {shown('push') && (
               <SettingsCard id="push" title={title('push')}>
                 <p>
                   Get gentle reminders here, even when Ember isn't open. By default a notification doesn't name your
@@ -645,7 +759,7 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            {showDm && (
+            {shown('dm-reminders') && (
               <SettingsCard id="dm-reminders" title={title('dm-reminders')}>
                 {me.dmReminders.paused && (
                   <>
@@ -671,7 +785,7 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            {env.native && (
+            {shown('phone-reminders') && (
               <SettingsCard id="phone-reminders" title={title('phone-reminders')}>
                 <p>
                   Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
@@ -686,7 +800,7 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            {showSecond && (
+            {shown('second-reminder') && (
               <SettingsCard id="second-reminder" title={title('second-reminder')}>
                 <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
                   {(field) => (
@@ -708,111 +822,119 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            <SettingsCard id="routines" title={title('routines')}>
-              <p>Group habits that belong together into routines, like a morning routine.</p>
-              <div>
-                <Button asChild variant="secondary">
-                  <Link to="/routines">Your routines</Link>
-                </Button>
-              </div>
-            </SettingsCard>
-
-            <SettingsCard id="grace" title={title('grace')}>
-              <FormField
-                label="Grace days per week"
-                hint="Up to this many days a week can pass without a check-in and your streak keeps going. Every check-in counts, no matter the gap."
-              >
-                {(field) => (
-                  <NativeSelect
-                    {...field}
-                    value={String(graceShown)}
-                    onChange={(event) => changeGrace(Number(event.target.value))}
-                  >
-                    {graceOptions.map((n) => (
-                      <option key={n} value={n}>
-                        {n === 0 ? 'None' : n === 1 ? '1 day a week' : `${n} days a week`}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </FormField>
-              <p className="text-[14px] text-muted-foreground">
-                Grace days happen on their own. A low day is one you mark yourself, and a pause is for one habit.
-              </p>
-              {savedStatus('grace')}
-              {outcome('grace')}
-            </SettingsCard>
-
-            <SettingsCard id="timezone" title={title('timezone')}>
-              {me.timezoneSet ? (
-                <p>
-                  Your days follow <strong>{timeZoneLabel(me.timezone)}</strong>. Reminders and "today" use this
-                  timezone.
-                </p>
-              ) : (
-                <p>
-                  You haven't picked a timezone yet, so Ember uses <strong>{timeZoneLabel(me.timezone)}</strong> for
-                  now. Reminders and "today" follow it.
-                </p>
-              )}
-              {suggestZone && (
+            {shown('routines') && (
+              <SettingsCard id="routines" title={title('routines')}>
+                <p>Group habits that belong together into routines, like a morning routine.</p>
                 <div>
-                  <Button
-                    type="button"
-                    aria-disabled={busy !== null || undefined}
-                    onClick={() => void saveTimezone(browserZone)}
-                  >
-                    Use {browserZone}
+                  <Button asChild variant="secondary">
+                    <Link to="/routines">Your routines</Link>
                   </Button>
                 </div>
-              )}
-              <form
-                ref={tzForm}
-                noValidate
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void saveTimezone();
-                }}
-                className="flex flex-col gap-3"
-              >
+              </SettingsCard>
+            )}
+
+            {shown('grace') && (
+              <SettingsCard id="grace" title={title('grace')}>
                 <FormField
-                  label="Choose a timezone"
-                  hint="Start typing a city or region, like Berlin or New York."
-                  error={zoneMessage}
+                  label="Grace days per week"
+                  hint="Up to this many days a week can pass without a check-in and your streak keeps going. Every check-in counts, no matter the gap."
                 >
                   {(field) => (
-                    <Input
+                    <NativeSelect
                       {...field}
-                      type="text"
-                      list="timezone-list"
-                      autoComplete="off"
-                      spellCheck={false}
-                      value={zoneValue}
-                      onChange={(event) => setZone(event.target.value)}
-                      onBlur={() => setZoneTouched(true)}
-                    />
+                      value={String(graceShown)}
+                      onChange={(event) => changeGrace(Number(event.target.value))}
+                    >
+                      {graceOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n === 0 ? 'None' : n === 1 ? '1 day a week' : `${n} days a week`}
+                        </option>
+                      ))}
+                    </NativeSelect>
                   )}
                 </FormField>
-                <datalist id="timezone-list">
-                  {zones.map((name) => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
-                <div className="flex flex-wrap items-center gap-3">
-                  <BusyButton type="submit" variant="secondary" busy={busy === 'timezone'} busyLabel="Saving…">
-                    Save timezone
-                  </BusyButton>
-                  {savedStatus('timezone')}
-                </div>
-              </form>
-              {outcome('timezone')}
-            </SettingsCard>
+                <p className="text-[14px] text-muted-foreground">
+                  Grace days happen on their own. A low day is one you mark yourself, and a pause is for one habit.
+                </p>
+                {savedStatus('grace')}
+                {outcome('grace')}
+              </SettingsCard>
+            )}
 
-            <SettingsCard id="moods" title={title('moods')}>
-              <MoodManager />
-            </SettingsCard>
+            {shown('timezone') && (
+              <SettingsCard id="timezone" title={title('timezone')}>
+                {me.timezoneSet ? (
+                  <p>
+                    Your days follow <strong>{timeZoneLabel(me.timezone)}</strong>. Reminders and "today" use this
+                    timezone.
+                  </p>
+                ) : (
+                  <p>
+                    You haven't picked a timezone yet, so Ember uses <strong>{timeZoneLabel(me.timezone)}</strong> for
+                    now. Reminders and "today" follow it.
+                  </p>
+                )}
+                {suggestZone && (
+                  <div>
+                    <Button
+                      type="button"
+                      aria-disabled={busy !== null || undefined}
+                      onClick={() => void saveTimezone(browserZone)}
+                    >
+                      Use {browserZone}
+                    </Button>
+                  </div>
+                )}
+                <form
+                  ref={tzForm}
+                  noValidate
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveTimezone();
+                  }}
+                  className="flex flex-col gap-3"
+                >
+                  <FormField
+                    label="Choose a timezone"
+                    hint="Start typing a city or region, like Berlin or New York."
+                    error={zoneMessage}
+                  >
+                    {(field) => (
+                      <Input
+                        {...field}
+                        type="text"
+                        list="timezone-list"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={zoneValue}
+                        onChange={(event) => setZone(event.target.value)}
+                        onBlur={() => setZoneTouched(true)}
+                      />
+                    )}
+                  </FormField>
+                  <datalist id="timezone-list">
+                    {zones.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <BusyButton type="submit" variant="secondary" busy={busy === 'timezone'} busyLabel="Saving…">
+                      Save timezone
+                    </BusyButton>
+                    {savedStatus('timezone')}
+                  </div>
+                </form>
+                {outcome('timezone')}
+              </SettingsCard>
+            )}
 
-            {!local && (
+            {shown('moods') && (
+              <SettingsCard id="moods" title={title('moods')}>
+                <MoodManager />
+              </SettingsCard>
+            )}
+
+            {shown('discord') && (
               <SettingsCard id="discord" title={title('discord')}>
                 {me.discord.linked ? (
                   <>
@@ -875,19 +997,19 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            {!local && (
+            {shown('two-factor') && (
               <SettingsCard id="two-factor" title={title('two-factor')}>
                 <TwoFactorSettings me={me} />
               </SettingsCard>
             )}
 
-            {!local && (
+            {shown('journal') && (
               <SettingsCard id="journal" title={title('journal')}>
                 <JournalSettings me={me} />
               </SettingsCard>
             )}
 
-            {!local && (
+            {shown('export') && (
               <SettingsCard id="export" title={title('export')}>
                 <p>
                   Download everything Ember keeps about you: your settings, every habit (paused ones too), all check-ins
@@ -917,73 +1039,75 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            <SettingsCard id="delete" title={title('delete')} farewell>
-              {local ? (
-                <DeleteDeviceData />
-              ) : (
-                <>
-                  <p>
-                    This removes your account and everything in it: habits, check-ins, low days and settings. It can't be
-                    undone. If you'd like to keep a copy, download your data first.
-                  </p>
-                  <form
-                    ref={deleteForm}
-                    noValidate
-                    onSubmit={(event) => void deleteAccount(event)}
-                    className="flex flex-col gap-3"
-                  >
-                    {me.hasPassword && (
-                      <>
-                        <input
-                          className="sr-only"
-                          type="email"
-                          name="username"
-                          autoComplete="username"
-                          value={me.email ?? ''}
-                          readOnly
-                          tabIndex={-1}
-                          aria-hidden="true"
-                        />
-                        <FormField label="Your password" error={password.error ?? deleteErrors.password ?? null}>
-                          {(field) => (
-                            <PasswordInput {...field} {...password.input} autoComplete="current-password" />
-                          )}
-                        </FormField>
-                      </>
-                    )}
-                    <FormField label="Type DELETE to confirm" error={confirm.error ?? deleteErrors.confirm ?? null}>
-                      {(field) => (
-                        <Input
-                          {...field}
-                          {...confirm.input}
-                          type="text"
-                          autoComplete="off"
-                          autoCapitalize="characters"
-                          spellCheck={false}
-                        />
+            {shown('delete') && (
+              <SettingsCard id="delete" title={title('delete')} farewell>
+                {local ? (
+                  <DeleteDeviceData />
+                ) : (
+                  <>
+                    <p>
+                      This removes your account and everything in it: habits, check-ins, low days and settings. It can't be
+                      undone. If you'd like to keep a copy, download your data first.
+                    </p>
+                    <form
+                      ref={deleteForm}
+                      noValidate
+                      onSubmit={(event) => void deleteAccount(event)}
+                      className="flex flex-col gap-3"
+                    >
+                      {me.hasPassword && (
+                        <>
+                          <input
+                            className="sr-only"
+                            type="email"
+                            name="username"
+                            autoComplete="username"
+                            value={me.email ?? ''}
+                            readOnly
+                            tabIndex={-1}
+                            aria-hidden="true"
+                          />
+                          <FormField label="Your password" error={password.error ?? deleteErrors.password ?? null}>
+                            {(field) => (
+                              <PasswordInput {...field} {...password.input} autoComplete="current-password" />
+                            )}
+                          </FormField>
+                        </>
                       )}
-                    </FormField>
-                    {outcome('delete')}
-                    <div>
-                      <BusyButton type="submit" variant="destructive" busy={busy === 'delete'} busyLabel="Deleting…">
-                        Delete my account
-                      </BusyButton>
-                    </div>
-                  </form>
-                </>
-              )}
-            </SettingsCard>
-          </div>
-        </div>
-      ) : (
-        <div className="flex max-w-[40rem] flex-col gap-6">
-          <p role="status" className="sr-only">
-            Loading your settings…
-          </p>
-          <Skeleton className="h-[12rem] rounded-xl" />
-          <Skeleton className="h-[8rem] rounded-xl" />
-        </div>
-      )}
+                      <FormField label="Type DELETE to confirm" error={confirm.error ?? deleteErrors.confirm ?? null}>
+                        {(field) => (
+                          <Input
+                            {...field}
+                            {...confirm.input}
+                            type="text"
+                            autoComplete="off"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                          />
+                        )}
+                      </FormField>
+                      {outcome('delete')}
+                      <div>
+                        <BusyButton type="submit" variant="destructive" busy={busy === 'delete'} busyLabel="Deleting…">
+                          Delete my account
+                        </BusyButton>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </SettingsCard>
+            )}
+          </>
+        ) : (
+          <>
+            <p role="status" className="sr-only">
+              Loading your settings…
+            </p>
+            <Skeleton className="h-[12rem] rounded-xl" />
+            <Skeleton className="h-[8rem] rounded-xl" />
+          </>
+        )}
+      </div>
     </div>
   );
 }

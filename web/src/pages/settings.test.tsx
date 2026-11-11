@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { reminderNames } from '@/lib/native/reminder-names';
@@ -27,13 +27,19 @@ vi.mock('@capacitor/local-notifications', () => ({
 
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
 
-async function open() {
+let wide = false;
+
+async function open(url: string) {
   auth.setMe(me);
   const fetch = mockFetch();
-  const router = renderPage('/settings', SettingsPage, '/settings');
+  const router = renderPage('/settings/:group?', SettingsPage, url);
   (await fetch.next('GET', '/api/me')).respond(200, me);
-  await screen.findByRole('heading', { name: 'Grace days' });
+  await screen.findByRole('heading', { level: 1 });
   return { fetch, router };
+}
+
+function path(router: ReturnType<typeof renderPage>) {
+  return router.state.location.pathname + router.state.location.search + router.state.location.hash;
 }
 
 function openPatches(fetch: FetchMock) {
@@ -41,6 +47,16 @@ function openPatches(fetch: FetchMock) {
 }
 
 describe('SettingsPage', { timeout: 15_000 }, () => {
+  beforeEach(() => {
+    wide = false;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === '(min-width: 48rem)' && wide,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     delete (navigator as { serviceWorker?: unknown }).serviceWorker;
@@ -55,13 +71,14 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     notificationPermission.display = 'granted';
   });
 
-  it('starts with the account: who is signed in, then Appearance, and sends a change-password link', async () => {
+  it('Account & security starts with who is signed in, then Discord and two-step, and sends a change-password link', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/account');
 
     const cards = document.querySelectorAll('section');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Account & security');
+    expect([...cards].map((card) => card.getAttribute('id'))).toEqual(['account', 'discord', 'two-factor']);
     expect(cards[0]).toHaveAccessibleName('Account');
-    expect(cards[1]).toHaveAccessibleName('Appearance');
     const account = within(cards[0] as HTMLElement);
     expect(account.getByText(/Signed in as/)).toHaveTextContent('Signed in as a@example.test');
     expect(account.queryByRole('link', { name: 'Privacy' })).toBeNull();
@@ -77,14 +94,14 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     const discordOnly = { ...me, email: null, hasPassword: false, discord: { linked: true, id: '42' } };
     auth.setMe(discordOnly);
     const fetch = mockFetch();
-    renderPage('/settings', SettingsPage, '/settings');
+    renderPage('/settings/:group?', SettingsPage, '/settings/account');
     (await fetch.next('GET', '/api/me')).respond(200, discordOnly);
 
     expect(await screen.findByText('Signed in with Discord')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
   });
 
-  it('scrolls to the card named in the address and focuses its heading, as /settings#push', async () => {
+  it('opens the group of an older /settings#push link, scrolls to that card and focuses its heading', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     const frames = new Map<number, FrameRequestCallback>();
@@ -93,20 +110,119 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     push.available.set(true);
     auth.setMe(me);
     const fetch = mockFetch();
-    renderPage('/settings', SettingsPage, '/settings#push');
+    const router = renderPage('/settings/:group?', SettingsPage, '/settings#push');
     const heading = await screen.findByRole('heading', { name: 'Notifications on this device' });
     (await fetch.next('GET', '/api/me')).respond(200, { ...me });
     await settle();
 
+    expect(path(router)).toBe('/settings/reminders#push');
+    expect(router.state.historyAction).toBe('REPLACE');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Reminders');
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
     frames.forEach((callback) => callback(0));
     expect(heading).toHaveFocus();
     expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('push'));
   });
 
-  it('switches between light, dark and the system setting on this device', async () => {
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => undefined }));
+  it('opens the group holding the card in the hash, even from another group', async () => {
+    const { router } = await open('/settings/habits#journal');
+
+    await waitFor(() => expect(path(router)).toBe('/settings/privacy#journal'));
+    expect(screen.getByRole('region', { name: 'Private journal' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
+  });
+
+  it('on a phone, lists the groups, opens one, and goes back to the list through history', async () => {
     const user = userEvent.setup();
-    await open();
+    const { router } = await open('/settings');
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
+    expect(document.querySelectorAll('section')).toHaveLength(0);
+    expect(screen.queryByRole('link', { name: 'Back to Settings' })).toBeNull();
+    const list = within(screen.getByRole('navigation', { name: 'Settings groups' }));
+    expect(list.getAllByRole('link').map((link) => link.textContent)).toEqual([
+      expect.stringContaining('Account & security'),
+      expect.stringContaining('Reminders'),
+      expect.stringContaining('Habits & days'),
+      expect.stringContaining('Appearance'),
+      expect.stringContaining('Privacy & data'),
+    ]);
+    const reminders = list.getByRole('link', { name: 'Reminders' });
+    expect(reminders).toHaveAccessibleDescription('Second reminder');
+
+    await user.click(reminders);
+    expect(router.state.location.pathname).toBe('/settings/reminders');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Reminders');
+    expect(screen.getByRole('combobox', { name: 'Second reminder' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
+
+    await user.click(screen.getByRole('link', { name: 'Back to Settings' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+    expect(router.state.historyAction).toBe('POP');
+    expect(screen.getByRole('navigation', { name: 'Settings groups' })).toBeInTheDocument();
+  });
+
+  it('on a phone, a group opened directly goes back to the list without leaving Settings', async () => {
+    const user = userEvent.setup();
+    const { router } = await open('/settings/habits');
+
+    await user.click(screen.getByRole('link', { name: 'Back to Settings' }));
+    expect(router.state.location.pathname).toBe('/settings');
+    expect(router.state.historyAction).toBe('PUSH');
+  });
+
+  it('from md, docks the groups in a side rail, opens the first one and marks the current group', async () => {
+    wide = true;
+    const user = userEvent.setup();
+    const { router } = await open('/settings');
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings/account'));
+    const rail = within(screen.getByRole('navigation', { name: 'Settings' }));
+    expect(rail.getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Account & security',
+      'Reminders',
+      'Habits & days',
+      'Appearance',
+      'Privacy & data',
+    ]);
+    expect(rail.getByRole('link', { name: 'Account & security' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('region', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back to Settings' })).toBeNull();
+
+    await user.click(rail.getByRole('link', { name: 'Privacy & data' }));
+    expect(router.state.location.pathname).toBe('/settings/privacy');
+    expect(rail.getByRole('link', { name: 'Privacy & data' })).toHaveAttribute('aria-current', 'page');
+    expect(rail.getByRole('link', { name: 'Account & security' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Privacy & data');
+    expect([...document.querySelectorAll('section')].map((card) => card.getAttribute('id'))).toEqual([
+      'journal',
+      'export',
+      'delete',
+    ]);
+  });
+
+  it('without an account, leaves out the Reminders group and sends its address back to the list', async () => {
+    localMode.mode.set('local');
+    const { router } = await open('/settings');
+
+    const list = within(screen.getByRole('navigation', { name: 'Settings groups' }));
+    expect(list.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/settings/account',
+      '/settings/habits',
+      '/settings/appearance',
+      '/settings/privacy',
+    ]);
+    expect(list.getByRole('link', { name: 'Account & security' })).toHaveAccessibleDescription('On this device');
+
+    await act(() => router.navigate('/settings/reminders'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+    expect(screen.queryByRole('combobox', { name: 'Second reminder' })).toBeNull();
+  });
+
+  it('switches between light, dark and the system setting on this device', async () => {
+    const user = userEvent.setup();
+    await open('/settings/appearance');
 
     expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
     await user.click(screen.getByRole('radio', { name: 'Dark' }));
@@ -121,7 +237,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
   it('on the phone, says how to turn notifications back on when they are off for Ember', async () => {
     env.native = true;
     notificationPermission.display = 'denied';
-    await open();
+    await open('/settings/reminders');
 
     expect(
       await screen.findByText("Notifications are off for Ember on this phone. You can turn them on in your phone's settings."),
@@ -132,7 +248,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
   it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {
     env.native = true;
     const user = userEvent.setup();
-    await open();
+    await open('/settings/reminders');
 
     const names = screen.getByRole('switch', { name: 'Show habit names in reminders' });
     expect(names).not.toBeChecked();
@@ -144,19 +260,9 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(names).toBeChecked();
   });
 
-  it('lists the two-step sign-in, private journal and moods sections in the side nav', async () => {
-    await open();
-
-    const nav = screen.getByRole('navigation', { name: 'Settings sections' });
-    expect(within(nav).getByRole('link', { name: 'Private journal' })).toHaveAttribute('href', '#journal');
-    expect(within(nav).getByRole('link', { name: 'Two-step sign-in' })).toHaveAttribute('href', '#two-factor');
-    expect(document.getElementById('journal')).toHaveAccessibleName('Private journal');
-    expect(screen.getByRole('heading', { name: 'Moods' })).toBeInTheDocument();
-  });
-
   it('sends quick successive grace changes one PATCH at a time, in order', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/habits');
     const select = screen.getByLabelText('Grace days per week');
 
     await user.selectOptions(select, '2 days a week');
@@ -178,7 +284,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('saves the second reminder choice to the account', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/reminders');
     const select = screen.getByRole('combobox', { name: 'Second reminder' });
     expect(select).toHaveDisplayValue('Off');
     expect(select).toHaveAccessibleDescription("If you haven't checked in yet, Ember nudges you once more.");
@@ -193,11 +299,13 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByText('Saved.')).toBeInTheDocument();
   });
 
-  it('waits for the grace PATCH before sending the theme one', async () => {
+  it('waits for the grace PATCH before sending the theme one, across groups', async () => {
+    wide = true;
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/habits');
 
     await user.selectOptions(screen.getByLabelText('Grace days per week'), '2 days a week');
+    await user.click(screen.getByRole('link', { name: 'Appearance' }));
     await user.click(screen.getByRole('radio', { name: 'Fieldnotes' }));
 
     const first = await fetch.next('PATCH', '/api/me');
@@ -210,13 +318,15 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(second.body).toEqual({ theme: 'fieldnotes' });
     second.respond(200, { ...me, graceDaysPerWeek: 2, theme: 'fieldnotes' });
 
-    await waitFor(() => expect(screen.getByLabelText('Grace days per week')).toHaveDisplayValue('2 days a week'));
+    await waitFor(() => expect(auth.me.get()?.theme).toBe('fieldnotes'));
+    await user.click(screen.getByRole('link', { name: 'Habits & days' }));
+    expect(screen.getByLabelText('Grace days per week')).toHaveDisplayValue('2 days a week');
     expect(screen.queryByText(/leaderboard/i)).not.toBeInTheDocument();
   });
 
   it('applies a chosen theme at once and saves it to the account', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/appearance');
 
     await user.click(screen.getByRole('radio', { name: 'Fieldnotes' }));
 
@@ -232,7 +342,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('keeps the chosen theme on this device and says so gently when saving it fails', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/appearance');
 
     await user.click(screen.getByRole('radio', { name: 'Tidepool' }));
     (await fetch.next('PATCH', '/api/me')).fail();
@@ -246,7 +356,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('deletes the account with the password and lands on /login?reason=deleted', async () => {
     const user = userEvent.setup();
-    const { fetch, router } = await open();
+    const { fetch, router } = await open('/settings/privacy');
 
     await user.type(screen.getByLabelText('Your password', { exact: true }), 'synthetic-secret-1');
     await user.type(screen.getByLabelText('Type DELETE to confirm'), 'DELETE');
@@ -265,7 +375,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('signs out everywhere only after the confirmation, and ends signed out', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/account');
 
     await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
     expect(screen.getByText('This signs you out on every device, including this one.')).toHaveFocus();
@@ -279,7 +389,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('cancelling sign out everywhere sends nothing and keeps the session', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/account');
 
     await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -293,7 +403,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('says it could not sign out and stays when the server cannot end the session', async () => {
     const user = userEvent.setup();
-    const { fetch, router } = await open();
+    const { fetch, router } = await open('/settings/account');
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     (await fetch.next('POST', '/api/auth/logout')).respond(503);
@@ -301,7 +411,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(
       await screen.findByText("Ember couldn't sign you out. Check your connection and try again."),
     ).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/settings');
+    expect(router.state.location.pathname).toBe('/settings/account');
     expect(auth.me.get()).not.toBeNull();
   });
 
@@ -312,19 +422,19 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       configurable: true,
       value: { getRegistration: async () => registration, ready: Promise.resolve(registration) },
     });
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/reminders');
 
     (await fetch.next('GET', '/api/push/vapid-public-key')).respond(501);
     await settle();
 
     expect(screen.queryByRole('heading', { name: 'Notifications on this device' })).toBeNull();
-    expect(screen.getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Second reminder' })).toBeInTheDocument();
   });
 
-  it('shows the Discord linked notice, reloads me and drops the query from the address', async () => {
+  it('shows the Discord linked notice in its group, reloads me and drops the query from the address', async () => {
     auth.setMe(me);
     const fetch = mockFetch();
-    const router = renderPage('/settings', SettingsPage, '/settings?discord=linked');
+    const router = renderPage('/settings/:group?', SettingsPage, '/settings?discord=linked');
 
     const notice = await screen.findByText('Discord is linked. You can sign in with it from now on.');
     expect(notice.closest('[role="status"]')).not.toBeNull();
@@ -332,12 +442,13 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     (await fetch.next('GET', '/api/me')).respond(200, { ...me, discord: { linked: true, id: '42' } });
 
     expect(await screen.findByRole('button', { name: 'Unlink Discord' })).toBeInTheDocument();
-    expect(router.state.location.search).toBe('');
+    expect(path(router)).toBe('/settings/account');
+    expect(notice).toBeInTheDocument();
   });
 
   it('links Discord only after the password: a wrong one is an inline error, the right one goes to Discord', async () => {
     const user = userEvent.setup();
-    const { fetch } = await open();
+    const { fetch } = await open('/settings/account');
     const card = within(screen.getByRole('region', { name: 'Discord' }));
 
     await user.click(card.getByRole('button', { name: 'Link Discord' }));
@@ -364,30 +475,31 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
   it('without an account, shows the device card first and no sign-out, Discord, two-step or private journal', async () => {
     localMode.mode.set('local');
-    await open();
+    const { router } = await open('/settings/account');
 
     const cards = document.querySelectorAll('section');
+    expect(cards).toHaveLength(1);
     expect(cards[0]).toHaveAccessibleName('On this device');
     expect(within(cards[0] as HTMLElement).getByText(/Browsers can delete site data/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export backup' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create an account and keep my data' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+
+    await act(() => router.navigate('/settings/privacy'));
     expect(screen.getByRole('button', { name: 'Delete everything on this device' })).toBeInTheDocument();
     for (const name of ['Discord', 'Two-step sign-in', 'Private journal', 'Your data', 'Delete your account']) {
       expect(screen.queryByRole('heading', { name })).toBeNull();
     }
-    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete my account' })).toBeNull();
+
+    await act(() => router.navigate('/settings/habits'));
     expect(screen.getByRole('heading', { name: 'Timezone' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Second reminder' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Second reminder' })).toBeNull();
   });
 
   it('links to routines', async () => {
     const user = userEvent.setup();
-    const { router } = await open();
+    const { router } = await open('/settings/habits');
 
-    expect(within(screen.getByRole('navigation', { name: 'Settings sections' })).getByRole('link', { name: 'Routines' })).toHaveAttribute('href', '#routines');
     await user.click(screen.getByRole('link', { name: 'Your routines' }));
     expect(router.state.location.pathname).toBe('/routines');
   });
