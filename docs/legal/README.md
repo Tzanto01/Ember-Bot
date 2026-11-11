@@ -1,67 +1,79 @@
 # Ember legal texts (drafts)
 
-> **Not legal advice.** These are drafts written from the code, not by a lawyer. Have them checked (a lawyer, or at least a reputable generator such as the ones from e-recht24 or Dr. Schwenke as a cross-check) before anything is published. Nothing here is published yet.
+> **Not legal advice.** These drafts are written from the code, not by a lawyer. Have them checked before anything is published. Nothing here is published yet, and nothing goes live until Nico approves it.
 
-The German texts are binding. Each file starts with a short English summary.
+## Where the texts live
 
-| File | What it is |
-|---|---|
-| `datenschutzerklaerung.md` | Privacy policy (GDPR Art. 13) |
-| `nutzungsbedingungen.md` | Terms of use |
-| `impressum.md` | Legal notice (§ 5 DDG, § 18 MStV), with a note on when it is required (delete the note before publishing) |
+- **Source of truth:** `web/public/legal/`. The web app serves these files at `/legal/privacy`, `/legal/terms` and `/legal/imprint` and links them in its footer. Edit them only there.
+- `docs/legal/*.md` are pointers only. They keep older links (for example in `mobile/STORE.md`) working. Do not copy the texts here.
+- **Before the web build goes live:** the files are public once the web app is deployed. They still contain `[PRÜFEN: ...]` markers and the owner note in `impressum.md`. Do not deploy them as they are.
 
-The texts describe Ember as of Phase 3 (branch `v2/phase-3-backfill`): `/export` (CSV or JSON, full data), `/privacy delete`, stored `NextReminderUtc`, DM failure counter and pause, backfill through `/habit history`, low days, the pause start date, and the Art. 9 consent flow with its consent record. See "Before publishing" below.
+To list every open marker: `grep -n "PRÜFEN" web/public/legal/*.md`
 
-The consent record carries a policy version (`HabitService.CurrentConsentPolicyVersion`, currently `2026-10`). Changing it asks every user for consent again, so bump it only when the policy changes in a way that needs new consent.
+## Status
 
-## Placeholders to fill
+Checked against the code at commit `b6b69e8` (API contract v1.8, reminders included). The texts describe the Discord bot, the web app, accounts, the optional private journal, web push, the Android app (not yet published) and the no-account mode.
 
-| Placeholder | Files |
-|---|---|
-| `[NAME]` | all three |
-| `[ANSCHRIFT: ...]` (street, postcode, city; must be a serviceable address, no PO box) | Datenschutzerklärung, Impressum |
-| `[E-MAIL]` | all three |
-| `[ZWEITER SCHNELLER KONTAKTWEG]` (optional) | Impressum |
-| `[DATUM]` (Stand) | Datenschutzerklärung, Nutzungsbedingungen |
-| ~~`[LOG-AUFBEWAHRUNG IN TAGEN]`~~ set to 30 days (common default for operational logs) | Datenschutzerklärung (3.3 and 7) |
-| ~~`[BACKUP-RHYTHMUS]`, `[BACKUP-AUFBEWAHRUNG IN TAGEN]`~~ set to daily, 30 days | Datenschutzerklärung (7) |
-| `[NAME/ANSCHRIFT/WEBSITE DER AUFSICHTSBEHÖRDE]` (data protection authority of your Bundesland) | Datenschutzerklärung (9) |
-| `[MINDESTALTER]` | Datenschutzerklärung (10) |
-| `[VPS-ANBIETER, Sitz]`, `[LAND IN DER EU]` (the whole bracketed paragraph replaces the homeserver paragraph after the move) | Datenschutzerklärung (6.2) |
-| `[ZU PRÜFEN: ...]` Discord's EEA controller entity and transfer basis | Datenschutzerklärung (6.1) |
-| `[FRIST]` (notice period before shutting Ember down) | Nutzungsbedingungen (7) |
-| `[NUR AUFNEHMEN, FALLS ...]` § 18 Abs. 2 MStV block, `[OPTIONAL]` dispute resolution line | Impressum |
+## Decisions taken in these drafts
 
-## Open legal questions
+- **Operator:** Nico Pauly Wöllnitz, Erzbergerstraße 129, 46145 Oberhausen. Contact: contact@nicowoellnitz.de (also the support contact).
+- **Impressum:** § 5 DDG only. Contact by email only, like the portfolio Impressum. No § 18 Abs. 2 MStV block, because Ember has no journalistic-editorial content.
+- **Umsatzsteuer:** Kleinunternehmer under § 19 UStG, no USt-IdNr.
+- **Hosting:** self-hosted in Germany at the operator's home. The public app is reached through a Cloudflare Tunnel on ember-glow.app, so Cloudflare, Inc. is a processor (section 6.2 of the privacy policy).
+- **E-mail:** Brevo (Sendinblue SAS, France) today. Section 6.3 changes when the switch to a transactional provider (Resend or Postmark, not chosen) happens.
+- **Discord:** the bot uses no privileged intents and reads no messages. "Sign in with Discord" asks only for the `identify` scope and stores only the Discord user ID.
+- **Health data (Art. 9):** habit names, check-ins, low days, journal entries and moods, under consent (policy version `2026-10`).
+- **Journal:** entries are plaintext on the server by default. The private journal is opt-in and end-to-end encrypted.
+- **Android:** no Google/Firebase push. Reminders are local notifications.
+- **Leaderboard:** removed in v1.6. The drafts no longer mention it.
 
-1. **Art. 9 consent basis.** The policy relies on explicit consent (Art. 9(2)(a)) for habit names, check-ins and low days. The consent step is now built: new users agree before their first habit or low day, and Ember stores the time and policy version. Is consent the right basis, or does Art. 6(1)(b) plus "data is not health data by default" hold? Get a ruling. The prompt itself is in English ("I agree" / "No thanks"); check whether a German-language prompt is needed for German users.
-   - **1a. Existing users during the prompt period.** Users who had data before the consent step keep it working (check-ins, reminder buttons, reminders) until they answer, and are asked at most once a day. That means Ember keeps processing, and even collects new, possibly health-related check-ins, without Art. 9 consent during that period. The same applies after they pick "No thanks": their existing data stays and keeps working until they decide. Is that acceptable, or should it be time-boxed (for example: after N days without consent, pause reminders and check-ins, or delete the data after a notice)?
-2. **Withdrawal = deletion.** The draft treats `/privacy delete` as the way to withdraw Art. 9 consent. Check that this is acceptable, or whether a separate "withdraw consent" action is needed.
-3. **Minimum age.** Discord's own minimum age varies by country. Under Art. 8 GDPR and German law, consent from under-16s needs parental consent. Does that apply to Art. 9 explicit consent here, and what age should `[MINDESTALTER]` be? Ember cannot verify age.
-4. **Discord's role.** The draft calls Discord an independent controller, not a processor. Check whether a joint-controllership argument (like the Facebook fan page rulings, C-210/16 and C-40/17) applies to a bot, and which Discord entity to name for EEA users.
-5. **Discord's third-country transfer basis.** Confirm from Discord's current privacy policy (DPF certification, SCCs) and fill `[ZU PRÜFEN]`.
-6. **AVV/DPA with the VPS provider.** After the move (N7, Phase 8) the provider is a processor under Art. 28, so an AVV is needed (Hetzner offers one). Today on the homeserver no processor is involved, as long as no external backup or monitoring service sees the data. Confirm.
-7. **Backups after deletion.** Deleted users stay in backups until rotation. If a backup is restored, already-deleted users come back. Decide whether a process is needed (and how to do it without keeping a list of deleted Discord IDs).
-8. **Inactive accounts.** Data stays until the user deletes it; there is no automatic deletion after long inactivity. Check whether storage limitation (Art. 5(1)(e)) requires one.
-9. **DPIA and records of processing.** Health data may trigger a DPIA (Art. 35), depending on scale. A record of processing activities (Art. 30) is probably needed because the processing is not occasional. Ask whether either is required for a private project of this size.
-10. **Impressum.** Whether § 5 DDG and § 18 MStV apply, and whether a c/o address is enough (see the note in `impressum.md`).
-11. **Liability clause.** The draft uses the standard German B2C clause. For a free service, §§ 521, 599 BGB may already limit liability to intent and gross negligence; check which wording is cleaner.
-12. **Du vs. Sie.** The texts use "du" to match Ember's tone. Fine for consumer texts, but confirm.
-13. **Where the texts live.** They need a public URL (for the bot profile, `/help` and later the app stores). Once the policy is published, set the config value `Ember:PrivacyPolicyUrl` (environment variable `Ember__PrivacyPolicyUrl`): the consent prompt links to the policy only when it is set. `docker-compose.yml` passes only the variables it lists, so the variable must also be added to its `environment:` block.
-14. **Consent record legal basis.** The draft names Art. 6(1)(c) with Art. 7(1) for keeping the consent record. Check whether that, or Art. 6(1)(f), is the better fit.
+## Placeholders
 
-## Before publishing: code must match the texts
+| Placeholder | Where | Status |
+|---|---|---|
+| `[PRÜFEN: Mindestalter ...]` | Datenschutzerklärung, section 10 | Open (question 4) |
+| `[PRÜFEN: Frist festlegen ...]` | Nutzungsbedingungen, section 9 | Open (question 17) |
+| Cloudflare processor section | Datenschutzerklärung, section 6.2 | Written. Confirm before launch (question 6) |
 
-Each promise in the drafts must be true before publishing. Status against `v2/phase-3-backfill`:
+## Checks before publishing: code must match the texts
 
 | Promise in the text | Status |
 |---|---|
-| "Habit-Namen gehören nicht in die Protokolle" (3.3) | Done in code: no log statement includes a habit name. Log lines written by older builds must still age out or be deleted. |
-| Logs deleted after 30 days | Open. Homeserver: size-based rotation only (3 x 10 MB, `docker-compose.yml`), no hard time limit. Enforce 30 days with time-based retention on the VPS (Phase 8). |
-| `/export` gives CSV or JSON with settings, consent record, all habits, logs with server ID and low days (9) | Done (`ExportModule.cs`, `ExportBuilder.cs`). |
-| `/privacy delete` deletes everything immediately (7, 9) | Done. Deleting the user row cascades to habits, logs and day marks (`EmberDbContext.cs`). |
-| Consent before the first habit or low day, existing users asked at most once a day, new version asks again (4) | Done (`ConsentModule.cs`, `ConsentPromptNotifier.cs`, `HabitService.CurrentConsentPolicyVersion`). See open questions 1 and 1a. |
-| DM failure counter and reminder pause (3.1) | Done (`ReminderDispatchJob.cs`, `DmRetryModule.cs`). |
-| "Ember legt einen Eintrag erst an, wenn du eine Funktion nutzt, die etwas speichern muss" (3.1) | True. |
-| Backup daily, 30 days rotation (7) | Open. No backup is defined in this repository. Phase 8.3 plans nightly encrypted `pg_dump`. Publish only what actually runs. |
-| Link to the policy in the consent prompt, `/help` and the bot profile | Open. The prompt link needs `Ember__PrivacyPolicyUrl` (open question 13). `/help` has no link yet. |
+| Export (JSON or CSV) covers settings, consent record, habits, routines, check-ins, low days, day notes, moods, push endpoints, journal key | Done (`ExportBuilder.cs`, `GET /api/me/export`, bot `/export`) |
+| Account deletion and `/privacy delete` delete everything at once | Done (cascade in `EmberDbContext.cs`; `DeleteUserDataAsync`) |
+| Consent gates new habits, low days, day notes, moods, import and merge | Done. Check-ins for existing habits are not gated (question 2) |
+| Web push goes only to Google, Mozilla, Microsoft and Apple push hosts | Done (`PushEndpoints.cs`) |
+| No analytics, no ads, no external scripts or fonts | Done (no analytics SDK in `web/package.json`; fonts from `@fontsource`; no external URLs in the web source) |
+| Habit names stay out of logs | Done for the bot and API log calls. Not reviewed line by line for every service |
+| Logs deleted after 30 days | Open. Logs rotate by size only (3 x 10 MB per service, `docker-compose.yml`). Question 9 |
+| Backups daily, kept 30 days | Open. No backup job is defined in this repository (`docs/v2-plan.md`, Phase 8.3). Question 10 |
+| Policy link in the consent prompt | Partly. `docker-compose.yml` passes `Ember__PrivacyPolicyUrl` from `PRIVACY_POLICY_URL`. The value must be set (question 20) |
+| Impressum link in `/help` and the bot profile | Open. Question 20 |
+| Android app sends no Google push | Verified for now (no Firebase messaging dependency; the Google services plugin applies only with `google-services.json`). Recheck before release |
+| Recovery codes stored hashed | Open. Not confirmed from the code |
+| Unconfirmed accounts are deleted | Open. Nothing deletes them automatically (question 12) |
+
+## Open questions
+
+1. **Art. 9 consent basis.** The drafts rely on explicit consent (Art. 9(2)(a)) for habit names, check-ins, low days, day notes and moods. Get a ruling. The prompt texts are English ("I agree", "No thanks", the web page "One quick question"). Decide whether German versions are needed.
+2. **Existing users.** Check-ins for habits created before the consent step are not gated, and reminders keep running until the user answers. Accept this, or time-box it (for example: pause check-ins after N days without consent)?
+3. **Withdrawal equals deletion.** The only way to withdraw consent is to delete the account. Accept this, or add a withdraw-only action?
+4. **Minimum age.** Set `[PRÜFEN: Mindestalter]` (suggestion 16). Ember cannot verify age.
+5. **Discord's role.** The drafts treat Discord as an independent controller. Check whether a joint-controllership argument applies to a bot, which Discord entity to name for EEA users, and the transfer basis (DPF or SCCs). Fill the `[PRÜFEN]` markers in section 6.1.
+6. **Cloudflare (before launch).** Accept Cloudflare's DPA in the Cloudflare dashboard before the public launch. At launch, confirm the Data Privacy Framework certification and the SCC fallback, and confirm the section 6.2 text. Note that Cloudflare ends TLS, so it can read request content.
+7. **Second contact channel.** The portfolio Impressum uses email only. Email-only is an Abmahnung risk, so decide whether to add a phone number or another fast contact channel. Ember's Impressum must match whatever is decided for the portfolio.
+8. **E-mail provider.** Brevo is named today. Check the processing agreement (AVV) and Brevo's retention period. When the switch to Resend or Postmark happens, change section 6.3 and check the new provider's agreement.
+9. **Logs and retention.** Logs rotate by size only, with no time limit. Decide: add a 30-day cleanup and keep the promise, or change section 3.7. The same goes for access logs of the reverse proxy and Cloudflare, which can hold IP addresses.
+10. **Backups.** The repository defines no backup job. Confirm the cycle (the draft says 30 days), where the off-site copy lives, the encryption, and whether a cloud provider is involved (that would make it a processor). Publish only what actually runs.
+11. **Backups after deletion.** Deleted accounts stay in backups until they rotate out. A restored backup brings them back. Decide whether a re-deletion process is needed, and how to do it without keeping a list of deleted Discord IDs.
+12. **Unconfirmed accounts.** Accounts whose email was never confirmed stay until someone confirms or deletes them. Decide on an automatic deletion period, or accept.
+13. **Inactive accounts.** Data stays until the user deletes it. Check whether storage limitation (Art. 5(1)(e)) requires an automatic deletion after long inactivity.
+14. **Routine names.** Routine writes need no consent, and routine names can say something about health. Decide: gate routines like habits (code change), or accept. Habit renaming is also not gated.
+15. **Consent text and policy version.** The consent prompts (bot and web) name only habits, check-ins and low days. They do not name journal entries and moods, although those writes are gated too. Change the text (code change). Also decide whether the expanded policy needs a new version: bumping `CurrentConsentPolicyVersion` asks every user again.
+16. **DPIA and records of processing.** Health data may trigger a DPIA (Art. 35). A record of processing activities (Art. 30) is probably needed. Ask whether either is required for a private project of this size.
+17. **Liability and term.** The liability clause is the standard German B2C wording. For a free service, §§ 521 and 599 BGB may already limit liability to intent and gross negligence. Check which wording is cleaner. Also set the notice period in section 9 (`[PRÜFEN: Frist festlegen]`).
+18. **Du or Sie.** The texts use "du" to match Ember's tone. Confirm.
+19. **Legal basis of the consent record.** The draft names Art. 6(1)(c) with Art. 7(1). Check whether Art. 6(1)(f) fits better.
+20. **Public links.** Set `PRIVACY_POLICY_URL` in `.env` once the public address exists (the bot passes it as `Ember__PrivacyPolicyUrl`). Add links to the Impressum and the policy in `/help` and the bot profile. Both are missing.
+21. **Free service.** The terms say Ember is free. If a paid tier (Ember+, plan D5) is ever added, the terms and the policy must change first.
+22. **Impressum note.** Delete the owner note in `impressum.md` and the `[PRÜFEN]` markers before publishing.
