@@ -1,7 +1,14 @@
 apply plugin: 'com.android.application'
 
-def signingKeys = ['emberUploadStoreFile', 'emberUploadStorePassword', 'emberUploadKeyAlias', 'emberUploadKeyPassword']
-def missingSigning = signingKeys.findAll { !project.findProperty(it) }
+def signingPasswordFile = project.findProperty('emberUploadStorePasswordFile')
+def signingFilePassword = signingPasswordFile ? file(signingPasswordFile).text.trim() : null
+def signing = [
+    emberUploadStoreFile: project.findProperty('emberUploadStoreFile'),
+    emberUploadStorePassword: project.findProperty('emberUploadStorePassword') ?: signingFilePassword,
+    emberUploadKeyAlias: project.findProperty('emberUploadKeyAlias'),
+    emberUploadKeyPassword: project.findProperty('emberUploadKeyPassword') ?: signingFilePassword,
+]
+def missingSigning = signing.findAll { !it.value }.keySet()
 
 android {
     namespace = "app.ember.habits"
@@ -10,8 +17,8 @@ android {
         applicationId "app.ember.habits"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode((project.findProperty('emberVersionCode') ?: '2') as int)
-        versionName(project.findProperty('emberVersionName') ?: '0.9.0-beta.1')
+        versionCode((project.findProperty('emberVersionCode') ?: '3') as int)
+        versionName(project.findProperty('emberVersionName') ?: '0.9.0-beta.2')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,11 +29,20 @@ android {
     signingConfigs {
         if (missingSigning.isEmpty()) {
             release {
-                storeFile file(project.property('emberUploadStoreFile'))
-                storePassword project.property('emberUploadStorePassword')
-                keyAlias project.property('emberUploadKeyAlias')
-                keyPassword project.property('emberUploadKeyPassword')
+                storeFile file(signing.emberUploadStoreFile)
+                storePassword signing.emberUploadStorePassword
+                keyAlias signing.emberUploadKeyAlias
+                keyPassword signing.emberUploadKeyPassword
             }
+        }
+    }
+    flavorDimensions = ['channel']
+    productFlavors {
+        beta {
+            dimension 'channel'
+        }
+        play {
+            dimension 'channel'
         }
     }
     buildTypes {
@@ -38,7 +54,7 @@ android {
     }
 }
 
-def releaseRequested = gradle.startParameter.taskNames.any { it.tokenize(':').last() in ['assembleRelease', 'bundleRelease'] }
+def releaseRequested = gradle.startParameter.taskNames.any { it.tokenize(':').last() in ['assembleRelease', 'bundleRelease', 'assembleBetaRelease', 'bundleBetaRelease', 'bundlePlayRelease'] }
 if (releaseRequested && !missingSigning.isEmpty()) {
     throw new GradleException("Release signing is not set up. Missing Gradle properties: ${missingSigning.join(', ')}. " +
         "Set them in ~/.gradle/gradle.properties or as ORG_GRADLE_PROJECT_<name> environment variables (see mobile/STORE.md).")

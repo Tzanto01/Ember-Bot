@@ -15,6 +15,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(EmberWidgetPlugin.class);
         registerPlugin(BackupFilePlugin.class);
+        registerPlugins(FlavorPlugins.all());
         restoring = savedInstanceState != null;
         super.onCreate(savedInstanceState);
         restoring = false;

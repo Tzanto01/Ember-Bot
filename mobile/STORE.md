@@ -75,7 +75,7 @@ Ember handles data the policy treats as health data. It is not a medical app.
 
 ### 2.3 Permissions
 
-From the merged manifest of the current build:
+From the merged manifest of the `play` build (the `beta` sideload build adds `REQUEST_INSTALL_PACKAGES` for its in-app updater, section 5):
 
 | Permission | Source | Why | Declaration |
 |---|---|---|---|
@@ -119,20 +119,33 @@ Do not submit. Kept for when iOS starts.
 
 ## 5. Release build
 
+Two product flavors, both with the application ID `app.ember.habits`:
+
+| Flavor | For | Label | Differs |
+|---|---|---|---|
+| `beta` | Sideloaded beta APK | Ember Beta | Adds the `EmberUpdater` plugin (`src/beta/`), `REQUEST_INSTALL_PACKAGES` and an updates path for the FileProvider. On launch and on return (at most once an hour) it reads `{API base}/download/latest.json` and offers a newer `versionCode`; Android's installer always asks before installing. |
+| `play` | Google Play | Ember | None of that: Play forbids self-updating apps. |
+
+- Sideload: `./gradlew assembleBetaRelease`, APK in `app/build/outputs/apk/beta/release/`.
+- Play: `./gradlew bundlePlayRelease`, AAB in `app/build/outputs/bundle/playRelease/`.
+- Every beta APK must be signed with the same beta key and have a higher `versionCode` than the last one, or Android refuses the update.
+
 The version and the upload key come from Gradle properties, never from the repo. Put them in `~/.gradle/gradle.properties` (outside the repo), or pass each as an environment variable named `ORG_GRADLE_PROJECT_<name>`, or as `-P<name>=...`.
 
 | Property | Required for | Default |
 |---|---|---|
-| `emberVersionCode` | Every Play upload; raise it each time | `2` |
-| `emberVersionName` | The version users see | `0.9.0-beta.1` |
+| `emberVersionCode` | Every Play upload and beta APK; raise it each time | `3` |
+| `emberVersionName` | The version users see | `0.9.0-beta.2` |
 | `emberUploadStoreFile` | Release builds: path to the upload keystore (absolute, or relative to `mobile/android/app`) | none |
-| `emberUploadStorePassword` | Release builds | none |
+| `emberUploadStorePassword` | Release builds, unless `emberUploadStorePasswordFile` is set | none |
+| `emberUploadStorePasswordFile` | Optional: a file (outside the repo, readable only by you) whose content is the store password, so it stays off the command line | none |
 | `emberUploadKeyAlias` | Release builds | none |
-| `emberUploadKeyPassword` | Release builds | none |
+| `emberUploadKeyPassword` | Release builds, unless `emberUploadStorePasswordFile` is set (then the key password is read from the same file) | none |
 
 - Debug builds need none of them.
-- `assembleRelease` or `bundleRelease` without all four `emberUpload*` properties stops before building with "Release signing is not set up. Missing Gradle properties: ...".
-- Build the AAB for Play: `cd web && bun run build:mobile && bun run cap:sync`, then `cd mobile/android && ./gradlew bundleRelease -PemberVersionCode=<n> -PemberVersionName=<x.y.z>`. The bundle is in `app/build/outputs/bundle/release/`.
+- `assembleBetaRelease`, `bundleBetaRelease`, `bundlePlayRelease`, `assembleRelease` or `bundleRelease` without the store file, alias and both passwords stops before building with "Release signing is not set up. Missing Gradle properties: ...". `assemblePlayRelease` builds an unsigned APK instead, for checks.
+- Build the AAB for Play: `cd web && bun run build:mobile && bun run cap:sync`, then `cd mobile/android && ./gradlew bundlePlayRelease -PemberVersionCode=<n> -PemberVersionName=<x.y.z>`.
+- Build the beta APK the same way with `./gradlew assembleBetaRelease -PemberUploadStoreFile=<beta keystore> -PemberUploadStorePasswordFile=<password file> -PemberUploadKeyAlias=<beta alias>`, then upload it so hosting rewrites `latest.json`.
 - Create the upload key once with `keytool -genkeypair -keystore <path outside the repo> -alias upload -keyalg RSA -keysize 2048 -validity 10000`, then enrol in Play App Signing on the first upload.
 
 ## Changelog

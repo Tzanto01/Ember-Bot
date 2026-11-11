@@ -2,6 +2,7 @@ import { CalendarDays, Flame, LayoutGrid, SlidersHorizontal } from 'lucide-react
 import { useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
+import { BetaUpdateBanner } from '@/components/beta-update';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { NativeConfirmation } from '@/components/native-confirmation';
@@ -137,6 +138,7 @@ export function AppShell() {
             </Button>
           </Notice>
         )}
+        <BetaUpdateBanner />
         <NativeConfirmation />
         <Outlet />
       </main>
