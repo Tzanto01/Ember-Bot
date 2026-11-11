@@ -25,7 +25,7 @@ import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-dat
 import { type ExportFormat, type MePatch, secondReminderChoices, type SecondReminderMinutes } from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
-import { api, auth, localMode, push, reminders } from '@/lib/services';
+import { api, auth, localMode, push } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 
@@ -166,7 +166,7 @@ export default function SettingsPage() {
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
-  const [exactAllowed, setExactAllowed] = useState<boolean | null>(null);
+  const [notificationsOff, setNotificationsOff] = useState(false);
   const [browserZone] = useState(browserTimeZone);
   const [showIosHint] = useState(() => isIos() && !isStandalone());
   const [discordNotice] = useState<Message | null>(() => {
@@ -182,7 +182,11 @@ export default function SettingsPage() {
     const linked = params.get('discord') === 'linked';
     void (linked ? auth.refreshAntiforgery() : Promise.resolve()).then(() => auth.loadMe(true)).catch(() => null);
     if (!local) void push.claim();
-    if (env.native) void reminders?.exactAllowed().then(setExactAllowed, () => undefined);
+    if (env.native) {
+      void import('@capacitor/local-notifications')
+        .then(({ LocalNotifications }) => LocalNotifications.checkPermissions())
+        .then((status) => setNotificationsOff(status.display === 'denied'), () => undefined);
+    }
     if (!discordNotice) return;
     params.delete('discord');
     const search = params.toString();
@@ -372,11 +376,6 @@ export default function SettingsPage() {
       setExporting(null);
       finish();
     }
-  }
-
-  async function allowExact(): Promise<void> {
-    await reminders?.openExactSetting().catch(() => undefined);
-    setExactAllowed((await reminders?.exactAllowed().catch(() => null)) ?? null);
   }
 
   const changePassword = (email: string) =>
@@ -611,18 +610,10 @@ export default function SettingsPage() {
                   they arrive even without a connection.
                 </p>
                 <ReminderNamesSetting />
-                {exactAllowed === false && (
-                  <>
-                    <p className="text-[14px] text-muted-foreground">
-                      Your phone may deliver them a few minutes late. Allow exact alarms for Ember to get them right on
-                      time.
-                    </p>
-                    <div>
-                      <Button type="button" variant="secondary" onClick={() => void allowExact()}>
-                        Allow exact reminder times
-                      </Button>
-                    </div>
-                  </>
+                {notificationsOff && (
+                  <Notice tone="info">
+                    <p>Notifications are off for Ember on this phone. You can turn them on in your phone's settings.</p>
+                  </Notice>
                 )}
               </SettingsCard>
             )}

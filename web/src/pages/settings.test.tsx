@@ -17,6 +17,11 @@ vi.mock('@/lib/services', async (original) => {
   };
 });
 
+const notificationPermission = vi.hoisted(() => ({ display: 'granted' }));
+vi.mock('@capacitor/local-notifications', () => ({
+  LocalNotifications: { checkPermissions: async () => ({ ...notificationPermission }) },
+}));
+
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
 
 async function open() {
@@ -44,6 +49,7 @@ describe('SettingsPage', () => {
     localMode.mode.set('account');
     push.available.set(false);
     document.documentElement.classList.remove('dark');
+    notificationPermission.display = 'granted';
   });
 
   it('starts with the account: who is signed in, then Appearance, and sends a change-password link', async () => {
@@ -107,6 +113,17 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('radio', { name: 'System' }));
     expect(document.documentElement).not.toHaveClass('dark');
     expect(localStorage.getItem('ember.colorScheme')).toBeNull();
+  });
+
+  it('on the phone, says how to turn notifications back on when they are off for Ember', async () => {
+    env.native = true;
+    notificationPermission.display = 'denied';
+    await open();
+
+    expect(
+      await screen.findByText("Notifications are off for Ember on this phone. You can turn them on in your phone's settings."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Allow exact reminder times' })).toBeNull();
   });
 
   it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {
