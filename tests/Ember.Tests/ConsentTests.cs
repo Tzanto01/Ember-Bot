@@ -152,4 +152,18 @@ public class ConsentTests
 
         embed.Description.Should().ContainEquivalentOf("your habit names, check-ins, low days, day notes and moods");
     }
+
+    [Fact]
+    public async Task AskingAgainFromAddHabit_AfterNoThanks_KeepsTheBackOff()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time);
+        await SeedExistingUserAsync(host, 1);
+        await host.WithScopeAsync(sp => ConsentModule.TryAnswerAsync(sp.GetRequiredService<HabitService>(), "1", clickerId: 1, agreed: false));
+
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>().MarkConsentPromptedAsync(1));
+        time.Advance(TimeSpan.FromDays(1));
+
+        (await ClaimAsync(host, 1)).Should().BeFalse();
+    }
 }

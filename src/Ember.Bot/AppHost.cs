@@ -84,6 +84,7 @@ public static class AppHost
                 });
                 services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
                 services.AddSingleton<IReminderChannel, DiscordDmReminderChannel>();
+                services.AddSingleton<ReminderRetries>();
                 services.AddHttpClient(WebPushReminderChannel.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
                     .RemoveAllLoggers();

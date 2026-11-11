@@ -164,7 +164,7 @@ public class ReminderDispatchTests
     }
 
     [Fact]
-    public async Task SendThatThrows_DoesNotBlockOthers_AndIsRetriedOnTheNextRunOnce()
+    public async Task TransientSendFailure_DoesNotBlockOthers_AndIsRetriedFiveMinutesLaterOnce()
     {
         var time = new FakeTimeProvider(Now);
         await using var host = await CreateHostAsync(time, DueHabit(1, 10), DueHabit(2, 20));
@@ -180,7 +180,10 @@ public class ReminderDispatchTests
         host.Discord.Deliver = _ => DeliveryOutcome.Delivered;
         time.Advance(TimeSpan.FromMinutes(1));
         await RunJobAsync(host);
-        time.Advance(TimeSpan.FromMinutes(1));
+        host.Discord.Messages.Should().HaveCount(2);
+        time.Advance(TimeSpan.FromMinutes(4));
+        await RunJobAsync(host);
+        time.Advance(TimeSpan.FromMinutes(5));
         await RunJobAsync(host);
 
         host.Discord.Messages.Select(m => m.UserId).Should().BeEquivalentTo([10UL, 20UL, 10UL]);
@@ -299,16 +302,99 @@ public class ReminderDispatchTests
     }
 
     [Fact]
-    public async Task HabitThatFailsBeforeSending_IsDeferredToItsNextReminderTime_AndOthersStillGo()
+    public async Task HabitThatFailsBeforeSending_StaysDueForThreeAttempts_ThenMovesToItsNextReminderTime_AndOthersStillGo()
     {
-        await using var host = await CreateHostAsync(new FakeTimeProvider(Now.AddMinutes(5)), new FailingLogQueryInterceptor(habitId: 1),
-            DueHabit(1, 10), DueHabit(2, 20));
+        var time = new FakeTimeProvider(Now.AddMinutes(5));
+        await using var host = await CreateHostAsync(time, new FailingLogQueryInterceptor(habitId: 1), DueHabit(1, 10), DueHabit(2, 20));
 
         await RunJobAsync(host);
-
         host.Discord.Messages.Should().ContainSingle().Which.UserId.Should().Be(20);
-        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
         (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
+
+        for (var attempt = 2; attempt <= ReminderRetries.MaxAttempts; attempt++)
+        {
+            (await NextReminderAsync(host, 1)).Should().Be(Now.UtcDateTime, "attempt {0} is still to come", attempt);
+            time.Advance(ReminderRetries.Spacing);
+            await RunJobAsync(host);
+        }
+
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+        host.Discord.Messages.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task TransientFailures_AreTriedThreeTimesFiveMinutesApart_ThenMoveOn_AndCountOnceTowardsThePause()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, DueHabit(1, 10));
+        host.Discord.Deliver = _ => throw new HttpRequestException("boom");
+
+        var attemptsByMinute = new List<int>();
+        for (var minute = 0; minute <= 12; minute++)
+        {
+            await RunJobAsync(host);
+            attemptsByMinute.Add(host.Discord.Messages.Count);
+            time.Advance(TimeSpan.FromMinutes(1));
+        }
+
+        attemptsByMinute.Should().Equal(1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3);
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+        (await UserAsync(host, 10)).DmFailureCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NonTransientSendFailure_IsNotRetried()
+    {
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, DueHabit(1, 10));
+        host.Discord.Deliver = _ => throw new InvalidOperationException("bad payload");
+
+        await RunJobAsync(host);
+        time.Advance(ReminderRetries.Spacing);
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle();
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+    }
+
+    [Fact]
+    public async Task UndeliverableDm_WhileAnotherChannelIsRetried_CountsOnceForTheReminder()
+    {
+        var time = new FakeTimeProvider(Now);
+        var habit = DueHabit(1, 10);
+        habit.ReminderChannels = ReminderChannels.Discord | ReminderChannels.WebPush;
+        await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time,
+            configureServices: services => services.AddSingleton<IReminderChannel, FlakyPushChannel>());
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            db.Users.Add(new User
+            {
+                Id = TestUsers.Id(10), Logins = TestUsers.Discord(10), Timezone = Berlin,
+                PushSubscriptions = [new PushSubscription { Endpoint = "https://push.example/u10", P256dh = "k", Auth = "a" }],
+            });
+            db.Habits.Add(habit);
+            await db.SaveChangesAsync();
+        });
+        host.Discord.Deliver = _ => DeliveryOutcome.Undeliverable;
+
+        for (var attempt = 1; attempt <= ReminderRetries.MaxAttempts; attempt++)
+        {
+            await RunJobAsync(host);
+            time.Advance(ReminderRetries.Spacing);
+        }
+
+        host.Discord.Messages.Should().HaveCount(ReminderRetries.MaxAttempts);
+        (await UserAsync(host, 10)).DmFailureCount.Should().Be(1);
+        (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
+    }
+
+    private sealed class FlakyPushChannel : IReminderChannel
+    {
+        public ReminderChannels Channel => ReminderChannels.WebPush;
+
+        public Task<DeliveryOutcome> SendAsync(Reminder reminder, CancellationToken cancellationToken = default)
+            => throw new HttpRequestException("push service unavailable");
     }
 
     private sealed class FailingLogQueryInterceptor(int habitId) : DbCommandInterceptor

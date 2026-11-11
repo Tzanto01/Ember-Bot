@@ -85,12 +85,12 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, lastQuietDay));
     }
 
-    /// <summary>Notes that the consent prompt was shown today. Never creates a user.</summary>
+    /// <summary>Notes that the consent prompt was shown today, keeping a later decline back-off. Never creates a user.</summary>
     public async Task MarkConsentPromptedAsync(Guid userId)
     {
         var today = await GetLocalTodayAsync(userId);
         await _db.Users
-            .Where(u => u.Id == userId)
+            .Where(u => u.Id == userId && (u.ConsentPromptedOn == null || u.ConsentPromptedOn < today))
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ConsentPromptedOn, today));
     }
 
@@ -870,12 +870,13 @@ public partial class HabitService
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Ids of habits whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
-    public Task<List<int>> GetDueReminderHabitIdsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
-        => _db.Habits
+    /// <summary>Id and due time of each habit whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
+    public async Task<List<(int Id, DateTime DueAt)>> GetDueReminderHabitsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+        => (await _db.Habits
             .Where(h => h.NextReminderUtc != null && h.NextReminderUtc <= nowUtc)
-            .Select(h => h.Id)
-            .ToListAsync(cancellationToken);
+            .Select(h => new { h.Id, DueAt = h.NextReminderUtc!.Value })
+            .ToListAsync(cancellationToken))
+            .Select(h => (h.Id, h.DueAt)).ToList();
 
     /// <summary>
     /// The habit (tracked) with its routine, its user and the user's logins and push subscriptions, regardless of owner.

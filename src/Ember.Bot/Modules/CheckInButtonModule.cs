@@ -9,7 +9,7 @@ using Ember.Core.Services;
 namespace Ember.Bot.Modules;
 
 /// <summary>
-/// Handles the ✅/❌/⏰ button interactions sent in DM reminders.
+/// Handles the "Done ✅", "Skip for today" and "Snooze 1h ⏰" button interactions sent in DM reminders.
 /// Custom ID format: "checkin:done:{habitId}:{unixSeconds}", "checkin:skip:{habitId}:{unixSeconds}", "checkin:snooze:{habitId}:{unixSeconds}"
 /// Done and skip log the user's local day the reminder was sent on, until the reminder expires
 /// (<see cref="ReminderDispatchJob.IsExpired"/>); after that they close the message instead.

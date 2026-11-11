@@ -104,12 +104,13 @@ public partial class HabitService
             .Where(r => r.Id == routineId && r.UserId == userId)
             .ExecuteDeleteAsync() == 1;
 
-    /// <summary>Ids of routines whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
-    public Task<List<int>> GetDueReminderRoutineIdsAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
-        => _db.Routines
+    /// <summary>Id and due time of each routine whose next reminder is due at or before <paramref name="nowUtc"/>.</summary>
+    public async Task<List<(int Id, DateTime DueAt)>> GetDueReminderRoutinesAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+        => (await _db.Routines
             .Where(r => r.NextReminderUtc != null && r.NextReminderUtc <= nowUtc)
-            .Select(r => r.Id)
-            .ToListAsync(cancellationToken);
+            .Select(r => new { r.Id, DueAt = r.NextReminderUtc!.Value })
+            .ToListAsync(cancellationToken))
+            .Select(r => (r.Id, r.DueAt)).ToList();
 
     /// <summary>
     /// The routine (tracked) with its member habits and their logs of the last two UTC days onward (enough for any local today),

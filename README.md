@@ -77,7 +77,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 | 📋 **Habit templates** | Pre-built habits to get started in seconds |
 | ⏸️ **Pause** | Take a break without losing your streak |
 | 📅 **Daily or weekly habits** | Track every day, or set a weekly target (1×–6×) |
-| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with ✅ / ❌ / ⏰ buttons: one tap to check in or snooze. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
+| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with **Done**, **Skip for today** and **Snooze 1h** buttons: one tap to check in, skip or snooze. If Discord has a hiccup, Ember tries again up to twice, 5 minutes apart. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
 | 💙 **Adaptive tone** | Softer language when you've had a quiet week |
 | 🤔 **Gentle check-in** | If yesterday is still unlogged, a DM invites you to log it or call it a low day. A nudge, not a guilt trip |
 | 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
