@@ -32,7 +32,7 @@ export interface EmberWidgetPlugin {
 }
 
 /** Rows the widget shows before "+N more". */
-export const widgetRows = 6;
+export const widgetRows = 4;
 
 const EmberWidget = registerPlugin<EmberWidgetPlugin>('EmberWidget');
 

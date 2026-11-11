@@ -81,13 +81,13 @@ describe('widget snapshot', () => {
     });
   });
 
-  it('shows six rows and counts the rest as more', () => {
+  it('shows four rows and counts the rest as more', () => {
     const habits = Array.from({ length: 8 }, (_, i) => ({ ...habit, id: i + 1 }));
 
     const snapshot = widgetSnapshot('u1', 'Europe/Berlin', '2026-11-01', habits);
 
-    expect(snapshot.habits.map((h) => h.id)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(snapshot.more).toBe(2);
+    expect(snapshot.habits.map((h) => h.id)).toEqual([1, 2, 3, 4]);
+    expect(snapshot.more).toBe(4);
   });
 
   it('clears the widget and the names setting with the reminders', async () => {
