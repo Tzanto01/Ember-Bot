@@ -10,8 +10,8 @@ android {
         applicationId "app.ember.habits"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode((project.findProperty('emberVersionCode') ?: '1') as int)
-        versionName(project.findProperty('emberVersionName') ?: '1.0')
+        versionCode((project.findProperty('emberVersionCode') ?: '2') as int)
+        versionName(project.findProperty('emberVersionName') ?: '0.9.0-beta.1')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -123,8 +123,8 @@ The version and the upload key come from Gradle properties, never from the repo.
 
 | Property | Required for | Default |
 |---|---|---|
-| `emberVersionCode` | Every Play upload; raise it each time | `1` |
-| `emberVersionName` | The version users see | `1.0` |
+| `emberVersionCode` | Every Play upload; raise it each time | `2` |
+| `emberVersionName` | The version users see | `0.9.0-beta.1` |
 | `emberUploadStoreFile` | Release builds: path to the upload keystore (absolute, or relative to `mobile/android/app`) | none |
 | `emberUploadStorePassword` | Release builds | none |
 | `emberUploadKeyAlias` | Release builds | none |

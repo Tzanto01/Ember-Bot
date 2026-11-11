@@ -1,5 +1,6 @@
 import { BellRing, LockKeyhole, Moon, NotebookPen, Palette, Smartphone } from 'lucide-react';
 import { Link } from 'react-router';
+import { BetaBadge } from '@/components/beta-badge';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export default function LandingPage() {
         <span className="inline-flex min-h-[44px] items-center gap-2 font-display text-[22px] font-bold text-foreground">
           <FlameMark />
           Ember
+          <BetaBadge />
         </span>
       </header>
       <main

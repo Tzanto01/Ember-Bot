@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router';
+import { BetaBadge } from '@/components/beta-badge';
 import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
@@ -20,7 +21,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header
         className={cn(
-          'flex justify-center px-4 pt-4',
+          'flex items-center justify-center gap-2 px-4 pt-4',
           auth && 'lg:mx-auto lg:w-full lg:max-w-[72rem] lg:justify-start lg:px-6',
         )}
       >
@@ -31,6 +32,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
           <FlameMark />
           Ember
         </Link>
+        <BetaBadge />
       </header>
       <div
         className={cn(

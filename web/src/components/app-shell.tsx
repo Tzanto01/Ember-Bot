@@ -1,6 +1,7 @@
 import { CalendarDays, Flame, LayoutGrid, SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
+import { BetaBadge } from '@/components/beta-badge';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { NativeConfirmation } from '@/components/native-confirmation';
@@ -47,13 +48,16 @@ export function AppShell() {
     <div className="flex min-h-dvh flex-col pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
       <header className="sticky top-0 z-10 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className={cn('mx-auto flex min-h-[56px] max-w-[72rem] items-center gap-4', inline)}>
-          <Link
-            to="/today"
-            className="inline-flex min-h-[44px] items-center gap-2 font-display text-[18px] font-bold text-foreground no-underline"
-          >
-            <FlameMark />
-            Ember
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/today"
+              className="inline-flex min-h-[44px] items-center gap-2 font-display text-[18px] font-bold text-foreground no-underline"
+            >
+              <FlameMark />
+              Ember
+            </Link>
+            <BetaBadge />
+          </div>
           <nav
             aria-label="Main"
             className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:static md:gap-1 md:border-0 md:bg-transparent md:p-0"
