@@ -62,11 +62,32 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   const queryClient = useQueryClient();
   const state = useStore(journal.state);
   const changed = useStore(journal.changed);
+  const turningOff = useStore(journal.turningOff);
   const me = useStore(auth.me);
   const today = me?.localToday;
   const moodLabelId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassphrase, setNewPassphrase] = useState(false);
+  const [unlockStatus, setUnlockStatus] = useState('');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useRef(false);
+
+  useEffect(() => {
+    if (!focusHeading.current) return;
+    focusHeading.current = false;
+    headingRef.current?.focus();
+  });
+
+  function step(message: string) {
+    setUnlockStatus(message);
+    focusHeading.current = true;
+  }
+
+  async function expired() {
+    await journal.forget();
+    setNewPassphrase(false);
+    step('That took a while, so the journal locked again. Unlock it with your recovery code once more.');
+  }
 
   const queryKey = [...journalKey, 'day', date];
   const query = useQuery({
@@ -103,6 +124,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     setStatus(null);
     setProblem(null);
     setTooLong(false);
+    setUnlockStatus('');
   }
 
   const heading = date === today ? 'How was today?' : `How was ${formatDate(date, longDate)}?`;
@@ -111,9 +133,12 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   if (state === 'locked' || (newPassphrase && me)) {
     return (
       <Card className={className}>
-        <h2 className="text-[22px]">
+        <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
           {heading}
         </h2>
+        <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+          {unlockStatus}
+        </p>
         {newPassphrase && me ? (
           <>
             <p>
@@ -124,8 +149,11 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               me={me}
               current={false}
               submitLabel="Save new passphrase"
-              onDone={() => setNewPassphrase(false)}
-              onExpired={() => setNewPassphrase(false)}
+              onDone={() => {
+                setNewPassphrase(false);
+                step('Your new passphrase is set. Your journal is unlocked on this device.');
+              }}
+              onExpired={() => void expired()}
             />
           </>
         ) : (
@@ -134,7 +162,13 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               <Lock aria-hidden className="mt-[3px] size-[18px] shrink-0" />
               <p>Your private journal is locked on this device.</p>
             </div>
-            <UnlockForm onUnlocked={(needsNew) => setNewPassphrase(needsNew)} />
+            <UnlockForm
+              onUnlocked={(needsNew) => {
+                const next = needsNew && !turningOff;
+                setNewPassphrase(next);
+                step(next ? 'Your recovery code worked.' : 'Unlocked on this device.');
+              }}
+            />
           </>
         )}
       </Card>
@@ -153,7 +187,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     setProblem(null);
   }
 
-  async function persist(entry: { text: string | null; mood: MoodKey | null }, onMood: boolean) {
+  async function persist(entry: { text: string | null; mood: MoodKey | null }, onMood: boolean, base = entry.text ?? '') {
     setBusy(true);
     setProblem(null);
     try {
@@ -161,7 +195,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
       const saved: DayNote | null = entry.text === null && entry.mood === null ? null : { date, ...entry };
       queryClient.setQueryData<typeof query.data>(queryKey, (old) => (old ? { ...old, note: saved } : old));
       if (onMood) {
-        setDraft((current) => (current && current.text !== (entry.text ?? '') ? { ...current, mood: entry.mood } : null));
+        setDraft((current) => (current && current.text !== base ? { ...current, mood: entry.mood } : null));
         setStatus(queued ? 'queued' : entry.mood ? 'mood' : 'moodCleared');
       } else {
         setDraft(null);
@@ -192,15 +226,20 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     void persist({ text: trimmed || null, mood }, false);
   }
 
-  function pickMood(next: MoodKey | null) {
+  async function pickMood(next: MoodKey | null) {
     if (busy) return;
     edit({ mood: next });
-    void persist({ text: note?.text ?? null, mood: next }, true);
+    setBusy(true);
+    const fresh = await journal
+      .notes(date, date)
+      .then(({ notes }) => notes.find((n) => n.date === date) ?? null)
+      .catch(() => note);
+    await persist({ text: fresh?.text ?? null, mood: next }, true, note?.text ?? '');
   }
 
   function clearMood() {
     formRef.current?.querySelector<HTMLElement>('[role="radio"]')?.focus();
-    pickMood(null);
+    void pickMood(null);
   }
 
   function clearAll() {
@@ -238,7 +277,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
           <RadioGroupPrimitive.Root
             aria-labelledby={moodLabelId}
             value={mood ?? ''}
-            onValueChange={(value) => pickMood(value as MoodKey)}
+            onValueChange={(value) => void pickMood(value as MoodKey)}
             className="flex flex-wrap gap-2"
           >
             {choices.map((choice) => (
@@ -315,9 +354,12 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
 
   return (
     <Card className={className}>
-      <h2 className="text-[22px]">
+      <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
         {heading}
       </h2>
+      <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+        {unlockStatus}
+      </p>
       {body}
     </Card>
   );

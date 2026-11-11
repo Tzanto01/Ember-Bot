@@ -1,6 +1,7 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type JournalApi, JournalLockedError } from '@/lib/journal/types';
 import { auth, offlineQueue } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { DayJournal } from './day-journal';
@@ -171,5 +172,84 @@ describe('DayJournal', { timeout: 15_000 }, () => {
     const before = screen.getByRole('heading', { name: /^How was Saturday.*31/ }).parentElement!;
     await within(before).findByRole('radio', { name: 'Great' });
     expect(within(before).queryByRole('radio', { name: /Cozy/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps newer text saved elsewhere when only the mood is tapped', async () => {
+    const user = userEvent.setup();
+    const journal = fakeJournal({ notes: [{ date: '2026-11-01', text: 'Walked.', mood: null }] });
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+    expect(await screen.findByRole('textbox', { name: /A few words/ })).toHaveValue('Walked.');
+    journal.notes.mockResolvedValue({ notes: [{ date: '2026-11-01', text: 'Walked and swam.', mood: null }], hidden: 0 });
+
+    await user.click(screen.getByRole('radio', { name: 'Great' }));
+
+    expect(journal.save).toHaveBeenCalledWith('2026-11-01', { text: 'Walked and swam.', mood: 'great' });
+    expect(await screen.findByRole('textbox', { name: /A few words/ })).toHaveValue('Walked and swam.');
+  });
+
+  async function unlockWithRecoveryCode(journal: JournalApi) {
+    const user = userEvent.setup();
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+    await user.click(screen.getByRole('button', { name: 'Use my recovery code' }));
+    await user.type(screen.getByLabelText('Recovery code'), 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX-YZ23-4567');
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    return user;
+  }
+
+  function recoveryJournal() {
+    const base = fakeJournal({ state: 'locked' });
+    return {
+      ...base,
+      unlock: vi.fn(async () => {
+        base.state.set('unlocked');
+        return { needsNewPassphrase: true };
+      }),
+      setPassphrase: vi.fn(async () => Promise.reject(new JournalLockedError())),
+      forget: vi.fn(async () => base.state.set('locked')),
+    };
+  }
+
+  it('locks again with the same message as Settings when choosing the new passphrase took too long', async () => {
+    const journal = recoveryJournal();
+    const user = await unlockWithRecoveryCode(journal);
+
+    await user.type(await screen.findByLabelText('New passphrase'), 'warm kettle morning');
+    await user.type(screen.getByLabelText('Type it again'), 'warm kettle morning');
+    await user.type(screen.getByLabelText('Your login password'), 'synthetic-login-1');
+    await user.click(screen.getByRole('button', { name: 'Save new passphrase' }));
+
+    expect(journal.forget).toHaveBeenCalled();
+    expect(
+      await screen.findByText('That took a while, so the journal locked again. Unlock it with your recovery code once more.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How was today?' })).toHaveFocus();
+  });
+
+  it('skips the new passphrase while the journal is being turned off', async () => {
+    const journal = recoveryJournal();
+    journal.turningOff.set(true);
+    await unlockWithRecoveryCode(journal);
+
+    expect(await screen.findByRole('textbox', { name: /A few words/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save new passphrase' })).toBeNull();
+  });
+
+  it('moves focus to the card heading and says so after unlocking', async () => {
+    const user = userEvent.setup();
+    const base = fakeJournal({ state: 'locked' });
+    const journal = {
+      ...base,
+      unlock: vi.fn(async () => {
+        base.state.set('unlocked');
+        return { needsNewPassphrase: false };
+      }),
+    };
+    renderWithJournal(<DayJournal date="2026-11-01" />, journal);
+
+    await user.type(screen.getByLabelText('Journal passphrase'), 'correct horse battery');
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+
+    expect(await screen.findByText('Unlocked on this device.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How was today?' })).toHaveFocus();
   });
 });
