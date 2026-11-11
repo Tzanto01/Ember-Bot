@@ -1,5 +1,5 @@
 import { addDays, fromParts, startOfWeek, toParts, weekdayIndex } from '../local-date';
-import { weekdays } from '../models';
+import { reminderTimesOf, weekdays } from '../models';
 import type { DayEntry, DayStat, DayState, Habit, HabitStats, LocalDateString, WeeklyStats } from '../models';
 import type { LocalData, LocalHabit, LocalLog } from './types';
 
@@ -208,6 +208,7 @@ export function habitView(data: LocalData, habitId: number, today: LocalDateStri
     frequency: habit.frequency,
     weeklyTarget: habit.weeklyTarget,
     reminderTime: habit.reminderTime,
+    reminderTimes: reminderTimesOf(habit),
     pausedFrom: habit.pausedFrom,
     pausedUntil: habit.pausedUntil,
     pausedToday: isPausedOn(habit, today),

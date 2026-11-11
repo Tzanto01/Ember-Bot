@@ -23,6 +23,7 @@ describe('Reminders', () => {
   let reminders: Reminders;
   let schedule: Mock<(options: ScheduleOptions) => Promise<unknown>>;
   let getPending: Mock;
+  let cancel: Mock;
   let checkPermissions: Mock;
   let requestPermissions: Mock;
 
@@ -34,12 +35,13 @@ describe('Reminders', () => {
     device = new DeviceStore();
     schedule = vi.fn<(options: ScheduleOptions) => Promise<unknown>>(async () => ({}));
     getPending = vi.fn(async () => ({ notifications: [] }));
+    cancel = vi.fn(async () => undefined);
     checkPermissions = vi.fn(async () => ({ display: 'granted' }));
     requestPermissions = vi.fn(async () => ({ display: 'granted' }));
     const plugin = {
       createChannel: async () => undefined,
       getPending,
-      cancel: async () => undefined,
+      cancel,
       checkPermissions,
       requestPermissions,
       registerActionTypes: async () => undefined,
@@ -114,6 +116,47 @@ describe('Reminders', () => {
     await rebuildOnline([{ ...reminded, reminderTime: '21:00' }]);
 
     expect(schedule).toHaveBeenCalledTimes(2);
+  });
+
+  it('schedules one notification with Done per reminder time, keeps their ids across edits, and cancels them with the habit', async () => {
+    const water: Habit = {
+      ...reminded,
+      id: 2,
+      name: 'Water',
+      timesPerDay: 3,
+      reminderTime: '08:00',
+      reminderTimes: ['08:00', '13:00', '20:00'],
+    };
+    const first = await rebuildOnline([water]);
+
+    expect(first).toHaveLength(2 + 3 * (planDays - 1));
+    expect(first.slice(0, 3).map((n) => n.schedule?.at?.toISOString())).toEqual([
+      '2026-11-01T12:00:00.000Z',
+      '2026-11-01T19:00:00.000Z',
+      '2026-11-02T07:00:00.000Z',
+    ]);
+    expect(first.every((n) => n.actionTypeId === doneActionType && n.title === 'Ember')).toBe(true);
+
+    getPending.mockResolvedValue({ notifications: first.map(({ id }) => ({ id })) });
+    const edited = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded, water]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await edited;
+    const second = schedule.mock.calls[1][0].notifications;
+    const waterIds = (list: typeof first) =>
+      list.filter((n) => (n.extra as { habitId: number }).habitId === 2).map((n) => n.id);
+
+    expect(waterIds(second)).toEqual(waterIds(first));
+    expect(cancel).toHaveBeenLastCalledWith({ notifications: first.map(({ id }) => ({ id })) });
+
+    getPending.mockResolvedValue({ notifications: second.map(({ id }) => ({ id })) });
+    const deleted = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, []);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await deleted;
+
+    expect(schedule).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenLastCalledWith({ notifications: second.map(({ id }) => ({ id })) });
   });
 
   it('schedules the same plan again after the reminders were cleared', async () => {

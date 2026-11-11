@@ -149,6 +149,15 @@ function parse(text: string): ParsedBackup {
     const routineId = field(h, 'routine_id') ?? null;
     if (routineId !== null && !routineIds.has(routineId as number)) damaged();
     const position = field(h, 'routine_position') ?? null;
+    const listed = field(h, 'reminder_times');
+    const single = time(field(h, 'reminder_time'));
+    const reminderTimes =
+      listed === undefined || listed === null
+        ? single
+          ? [single]
+          : []
+        : [...new Set(list(listed).map((t) => time(t) ?? damaged()))].sort();
+    if (reminderTimes.length > timesPerDay) damaged();
     const habit: LocalHabit = {
       id: index + 1,
       name: validName(field(h, 'name'), limits.habitName) ?? damaged(),
@@ -156,7 +165,8 @@ function parse(text: string): ParsedBackup {
       weeklyTarget: frequency === 'weekly' ? (weeklyTarget === null ? 3 : int(weeklyTarget, 1, 6)) : null,
       days: frequency === 'weekdays' ? (parseWeekdays(field(h, 'days')) ?? damaged()) : null,
       timesPerDay,
-      reminderTime: time(field(h, 'reminder_time')),
+      reminderTime: reminderTimes[0] ?? null,
+      reminderTimes,
       reminderChannels: channels(field(h, 'reminder_channels')),
       pausedFrom,
       pausedUntil,
@@ -317,6 +327,7 @@ export class BackupService implements BackupApi {
           ...h,
           id: h.id + habit,
           days: h.days && [...h.days],
+          reminderTimes: h.reminderTimes && [...h.reminderTimes],
           reminderChannels: [...h.reminderChannels],
           routineId: h.routineId === null ? null : h.routineId + routine,
         })),

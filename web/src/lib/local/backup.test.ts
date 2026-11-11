@@ -15,6 +15,7 @@ function habit(id: number, overrides: Partial<LocalHabit> = {}): LocalHabit {
     days: null,
     timesPerDay: 1,
     reminderTime: null,
+    reminderTimes: [],
     reminderChannels: [],
     pausedFrom: null,
     pausedUntil: null,
@@ -29,8 +30,16 @@ function sample(): LocalData {
   const data = newLocalData({ timezone: 'Europe/Berlin', theme: 'tidepool' }, new Date('2026-09-01T00:00:00Z'));
   data.profile.graceDaysPerWeek = 2;
   data.habits = [
-    habit(1, { routineId: 1, routinePosition: 1, reminderTime: '07:30', reminderChannels: ['mobile'] }),
-    habit(2, { frequency: 'weekdays', days: ['mon', 'fri'], timesPerDay: 3, routineId: 1, routinePosition: 0 }),
+    habit(1, { routineId: 1, routinePosition: 1, reminderTime: '07:30', reminderTimes: ['07:30'], reminderChannels: ['mobile'] }),
+    habit(2, {
+      frequency: 'weekdays',
+      days: ['mon', 'fri'],
+      timesPerDay: 3,
+      reminderTime: '08:00',
+      reminderTimes: ['08:00', '13:00', '20:00'],
+      routineId: 1,
+      routinePosition: 0,
+    }),
     habit(3, { frequency: 'weekly', weeklyTarget: 4, pausedFrom: '2026-10-10', pausedUntil: '2026-10-20' }),
   ];
   data.logs = [
@@ -147,6 +156,8 @@ describe('BackupService', () => {
     ['a count above 10', (doc) => ((doc['logs'] as Record<string, unknown>[])[0]['count'] = 11), "can't be read"],
     ['a bad date', (doc) => ((doc['logs'] as Record<string, unknown>[])[0]['date'] = '2026-02-30'), "can't be read"],
     ['a bad time', (doc) => ((doc['habits'] as Record<string, unknown>[])[0]['reminder_time'] = '25:00'), "can't be read"],
+    ['a bad time in a list', (doc) => ((doc['habits'] as Record<string, unknown>[])[1]['reminder_times'] = ['08:00', '25:00']), "can't be read"],
+    ['more times than check-ins', (doc) => ((doc['habits'] as Record<string, unknown>[])[0]['reminder_times'] = ['07:30', '12:00']), "can't be read"],
     ['all seven weekdays', (doc) => ((doc['habits'] as Record<string, unknown>[])[1]['days'] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']), "can't be read"],
     ['a note over 2000 characters', (doc) => ((doc['day_notes'] as Record<string, unknown>[])[0]['text'] = 'x'.repeat(2001)), "can't be read"],
     ['26 habits', (doc) => (doc['habits'] = Array.from({ length: 26 }, (_, i) => ({ ...(doc['habits'] as object[])[0], id: i + 1, routine_id: null }))), 'more than 25 habits'],
@@ -158,6 +169,18 @@ describe('BackupService', () => {
     const result = backup.parseBackup(fileText(doc));
 
     expect('error' in result && result.error).toContain(message);
+  });
+
+  it('reads reminder times sorted from reminder_times, and a file without them as its one reminder_time', () => {
+    const doc = exportDocument(sample());
+    const habits = doc['habits'] as Record<string, unknown>[];
+    habits[1]['reminder_times'] = ['20:00:00', '08:00:00', '13:00:00'];
+    delete habits[0]['reminder_times'];
+
+    const result = parsed(backup.parseBackup(fileText(doc)));
+
+    expect(result.data.habits[1]).toMatchObject({ reminderTime: '08:00', reminderTimes: ['08:00', '13:00', '20:00'] });
+    expect(result.data.habits[0]).toMatchObject({ reminderTime: '07:30', reminderTimes: ['07:30'] });
   });
 
   it('rejects text that is too big or not an Ember backup', () => {

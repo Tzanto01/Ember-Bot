@@ -8,6 +8,11 @@ export type LocalDateString = string;
 /** A local time of day, `HH:mm`. */
 export type TimeOfDay = string;
 
+/** A habit's reminder times: `reminderTimes`, or its single `reminderTime` from servers that don't send them. */
+export function reminderTimesOf(habit: { reminderTime: TimeOfDay | null; reminderTimes?: TimeOfDay[] }): TimeOfDay[] {
+  return habit.reminderTimes ?? (habit.reminderTime ? [habit.reminderTime] : []);
+}
+
 /** `GET /api/me`. */
 export interface Me {
   id: string;
@@ -102,7 +107,10 @@ export interface Habit {
   timesPerDay: number;
   /** The routine this habit belongs to, or null. */
   routineId: number | null;
+  /** The first of `reminderTimes`, or null. */
   reminderTime: TimeOfDay | null;
+  /** Sorted, unique, 0 to `timesPerDay`; absent from servers before multi-time reminders. */
+  reminderTimes?: TimeOfDay[];
   pausedFrom: LocalDateString | null;
   pausedUntil: LocalDateString | null;
   pausedToday: boolean;
@@ -119,6 +127,9 @@ export interface NewHabit {
   /** 1 to 100 characters after trimming. */
   name: string;
   reminderTime?: TimeOfDay | null;
+  /** Wins over `reminderTime` when present. */
+  reminderTimes?: TimeOfDay[];
+  reminderChannels?: ReminderChannel[];
   frequency: Frequency;
   weeklyTarget?: number | null;
   days?: Weekday[] | null;
@@ -129,6 +140,8 @@ export interface NewHabit {
 export interface HabitPatch {
   name?: string;
   reminderTime?: TimeOfDay | null;
+  /** Wins over `reminderTime` when present; empty clears the reminder. */
+  reminderTimes?: TimeOfDay[];
   clearReminder?: boolean;
   frequency?: Frequency;
   weeklyTarget?: number | null;
