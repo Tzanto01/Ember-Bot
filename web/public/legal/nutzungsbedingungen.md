@@ -54,11 +54,11 @@ Wenn du eine Sicherheitslücke findest, sag uns bitte Bescheid: contact@nicowoel
 
 Die Namen deiner Habits, deine Tagesnotizen und deine Daten gehören dir. Du gibst uns nur das Recht, sie zu speichern und zu verarbeiten, soweit das nötig ist, um Ember für dich zu betreiben (zum Beispiel um sie dir anzuzeigen oder dich an sie zu erinnern). Wenn du mit `/habit share` eine Streak-Karte postest, ist sie in diesem Kanal für alle dort sichtbar.
 
-Du kannst deine Daten jederzeit exportieren: mit `/export` im Discord-Bot oder unter „Deine Daten“ in der Web-App und der App. Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.
+Du kannst deine Daten jederzeit exportieren: vollständig unter „Your data“ in den Einstellungen der Web-App und der App. Im Discord-Bot gibt `/export` eine Auswahl (Einstellungen, Habits, Check-ins, Tiefs und Routinen). Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.
 
 ## 9. Ende der Nutzung
 
-- **Durch dich:** Du kannst jederzeit aufhören. Mit „Konto löschen“ in der Web-App oder der App, oder mit `/privacy delete` im Discord-Bot, löschst du sofort alle deine Daten. Damit endet auch die Vereinbarung zwischen uns.
+- **Durch dich:** Du kannst jederzeit aufhören. Mit „Delete your account“ in den Einstellungen der Web-App oder der App, oder mit `/privacy delete` im Discord-Bot, löschst du sofort alle deine Daten. Damit endet auch die Vereinbarung zwischen uns.
 - **Durch uns:** Wir können Ember ganz einstellen. Wenn möglich, kündigen wir das mindestens **[PRÜFEN: Frist festlegen, Vorschlag 30]** Tage vorher in Ember an, damit du deine Daten exportieren kannst. Danach löschen wir alle Daten.
 - **Bei Verstößen:** Wenn jemand gegen Abschnitt 7 verstößt, können wir diese Person von Ember ausschließen und ihre Daten löschen. Bei schweren Verstößen auch ohne Vorwarnung.
 
