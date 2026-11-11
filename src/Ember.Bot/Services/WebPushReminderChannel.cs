@@ -18,7 +18,8 @@ namespace Ember.Bot.Services;
 /// The notification names no habit, since it can show on a lock screen. A subscription the push service reports
 /// as gone (404/410) is deleted. Delivered when at least one subscription accepted the message.
 /// A single-habit reminder also carries a "Done ✅" action with a one-time token (<see cref="HabitService.CreateReminderActionTokenAsync"/>)
-/// that expires with the reminder (<see cref="ReminderDispatchJob.IsExpired"/>); a routine reminder doesn't.
+/// that expires with the reminder (<see cref="ReminderDispatchJob.IsExpired"/>), sent only to subscriptions registered by a
+/// sign-in session that is still live; other subscriptions and routine reminders get the plain payload.
 /// </summary>
 public sealed class WebPushReminderChannel : IReminderChannel
 {
@@ -109,19 +110,21 @@ public sealed class WebPushReminderChannel : IReminderChannel
     public async Task<DeliveryOutcome> SendAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
         List<Core.Models.PushSubscription> subscriptions;
-        string payload;
+        HashSet<Guid> liveSessions;
+        var body = reminder.Second ? SecondBody : FirstBody;
+        string? donePayload = null;
         using (var scope = _scopes.CreateScope())
         {
             var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
             subscriptions = await habits.GetPushSubscriptionsAsync(reminder.UserId, cancellationToken);
             if (subscriptions.Count == 0) return DeliveryOutcome.UserNotFound;
 
-            var doneToken = reminder.PendingHabits is null
-                ? await habits.CreateReminderActionTokenAsync(reminder.UserId, reminder.HabitId, reminder.Day,
-                    reminder.Day.AddDays(1).ToDateTime(new TimeOnly(MissedDayReflectionJob.LocalSendHour, 0)), cancellationToken)
-                : null;
-            payload = BuildPayload(reminder.Second ? SecondBody : FirstBody, doneToken);
+            liveSessions = await habits.GetLiveSessionIdsAsync(reminder.UserId, cancellationToken);
+            if (reminder.PendingHabits is null && subscriptions.Any(s => s.SessionId is { } id && liveSessions.Contains(id)))
+                donePayload = BuildPayload(body, await habits.CreateReminderActionTokenAsync(reminder.UserId, reminder.HabitId, reminder.Day,
+                    reminder.Day.AddDays(1).ToDateTime(new TimeOnly(MissedDayReflectionJob.LocalSendHour, 0)), cancellationToken));
         }
+        var plainPayload = BuildPayload(body);
 
         var client = new PushServiceClient(_httpClients.CreateClient(HttpClientName))
         {
@@ -136,6 +139,9 @@ public sealed class WebPushReminderChannel : IReminderChannel
             target.SetKey(PushEncryptionKeyName.P256DH, subscription.P256dh);
             target.SetKey(PushEncryptionKeyName.Auth, subscription.Auth);
 
+            var payload = donePayload is not null && subscription.SessionId is { } sessionId && liveSessions.Contains(sessionId)
+                ? donePayload
+                : plainPayload;
             try
             {
                 await client.RequestPushMessageDeliveryAsync(target, new PushMessage(payload) { TimeToLive = TimeToLiveSeconds },

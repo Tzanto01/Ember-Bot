@@ -34,7 +34,8 @@ public partial class HabitService
     /// Uses a reminder action token: adds one check-in (capped at the habit's times per day) to its habit and day by the same
     /// rules as <see cref="AddCheckInAsync"/>, at most once. A token already used answers <see cref="ReminderActionResult.Logged"/>
     /// without writing; an unknown one <see cref="ReminderActionResult.Unknown"/>, an expired one
-    /// <see cref="ReminderActionResult.Expired"/>. Without consent nothing is written and the token stays usable.
+    /// <see cref="ReminderActionResult.Expired"/>. When nothing is written (no consent, a rejected or failed write) the token
+    /// stays unused.
     /// </summary>
     public async Task<ReminderActionResult> UseReminderActionTokenAsync(string token, CancellationToken cancellationToken = default)
     {
@@ -52,7 +53,19 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedUtc, now), cancellationToken);
         if (claimed == 0) return ReminderActionResult.Logged;
 
-        return await AddCheckInAsync(row.UserId, row.HabitId, row.Day) switch
+        DayEditResult result;
+        try
+        {
+            result = await AddCheckInAsync(row.UserId, row.HabitId, row.Day);
+        }
+        catch
+        {
+            await ReleaseReminderActionTokenAsync(row.Id);
+            throw;
+        }
+        if (result != DayEditResult.Saved) await ReleaseReminderActionTokenAsync(row.Id);
+
+        return result switch
         {
             DayEditResult.Saved => ReminderActionResult.Logged,
             DayEditResult.HabitNotFound => ReminderActionResult.Unknown,
@@ -67,6 +80,9 @@ public partial class HabitService
         var now = _time.GetUtcNow().UtcDateTime;
         return _db.ReminderActionTokens.Where(t => t.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
     }
+
+    private Task ReleaseReminderActionTokenAsync(int id)
+        => _db.ReminderActionTokens.Where(t => t.Id == id).ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedUtc, (DateTime?)null));
 
     private static byte[] ReminderActionTokenHash(string token) => SHA256.HashData(Encoding.UTF8.GetBytes(token));
 }

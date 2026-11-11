@@ -333,6 +333,9 @@ namespace Ember.Core.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -340,6 +343,8 @@ namespace Ember.Core.Data.Migrations
 
                     b.HasIndex("Endpoint")
                         .IsUnique();
+
+                    b.HasIndex("SessionId");
 
                     b.HasIndex("UserId");
 

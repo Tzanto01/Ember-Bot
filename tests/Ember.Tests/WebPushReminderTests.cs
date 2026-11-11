@@ -262,6 +262,9 @@ public class WebPushReminderTests
             await db.SaveChangesAsync();
         });
 
+        await LinkLiveSessionAsync(host, 20);
+        await LinkLiveSessionAsync(host, 30);
+
         await RunJobAsync(host);
 
         push.Endpoints.Should().BeEquivalentTo([Endpoint("routine"), Endpoint("habit")]);
@@ -275,6 +278,50 @@ public class WebPushReminderTests
         var withToken = WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", new string('x', 43));
         var bodyLength = (string endpoint) => push.Requests.Single(r => r.Endpoint == Endpoint(endpoint)).BodyLength;
         (bodyLength("habit") - bodyLength("routine")).Should().Be(withToken.Length - WebPushReminderChannel.Payload.Length);
+    }
+
+    /// <summary>Records a sign-in session for the user that expires in <paramref name="expiresIn"/> and ties their subscriptions to it.</summary>
+    private static Task LinkLiveSessionAsync(IntegrationTestHost host, long id, string? endpoint = null, TimeSpan? expiresIn = null)
+        => host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var session = new AuthSession
+            {
+                Id = Guid.NewGuid(), UserId = TestUsers.Id(id), CreatedUtc = Now, ExpiresUtc = Now + (expiresIn ?? TimeSpan.FromDays(14)),
+            };
+            db.AuthSessions.Add(session);
+            await db.SaveChangesAsync();
+            await db.PushSubscriptions.Where(s => s.UserId == session.UserId && (endpoint == null || s.Endpoint == endpoint))
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.SessionId, session.Id));
+        });
+
+    [Fact]
+    public async Task Only_subscriptions_of_a_live_session_get_the_done_token()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(30, ReminderChannels.WebPush, [Endpoint("live"), Endpoint("legacy"), Endpoint("expired")]));
+        await using var hostScope = host;
+        await LinkLiveSessionAsync(host, 30, Endpoint("live"));
+        await LinkLiveSessionAsync(host, 30, Endpoint("expired"), TimeSpan.Zero);
+
+        await RunJobAsync(host);
+
+        (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().ReminderActionTokens.CountAsync())).Should().Be(1);
+        var bodyLength = (string endpoint) => push.Requests.Single(r => r.Endpoint == Endpoint(endpoint)).BodyLength;
+        var extra = WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", new string('x', 43)).Length - WebPushReminderChannel.Payload.Length;
+        (bodyLength("live") - bodyLength("legacy")).Should().Be(extra);
+        bodyLength("expired").Should().Be(bodyLength("legacy"));
+    }
+
+    [Fact]
+    public async Task Without_any_live_session_no_token_is_created()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(30, ReminderChannels.WebPush, [Endpoint("legacy")]));
+        await using var hostScope = host;
+
+        await RunJobAsync(host);
+
+        push.Requests.Should().ContainSingle();
+        (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().ReminderActionTokens.CountAsync())).Should().Be(0);
     }
 
     [Fact]

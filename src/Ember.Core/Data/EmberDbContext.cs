@@ -158,6 +158,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.Property(s => s.Auth).HasMaxLength(64).IsRequired();
             entity.HasIndex(s => s.Endpoint).IsUnique();
             entity.HasIndex(s => s.UserId);
+            entity.HasIndex(s => s.SessionId);
             entity.HasOne(s => s.User)
                   .WithMany(u => u.PushSubscriptions)
                   .HasForeignKey(s => s.UserId)

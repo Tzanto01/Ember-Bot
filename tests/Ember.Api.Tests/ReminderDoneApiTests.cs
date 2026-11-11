@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Ember.Core.Services;
 using FluentAssertions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Api.Tests;
@@ -120,6 +121,85 @@ public class ReminderDoneApiTests(PostgresFixture postgres) : ApiTestBase(postgr
         await user.GiveConsentAsync();
         await (await Host.NewClient().Post(Done, new { token })).Expect(HttpStatusCode.NoContent);
         (await CountAsync(habitId, Host.Today)).Should().Be(1);
+    }
+
+    [DockerFact]
+    public async Task A_rejected_write_leaves_the_token_unused_instead_of_replaying_as_logged()
+    {
+        var (_, userId, habitId) = await HabitAsync();
+        var token = await Host.Service(h => h.CreateReminderActionTokenAsync(userId, habitId, Host.Today.AddDays(-1),
+            Host.Today.ToDateTime(new TimeOnly(10, 0)).AddDays(1)));
+
+        await (await Host.NewClient().Post(Done, new { token })).ExpectProblem(HttpStatusCode.Gone, "expired");
+        await (await Host.NewClient().Post(Done, new { token })).ExpectProblem(HttpStatusCode.Gone, "expired");
+
+        (await Host.Db(db => db.ReminderActionTokens.SingleAsync())).UsedUtc.Should().BeNull();
+    }
+
+    private static readonly string Endpoint = $"https://fcm.googleapis.com/fcm/send/{Guid.NewGuid():N}";
+
+    private static async Task SubscribeAsync(ApiClient client)
+        => await (await client.Post("/api/me/push-subscriptions", new
+        {
+            endpoint = Endpoint,
+            keys = new { p256dh = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(65)), auth = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(16)) },
+        })).Expect(HttpStatusCode.NoContent);
+
+    private Task<List<Guid?>> SubscriptionSessionsAsync()
+        => Host.Db(db => db.PushSubscriptions.Select(s => s.SessionId).ToListAsync());
+
+    private async Task<ApiClient> SecondDeviceAsync(ApiClient user)
+    {
+        var other = Host.NewClient();
+        other.Email = user.Email;
+        await other.LoginAsync();
+        return other;
+    }
+
+    [DockerFact]
+    public async Task A_subscription_remembers_its_session_and_a_plain_logout_deletes_it_server_side()
+    {
+        var (user, _, _) = await HabitAsync();
+        await SubscribeAsync(user);
+        (await SubscriptionSessionsAsync()).Should().ContainSingle().Which.Should().NotBeNull()
+            .And.Be(await Host.Db(db => db.AuthSessions.Select(s => (Guid?)s.Id).SingleAsync()));
+
+        await (await user.Post("/api/auth/logout")).Expect(HttpStatusCode.NoContent);
+
+        (await SubscriptionSessionsAsync()).Should().BeEmpty();
+    }
+
+    [DockerFact]
+    public async Task Logout_everywhere_deletes_the_subscriptions_of_the_ended_sessions_and_the_unused_tokens()
+    {
+        var (user, userId, habitId) = await HabitAsync();
+        var intruder = await SecondDeviceAsync(user);
+        await SubscribeAsync(intruder);
+        var token = await TokenAsync(userId, habitId);
+
+        await (await user.Post("/api/auth/logout-everywhere")).Expect(HttpStatusCode.NoContent);
+
+        (await SubscriptionSessionsAsync()).Should().BeEmpty();
+        (await Host.Db(db => db.ReminderActionTokens.CountAsync())).Should().Be(0);
+        await (await Host.NewClient().Post(Done, new { token })).ExpectProblem(HttpStatusCode.NotFound, "not_found");
+        (await CountAsync(habitId, Host.Today)).Should().BeNull();
+    }
+
+    [DockerFact]
+    public async Task A_password_reset_deletes_the_subscriptions_of_the_ended_sessions_and_the_unused_tokens()
+    {
+        var (user, userId, habitId) = await HabitAsync();
+        var intruder = await SecondDeviceAsync(user);
+        await SubscribeAsync(intruder);
+        await TokenAsync(userId, habitId);
+        await (await Host.NewClient().Post("/api/auth/forgotPassword", new { email = user.Email })).Expect(HttpStatusCode.OK);
+        var code = QueryHelpers.ParseQuery(new Uri((await Host.Mail.WaitForAsync(user.Email, 2))[1].Link()).Query)["code"].ToString();
+
+        await (await Host.NewClient().Post("/api/auth/resetPassword", new ResetRequest(user.Email, code, "another-long-passphrase")))
+            .Expect(HttpStatusCode.OK);
+
+        (await SubscriptionSessionsAsync()).Should().BeEmpty();
+        (await Host.Db(db => db.ReminderActionTokens.CountAsync())).Should().Be(0);
     }
 
     [DockerFact]

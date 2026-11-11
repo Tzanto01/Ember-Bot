@@ -17,5 +17,11 @@ public class PushSubscription
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// The sign-in session (<see cref="AuthSession"/>) that last registered it; ending that session deletes the subscription.
+    /// Null for subscriptions saved before sessions were recorded. Reminders carry a "Done" token only while it is live.
+    /// </summary>
+    public Guid? SessionId { get; set; }
+
     public User User { get; set; } = null!;
 }
