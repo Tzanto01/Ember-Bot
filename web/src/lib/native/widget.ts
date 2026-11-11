@@ -21,6 +21,8 @@ export interface WidgetSnapshot {
   timeZone: string;
   habits: WidgetHabit[];
   more: number;
+  /** Tomorrow from the schedule alone, shown after local midnight until the app pushes a fresh snapshot. */
+  next?: Pick<WidgetSnapshot, 'date' | 'habits' | 'more'>;
 }
 
 /** The custom native plugin (`EmberWidget`, Android only). */

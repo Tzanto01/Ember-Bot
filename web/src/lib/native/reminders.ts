@@ -211,7 +211,13 @@ export class Reminders {
     const { habits, routines } = loaded;
     const now = Date.now();
     const today = localDate(now, timeZone);
-    await this.toWidget((widget) => widget.update(widgetSnapshot(userId, timeZone, today, habits)));
+    const next = widgetSnapshot(userId, timeZone, addDays(today, 1), habits);
+    await this.toWidget((widget) =>
+      widget.update({
+        ...widgetSnapshot(userId, timeZone, today, habits),
+        next: { date: next.date, habits: next.habits, more: next.more },
+      }),
+    );
     const plan = planReminders(habits, timeZone, now, routines, secondMinutes);
     const plugin = (await this.notifications()).LocalNotifications;
     const names = reminderNames.get();
@@ -230,7 +236,7 @@ export class Reminders {
       this.channelReady = true;
     }
     await this.cancelPending();
-    if (!plan.length || (await plugin.checkPermissions()).display !== 'granted') return;
+    if (!plan.length || !(await this.allowed(plugin))) return;
     const iconColor = notificationColor();
     const habitName = new Map(habits.map((habit) => [habit.id, habit.name]));
     const routineName = new Map(routines.map((routine) => [routine.id, routine.name]));
@@ -252,6 +258,7 @@ export class Reminders {
             ? { userId, habitId: reminder.habitId, date: reminder.date }
             : { userId, routineId: reminder.routineId, date: reminder.date },
         schedule: { at: new Date(reminder.at), allowWhileIdle: true },
+        isExactNotification: false,
       };
     });
     const recent = addDays(today, -2);
@@ -270,6 +277,13 @@ export class Reminders {
       localStorage.removeItem(issuedKey);
     }
     await plugin.schedule({ notifications });
+  }
+
+  /** True when notifications may show; asks once while Android has never asked (a new phone or a reinstall). */
+  private async allowed(plugin: LocalNotificationsPlugin): Promise<boolean> {
+    const { display } = await plugin.checkPermissions();
+    if (display === 'prompt') return (await plugin.requestPermissions()).display === 'granted';
+    return display === 'granted';
   }
 
   private toWidget(call: (widget: EmberWidgetPlugin) => Promise<void>): Promise<void> {

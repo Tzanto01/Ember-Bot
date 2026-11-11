@@ -14,10 +14,10 @@ export interface PlannedReminder {
   second?: boolean;
 }
 
-/** Days ahead to schedule, today included. */
-export const planDays = 7;
-/** Most notifications kept pending (Android and iOS cap pending alarms); the soonest win. */
-export const planCap = 60;
+/** Days ahead to schedule, today included, so reminders keep coming while the app stays closed. */
+export const planDays = 30;
+/** Most notifications kept pending, below Android's limit of 500 alarms per app; the soonest win. */
+export const planCap = 400;
 
 const parts = new Map<string, Intl.DateTimeFormat>();
 

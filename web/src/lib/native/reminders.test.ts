@@ -10,6 +10,7 @@ import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
 import { applyTheme } from '../theme';
 import { reminderNames } from './reminder-names';
+import { planDays } from './reminder-plan';
 import { doneActionType, Reminders, reminderBody, secondReminderBody } from './reminders';
 import type { EmberWidgetPlugin } from './widget';
 
@@ -22,6 +23,8 @@ describe('Reminders', () => {
   let reminders: Reminders;
   let schedule: Mock<(options: ScheduleOptions) => Promise<unknown>>;
   let getPending: Mock;
+  let checkPermissions: Mock;
+  let requestPermissions: Mock;
 
   beforeEach(async () => {
     (globalThis as unknown as { indexedDB: unknown }).indexedDB = new IDBFactory();
@@ -31,11 +34,14 @@ describe('Reminders', () => {
     device = new DeviceStore();
     schedule = vi.fn<(options: ScheduleOptions) => Promise<unknown>>(async () => ({}));
     getPending = vi.fn(async () => ({ notifications: [] }));
+    checkPermissions = vi.fn(async () => ({ display: 'granted' }));
+    requestPermissions = vi.fn(async () => ({ display: 'granted' }));
     const plugin = {
       createChannel: async () => undefined,
       getPending,
       cancel: async () => undefined,
-      checkPermissions: async () => ({ display: 'granted' }),
+      checkPermissions,
+      requestPermissions,
       registerActionTypes: async () => undefined,
       schedule,
     } as unknown as LocalNotificationsPlugin;
@@ -79,8 +85,23 @@ describe('Reminders', () => {
     await done;
 
     const at = scheduledAt();
-    expect(at).toHaveLength(6);
+    expect(at).toHaveLength(planDays - 1);
     expect(at[0]).toBe('2026-11-02T19:00:00.000Z');
+  });
+
+  it('asks for the notification permission when the phone never asked, then schedules once granted', async () => {
+    checkPermissions.mockResolvedValue({ display: 'prompt' });
+
+    const notifications = await rebuildOnline([reminded]);
+
+    expect(requestPermissions).toHaveBeenCalledTimes(1);
+    expect(notifications).toHaveLength(planDays);
+  });
+
+  it('schedules inexact alarms, so Android never sends the user to the exact-alarm setting', async () => {
+    const notifications = await rebuildOnline([reminded]);
+
+    expect(notifications.every((n) => n.isExactNotification === false)).toBe(true);
   });
 
   it('schedules nothing from the cache when the API answers 401', async () => {
@@ -192,7 +213,7 @@ describe('Reminders', () => {
     await again;
 
     expect(localStorage.getItem('ember.reminderIssued')).toBe(once);
-    expect(JSON.parse(once ?? '[]')).toHaveLength(7);
+    expect(JSON.parse(once ?? '[]')).toHaveLength(planDays);
     expect(reminders.wasIssued(99, stale)).toBe(false);
 
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
