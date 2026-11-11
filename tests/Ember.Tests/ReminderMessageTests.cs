@@ -210,6 +210,28 @@ public class ReminderMessageTests
     }
 
     [Fact]
+    public async Task No_second_reminder_once_a_weekly_habits_target_is_met_meanwhile()
+    {
+        var weekly = DueHabit(1);
+        weekly.FrequencyType = FrequencyType.Weekly;
+        weekly.WeeklyTarget = 2;
+        weekly.Logs.Add(new HabitLog { Date = Today.AddDays(-3), Completed = true });
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, 15, weekly);
+        await RunJobAsync(host);
+        host.Discord.Messages.Should().ContainSingle();
+        (await SecondReminderAsync(host, 1)).Should().NotBeNull();
+
+        await host.WithScopeAsync(sp => sp.GetRequiredService<HabitService>()
+            .CheckInAsync(TestUsers.Id(DiscordUser), 1, Today.AddDays(-1), completed: true));
+        time.Advance(TimeSpan.FromMinutes(15));
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle();
+        (await SecondReminderAsync(host, 1)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task No_second_reminder_is_planned_while_the_setting_is_off()
     {
         await using var host = await CreateHostAsync(new FakeTimeProvider(Now), 0, DueHabit(1));

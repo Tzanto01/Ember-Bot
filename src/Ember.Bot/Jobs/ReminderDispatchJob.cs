@@ -16,7 +16,8 @@ namespace Ember.Bot.Jobs;
 /// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
 /// native app schedules those reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
-/// without sending, as are habits paused or already completed on the user's local day, and habits in a routine that has a
+/// without sending, as are habits paused or already completed on the user's local day, weekly habits whose target is already
+/// reached in the user's local Monday–Sunday week, and habits in a routine that has a
 /// reminder (the routine's reminder replaces theirs). A due <see cref="Routine"/> reminder is sent the same way, once, listing
 /// the member habits still pending or partial on the user's local day, and advanced without sending when there are none.
 /// After <see cref="MaxConsecutiveDmFailures"/> undeliverable reminders in a row the user's
@@ -26,7 +27,7 @@ namespace Ember.Bot.Jobs;
 /// after that it moves to its next reminder time and, for a Discord send, counts once towards the DM pause.
 /// A delivered regular (not snoozed) reminder schedules one second reminder <see cref="User.SecondReminderMinutes"/> later when that
 /// is on, falls on the same local day and comes before the habit's next regular reminder; it is sent like the first only if the day
-/// is still open then, and never followed by another.
+/// (and a weekly habit's week) is still open then, and never followed by another.
 /// Each run then closes the open Discord reminder messages whose habits are done for their day, or whose buttons expired
 /// (<see cref="IsExpired"/>).
 /// </summary>
@@ -240,7 +241,8 @@ public class ReminderDispatchJob : IJob
             && LocalDay(dueAt, tz) == today
             && !HabitService.IsPausedOn(habit, today)
             && HabitService.IsScheduledOn(habit, today)
-            && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
+            && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken)
+            && !await IsWeekDoneAsync(habits, habit, today, cancellationToken);
 
         var delivery = Delivery.NotDelivered;
         if (send)
@@ -302,6 +304,14 @@ public class ReminderDispatchJob : IJob
             ? at
             : null;
 
+    /// <summary>True for a weekly habit whose <see cref="Habit.WeeklyTarget"/> is already reached in the Monday–Sunday week of <paramref name="today"/>.</summary>
+    private static async Task<bool> IsWeekDoneAsync(HabitService habits, Habit habit, DateOnly today, CancellationToken cancellationToken)
+    {
+        if (habit.FrequencyType != FrequencyType.Weekly) return false;
+        var monday = HabitService.WeekStart(today);
+        return await habits.CountCompletedBetweenAsync(habit.Id, monday.AddDays(-1), monday.AddDays(7), cancellationToken) >= (habit.WeeklyTarget ?? 3);
+    }
+
     private static DateOnly LocalDay(DateTime utc, TimeZoneInfo tz)
         => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), tz));
 
@@ -336,7 +346,8 @@ public class ReminderDispatchJob : IJob
             && now - dueAt <= StaleAfter
             && !HabitService.IsPausedOn(habit, today)
             && HabitService.IsScheduledOn(habit, today)
-            && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken);
+            && !await habits.IsCompletedOnAsync(habit.Id, today, cancellationToken)
+            && !await IsWeekDoneAsync(habits, habit, today, cancellationToken);
 
         habit.SecondReminderUtc = null;
         var delivery = Delivery.NotDelivered;

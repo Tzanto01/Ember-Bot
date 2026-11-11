@@ -140,6 +140,40 @@ public class ReminderDispatchTests
     }
 
     [Fact]
+    public async Task WeeklyHabit_RemindsOnOpenDaysUntilTheWeeksTargetIsMet_ThenAgainFromMonday()
+    {
+        Habit Weekly(int id, params int[] days)
+        {
+            var habit = DueHabit(id, 10);
+            habit.FrequencyType = FrequencyType.Weekly;
+            habit.WeeklyTarget = 3;
+            foreach (var day in days)
+                habit.Logs.Add(new HabitLog { Date = new DateOnly(2027, 1, day), Completed = true });
+            return habit;
+        }
+        var time = new FakeTimeProvider(Now);
+        await using var host = await CreateHostAsync(time, Weekly(1, 11, 13), Weekly(2, 11, 12, 13), Weekly(3, 11, 15));
+        int SentFor(int id) => host.Discord.Messages.Count(m => m.Text.Contains($"Habit {id}"));
+
+        await RunJobAsync(host);
+
+        host.Discord.Messages.Should().ContainSingle().Which.Text.Should().Contain("Habit 1");
+        (await NextReminderAsync(host, 2)).Should().Be(TomorrowNineBerlin);
+        (await NextReminderAsync(host, 3)).Should().Be(TomorrowNineBerlin);
+
+        time.Advance(TimeSpan.FromDays(1));
+        await RunJobAsync(host);
+        time.Advance(TimeSpan.FromDays(1));
+        await RunJobAsync(host);
+        SentFor(2).Should().Be(0);
+        SentFor(3).Should().Be(2);
+
+        time.Advance(TimeSpan.FromDays(1));
+        await RunJobAsync(host);
+        SentFor(2).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Snooze_SendsAgainAfterAnHour_ThenReturnsToTheDailyTime()
     {
         var time = new FakeTimeProvider(Now);
