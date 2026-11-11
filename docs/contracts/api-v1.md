@@ -357,13 +357,20 @@ v1.9 (2026-11-11, Nico: "Done action on reminders outside Discord", including on
 ### Tokens
 
 - The bot creates one random 256-bit token (base64url, 43 characters) per sent reminder, shared by the user's push subscriptions. The database stores only its SHA-256 hash, with the user, habit and the reminder's local day; a lookup is by hash. Tokens are never logged.
+- Only push subscriptions registered by a sign-in session that is still live (not ended, not expired) get the token; any other subscription (saved before v1.9, or its session expired) gets the plain nudge without "Done".
 - A token expires when the reminder's Discord buttons would (10:00 local time on the day after the reminder's day, `ReminderDispatchJob.IsExpired`), works once, and is deleted with the user or habit. An account merge moves them with the habits. Expired tokens are purged by the daily account cleanup job. Not part of the export.
+
+### Push subscriptions follow their session
+
+- `POST /api/me/push-subscriptions` records the caller's session with the subscription (re-registering updates it).
+- Ending a session server-side (logout, logout everywhere, a password reset, a security change that signs out the other devices, account delete, merge, signing in again over an existing session, the 50-session cap) deletes the push subscriptions that session registered, whether or not the client unsubscribed. Logout everywhere, a password reset and every other "end all sessions" also delete the account's unused Done tokens.
+- On logout the web app closes the Ember notifications still showing before it unsubscribes.
 
 ### `POST /api/reminders/done`
 
 - Anonymous, antiforgery-exempt (the token is its own secret), rate-limited per client IP like the credential endpoints. Body `{ "token": "<token>" }`.
 - Applies the same rule as the Discord "Done" button: adds one check-in to that habit on the token's day (capped at `timesPerDay`), with the usual day rules and the health-data consent.
-- 204: logged now, or the token was already used (nothing is added again). 404 `not_found`: unknown, missing or malformed token, or its habit is gone. 410 `expired`: the token expired or its day can't be logged (for example before the habit's start). 403 `consent_required`: no current consent; nothing is written and the token stays usable.
+- 204: logged now, or the token was already used (nothing is added again). A write that doesn't land (rejected or failed) leaves the token unused. 404 `not_found`: unknown, missing or malformed token, or its habit is gone. 410 `expired`: the token expired or its day can't be logged (for example before the habit's start). 403 `consent_required`: no current consent; nothing is written and the token stays usable.
 
 ### Native app
 

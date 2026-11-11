@@ -39,6 +39,7 @@ describe('PushService', () => {
   let current: PushSubscription | null;
   let unsubscribe: Mock;
   let subscribe: Mock;
+  let shown: { close: Mock }[];
 
   function browserSubscription(): PushSubscription {
     return {
@@ -53,8 +54,10 @@ describe('PushService', () => {
     unsubscribe = vi.fn().mockResolvedValue(true);
     current = initial === 'subscribed' ? browserSubscription() : null;
     subscribe = vi.fn(async () => browserSubscription());
+    shown = [{ close: vi.fn() }, { close: vi.fn() }];
     const registration = {
       pushManager: { getSubscription: async () => current, subscribe },
+      getNotifications: async () => shown,
     } as unknown as ServiceWorkerRegistration;
     const api = new ApiClient(
       new Http({ native: false, apiBase: '' }),
@@ -193,6 +196,27 @@ describe('PushService', () => {
     await done;
 
     expect(order).toEqual(['server', 'browser']);
+  });
+
+  it('on logout closes the reminders still showing, then removes the subscription on the server and in the browser', async () => {
+    const service = setup('subscribed');
+
+    const done = service.release();
+    const request = await mock.next('DELETE', removal);
+    for (const notification of shown) expect(notification.close).toHaveBeenCalled();
+    request.respond(204);
+    await done;
+
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it('on logout still closes the reminders showing without a subscription', async () => {
+    const service = setup();
+
+    await service.release();
+
+    for (const notification of shown) expect(notification.close).toHaveBeenCalled();
+    expect(mock.all).toEqual([]);
   });
 
   it('keeps the browser subscription when the server removal fails', async () => {
