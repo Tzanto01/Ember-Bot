@@ -514,6 +514,10 @@ namespace Ember.Core.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("EmailCodeKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("EmailCodeTries")
                         .HasColumnType("integer");
 

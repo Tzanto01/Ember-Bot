@@ -11,7 +11,8 @@ namespace Ember.Api.Email;
 
 /// <summary>Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host).</summary>
 internal sealed class EmberEmailSender(
-    IEmailTransport transport, IConfiguration configuration, TimeProvider time, IServiceScopeFactory scopes, ILogger<EmberEmailSender> logger)
+    IEmailTransport transport, IConfiguration configuration, TimeProvider time, IServiceScopeFactory scopes,
+    IHttpContextAccessor http, ILogger<EmberEmailSender> logger)
     : IEmailSender<User>
 {
     /// <summary>The wait before the one retry of a transient failure.</summary>
@@ -29,14 +30,23 @@ internal sealed class EmberEmailSender(
     /// <summary>The stored form of a sign-up code: SHA-256, upper-case hex.</summary>
     internal static string CodeHash(string code) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
 
+    /// <summary>The header that carries the sign-up key of the device asking for a code.</summary>
+    internal const string SignupKeyHeader = "X-Ember-Signup-Key";
+
+    /// <summary>The stored form of a sign-up key (see <see cref="CodeHash"/>); null for none or a malformed one (empty, over 128 characters, not base64url).</summary>
+    internal static string? KeyHash(string? key)
+        => key is { Length: > 0 and <= 128 } && key.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') ? CodeHash(key) : null;
+
     /// <summary>
     /// Ignores Identity's link: mails a new 6-digit sign-up code (replacing any earlier one, valid for <see cref="CodeLifetime"/>)
-    /// and the link <c>{WebOrigin}/confirm-email?user=…&amp;code=…</c>. The code's hash is stored before the mail goes out, only while the email is unconfirmed.
+    /// and the link <c>{WebOrigin}/confirm-email?user=…&amp;code=…</c>. The hashes of the code and of the request's <see cref="SignupKeyHeader"/> (null without a valid one) are stored
+    /// before the mail goes out, only while the email is unconfirmed.
     /// </summary>
     public Task SendConfirmationLinkAsync(User user, string email, string confirmationLink)
     {
         var code = RandomNumberGenerator.GetInt32(1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var hash = CodeHash(code);
+        var keyHash = KeyHash(http.HttpContext?.Request.Headers[SignupKeyHeader].ToString());
         var expires = (time.GetUtcNow() + CodeLifetime).UtcDateTime;
         var userId = user.Id;
         var link = $"{Origin}/confirm-email?user={userId}&code={code}";
@@ -46,7 +56,8 @@ internal sealed class EmberEmailSender(
             {
                 using var scope = scopes.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<EmberDbContext>().Users.Where(u => u.Id == userId && !u.EmailConfirmed)
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailCodeHash, hash).SetProperty(u => u.EmailCodeExpiresAt, expires).SetProperty(u => u.EmailCodeTries, 0));
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailCodeHash, hash).SetProperty(u => u.EmailCodeExpiresAt, expires)
+                        .SetProperty(u => u.EmailCodeKeyHash, keyHash).SetProperty(u => u.EmailCodeTries, 0));
             });
     }
 

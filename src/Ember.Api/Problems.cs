@@ -9,7 +9,7 @@ internal static class Problems
     [
         "validation", "unauthenticated", "forbidden", "consent_required", "antiforgery", "not_found",
         "habit_limit", "conflict", "before_habit_start", "in_future", "rate_limited", "internal",
-        "invalid_code",
+        "invalid_code", "password_required",
     ];
 
     /// <summary>
@@ -51,6 +51,10 @@ internal static class Problems
     /// <summary>Every failure of an emailed sign-up code, whatever the reason, so the answer reveals nothing about the account.</summary>
     public static IResult InvalidCode() => Problem(StatusCodes.Status401Unauthorized, "invalid_code",
         "That code didn't work. Check the newest email or send a new code.");
+
+    /// <summary>A valid sign-up code entered on another device than the one that asked for it, without the password.</summary>
+    public static IResult PasswordRequired() => Problem(StatusCodes.Status401Unauthorized, "password_required",
+        "Enter your password to finish on this device.");
 
     public static IResult ConsentRequired() => Problem(StatusCodes.Status403Forbidden, "consent_required");
 

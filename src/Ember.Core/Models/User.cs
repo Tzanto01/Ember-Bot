@@ -58,6 +58,9 @@ public class User : IdentityUser<Guid>
     /// <summary>When (UTC) the code in <see cref="EmailCodeHash"/> stops working.</summary>
     public DateTime? EmailCodeExpiresAt { get; set; }
 
+    /// <summary>SHA-256 (hex) of the sign-up key of the device that asked for the code in <see cref="EmailCodeHash"/>; null when it sent none.</summary>
+    public string? EmailCodeKeyHash { get; set; }
+
     /// <summary>Tries spent on the code in <see cref="EmailCodeHash"/>; at the limit it no longer works.</summary>
     public int EmailCodeTries { get; set; }
 

@@ -216,7 +216,7 @@ Die Web-App und die API sind öffentlich über einen Cloudflare Tunnel erreichba
 
 ### 6.3 E-Mail-Versand
 
-Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Link mit einem Code für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind für diese Mails ausgeschaltet. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend. [PRÜFEN: Auftragsverarbeitungsvertrag mit Resend, Verarbeitungsregion (EU gewählt?), Zertifizierung im Data Privacy Framework, Speicherdauer bei Resend; Öffnungs- und Klickverfolgung in Resend für ember-glow.app aus.]
+Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Code und einen Link für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind für diese Mails ausgeschaltet. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend. [PRÜFEN: Auftragsverarbeitungsvertrag mit Resend, Verarbeitungsregion (EU gewählt?), Zertifizierung im Data Privacy Framework, Speicherdauer bei Resend; Öffnungs- und Klickverfolgung in Resend für ember-glow.app aus.]
 
 ### 6.4 Push-Dienste der Browser
 

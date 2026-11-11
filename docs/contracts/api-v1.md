@@ -410,3 +410,12 @@ v1.11 (2026-11-11, Nico: "you have to go back to sign in and sign in again, effe
 - `?useCookies=true` (web) → 200 and a persistent cookie, as `/login?useCookies=true`. Without it (native app) → 200 `{ tokenType, accessToken, expiresIn, refreshToken }`, as `/login`. Either way the email is confirmed and a sign-in session starts exactly as on a password sign-in. The client then continues with the normal consent step.
 - Only for an account whose email is not yet confirmed; a confirmed account is never signed in by a code.
 - Every failure (unknown account, wrong, expired, burned or replaced code, already confirmed) → the same 401 problem, `type` `invalid_code`, `detail` "That code didn't work. Check the newest email or send a new code." The answer never reveals whether an account exists.
+- 2FA on → the same `invalid_code` (a code never gets around 2FA).
+
+### Same device only
+
+Nico chose "Same device only": the code alone signs in only on the device that signed up, so nobody can pre-register someone else's address with their own password and have the owner unknowingly activate it.
+
+- The client makes a random `signupKey` (32 random bytes, base64url) when the sign-up form is submitted, keeps it with the sign-up email for 24 hours, and sends it as the header `X-Ember-Signup-Key` on `POST /api/auth/register` and `POST /api/auth/resendConfirmationEmail`. The server stores only its SHA-256 hash next to the code; each new code replaces it with the hash of the key sent with that request, or with none. Values over 128 characters or not base64url count as none.
+- `POST /api/auth/confirm-email-code` takes `signupKey?` and `password?`. A valid code signs in when the key matches the stored hash, or else with the account's password.
+- Valid code, no matching key, no password → 401 problem `type` `password_required`, `detail` "Enter your password to finish on this device." It counts as a try. A valid code with a wrong password → `invalid_code`, also a try.

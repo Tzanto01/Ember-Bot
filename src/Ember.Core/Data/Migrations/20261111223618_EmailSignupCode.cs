@@ -24,6 +24,13 @@ namespace Ember.Core.Data.Migrations
                 maxLength: 64,
                 nullable: true);
 
+            migrationBuilder.AddColumn<string>(
+                name: "EmailCodeKeyHash",
+                table: "AspNetUsers",
+                type: "character varying(64)",
+                maxLength: 64,
+                nullable: true);
+
             migrationBuilder.AddColumn<int>(
                 name: "EmailCodeTries",
                 table: "AspNetUsers",
@@ -41,6 +48,10 @@ namespace Ember.Core.Data.Migrations
 
             migrationBuilder.DropColumn(
                 name: "EmailCodeHash",
+                table: "AspNetUsers");
+
+            migrationBuilder.DropColumn(
+                name: "EmailCodeKeyHash",
                 table: "AspNetUsers");
 
             migrationBuilder.DropColumn(

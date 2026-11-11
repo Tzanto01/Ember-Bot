@@ -34,8 +34,11 @@ internal static class AuthEndpoints
 
     public sealed record ConfirmEmailRequest(string? UserId, string? Code, string? Password);
 
-    /// <summary>An emailed sign-up code for the account with <see cref="Email"/> or <see cref="UserId"/>.</summary>
-    public sealed record ConfirmEmailCodeRequest(string? Email, string? UserId, string? Code);
+    /// <summary>
+    /// An emailed sign-up code for the account with <see cref="Email"/> or <see cref="UserId"/>, with the sign-up key of the device
+    /// that asked for the code or else the account's password.
+    /// </summary>
+    public sealed record ConfirmEmailCodeRequest(string? Email, string? UserId, string? Code, string? SignupKey, string? Password);
 
     public static RouteGroupBuilder MapAuth(this RouteGroupBuilder auth)
     {
@@ -76,7 +79,13 @@ internal static class AuthEndpoints
                 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(hash), Encoding.ASCII.GetBytes(EmberEmailSender.CodeHash(request.Code?.Trim() ?? ""))))
                 return Problems.InvalidCode();
 
+            var sameDevice = user.EmailCodeKeyHash is { } keyHash && EmberEmailSender.KeyHash(request.SignupKey) is { } sentKeyHash
+                && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(keyHash), Encoding.ASCII.GetBytes(sentKeyHash));
+            if (!sameDevice && string.IsNullOrEmpty(request.Password)) return Problems.PasswordRequired();
+            if (!sameDevice && !await users.CheckPasswordAsync(user, request.Password!)) return Problems.InvalidCode();
+
             user.EmailCodeHash = null;
+            user.EmailCodeKeyHash = null;
             user.EmailCodeExpiresAt = null;
             if (!(await users.ConfirmEmailAsync(user, await users.GenerateEmailConfirmationTokenAsync(user))).Succeeded)
                 return Problems.InvalidCode();

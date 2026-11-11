@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Ember.Core.Data.Migrations
 {
     [DbContext(typeof(EmberDbContext))]
-    [Migration("20261111220340_EmailSignupCode")]
+    [Migration("20261111223618_EmailSignupCode")]
     partial class EmailSignupCode
     {
         /// <inheritdoc />
@@ -514,6 +514,10 @@ namespace Ember.Core.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("EmailCodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EmailCodeKeyHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
