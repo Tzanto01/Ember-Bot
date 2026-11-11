@@ -71,6 +71,27 @@ export class TokenStore implements BearerTokens {
   }
 
   /**
+   * Exchanges a native Discord sign-in's one-time code with its PKCE verifier (`POST /api/auth/discord/native/token`),
+   * with the two-factor code when given, and keeps the refresh token in secure storage. Rejects with the `ApiError`
+   * (401 `Failed`/`RequiresTwoFactor`).
+   */
+  async signInWithDiscord(
+    code: string,
+    verifier: string,
+    twoFactor?: { code?: string; recoveryCode?: string },
+  ): Promise<void> {
+    await this.clear();
+    const epoch = this.epoch;
+    const tokens = await this.post('/api/auth/discord/native/token', {
+      code,
+      verifier,
+      twoFactorCode: twoFactor?.code,
+      twoFactorRecoveryCode: twoFactor?.recoveryCode,
+    });
+    if (epoch === this.epoch) await this.keep(tokens, true);
+  }
+
+  /**
    * Gets a new access token with the refresh token (`POST /api/auth/refresh`). Concurrent callers share one
    * request. Resolves false when there is no refresh token or the refresh failed; only a refusal (400/401)
    * forgets the session, a network error, 429 or 5xx keeps it for a later try. A result that arrives after
