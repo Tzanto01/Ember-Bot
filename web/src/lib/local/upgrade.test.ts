@@ -284,7 +284,7 @@ describe('UpgradeService', () => {
       expect(sent).not.toContain('Synthetic rest day');
       expect(sent).not.toContain('Synthetic old');
     }
-    expect(await store.exists()).toBe(false);
+    expect(await store.load()).toMatchObject({ habits: [], logs: [], moods: [], notes: [] });
   });
 
   const callIndex = (route: string) => mock.all.findIndex((c) => `${c.method} ${new URL(c.url, 'http://ember.test').pathname}` === route);
@@ -347,7 +347,7 @@ describe('UpgradeService', () => {
     expect(first.ok).toBe(false);
     expect(second.ok).toBe(true);
     expect(server.moods.size).toBe(2);
-    expect(await store.exists()).toBe(false);
+    expect(await store.load()).toMatchObject({ habits: [], logs: [], moods: [], notes: [] });
   });
 
   it('reports and leaves out notes and low days dated before the earliest habit start', async () => {
@@ -409,6 +409,24 @@ describe('UpgradeService', () => {
       const sent = JSON.stringify(call.body ?? null);
       for (const plain of [noteText, moodLabel, 'Synthetic rest day', 'Synthetic old']) expect(sent).not.toContain(plain);
     }
+  });
+
+  it('keeps the recovery code on the device after the move until it is acknowledged', async () => {
+    const result = await upgrade.run({ privateJournal: secret });
+    const code = result.ok ? result.recoveryCode : null;
+    const calls = mock.all.length;
+
+    expect(code).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
+    expect(finishUpgrade).not.toHaveBeenCalled();
+    expect(await upgrade.pendingRecoveryCode()).toBe(code);
+    expect(await upgrade.run()).toEqual({ ok: true, recoveryCode: code });
+    expect(mock.all.length).toBe(calls);
+
+    await upgrade.acknowledge();
+
+    expect(await store.exists()).toBe(false);
+    expect(await upgrade.pendingRecoveryCode()).toBeNull();
+    expect(finishUpgrade).toHaveBeenCalledOnce();
   });
 
   it('returns the saved recovery code when a retry without the private journal choice finishes', async () => {

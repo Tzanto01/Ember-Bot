@@ -50,8 +50,9 @@ function customId(mood: MoodKey | null): number | null {
 
 /**
  * "Create an account and keep my data": imports the device data into the signed-in account (`POST /api/me/import`),
- * encrypting the journal first when the private journal is chosen, then removes the device copy. Progress is kept on the
- * device, so a retry after an interruption resumes and never imports twice; nothing local is deleted on any failure.
+ * encrypting the journal first when the private journal is chosen, then removes the device copy (with a recovery code,
+ * all but the code until it is acknowledged). Progress is kept on the device, so a retry after an interruption resumes
+ * and never imports twice; nothing local is deleted on any failure.
  */
 export class UpgradeService implements UpgradeApi {
   constructor(
@@ -74,6 +75,17 @@ export class UpgradeService implements UpgradeApi {
       moods: data.moods.length,
       leftOut: { notes: out.notes.length, lowDays: out.lowDays.length },
     };
+  }
+
+  async pendingRecoveryCode(): Promise<string | null> {
+    const progress = (await this.store.load().catch(() => null))?.upgrade;
+    const mine = progress?.finished && progress.userId === this.auth.me.get()?.id;
+    return mine ? progress.recoveryCode : null;
+  }
+
+  async acknowledge(): Promise<void> {
+    await this.store.clear();
+    this.localMode.finishUpgrade();
   }
 
   async run(
@@ -105,6 +117,7 @@ export class UpgradeService implements UpgradeApi {
             archivedMoods: [],
             notesDone: [],
           };
+    if (progress.finished) return { ok: true, recoveryCode: progress.recoveryCode };
     const save = async (change: Partial<UpgradeProgress>) => {
       progress = { ...progress, ...change };
       const next = progress;
@@ -154,10 +167,25 @@ export class UpgradeService implements UpgradeApi {
       }
       if (progress.journalOmitted) await this.moveJournal(data, !!secret, () => progress, save);
 
+      if (progress.recoveryCode) {
+        const finished = { ...progress, finished: true };
+        await this.store.update((d) => ({
+          ...d,
+          habits: [],
+          logs: [],
+          lowDays: [],
+          routines: [],
+          moods: [],
+          notes: [],
+          upgrade: finished,
+        }));
+        await this.device.clearUser(data.profile.userId).catch(() => undefined);
+        return { ok: true, recoveryCode: progress.recoveryCode };
+      }
       await this.store.clear();
       await this.device.clearUser(data.profile.userId).catch(() => undefined);
       this.localMode.finishUpgrade();
-      return { ok: true, recoveryCode: progress.recoveryCode };
+      return { ok: true, recoveryCode: null };
     } catch (error) {
       if (error instanceof JournalLockedError) return failed('Unlock your private journal on this device, then try again.');
       if (error instanceof RangeError) return failed(error.message);

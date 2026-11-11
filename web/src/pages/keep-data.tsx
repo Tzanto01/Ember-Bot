@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, useFocusHeadingOnChange, type Validator, validateAll } from '@/components/auth/use-field';
@@ -63,6 +63,12 @@ export default function KeepDataPage() {
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState('');
   useFocusHeadingOnChange(step.step);
+
+  useEffect(() => {
+    void upgrade.pendingRecoveryCode().then((code) => {
+      if (code) setStep({ step: 'recovery', code });
+    });
+  }, []);
 
   const needsPassword = privateJournal && !!me?.hasPassword;
   const passphrase = useField(privateJournal ? passphraseRule : noRule);
@@ -147,7 +153,15 @@ export default function KeepDataPage() {
     return (
       <>
         <PageHeader title="Your data is in your account" />
-        <RecoveryStep code={step.code} onFinish={() => void navigate('/today')} />
+        <RecoveryStep
+          code={step.code}
+          onFinish={() =>
+            void upgrade.acknowledge().then(
+              () => navigate('/today'),
+              () => undefined,
+            )
+          }
+        />
       </>
     );
   }
