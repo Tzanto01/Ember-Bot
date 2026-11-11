@@ -151,7 +151,7 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         stats.GetProperty("totalDone").GetInt32().Should().Be(1);
         stats.GetProperty("totalPossible").GetInt32().Should().Be(4);
         var headline = stats.GetProperty("headline").GetString()!;
-        headline.Should().Contain("1/4").And.NotContain("**");
+        headline.Should().Contain("1 check-in").And.NotContain("**");
         stats.GetProperty("footer").GetString().Should().NotBeNullOrEmpty();
         var habits = stats.GetProperty("habits").EnumerateArray().ToDictionary(h => h.GetProperty("habitId").GetInt32());
         habits[daily].GetProperty("done").GetInt32().Should().Be(1);
