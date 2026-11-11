@@ -67,3 +67,8 @@ export async function handleNotificationClick(
     await clients.openWindow(target);
   }
 }
+
+/** Handles a page's message: `{ type: 'SKIP_WAITING' }` (sent by the update prompt's Reload) activates this worker. */
+export function handleMessage(data: unknown, worker: Pick<ServiceWorkerGlobalScope, 'skipWaiting'>): Promise<void> {
+  return (data as { type?: unknown } | null)?.type === 'SKIP_WAITING' ? worker.skipWaiting() : Promise.resolve();
+}

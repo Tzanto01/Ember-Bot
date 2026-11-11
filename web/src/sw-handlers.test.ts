@@ -1,5 +1,5 @@
 import { describe, expect, it, type Mock, vi } from 'vitest';
-import { handleNotificationClick, handlePush } from './sw-handlers';
+import { handleMessage, handleNotificationClick, handlePush } from './sw-handlers';
 
 /** Exactly what `WebPushReminderChannel` sends (contract v1.3, web push). */
 const botPayload =
@@ -126,5 +126,18 @@ describe('handleNotificationClick', () => {
     );
 
     expect(all.openWindow).toHaveBeenCalledWith('/today');
+  });
+});
+
+describe('handleMessage', () => {
+  it('activates the waiting worker on SKIP_WAITING and ignores any other message', async () => {
+    const worker = { skipWaiting: vi.fn(async () => undefined) };
+
+    await handleMessage({ type: 'PING' }, worker);
+    await handleMessage(null, worker);
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+
+    await handleMessage({ type: 'SKIP_WAITING' }, worker);
+    expect(worker.skipWaiting).toHaveBeenCalledTimes(1);
   });
 });

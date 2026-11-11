@@ -45,7 +45,8 @@ export class LocalMode implements LocalModeApi {
 
   /**
    * Restores the mode at app start, before anything calls the API. `upgrading` without device data left goes back to the
-   * account mode; `local` without device data starts a fresh profile and sets `evicted`. A storage read error changes
+   * account mode; `local` without device data starts a fresh profile and sets `evicted`, and (web) asks the
+   * browser again to keep the device data (`navigator.storage.persist()`). A storage read error changes
    * nothing (the local API then answers with errors). Never throws.
    */
   async init(): Promise<void> {
@@ -67,6 +68,7 @@ export class LocalMode implements LocalModeApi {
         () => this.evicted.set(evicted),
         () => undefined,
       );
+    if (!this.options.native) void navigator.storage?.persist?.().catch(() => false);
     this.enterLocal();
   }
 

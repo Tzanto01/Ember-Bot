@@ -1,5 +1,5 @@
 import { type DayEdit, type NoteEdit, withDayEdit } from './device-store';
-import type { Http } from './http';
+import { type Http, longRequestTimeoutMs } from './http';
 import type {
   Credentials,
   DayEntry,
@@ -181,7 +181,7 @@ export class ApiClient {
 
   /** `GET /api/me/export`: the file as a blob. Pass the result to `saveFile()`. */
   async exportData(format: ExportFormat): Promise<ExportFile> {
-    const { blob, headers } = await this.http.download('/api/me/export', { format });
+    const { blob, headers } = await this.http.download('/api/me/export', { format }, longRequestTimeoutMs);
     const disposition = headers.get('Content-Disposition') ?? '';
     const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
     const fileName = match ? decodeURIComponent(match[1]) : `ember-export.${format}`;
@@ -193,12 +193,12 @@ export class ApiClient {
    * nothing; 409 `conflict` when the account already has habits, 403 `consent_required` without consent.
    */
   importData(body: unknown): Promise<void> {
-    return this.http.request('POST', '/api/me/import', { body });
+    return this.http.request('POST', '/api/me/import', { body, timeoutMs: longRequestTimeoutMs });
   }
 
   /** `POST /api/me/delete`: deletes everything and signs out. */
   deleteAccount(body: DeleteAccountRequest): Promise<void> {
-    return this.http.request('POST', '/api/me/delete', { body });
+    return this.http.request('POST', '/api/me/delete', { body, timeoutMs: longRequestTimeoutMs });
   }
 
   /** `GET /api/habits`. */

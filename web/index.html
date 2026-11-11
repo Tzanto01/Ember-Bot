@@ -2,18 +2,62 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Ember</title>
+    <title>Ember: a calm place for your habits</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#fbf5ec" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1c1410" media="(prefers-color-scheme: dark)" />
-    <meta name="description" content="Ember, a gentle habit tracker." />
+    <meta
+      name="description"
+      content="Ember is a gentle habit tracker for the web, Android and Discord. Check in each day, call a hard day a low day, and keep your streak safe."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ember" />
+    <meta property="og:title" content="Ember: a calm place for your habits" />
+    <meta
+      property="og:description"
+      content="A gentle habit tracker for the web, Android and Discord. Check in each day, call a hard day a low day, and keep your streak safe."
+    />
+    <meta property="og:image" content="/og/ember.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Ember flame with the words: A calm place for your habits." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ember: a calm place for your habits" />
+    <meta
+      name="twitter:description"
+      content="A gentle habit tracker for the web, Android and Discord. Check in each day, call a hard day a low day, and keep your streak safe."
+    />
+    <meta name="twitter:image" content="/og/ember.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script src="/theme-init.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        role="status"
+        style="
+          display: grid;
+          min-height: 100dvh;
+          place-content: center;
+          justify-items: center;
+          gap: 12px;
+          font-family: var(--ember-font-sans, system-ui, sans-serif);
+          color: var(--muted-foreground, #6b5a4c);
+        "
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="56" height="56" aria-hidden="true">
+          <path
+            fill="#f69835"
+            d="M32 4C36 14 48 22 48 38A16 16 0 0 1 16 38C16 29 21 23 25 18C26 23 28 26 30.5 27C30 19 30.5 11 32 4Z"
+          />
+          <path fill="#ffdd93" d="M32 30C35.5 34.5 40 37.5 40 43.5A8 8 0 0 1 24 43.5C24 38.5 28 35 32 30Z" />
+        </svg>
+        <span>Loading…</span>
+      </div>
+    </div>
     <noscript>Ember needs JavaScript to run. Please turn it on and reload.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
