@@ -6,9 +6,12 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace Ember.Api.Email;
 
 /// <summary>Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host).</summary>
-internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration configuration, ILogger<EmberEmailSender> logger)
+internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration configuration, TimeProvider time, ILogger<EmberEmailSender> logger)
     : IEmailSender<User>
 {
+    /// <summary>The wait before the one retry of a transient failure.</summary>
+    internal static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
+
     private string Origin => ApiApp.WebOrigin(configuration)
         ?? throw new InvalidOperationException("Ember:WebOrigin is not configured.");
 
@@ -40,20 +43,37 @@ internal sealed class EmberEmailSender(IEmailTransport transport, IConfiguration
 
     /// <summary>
     /// Hands the email off in the background, so every mail-sending endpoint answers at the same speed and an SMTP failure
-    /// never reaches the response (either would reveal whether an account exists). Failures are logged without the address.
+    /// never reaches the response (either would reveal whether an account exists). A transient failure is retried once after
+    /// <see cref="RetryDelay"/>. Failures are logged without the address.
     /// </summary>
     private Task Send(string to, string subject, string body)
     {
         _ = Task.Run(async () =>
         {
+            var domain = to[(to.LastIndexOf('@') + 1)..];
             try
             {
+                await transport.SendAsync(to, subject, body, CancellationToken.None);
+                return;
+            }
+            catch (Exception e) when (SmtpEmailTransport.IsTransient(e))
+            {
+                logger.LogWarning("Sending \"{Subject}\" to a {Domain} address failed, retrying: {ExceptionType}", subject, domain, e.GetType().Name);
+            }
+            catch (Exception e)
+            {
+                logger.LogError("Sending \"{Subject}\" to a {Domain} address failed: {ExceptionType}", subject, domain, e.GetType().Name);
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(RetryDelay, time);
                 await transport.SendAsync(to, subject, body, CancellationToken.None);
             }
             catch (Exception e)
             {
-                logger.LogError("Sending \"{Subject}\" to a {Domain} address failed: {ExceptionType}",
-                    subject, to[(to.LastIndexOf('@') + 1)..], e.GetType().Name);
+                logger.LogError("Sending \"{Subject}\" to a {Domain} address failed: {ExceptionType}", subject, domain, e.GetType().Name);
             }
         });
         return Task.CompletedTask;

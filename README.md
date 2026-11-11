@@ -112,9 +112,14 @@ The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml
 | `PRIVACY_POLICY_URL` | Optional. Privacy policy link shown in the consent prompt and `/help`; when it ends in `/legal/privacy`, `/help` also links that site's `/legal/imprint` |
 | `WEB_ORIGIN` | Public origin of the web app; the bot links to it, and the API (required there) uses it for links in emails and CORS |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional. Web Push keys and contact; without them no push reminders are sent |
-| `API_KNOWN_PROXY` | API only. Address of the reverse proxy whose forwarded headers the API trusts |
+| `API_KNOWN_PROXY`, `API_KNOWN_NETWORK` | API only, at least one required. The reverse proxy whose forwarded headers the API trusts: a single address, or a network in CIDR form (see below) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | API only. Mail server login and sender address for account emails; the port defaults to 587 |
+| `SMTP_REPLY_TO` | API only, optional. Address for the `Reply-To` header of account emails; without it replies go to `SMTP_FROM` |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | API only. Discord OAuth application for signing in with and linking Discord |
+
+**Client IP behind a tunnel.** Rate limits key on the client IP, which the API only takes from `X-Forwarded-For` when the request comes from a trusted proxy; from anywhere else the header is ignored silently and every visitor shares one limit. When cloudflared runs as a container on `homeserver-net`, Docker assigns its address and may change it on restart, so trust the network instead of one address: find the subnet with `docker network inspect homeserver-net --format '{{(index .IPAM.Config 0).Subnet}}'` and set it as `API_KNOWN_NETWORK` (for example `172.18.0.0/16`). Every container on that network can then claim any client IP, so only do this when you trust them all; otherwise give cloudflared a fixed `ipv4_address` and set that as `API_KNOWN_PROXY`. Keep the API port bound to `127.0.0.1` so the tunnel stays the only way in from outside. To check, exceed a login limit from one connection and confirm a second connection still gets through.
+
+The API container reports its health to Docker (`docker compose ps`) by calling its own `/health`, which also checks the database. Both containers are capped at 512 MB of memory.
 
 Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
 

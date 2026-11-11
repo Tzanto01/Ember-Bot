@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: docker/bot.Dockerfile
     restart: unless-stopped
+    mem_limit: 512m
     logging:
       driver: json-file
       options:
@@ -27,6 +28,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     restart: unless-stopped
+    mem_limit: 512m
     logging:
       driver: json-file
       options:
@@ -40,15 +42,23 @@ services:
       Logging__LogLevel__Default: Information
       Logging__LogLevel__Microsoft.AspNetCore: Warning
       Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: Warning
-      Ember__ForwardedHeaders__KnownProxies__0: ${API_KNOWN_PROXY}
+      Ember__ForwardedHeaders__KnownProxies__0: ${API_KNOWN_PROXY:-}
+      Ember__ForwardedHeaders__KnownNetworks__0: ${API_KNOWN_NETWORK:-}
       Smtp__Host: ${SMTP_HOST}
       Smtp__Port: ${SMTP_PORT:-587}
       Smtp__User: ${SMTP_USER}
       Smtp__Password: ${SMTP_PASSWORD}
       Smtp__From: ${SMTP_FROM}
+      Smtp__ReplyTo: ${SMTP_REPLY_TO:-}
       Discord__ClientId: ${DISCORD_CLIENT_ID}
       Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
       WebPush__PublicKey: ${VAPID_PUBLIC_KEY:-}
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/Ember.Api.dll", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     volumes:
       - ember-api-keys:/keys
     ports:

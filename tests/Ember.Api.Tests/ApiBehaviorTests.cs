@@ -124,6 +124,19 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Weekly_stats_have_no_headline_for_a_week_with_nothing_possible()
+    {
+        var user = await Host.SignedInAsync();
+        await user.CreateHabitAsync();
+
+        var stats = await (await user.Get("/api/stats/weekly")).ExpectJson();
+
+        stats.GetProperty("totalPossible").GetInt32().Should().Be(0);
+        stats.GetProperty("headline").GetString().Should().BeEmpty();
+        stats.GetProperty("footer").GetString().Should().BeEmpty();
+    }
+
+    [DockerFact]
     public async Task Weekly_stats_report_both_habit_kinds_with_a_plain_text_headline()
     {
         var user = await Host.SignedInAsync();
