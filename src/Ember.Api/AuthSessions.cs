@@ -76,6 +76,10 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
 
     public Task EndAsync(Guid id) => EndManyAsync([id]);
 
+    /// <summary>Ends every session of <paramref name="userId"/> and deletes the push subscriptions they registered; subscriptions without a session stay.</summary>
+    public async Task EndSessionsAsync(Guid userId)
+        => await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync());
+
     /// <summary>
     /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, deletes every push subscription not
     /// registered by <paramref name="keep"/> (including ones without a session) and all of the user's reminder "Done" tokens,
