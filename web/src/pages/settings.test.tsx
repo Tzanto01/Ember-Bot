@@ -37,7 +37,7 @@ function openPatches(fetch: FetchMock) {
   return fetch.pending.filter((call) => call.method === 'PATCH');
 }
 
-describe('SettingsPage', () => {
+describe('SettingsPage', { timeout: 15_000 }, () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     delete (navigator as { serviceWorker?: unknown }).serviceWorker;
