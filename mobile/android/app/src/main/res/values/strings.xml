@@ -10,8 +10,8 @@
     <string name="widget_nothing_today">Nothing planned today. Enjoy the rest.</string>
     <string name="widget_state_done">Done</string>
     <string name="widget_state_partial">%1$d of %2$d</string>
-    <string name="widget_state_open">Open</string>
+    <string name="widget_state_open">Not done yet</string>
     <string name="widget_state_rest">Rest</string>
-    <string name="widget_row_description">%1$s, %2$s</string>
+    <string name="widget_row_description">Check in %1$s, %2$s</string>
     <string name="widget_more">+%1$d more</string>
 </resources>

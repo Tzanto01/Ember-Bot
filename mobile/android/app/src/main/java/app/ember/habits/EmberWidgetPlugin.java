@@ -28,7 +28,8 @@ public class EmberWidgetPlugin extends Plugin {
                 call.getString("date"),
                 call.getString("timeZone"),
                 habits,
-                more
+                more,
+                call.getObject("next")
             );
         } catch (JSONException | IllegalArgumentException e) {
             call.reject("Invalid widget snapshot");
