@@ -27,6 +27,8 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
+      args:
+        VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-}
     restart: unless-stopped
     mem_limit: 512m
     logging:
