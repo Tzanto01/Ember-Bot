@@ -41,7 +41,7 @@ internal static class DiscordEndpoints
     private static readonly TimeSpan LinkGrantLifetime = TimeSpan.FromMinutes(5);
 
     /// <summary>The Android app's custom scheme redirect (its application ID); the native flow ends here, never elsewhere.</summary>
-    internal const string NativeRedirect = "app.ember.habits://auth/discord";
+    private const string NativeRedirect = "app.ember.habits://auth/discord";
     private const string NativeError = NativeRedirect + "?error=discord";
     private static readonly TimeSpan NativeCodeLifetime = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan NativeTwoFactorLifetime = TimeSpan.FromMinutes(5);
