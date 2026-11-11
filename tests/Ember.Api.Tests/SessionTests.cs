@@ -279,4 +279,24 @@ public class SessionTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         kept.Should().BeEquivalentTo(started.Skip(1));
     }
+
+    [DockerFact]
+    public async Task The_daily_cleanup_deletes_expired_sessions_and_keeps_live_ones()
+    {
+        var user = await Host.ConfirmedUserAsync();
+        var userId = await Host.Db(async db => (await db.Users.SingleAsync(u => u.Email == user.Email)).Id);
+        var now = Host.Time.GetUtcNow();
+        await Host.Db(db =>
+        {
+            db.AuthSessions.AddRange(
+                new AuthSession { Id = Guid.NewGuid(), UserId = userId, CreatedUtc = now.AddDays(-15), ExpiresUtc = now.AddMinutes(-1) },
+                new AuthSession { Id = Guid.NewGuid(), UserId = userId, CreatedUtc = now.AddDays(-1), ExpiresUtc = now.AddDays(13) });
+            return db.SaveChangesAsync();
+        });
+
+        await Host.Service(s => s.DeleteExpiredSessionsAsync());
+
+        (await Host.Db(db => db.AuthSessions.Where(s => s.UserId == userId).Select(s => s.ExpiresUtc).ToListAsync()))
+            .Should().Equal(now.AddDays(13));
+    }
 }
