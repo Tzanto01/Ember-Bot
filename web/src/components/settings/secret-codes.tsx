@@ -1,5 +1,5 @@
 import { Copy, Download } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { saveFile } from '@/lib/api-client';
@@ -60,6 +60,8 @@ export function GroupedCode({ value, label }: { value: string; label: string }) 
  */
 export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   const text = codes.join('\n');
+  const notice = useRef<HTMLDivElement>(null);
+  useEffect(() => notice.current?.focus(), []);
 
   function download(): void {
     saveFile({
@@ -72,7 +74,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
 
   return (
     <div className="flex flex-col gap-4">
-      <Notice tone="info" heading="Your recovery codes">
+      <Notice ref={notice} tabIndex={-1} tone="info" heading="Your recovery codes" className="focus:outline-none">
         <p>
           Keep these somewhere safe; each works once. If you lose your phone, a recovery code signs
           you in instead of the authenticator code. You won't see them again here.

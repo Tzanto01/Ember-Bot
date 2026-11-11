@@ -48,8 +48,9 @@ export default function ConsentPage() {
       </div>
       <div className="flex flex-col gap-3">
         <p>
-          Habit names, check-ins and low days can say something about your health (think "take my meds" or "sleep 8
-          hours"). Under the GDPR (Article 9) that counts as health data, so Ember asks before saving it.
+          Ember saves your habit names, check-ins, low days, day notes and moods. They can say something about your
+          health (think "take my meds" or "sleep 8 hours"). Under the GDPR (Article 9) that counts as health data, so
+          Ember asks before saving it.
         </p>
         <p>
           Ember stores it only to run your habit tracker for you. It's never shared or sold. You can change your mind

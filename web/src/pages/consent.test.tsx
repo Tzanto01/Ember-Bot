@@ -37,6 +37,13 @@ describe('ConsentPage', () => {
     );
   });
 
+  it('names everything the consent covers, journal entries and moods included', () => {
+    auth.setMe({ ...me, consent: { given: false, policyVersion: null, currentPolicyVersion: '1' } });
+    renderPage('/consent', ConsentPage, '/consent');
+
+    expect(screen.getByText(/your habit names, check-ins, low days, day notes and moods\./)).toBeInTheDocument();
+  });
+
   it('falls back to /today for an off-site returnUrl', async () => {
     auth.setMe({ ...me, consent: { given: false, policyVersion: null, currentPolicyVersion: '1' } });
     const router = renderPage('/consent', ConsentPage, '/consent?returnUrl=//evil.example');

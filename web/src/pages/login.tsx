@@ -3,7 +3,14 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
-import { email as emailRule, required, useField, validateAll } from '@/components/auth/use-field';
+import { DiscordButton } from '@/components/auth/discord-button';
+import {
+  email as emailRule,
+  required,
+  useField,
+  useFocusHeadingOnChange,
+  validateAll,
+} from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { NoAccountLink, UpgradingNotice } from '@/components/local/upgrade-choice';
 import { PageHeader } from '@/components/page-header';
@@ -13,7 +20,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input, PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
-import { Separator } from '@/components/ui/separator';
 import { env } from '@/lib/env';
 import { openOnWeb } from '@/lib/native/browser';
 import { queryString } from '@/lib/navigation';
@@ -155,6 +161,16 @@ export default function LoginPage() {
   const [staySignedIn, setStaySignedIn] = useState(true);
   const [problem, setProblem] = useState<FriendlyProblem | null>(null);
   const [pending, setPending] = useState<Credentials | null>(null);
+  const [offlineForm, setOfflineForm] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  useFocusHeadingOnChange(offlineForm);
+
+  async function retry(): Promise<void> {
+    if (retrying) return;
+    setRetrying(true);
+    await navigate(returnUrl);
+    setRetrying(false);
+  }
 
   function signedIn(): void {
     void navigate(auth.needsConsent() ? `/consent?${queryString({ returnUrl })}` : returnUrl);
@@ -205,15 +221,31 @@ export default function LoginPage() {
     );
   }
 
+  if (reason === 'offline' && !offlineForm) {
+    return (
+      <>
+        <PageHeader
+          title="Ember can't be reached right now"
+          lede="You may be offline. Your habits will be here when you're back."
+        />
+        <div className="flex flex-col gap-3">
+          <BusyButton type="button" block busy={retrying} busyLabel="Trying again…" onClick={() => void retry()}>
+            Try again
+          </BusyButton>
+          <Button type="button" variant="ghost" block onClick={() => setOfflineForm(true)}>
+            Sign in instead
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader title="Welcome back" lede="Sign in to check in on your habits." />
       <UpgradingNotice />
       {discordFailed && <Notice tone="notice">Discord sign-in didn't finish. You can try again.</Notice>}
       {reason === 'session' && <Notice>Your session ended. Sign in again to pick up where you left off.</Notice>}
-      {reason === 'offline' && (
-        <Notice tone="notice">Ember can't be reached right now. Check your connection, then try again.</Notice>
-      )}
       {reason === 'deleted' && (
         <Notice>Your account and everything in it are deleted. Thank you for spending time with Ember.</Notice>
       )}
@@ -241,11 +273,13 @@ export default function LoginPage() {
               checked={staySignedIn}
               onCheckedChange={(checked) => setStaySignedIn(checked === true)}
             />
-            <Label htmlFor="stay-signed-in" className="font-normal">
+            <Label htmlFor="stay-signed-in" className="font-normal whitespace-nowrap">
               Stay signed in
             </Label>
           </div>
-          <TapLink to="/forgot-password">Forgot password?</TapLink>
+          <TapLink to="/forgot-password" className="whitespace-nowrap">
+            Forgot password?
+          </TapLink>
         </div>
 
         {problem && (
@@ -283,12 +317,7 @@ export default function LoginPage() {
           </Button>
         </>
       ) : (
-        <>
-          <Separator>or</Separator>
-          <Button asChild variant="secondary" block>
-            <a href={api.discordLoginUrl(returnUrl)}>Sign in with Discord</a>
-          </Button>
-        </>
+        <DiscordButton returnUrl={returnUrl}>Sign in with Discord</DiscordButton>
       )}
       <p className="text-center text-muted-foreground">
         New to Ember? <TapLink to="/signup">Create an account</TapLink>

@@ -79,7 +79,9 @@ function ConfirmForm({
   busyLabel,
   onSubmit,
   onCancel,
+  focusOnMount = true,
 }: {
+  focusOnMount?: boolean;
   kind: 'code' | 'password';
   email: string | null;
   hint?: string;
@@ -97,7 +99,9 @@ function ConfirmForm({
   const [rejected, setRejected] = useState<'field' | 'password' | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  useEffect(() => input.current?.focus(), []);
+  useEffect(() => {
+    if (focusOnMount) input.current?.focus();
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -184,6 +188,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [done, setDone] = useState('');
   const summary = useRef<HTMLParagraphElement>(null);
+  const firstStep = useRef<HTMLHeadingElement>(null);
 
   function settle(next: TwoFactorStatus, text: string): void {
     queryClient.setQueryData(statusKey, next);
@@ -198,8 +203,12 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     setProblem(null);
     setDone('');
     try {
-      setSetup(await api.setupTwoFactor());
-      setMode('setup');
+      const next = await api.setupTwoFactor();
+      flushSync(() => {
+        setSetup(next);
+        setMode('setup');
+      });
+      firstStep.current?.focus();
     } catch (error) {
       setProblem(problemText(error));
     } finally {
@@ -265,7 +274,9 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     body = (
       <ol className="flex flex-col gap-6">
         <li className="flex flex-col gap-3">
-          <h3 className="text-[18px]">1. Add Ember to your authenticator app</h3>
+          <h3 ref={firstStep} tabIndex={-1} className="text-[18px] focus:outline-none">
+            1. Add Ember to your authenticator app
+          </h3>
           <p>
             Scan this code with an authenticator app on your phone, such as Aegis, 2FAS or Google
             Authenticator.
@@ -288,6 +299,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
             busyLabel="Checking…"
             onSubmit={enable}
             onCancel={cancel}
+            focusOnMount={false}
           />
         </li>
       </ol>

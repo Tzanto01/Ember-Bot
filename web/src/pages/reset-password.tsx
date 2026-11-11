@@ -72,6 +72,9 @@ export default function ResetPasswordPage() {
         <Button asChild block>
           <Link to="/forgot-password">Send me a new link</Link>
         </Button>
+        <Button asChild variant="ghost" block>
+          <Link to="/login">Back to sign in</Link>
+        </Button>
       </>
     );
   }

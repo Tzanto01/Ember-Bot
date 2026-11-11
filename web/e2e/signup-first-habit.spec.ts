@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { agreeToConsent, confirmEmail, createHabit, logIn, signUp, uniqueEmail } from './support/accounts';
+import { agreeToConsent, confirmEmail, createHabit, signUp, uniqueEmail } from './support/accounts';
 
 test('a new user signs up, confirms, creates a first habit and checks in', async ({ page }) => {
   const email = uniqueEmail();
@@ -7,9 +7,6 @@ test('a new user signs up, confirms, creates a first habit and checks in', async
 
   await signUp(page, email);
   await confirmEmail(page, email);
-  await logIn(page, email);
-
-  await expect(page.getByRole('heading', { name: 'One quick question' })).toBeVisible();
   await agreeToConsent(page);
 
   await expect(page.getByRole('link', { name: 'Create your first habit' })).toBeVisible();

@@ -1,13 +1,9 @@
-import { BellRing, LockKeyhole, Moon, Smartphone } from 'lucide-react';
+import { BellRing, LockKeyhole, Moon, NotebookPen, Palette, Smartphone } from 'lucide-react';
 import { Link } from 'react-router';
-import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import type { DayState } from '@/lib/models';
-
-const sampleWeek: DayState[] = ['done', 'done', 'lowday', 'done', 'pending'];
 
 const features = [
   {
@@ -32,7 +28,23 @@ const features = [
   },
 ];
 
-/** `/` for signed-out visitors on the web: what Ember is, four highlights, and the ways in. */
+const extras = [
+  {
+    icon: NotebookPen,
+    title: 'A journal and moods',
+    text: 'Jot a line about your day and pick how it felt. Add your own moods next to the five built-in ones.',
+  },
+  {
+    icon: Palette,
+    title: 'Four themes, light and dark',
+    text: 'Hearthlight, Fieldnotes, Tidepool and Marigold, each in light and dark. Pick the one that feels like yours.',
+  },
+];
+
+/**
+ * `/` for signed-out visitors on the web: what Ember is, a real Today screenshot (light or dark with the system),
+ * the highlights, and the ways in.
+ */
 export default function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -69,24 +81,20 @@ export default function LandingPage() {
                 <Link to="/local">Try without an account</Link>
               </Button>
             </div>
-            <p className="text-[14px] text-muted-foreground">
-              Sign in with email and password, or with Discord.
-            </p>
+            <p className="text-muted-foreground">Free. Made by Nico, a developer in Germany.</p>
           </div>
-          <Card aria-hidden="true" className="gap-4 lg:col-span-5 lg:p-8">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="font-display text-[20px] font-semibold">Drink a glass of water</p>
-              <p className="text-[14px] text-muted-foreground">3-day streak</p>
-            </div>
-            <div className="grid grid-cols-5 [--day-gap:8px] gap-[8px]">
-              {sampleWeek.map((state, i) => (
-                <DayCell key={i} state={state} runToNext={joinsRun(state, sampleWeek[i + 1])} />
-              ))}
-            </div>
-            <p className="text-[14px] text-muted-foreground">
-              One low day in between, and the streak held.
-            </p>
-          </Card>
+          <picture className="mx-auto block w-full max-w-[22rem] lg:col-span-5">
+            <source srcSet="/landing/today-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="/landing/today-light.webp"
+              width={390}
+              height={760}
+              loading="lazy"
+              decoding="async"
+              alt="Ember's Today screen: five habits, three of them checked in today, with their streaks."
+              className="block h-auto max-h-[40rem] w-full rounded-[1.75rem] border-[length:max(1px,var(--border-width))] border-border object-cover object-top shadow-card"
+            />
+          </picture>
         </section>
         <section aria-labelledby="landing-features" className="flex flex-col gap-6">
           <h2 id="landing-features" className="text-[24px] md:text-[28px]">
@@ -94,6 +102,22 @@ export default function LandingPage() {
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {features.map(({ icon: Icon, title, text }) => (
+              <li key={title}>
+                <Card className="h-full">
+                  <Icon aria-hidden className="size-[24px] text-primary" />
+                  <h3 className="text-[18px]">{title}</h3>
+                  <p className="text-muted-foreground">{text}</p>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section aria-labelledby="landing-extras" className="flex flex-col gap-6">
+          <h2 id="landing-extras" className="text-[24px] md:text-[28px]">
+            Make it yours
+          </h2>
+          <ul className="grid gap-4 md:grid-cols-2">
+            {extras.map(({ icon: Icon, title, text }) => (
               <li key={title}>
                 <Card className="h-full">
                   <Icon aria-hidden className="size-[24px] text-primary" />

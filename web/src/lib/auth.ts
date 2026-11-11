@@ -178,14 +178,15 @@ export class AuthService {
 
   /**
    * Removes this device's push subscription (server first, then the browser), signs out,
-   * refreshes antiforgery and goes to `/login`. On the web, resolves false and keeps the session when the server
-   * couldn't end it (offline, 5xx), because only the server can clear the auth cookie. Never throws.
+   * refreshes antiforgery and goes to `/login`. `everywhere` ends every session of the account on every device
+   * (in the native build too). Resolves false and keeps the session when the server couldn't end it (offline, 5xx),
+   * because only the server can clear the auth cookie or the other sessions. Never throws.
    */
-  async logout(): Promise<boolean> {
-    if (!this.native) {
+  async logout(everywhere = false): Promise<boolean> {
+    if (!this.native || everywhere) {
       await this.push?.release();
       try {
-        await this.api.logout();
+        await (everywhere ? this.api.logoutEverywhere() : this.api.logout());
       } catch (error) {
         if (asApiError(error).status !== 401) return false;
       }

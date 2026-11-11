@@ -31,6 +31,13 @@ describe('/theme-init.js', () => {
     },
   );
 
+  it('lets a light or dark choice on this device win over the system preference', () => {
+    localStorage.setItem('ember.colorScheme', 'dark');
+    expect(runThemeInit('tidepool', false).classList.contains('dark')).toBe(true);
+    localStorage.setItem('ember.colorScheme', 'light');
+    expect(runThemeInit('tidepool', true).classList.contains('dark')).toBe(false);
+  });
+
   it('sets dark from the colour-scheme preference', () => {
     expect(runThemeInit('tidepool', true).classList.contains('dark')).toBe(true);
     expect(runThemeInit('tidepool', false).classList.contains('dark')).toBe(false);
