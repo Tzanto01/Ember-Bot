@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
-import { TwoFactorSettings } from '@/components/settings/two-factor-settings';
+import { ConfirmForm, TwoFactorSettings } from '@/components/settings/two-factor-settings';
 import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
 import { type ExportFormat, type MePatch, secondReminderChoices, type SecondReminderMinutes } from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
+import { loadPage } from '@/lib/navigation';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, localMode, push } from '@/lib/services';
 import { useStore } from '@/lib/store';
@@ -55,6 +56,7 @@ const discordOutcomes: Record<string, Message> = {
     text: "Ember couldn't link that Discord account. It may already belong to another Ember account that has a password. Or this account is already linked to a different Discord account.",
   },
   error: { tone: 'notice', text: "Linking didn't finish. You can try again." },
+  password: { tone: 'notice', text: 'Ember needs your password before linking Discord. You can try again here.' },
 };
 
 const pushDeniedText =
@@ -158,6 +160,7 @@ export default function SettingsPage() {
   const deleteForm = useRef<HTMLFormElement>(null);
   const everywhereButton = useRef<HTMLButtonElement>(null);
   const everywhereText = useRef<HTMLParagraphElement>(null);
+  const linkDiscordButton = useRef<HTMLButtonElement>(null);
 
   const [busy, setBusy] = useState<Section | null>(null);
   const [saved, setSaved] = useState<Section | null>(null);
@@ -169,6 +172,7 @@ export default function SettingsPage() {
   const [zoneTouched, setZoneTouched] = useState(false);
   const [zoneServerError, setZoneServerError] = useState<string | null>(null);
   const [confirmEverywhere, setConfirmEverywhere] = useState(false);
+  const [linkingDiscord, setLinkingDiscord] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
   const [notificationsOff, setNotificationsOff] = useState(false);
   const [browserZone] = useState(browserTimeZone);
@@ -337,6 +341,16 @@ export default function SettingsPage() {
       await auth.loadMe(true);
       return { tone: 'success', text: 'Discord is unlinked. You can link it again any time.' };
     });
+
+  async function linkDiscord(password: string): Promise<void> {
+    await api.startDiscordLink(password);
+    loadPage(api.discordLinkUrl());
+  }
+
+  function cancelLinkDiscord(): void {
+    flushSync(() => setLinkingDiscord(false));
+    linkDiscordButton.current?.focus();
+  }
 
   const resumeDms = () =>
     act('dm', async () => {
@@ -818,17 +832,38 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p>Link your Discord account to sign in with it and to use the Ember bot with the same habits.</p>
-                    <div>
-                      {env.native ? (
-                        <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
-                          Link Discord on the web
-                        </Button>
-                      ) : (
-                        <Button asChild variant="secondary">
-                          <a href={api.discordLinkUrl()}>Link Discord</a>
-                        </Button>
-                      )}
-                    </div>
+                    {linkingDiscord ? (
+                      <ConfirmForm
+                        kind="password"
+                        email={me.email}
+                        hint="Ember checks it before linking Discord."
+                        submitLabel="Continue to Discord"
+                        busyLabel="Checking…"
+                        onSubmit={linkDiscord}
+                        onCancel={cancelLinkDiscord}
+                      />
+                    ) : (
+                      <div>
+                        {env.native ? (
+                          <Button type="button" variant="secondary" onClick={() => void openOnWeb('/settings')}>
+                            Link Discord on the web
+                          </Button>
+                        ) : me.hasPassword ? (
+                          <Button
+                            ref={linkDiscordButton}
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setLinkingDiscord(true)}
+                          >
+                            Link Discord
+                          </Button>
+                        ) : (
+                          <Button asChild variant="secondary">
+                            <a href={api.discordLinkUrl()}>Link Discord</a>
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     {env.native && (
                       <p className="text-[14px] text-muted-foreground">
                         Linking happens in your browser. Come back here afterwards and Ember picks it up.

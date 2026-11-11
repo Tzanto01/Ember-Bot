@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Encodings.Web;
 using AspNet.Security.OAuth.Discord;
 using Ember.Core.Models;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace Ember.Api;
@@ -25,10 +27,18 @@ internal static class DiscordEndpoints
     private const string LinkError = "/settings?discord=error";
     private const string Linked = "/settings?discord=linked";
     private const string LinkConflict = "/settings?discord=conflict";
+    private const string LinkPasswordNeeded = "/settings?discord=password";
     private const string MergePage = "/link/merge";
     private const string TwoFactorStep = "/login?step=2fa";
 
+    private const string LinkPath = "/api/auth/discord/link";
+    private const string LinkGrantCookie = "__Secure-ember.discord-link";
+    private const string LinkGrantDevelopmentCookie = "ember.discord-link";
+    private static readonly TimeSpan LinkGrantLifetime = TimeSpan.FromMinutes(5);
+
     public sealed record TwoFactorRequest(string? Code, string? RecoveryCode);
+
+    public sealed record LinkStartRequest(string? Password);
 
     /// <summary>
     /// The Discord OAuth handler under <see cref="DiscordLogin.Provider"/>: scope <c>identify</c>, signing into Identity's
@@ -108,9 +118,29 @@ internal static class DiscordEndpoints
             return Results.NoContent();
         }).RequireRateLimiting(RateLimits.AuthPolicy);
 
-        auth.MapGet("/discord/link", (ClaimsPrincipal principal, SignInManager<User> signIn, UserManager<User> users) =>
-                Results.Challenge(Properties(signIn, LinkFlow, "/api/auth/discord/link/complete", users.GetUserId(principal)), [DiscordLogin.Provider]))
-            .RequireAuthorization();
+        auth.MapPost("/discord/link/start", async (LinkStartRequest request, HttpContext http, UserManager<User> users, SignInManager<User> signIn,
+            IMemoryCache cache, TimeProvider time) =>
+        {
+            var user = await users.GetUserAsync(http.User);
+            if (user is null) return Problems.Unauthenticated();
+            if (!await users.HasPasswordAsync(user)) return Problems.Conflict("This account has no password to check.");
+            if (!(await signIn.CheckPasswordSignInAsync(user, request.Password ?? "", lockoutOnFailure: true)).Succeeded)
+                return Problems.Validation("password", "The password is not correct.");
+
+            var token = RandomNumberGenerator.GetHexString(64);
+            var expires = time.GetUtcNow() + LinkGrantLifetime;
+            cache.Set(GrantKey(token), new LinkGrant(user.Id, expires), LinkGrantLifetime);
+            http.Response.Cookies.Append(GrantCookieName(http), token, GrantCookieOptions(http, LinkGrantLifetime));
+            return Results.NoContent();
+        }).RequireAuthorization().RequireRateLimiting(RateLimits.AuthPolicy);
+
+        auth.MapGet("/discord/link", async (HttpContext http, SignInManager<User> signIn, UserManager<User> users, IMemoryCache cache, TimeProvider time) =>
+        {
+            var user = await users.GetUserAsync(http.User);
+            if (user is null) return Results.Redirect(LinkError);
+            if (await users.HasPasswordAsync(user) && !ConsumeGrant(http, user, cache, time)) return Results.Redirect(LinkPasswordNeeded);
+            return Results.Challenge(Properties(signIn, LinkFlow, "/api/auth/discord/link/complete", users.GetUserId(http.User)), [DiscordLogin.Provider]);
+        }).RequireAuthorization();
 
         auth.MapGet("/discord/link/complete", async (HttpContext http, SignInManager<User> signIn, UserManager<User> users) =>
         {
@@ -171,6 +201,41 @@ internal static class DiscordEndpoints
 
         return api;
     }
+
+    /// <summary>
+    /// Takes the link grant from the request's cookie: true when it is unexpired and was issued to <paramref name="user"/>.
+    /// The grant and its cookie are gone afterwards either way.
+    /// </summary>
+    private static bool ConsumeGrant(HttpContext http, User user, IMemoryCache cache, TimeProvider time)
+    {
+        var name = GrantCookieName(http);
+        if (!http.Request.Cookies.TryGetValue(name, out var token) || string.IsNullOrEmpty(token)) return false;
+        http.Response.Cookies.Delete(name, GrantCookieOptions(http, null));
+
+        var key = GrantKey(token);
+        if (!cache.TryGetValue(key, out LinkGrant? grant)) return false;
+        cache.Remove(key);
+        return grant is not null && grant.UserId == user.Id && grant.ExpiresUtc > time.GetUtcNow();
+    }
+
+    private static string GrantKey(string token) => $"discord-link-grant:{token}";
+
+    private static bool IsDevelopment(HttpContext http) => http.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment();
+
+    private static string GrantCookieName(HttpContext http) => IsDevelopment(http) ? LinkGrantDevelopmentCookie : LinkGrantCookie;
+
+    private static CookieOptions GrantCookieOptions(HttpContext http, TimeSpan? maxAge) => new()
+    {
+        HttpOnly = true,
+        SameSite = SameSiteMode.Lax,
+        Secure = http.Request.IsHttps || !IsDevelopment(http),
+        Path = LinkPath,
+        MaxAge = maxAge,
+        IsEssential = true,
+    };
+
+    /// <summary>A password check that lets <see cref="UserId"/> start one Discord link until <see cref="ExpiresUtc"/>.</summary>
+    private sealed record LinkGrant(Guid UserId, DateTimeOffset ExpiresUtc);
 
     private static IResult Failed() => TypedResults.Problem("Failed", statusCode: StatusCodes.Status401Unauthorized);
 

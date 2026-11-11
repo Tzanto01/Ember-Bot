@@ -11,6 +11,25 @@ public class DiscordTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
     private const string Login = "/api/auth/discord/login";
     private const string Link = "/api/auth/discord/link";
+    private const string LinkStart = "/api/auth/discord/link/start";
+    private const string GrantCookie = "ember.discord-link";
+    private const string PasswordNeeded = "/settings?discord=password";
+
+    private static async Task<string> LinkTarget(ApiClient client)
+    {
+        var response = await client.Get(Link);
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        return response.Headers.Location!.OriginalString;
+    }
+
+    private static async Task<string> GrantAsync(ApiClient client)
+    {
+        await (await client.Post(LinkStart, new { password = ApiClient.Passphrase })).Expect(HttpStatusCode.NoContent);
+        return client.CookieValue(GrantCookie, Link)!;
+    }
+
+    private Task<int> FailedCount(string email)
+        => Host.Db(db => db.Users.Where(u => u.Email == email).Select(u => u.AccessFailedCount).SingleAsync());
 
     private static async Task<JsonElement> Me(ApiClient client) => await (await client.Get("/api/me")).ExpectJson();
 
@@ -229,5 +248,63 @@ public class DiscordTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         (await LoginRows(discordId)).Should().Be(0);
         (await Me(user)).GetProperty("discord").GetProperty("linked").GetBoolean().Should().BeFalse();
+    }
+
+    [DockerFact]
+    public async Task Linking_a_password_account_without_a_password_check_goes_back_to_settings()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+
+        (await LinkTarget(user)).Should().Be(PasswordNeeded);
+        (await Me(user)).GetProperty("discord").GetProperty("linked").GetBoolean().Should().BeFalse();
+    }
+
+    [DockerFact]
+    public async Task The_right_password_lets_the_link_go_to_discord()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        await GrantAsync(user);
+
+        (await LinkTarget(user)).Should().StartWith("/test/discord/authorize?");
+    }
+
+    [DockerFact]
+    public async Task A_wrong_link_password_is_refused_counts_toward_lockout_and_needs_the_antiforgery_token()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        var token = user.Csrf;
+        user.Csrf = null;
+        await (await user.Post(LinkStart, new { password = ApiClient.Passphrase })).ExpectProblem(HttpStatusCode.Forbidden, "antiforgery");
+        user.Csrf = token;
+
+        var problem = await (await user.Post(LinkStart, new { password = "wrong-passphrase-1" })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        problem.GetProperty("errors").TryGetProperty("password", out _).Should().BeTrue();
+        (await FailedCount(user.Email)).Should().Be(1);
+        (await LinkTarget(user)).Should().Be(PasswordNeeded);
+
+        for (var i = 0; i < 4; i++) await user.Post(LinkStart, new { password = "wrong-passphrase-1" });
+        await (await user.Post(LinkStart, new { password = ApiClient.Passphrase })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        (await LinkTarget(user)).Should().Be(PasswordNeeded);
+    }
+
+    [DockerFact]
+    public async Task A_link_grant_works_only_for_its_user_only_once_and_only_for_five_minutes()
+    {
+        var a = await Host.SignedInAsync(consent: false);
+        var b = await Host.SignedInAsync(consent: false);
+
+        b.AddCookie(GrantCookie, await GrantAsync(a), Link);
+        (await LinkTarget(b)).Should().Be(PasswordNeeded);
+
+        var used = await GrantAsync(a);
+        (await LinkTarget(a)).Should().StartWith("/test/discord/authorize?");
+        a.CookieValue(GrantCookie, Link).Should().BeNull();
+        a.AddCookie(GrantCookie, used, Link);
+        (await LinkTarget(a)).Should().Be(PasswordNeeded);
+
+        var expired = await GrantAsync(a);
+        Host.Time.Advance(TimeSpan.FromMinutes(6));
+        a.AddCookie(GrantCookie, expired, Link);
+        (await LinkTarget(a)).Should().Be(PasswordNeeded);
     }
 }

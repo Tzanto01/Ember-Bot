@@ -139,7 +139,15 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/discord/2fa', { body });
   }
 
-  /** URL for a full-page navigation that links Discord to the signed-in account. */
+  /** `POST /api/auth/discord/link/start`: checks the password and allows one link from this browser for five minutes. */
+  startDiscordLink(password: string): Promise<void> {
+    return this.http.request('POST', '/api/auth/discord/link/start', { body: { password } });
+  }
+
+  /**
+   * URL for a full-page navigation that links Discord to the signed-in account. An account with a password needs
+   * `startDiscordLink` first, else it ends on `/settings?discord=password`.
+   */
   discordLinkUrl(): string {
     return '/api/auth/discord/link';
   }

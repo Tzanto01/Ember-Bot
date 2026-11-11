@@ -238,7 +238,8 @@ public sealed class ApiHost : WebApplicationFactory<Program>
 
     /// <summary>
     /// Drives a Discord flow through the fake: the challenge at <paramref name="startUrl"/>, the callback (with the state from
-    /// the challenge) and the API's own follow-up redirects. Returns the final relative redirect target.
+    /// the challenge) and the API's own follow-up redirects. Returns the final relative redirect target. A link by a client with
+    /// an email first gets its grant with <see cref="ApiClient.Passphrase"/>.
     /// </summary>
     /// <param name="discordId">The Discord user the fake authorizes; null leaves the user-info call failing.</param>
     /// <param name="deny">Ends the authorization as if the user cancelled on Discord.</param>
@@ -247,6 +248,9 @@ public sealed class ApiHost : WebApplicationFactory<Program>
         Func<Task>? beforeComplete = null)
     {
         if (discordId is { } id) Services.GetRequiredService<FakeDiscord>().SetNext(id);
+
+        if (startUrl == "/api/auth/discord/link" && client.Email.Length > 0)
+            await (await client.Post("/api/auth/discord/link/start", new { password = ApiClient.Passphrase })).Expect(HttpStatusCode.NoContent);
 
         var challenge = await client.Get(startUrl);
         challenge.StatusCode.Should().Be(HttpStatusCode.Redirect);

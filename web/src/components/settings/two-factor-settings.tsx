@@ -70,7 +70,7 @@ function PasswordField({
  * `onSubmit`. A 400 answer is shown as a gentle field error on the field it names; anything else as a notice under the
  * form.
  */
-function ConfirmForm({
+export function ConfirmForm({
   kind,
   email,
   hint,
