@@ -8,6 +8,7 @@ import { asApiError } from '../problem';
 import { notificationColor } from '../theme';
 import { reminderNames } from './reminder-names';
 import { localDate, planReminders } from './reminder-plan';
+import { updaterAvailable } from './updater';
 import { capacitorWidget, type EmberWidgetPlugin, widgetSnapshot } from './widget';
 
 /** Lock-screen text: names no habit (contract, web push rule). */
@@ -21,6 +22,7 @@ export const doneAction = 'done';
 const channelId = 'reminders';
 const issuedKey = 'ember.reminderIssued';
 const plannedKey = 'ember.reminderPlanned';
+const exactAskedKey = 'ember.exactAlarmAsked';
 
 interface Issued {
   id: number;
@@ -83,6 +85,7 @@ export class Reminders {
     private readonly store: DeviceStore,
     private readonly notifications: () => Promise<{ LocalNotifications: LocalNotificationsPlugin }> = capacitorNotifications,
     private readonly widget: () => Promise<{ EmberWidget: EmberWidgetPlugin }> = capacitorWidget,
+    private readonly exactAlarms: () => boolean = updaterAvailable,
   ) {}
 
   /**
@@ -95,13 +98,20 @@ export class Reminders {
     return this.chain;
   }
 
-  /** Asks for the notification permission (Android 13+ `POST_NOTIFICATIONS`); true when granted. */
+  /**
+   * Asks for the notification permission (Android 13+ `POST_NOTIFICATIONS`); true when granted. In the beta app,
+   * once granted, also opens the "Alarms & reminders" setting once per install so reminders can fire on time.
+   */
   async requestPermission(): Promise<boolean> {
     const plugin = (await this.notifications()).LocalNotifications;
     const status = await plugin.checkPermissions();
-    return (
-      status.display === 'granted' || (await plugin.requestPermissions()).display === 'granted'
-    );
+    const granted =
+      status.display === 'granted' || (await plugin.requestPermissions()).display === 'granted';
+    if (granted && this.exactAlarms() && !localStorage.getItem(exactAskedKey)) {
+      localStorage.setItem(exactAskedKey, '1');
+      if (!(await this.exactAllowed())) await this.allowExact();
+    }
+    return granted;
   }
 
   /**
@@ -236,6 +246,7 @@ export class Reminders {
       return;
     }
     const iconColor = notificationColor();
+    const exact = await this.exactAllowed();
     const habitName = new Map(habits.map((habit) => [habit.id, habit.name]));
     const routineName = new Map(routines.map((routine) => [routine.id, routine.name]));
     const notifications = plan.map((reminder) => {
@@ -256,7 +267,7 @@ export class Reminders {
             ? { userId, habitId: reminder.habitId, date: reminder.date }
             : { userId, routineId: reminder.routineId, date: reminder.date },
         schedule: { at: new Date(reminder.at), allowWhileIdle: true },
-        isExactNotification: false,
+        isExactNotification: exact,
       };
     });
     const planned = await digest(notifications);
@@ -289,6 +300,20 @@ export class Reminders {
     const { display } = await plugin.checkPermissions();
     if (display === 'prompt') return (await plugin.requestPermissions()).display === 'granted';
     return display === 'granted';
+  }
+
+  /** True when Android lets Ember schedule exact alarms (Android 12+ "Alarms & reminders"; always below 12). */
+  async exactAllowed(): Promise<boolean> {
+    const plugin = (await this.notifications()).LocalNotifications;
+    const status = await plugin.checkExactNotificationSetting().catch(() => null);
+    return status?.exact_alarm === 'granted';
+  }
+
+  /** Opens Android's "Alarms & reminders" setting for Ember; true when exact alarms are allowed afterwards. */
+  async allowExact(): Promise<boolean> {
+    const plugin = (await this.notifications()).LocalNotifications;
+    const status = await plugin.changeExactNotificationSetting().catch(() => null);
+    return status?.exact_alarm === 'granted';
   }
 
   private toWidget(call: (widget: EmberWidgetPlugin) => Promise<void>): Promise<void> {

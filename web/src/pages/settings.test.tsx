@@ -9,11 +9,20 @@ import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SettingsPage from './settings';
 
 vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
+const exactAlarms = vi.hoisted(() => ({ beta: false, allowed: false, allowExact: vi.fn() }));
+vi.mock('@/lib/native/updater', async (original) => ({
+  ...(await original<typeof import('@/lib/native/updater')>()),
+  updaterAvailable: () => exactAlarms.beta,
+}));
 vi.mock('@/lib/services', async (original) => {
   const { Store } = await import('@/lib/store');
   return {
     ...(await original<typeof import('@/lib/services')>()),
     localMode: { mode: new Store('account'), evicted: new Store(false) },
+    reminders: {
+      exactAllowed: async () => exactAlarms.allowed,
+      allowExact: (...args: unknown[]) => exactAlarms.allowExact(...args),
+    },
   };
 });
 
@@ -58,6 +67,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
   });
 
   afterEach(() => {
+    exactAlarms.beta = false;
     vi.unstubAllGlobals();
     delete (navigator as { serviceWorker?: unknown }).serviceWorker;
     auth.clearSession();
@@ -242,7 +252,21 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(
       await screen.findByText("Notifications are off for Ember on this phone. You can turn them on in your phone's settings."),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Allow exact reminder times' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Allow on-time reminders' })).toBeNull();
+  });
+
+  it('in the beta app, offers on-time reminders while exact alarms are off, and hides the offer once allowed', async () => {
+    env.native = true;
+    exactAlarms.beta = true;
+    exactAlarms.allowed = false;
+    exactAlarms.allowExact.mockResolvedValue(true);
+    const user = userEvent.setup();
+    await open('/settings/reminders');
+
+    await user.click(await screen.findByRole('button', { name: 'Allow on-time reminders' }));
+
+    expect(exactAlarms.allowExact).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Allow on-time reminders' })).toBeNull());
   });
 
   it('on the phone, the reminder names switch is off by default and turns the per-device setting on', async () => {

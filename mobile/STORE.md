@@ -85,7 +85,7 @@ From the merged manifest of the `play` build (the `beta` sideload build adds `RE
 | WAKE_LOCK | Notifications plugin | Declared by the plugin | None |
 | `app.ember.habits.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX | Internal, signature-level | None |
 
-`SCHEDULE_EXACT_ALARM` is removed from the merged manifest (`tools:node="remove"`). Reminders use inexact alarms that may arrive a few minutes late, which suits a gentle reminder and needs no Play declaration.
+`SCHEDULE_EXACT_ALARM` is removed from the Play manifest (`src/play/AndroidManifest.xml`, `tools:node="remove"`), so it needs no Play declaration. Play builds therefore use inexact alarms, which Android may deliver up to about an hour late. The sideloaded beta keeps the permission and asks once for "Alarms & reminders" so its reminders fire on time.
 
 ### 2.4 Account deletion
 

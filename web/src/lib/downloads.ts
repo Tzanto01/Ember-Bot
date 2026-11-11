@@ -2,7 +2,7 @@
 export const downloads = {
   android: {
     apkUrl: '/download/ember-beta.apk',
-    version: '0.9.0-beta.2',
+    version: '0.9.0-beta.3',
     size: 'about 4.5 MB',
   },
   discordInvite:

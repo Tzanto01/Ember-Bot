@@ -33,9 +33,10 @@ import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
 import { type ExportFormat, type MePatch, secondReminderChoices, type SecondReminderMinutes } from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
+import { updaterAvailable } from '@/lib/native/updater';
 import { loadPage } from '@/lib/navigation';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
-import { api, auth, localMode, push } from '@/lib/services';
+import { api, auth, deviceSync, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 import { cn } from '@/lib/utils';
@@ -201,6 +202,7 @@ export default function SettingsPage() {
   const [linkingDiscord, setLinkingDiscord] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
   const [notificationsOff, setNotificationsOff] = useState(false);
+  const [remindersLate, setRemindersLate] = useState(false);
   const [browserZone] = useState(browserTimeZone);
   const [showIosHint] = useState(() => isIos() && !isStandalone());
   const [discordNotice] = useState<Message | null>(() => {
@@ -221,6 +223,7 @@ export default function SettingsPage() {
         .then(({ LocalNotifications }) => LocalNotifications.checkPermissions())
         .then((status) => setNotificationsOff(status.display === 'denied'), () => undefined);
     }
+    if (updaterAvailable()) void reminders?.exactAllowed().then((exact) => setRemindersLate(!exact));
   }, []);
 
   function start(section: Section): void {
@@ -792,6 +795,25 @@ export default function SettingsPage() {
                   they arrive even without a connection.
                 </p>
                 <ReminderNamesSetting />
+                {remindersLate && (
+                  <Notice tone="info">
+                    <p>
+                      Reminders can arrive up to an hour late until you allow "Alarms &amp; reminders" for Ember in
+                      your phone's settings.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        void reminders?.allowExact().then((exact) => {
+                          setRemindersLate(!exact);
+                          if (exact) deviceSync.rebuildReminders();
+                        })
+                      }
+                    >
+                      Allow on-time reminders
+                    </Button>
+                  </Notice>
+                )}
                 {notificationsOff && (
                   <Notice tone="info">
                     <p>Notifications are off for Ember on this phone. You can turn them on in your phone's settings.</p>

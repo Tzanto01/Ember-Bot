@@ -26,6 +26,9 @@ describe('Reminders', () => {
   let cancel: Mock;
   let checkPermissions: Mock;
   let requestPermissions: Mock;
+  let checkExact: Mock;
+  let changeExact: Mock;
+  let exactAlarms: boolean;
 
   beforeEach(async () => {
     (globalThis as unknown as { indexedDB: unknown }).indexedDB = new IDBFactory();
@@ -38,7 +41,12 @@ describe('Reminders', () => {
     cancel = vi.fn(async () => undefined);
     checkPermissions = vi.fn(async () => ({ display: 'granted' }));
     requestPermissions = vi.fn(async () => ({ display: 'granted' }));
+    checkExact = vi.fn(async () => ({ exact_alarm: 'denied' }));
+    changeExact = vi.fn(async () => ({ exact_alarm: 'granted' }));
+    exactAlarms = false;
     const plugin = {
+      checkExactNotificationSetting: checkExact,
+      changeExactNotificationSetting: changeExact,
       createChannel: async () => undefined,
       getPending,
       cancel,
@@ -57,6 +65,7 @@ describe('Reminders', () => {
       device,
       async () => ({ LocalNotifications: plugin }),
       async () => ({ EmberWidget: widget }),
+      () => exactAlarms,
     );
     await device.saveHabits({ userId: 'u1', timeZone: zone, habits: [reminded] });
   });
@@ -100,10 +109,38 @@ describe('Reminders', () => {
     expect(notifications).toHaveLength(planDays);
   });
 
-  it('schedules inexact alarms, so Android never sends the user to the exact-alarm setting', async () => {
+  it('schedules inexact alarms while exact ones are not allowed, so a rebuild never opens the setting', async () => {
     const notifications = await rebuildOnline([reminded]);
 
     expect(notifications.every((n) => n.isExactNotification === false)).toBe(true);
+    expect(changeExact).not.toHaveBeenCalled();
+  });
+
+  it('schedules exact alarms once Android allows them, so reminders arrive on time', async () => {
+    checkExact.mockResolvedValue({ exact_alarm: 'granted' });
+
+    const notifications = await rebuildOnline([reminded]);
+
+    expect(notifications.every((n) => n.isExactNotification === true)).toBe(true);
+  });
+
+  it('in the beta app, opens the Alarms & reminders setting once after notifications are allowed', async () => {
+    exactAlarms = true;
+
+    expect(await reminders.requestPermission()).toBe(true);
+    expect(await reminders.requestPermission()).toBe(true);
+
+    expect(changeExact).toHaveBeenCalledTimes(1);
+  });
+
+  it('never opens the Alarms & reminders setting outside the beta app or when notifications are denied', async () => {
+    await reminders.requestPermission();
+    exactAlarms = true;
+    checkPermissions.mockResolvedValue({ display: 'denied' });
+    requestPermissions.mockResolvedValue({ display: 'denied' });
+    await reminders.requestPermission();
+
+    expect(changeExact).not.toHaveBeenCalled();
   });
 
   it('leaves pending reminders alone while the plan is unchanged, and replaces them when it changes', async () => {
