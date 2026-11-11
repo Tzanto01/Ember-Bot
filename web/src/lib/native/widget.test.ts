@@ -56,7 +56,7 @@ describe('widget snapshot', () => {
     count,
   });
 
-  it("pushes today's scheduled habits with their state after a rebuild, leaving out rest days and pauses", async () => {
+  it("pushes today's scheduled habits with their state after a rebuild, leaving out rest days and pauses, and tomorrow's from the schedule", async () => {
     const done = reminders.rebuild('u1', 'Europe/Berlin');
     (await mock.next('GET', '/api/habits')).respond(200, [
       { ...habit, id: 1, name: 'Walk', timesPerDay: 3, today: day('partial', 2) },
@@ -78,6 +78,16 @@ describe('widget snapshot', () => {
         { id: 5, name: 'Journal', state: 'open', count: 0, timesPerDay: 1 },
       ],
       more: 0,
+      next: {
+        date: '2026-11-02',
+        habits: [
+          { id: 1, name: 'Walk', state: 'open', count: 0, timesPerDay: 3 },
+          { id: 2, name: 'Stretch', state: 'open', count: 0, timesPerDay: 1 },
+          { id: 3, name: 'Read', state: 'open', count: 0, timesPerDay: 1 },
+          { id: 4, name: 'Water', state: 'open', count: 0, timesPerDay: 1 },
+        ],
+        more: 1,
+      },
     });
   });
 

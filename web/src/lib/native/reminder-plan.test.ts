@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Habit, Routine } from '../models';
-import { planReminders, zonedToUtc } from './reminder-plan';
+import { planCap, planDays, planReminders, zonedToUtc } from './reminder-plan';
 
 function habit(overrides: Partial<Habit> = {}): Habit {
   return {
@@ -25,8 +25,11 @@ function habit(overrides: Partial<Habit> = {}): Habit {
 }
 
 const berlinMorning = Date.parse('2026-11-02T10:00:00Z');
+const firstWeek = (date: string) => date <= '2026-11-08';
 const dates = (habits: Habit[], zone = 'Europe/Berlin', now = berlinMorning) =>
-  planReminders(habits, zone, now).map((r) => r.date);
+  planReminders(habits, zone, now)
+    .map((r) => r.date)
+    .filter(firstWeek);
 
 describe('planReminders', () => {
   it('schedules only habits with the mobile channel and a reminder time', () => {
@@ -42,13 +45,15 @@ describe('planReminders', () => {
     );
 
     expect(new Set(plan.map((r) => r.habitId))).toEqual(new Set([1]));
-    expect(plan).toHaveLength(7);
+    expect(plan).toHaveLength(planDays);
   });
 
-  it('plans seven local days starting today at the reminder time in the account zone', () => {
+  it('plans fourteen local days starting today at the reminder time in the account zone', () => {
     const plan = planReminders([habit()], 'Europe/Berlin', berlinMorning);
 
-    expect(plan.map((r) => r.date)).toEqual([
+    expect(plan).toHaveLength(14);
+    expect(plan.at(-1)?.date).toBe('2026-11-15');
+    expect(plan.map((r) => r.date).filter(firstWeek)).toEqual([
       '2026-11-02',
       '2026-11-03',
       '2026-11-04',
@@ -147,9 +152,9 @@ describe('planReminders', () => {
     );
 
     expect(plan.filter((r) => r.habitId === 1)).toEqual([]);
-    expect(plan.filter((r) => r.routineId === 7).map((r) => r.date)).toHaveLength(7);
+    expect(plan.filter((r) => r.routineId === 7).map((r) => r.date)).toHaveLength(planDays);
     expect(plan.find((r) => r.routineId === 7)?.at).toBe(Date.parse('2026-11-02T17:00:00Z'));
-    expect(plan.filter((r) => r.habitId === 3)).toHaveLength(7);
+    expect(plan.filter((r) => r.habitId === 3)).toHaveLength(planDays);
   });
 
   it('plans no routine reminder today when none of its habits is still pending', () => {
@@ -186,7 +191,7 @@ describe('planReminders', () => {
       Date.parse('2026-10-23T00:00:00Z'),
     );
 
-    expect(plan.map((r) => [r.date, new Date(r.at).toISOString()])).toEqual([
+    expect(plan.slice(0, 7).map((r) => [r.date, new Date(r.at).toISOString()])).toEqual([
       ['2026-10-23', '2026-10-23T07:00:00.000Z'],
       ['2026-10-24', '2026-10-24T07:00:00.000Z'],
       ['2026-10-25', '2026-10-25T08:00:00.000Z'],
@@ -197,18 +202,19 @@ describe('planReminders', () => {
     ]);
   });
 
-  it('sorts soonest first, numbers ids from 1 and keeps the soonest 60', () => {
-    const habits = Array.from({ length: 10 }, (_, i) =>
-      habit({ id: i + 1, reminderTime: `${String(12 + i).padStart(2, '0')}:00` }),
+  it('sorts soonest first, numbers ids from 1 and keeps the soonest 400', () => {
+    const habits = Array.from({ length: 30 }, (_, i) =>
+      habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 3)}:${['00', '20', '40'][i % 3]}` }),
     );
 
     const plan = planReminders(habits.reverse(), 'Europe/Berlin', berlinMorning);
 
-    expect(plan).toHaveLength(60);
-    expect(plan.map((r) => r.id)).toEqual(Array.from({ length: 60 }, (_, i) => i + 1));
+    expect(planCap).toBe(400);
+    expect(plan).toHaveLength(400);
+    expect(plan.map((r) => r.id)).toEqual(Array.from({ length: 400 }, (_, i) => i + 1));
     expect(plan.map((r) => r.at)).toEqual([...plan.map((r) => r.at)].sort((a, b) => a - b));
     expect(plan[0].habitId).toBe(1);
-    expect(plan[59].date).toBe('2026-11-07');
+    expect(plan[399].date).toBe('2026-11-15');
   });
 
   it('plans a second reminder the chosen minutes after each one, for the same habit or routine and date', () => {
@@ -237,7 +243,7 @@ describe('planReminders', () => {
       [1, false, '2026-11-02T19:00:00.000Z'],
       [1, true, '2026-11-02T19:30:00.000Z'],
     ]);
-    expect(plan.filter((r) => r.second)).toHaveLength(14);
+    expect(plan.filter((r) => r.second)).toHaveLength(2 * planDays);
   });
 
   it('plans no second reminder when it is off', () => {
@@ -255,7 +261,7 @@ describe('planReminders', () => {
       60,
     );
 
-    expect(plan).toHaveLength(7);
+    expect(plan).toHaveLength(planDays);
     expect(plan.some((r) => r.second)).toBe(false);
     expect(
       planReminders(
@@ -265,7 +271,7 @@ describe('planReminders', () => {
         [],
         15,
       ).filter((r) => r.second),
-    ).toHaveLength(7);
+    ).toHaveLength(planDays);
   });
 
   it('keeps the second reminder of a first one that already fired', () => {
@@ -286,22 +292,22 @@ describe('planReminders', () => {
     expect(plan[1]).toMatchObject({ date: '2026-11-03' });
   });
 
-  it('keeps ids unique and the soonest 60 with second reminders on', () => {
-    const habits = Array.from({ length: 10 }, (_, i) =>
-      habit({ id: i + 1, reminderTime: `${String(12 + i).padStart(2, '0')}:00` }),
+  it('keeps ids unique and the soonest 400 with second reminders on', () => {
+    const habits = Array.from({ length: 20 }, (_, i) =>
+      habit({ id: i + 1, reminderTime: `${12 + Math.floor(i / 2)}:${i % 2 ? '30' : '00'}` }),
     );
 
     const plan = planReminders(habits, 'Europe/Berlin', berlinMorning, [], 15);
 
-    expect(plan).toHaveLength(60);
-    expect(new Set(plan.map((r) => r.id)).size).toBe(60);
+    expect(plan).toHaveLength(planCap);
+    expect(new Set(plan.map((r) => r.id)).size).toBe(planCap);
     expect(plan.map((r) => r.at)).toEqual([...plan.map((r) => r.at)].sort((a, b) => a - b));
     expect(plan[1]).toMatchObject({
       habitId: 1,
       second: true,
       at: Date.parse('2026-11-02T11:15:00Z'),
     });
-    expect(plan[59].date).toBe('2026-11-04');
+    expect(plan[planCap - 1].date).toBe('2026-11-11');
   });
 });
 

@@ -2,6 +2,7 @@ package app.ember.habits;
 
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginHandle;
@@ -17,6 +18,14 @@ public class MainActivity extends BridgeActivity {
         restoring = savedInstanceState != null;
         super.onCreate(savedInstanceState);
         restoring = false;
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            /** Goes back in the web history, or at the app's root moves Ember to the background. */
+            @Override
+            public void handleOnBackPressed() {
+                if (bridge != null && bridge.getWebView().canGoBack()) bridge.getWebView().goBack();
+                else moveTaskToBack(true);
+            }
+        });
     }
 
     /**
