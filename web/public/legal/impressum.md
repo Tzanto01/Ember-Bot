@@ -1,44 +1,41 @@
 # Impressum
 
-> **English summary (not binding).** Legal notice for Ember under German law (§ 5 DDG and § 18 Abs. 1 MStV): the operator's name, a postal address where legal documents can be served, and a fast electronic contact. All personal details below are placeholders. The note at the end explains why Ember most likely needs an Impressum even though it is free and non-commercial.
+> **English summary (not binding).** Legal notice for Ember under German law (§ 5 DDG). It names the operator, a postal address where legal documents can be served, and an email contact. The note at the end is for the owner and must be deleted before publishing.
 
 ---
 
+**Stand:** 11. November 2026
+
 ## Angaben gemäß § 5 DDG
 
-[NAME]
-[ANSCHRIFT: Straße und Hausnummer]
-[ANSCHRIFT: PLZ und Ort]
+Nico Pauly Wöllnitz
+Erzbergerstraße 129
+46145 Oberhausen
 Deutschland
 
 ## Kontakt
 
-E-Mail: [E-MAIL]
-[ZWEITER SCHNELLER KONTAKTWEG, zum Beispiel Kontaktformular oder Telefon: OPTIONAL, siehe Hinweis]
+Telefon: +49 176 87943322
+E-Mail: contact@nicowoellnitz.de
 
-## Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
+## Umsatzsteuer
 
-[NUR AUFNEHMEN, FALLS ES JOURNALISTISCH-REDAKTIONELLE INHALTE GIBT, sonst diesen Abschnitt streichen]
-[NAME], Anschrift wie oben
+Kleinunternehmer im Sinne von § 19 UStG. Es liegt keine Umsatzsteuer-Identifikationsnummer vor.
 
 ## Verbraucherstreitbeilegung
 
-[OPTIONAL, siehe Hinweis] Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
+Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. [PRÜFEN: Satz bestätigen oder streichen.]
 
 ---
 
 ## Hinweis für Nico (vor dem Veröffentlichen löschen)
 
-**Braucht ein kostenloser, nicht kommerzieller Dienst ein Impressum?** Wahrscheinlich ja:
+**Warum ein Impressum:** Ember soll öffentlich nutzbar sein und ist zugleich ein Portfolio-Projekt. § 5 DDG gilt für geschäftsmäßige digitale Dienste. Die Gerichte legen „geschäftsmäßig“ weit aus; Geld muss nicht fließen. Ein Impressum ist deshalb die sichere Wahl.
 
-- **§ 5 DDG** (Digitale-Dienste-Gesetz, Nachfolger von § 5 TMG) gilt für „geschäftsmäßige, in der Regel gegen Entgelt angebotene“ digitale Dienste. Ein rein privates Hobbyprojekt fällt nicht darunter. Gerichte legen „geschäftsmäßig“ aber weit aus: Es reicht eine nachhaltige, auf Dauer angelegte Tätigkeit, Geld muss nicht fließen. Dass Ember öffentlich für alle angeboten wird, als Portfolio-Stück dient (N1) und später ein bezahltes Ember+ geplant ist (D5), spricht dafür, dass § 5 DDG greift.
-- **§ 18 Abs. 1 MStV** (Medienstaatsvertrag) verlangt unabhängig davon Name und Anschrift von jedem, dessen Telemedium nicht ausschließlich persönlichen oder familiären Zwecken dient. Ein öffentlich nutzbarer Bot für beliebige Discord-Nutzer dient nicht mehr nur persönlichen Zwecken.
-- **Ergebnis:** Ein Impressum ist bei einem öffentlichen Start die sichere Wahl. Ohne öffentlichen Start (nur Nico und ein paar Freunde) ist es eher nicht nötig.
+**Kein Block nach § 18 Abs. 2 MStV:** Ember hat keine journalistisch-redaktionellen Inhalte. Der Abschnitt entfällt.
 
-**Ladungsfähige Anschrift:** Ein Postfach reicht nicht. Bei einer Privatperson ist das meist die Wohnadresse. Ob eine c/o-Adresse oder ein Impressum-Service genügt, ist umstritten; das sollte die Prüfung klären.
+**Kontakt:** Die Angaben entsprechen dem Impressum deines Portfolios: Anschrift, Telefon und E-Mail-Adresse. Die Telefonnummer steht nur im Impressum. Impressum und Datenschutzerklärung schickt der Server mit `X-Robots-Tag: noindex`, damit eine Suche nach deinem Namen deine Anschrift nicht anzeigt.
 
-**Zweiter Kontaktweg:** Nach der Rechtsprechung des EuGH (C-298/07) muss neben der E-Mail ein weiterer schneller Weg zur Kontaktaufnahme möglich sein, nicht zwingend ein Telefon (ein Kontaktformular kann reichen). Klären lassen, ob das hier nötig ist.
+**Ladungsfähige Anschrift:** Die Wohnadresse ist die ladungsfähige Anschrift. Ein Postfach reicht nicht.
 
-**Verbraucherstreitbeilegung:** Die Hinweispflicht nach § 36 VSBG trifft Unternehmer mit mehr als 10 Beschäftigten. Für Ember als privat betriebenes Projekt ist der Satz wahrscheinlich nicht nötig; schaden tut er nicht. Ein Link auf die EU-OS-Plattform gehört nicht mehr hinein, weil die Plattform eingestellt wurde.
-
-**Wo das Impressum stehen muss:** leicht erkennbar, unmittelbar erreichbar und ständig verfügbar. Für Ember heißt das: ein Link im Bot-Profil und in `/help` auf eine öffentlich erreichbare Seite.
+**Wo das Impressum stehen muss:** leicht erkennbar, unmittelbar erreichbar und ständig verfügbar. In der Web-App ist der Link im Footer. Im Discord-Bot-Profil und in `/help` fehlt er noch (siehe docs/legal/README.md).

@@ -240,6 +240,7 @@ public static class ApiApp
             headers["Referrer-Policy"] = "no-referrer";
             headers.ContentSecurityPolicy = ContentSecurityPolicy;
             if (http.Request.Path.StartsWithSegments("/api")) headers.CacheControl = "no-store";
+            if (http.Request.Path.StartsWithSegments("/legal")) headers["X-Robots-Tag"] = "noindex";
             return Task.CompletedTask;
         });
         return next(http);
