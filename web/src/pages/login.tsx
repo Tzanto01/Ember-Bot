@@ -273,11 +273,13 @@ export default function LoginPage() {
               checked={staySignedIn}
               onCheckedChange={(checked) => setStaySignedIn(checked === true)}
             />
-            <Label htmlFor="stay-signed-in" className="font-normal">
+            <Label htmlFor="stay-signed-in" className="font-normal whitespace-nowrap">
               Stay signed in
             </Label>
           </div>
-          <TapLink to="/forgot-password">Forgot password?</TapLink>
+          <TapLink to="/forgot-password" className="whitespace-nowrap">
+            Forgot password?
+          </TapLink>
         </div>
 
         {problem && (

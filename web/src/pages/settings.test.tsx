@@ -349,6 +349,16 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('button', { name: 'Delete my account' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Timezone' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Second reminder' })).toHaveDisplayValue('Off');
+    expect(screen.queryByRole('combobox', { name: 'Second reminder' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Second reminder' })).toBeNull();
+  });
+
+  it('links to routines', async () => {
+    const user = userEvent.setup();
+    const { router } = await open();
+
+    expect(within(screen.getByRole('navigation', { name: 'Settings sections' })).getByRole('link', { name: 'Routines' })).toHaveAttribute('href', '#routines');
+    await user.click(screen.getByRole('link', { name: 'Your routines' }));
+    expect(router.state.location.pathname).toBe('/routines');
   });
 });

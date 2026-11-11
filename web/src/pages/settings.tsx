@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -447,13 +447,15 @@ export default function SettingsPage() {
 
   const showDm = !local && !!me && (me.dmReminders.paused || message?.section === 'dm');
   const showPush = !local && !env.native && pushAvailable;
+  const showSecond = !local || env.native;
   const sections = [
     ...(local ? [{ id: 'device', title: 'On this device' }] : [{ id: 'account', title: 'Account' }]),
     { id: 'appearance', title: 'Appearance' },
     ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
-    { id: 'second-reminder', title: 'Second reminder' },
+    ...(showSecond ? [{ id: 'second-reminder', title: 'Second reminder' }] : []),
+    { id: 'routines', title: 'Routines' },
     { id: 'grace', title: 'Grace days' },
     { id: 'timezone', title: 'Timezone' },
     { id: 'moods', title: 'Moods' },
@@ -670,24 +672,35 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
-            <SettingsCard id="second-reminder" title={title('second-reminder')}>
-              <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
-                {(field) => (
-                  <NativeSelect
-                    {...field}
-                    value={String(secondShown)}
-                    onChange={(event) => changeSecond(Number(event.target.value) as SecondReminderMinutes)}
-                  >
-                    {secondReminderChoices.map((n) => (
-                      <option key={n} value={n}>
-                        {secondReminderLabels[n]}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </FormField>
-              {savedStatus('second')}
-              {outcome('second')}
+            {showSecond && (
+              <SettingsCard id="second-reminder" title={title('second-reminder')}>
+                <FormField label="Second reminder" hint="If you haven't checked in yet, Ember nudges you once more.">
+                  {(field) => (
+                    <NativeSelect
+                      {...field}
+                      value={String(secondShown)}
+                      onChange={(event) => changeSecond(Number(event.target.value) as SecondReminderMinutes)}
+                    >
+                      {secondReminderChoices.map((n) => (
+                        <option key={n} value={n}>
+                          {secondReminderLabels[n]}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  )}
+                </FormField>
+                {savedStatus('second')}
+                {outcome('second')}
+              </SettingsCard>
+            )}
+
+            <SettingsCard id="routines" title={title('routines')}>
+              <p>Group habits that belong together into routines, like a morning routine.</p>
+              <div>
+                <Button asChild variant="secondary">
+                  <Link to="/routines">Your routines</Link>
+                </Button>
+              </div>
             </SettingsCard>
 
             <SettingsCard id="grace" title={title('grace')}>
