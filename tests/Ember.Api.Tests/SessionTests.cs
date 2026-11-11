@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Ember.Api.TestHost;
 using Ember.Core.Models;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
@@ -50,7 +51,9 @@ public class SessionTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         await (await a.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
         await (await b.Get("/api/me")).Expect(HttpStatusCode.OK);
-        await (await RefreshAsync(tokens)).Expect(HttpStatusCode.OK);
+        await (await b.Get("/api/me")).Expect(HttpStatusCode.OK);
+        var refreshed = await (await RefreshAsync(tokens)).ExpectJson();
+        await (await RefreshAsync(refreshed)).Expect(HttpStatusCode.OK);
     }
 
     [DockerFact]
@@ -107,6 +110,19 @@ public class SessionTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         await (await a.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
         await (await RefreshAsync(tokens)).Expect(HttpStatusCode.Unauthorized);
+    }
+
+    [DockerFact]
+    public async Task Turning_on_two_factor_sign_in_ends_the_other_sessions_and_keeps_this_one()
+    {
+        var a = await Host.SignedInAsync(consent: false);
+        var b = await SecondDeviceAsync(a);
+
+        var key = (await (await a.Post("/api/me/2fa/setup")).ExpectJson()).GetProperty("sharedKey").GetString()!;
+        await (await a.Post("/api/me/2fa/enable", new { code = Totp.Code(key), password = ApiClient.Passphrase })).Expect(HttpStatusCode.OK);
+
+        await (await a.Get("/api/me")).Expect(HttpStatusCode.OK);
+        await (await b.Get("/api/me")).ExpectProblem(HttpStatusCode.Unauthorized, "unauthenticated");
     }
 
     [DockerFact]
