@@ -585,7 +585,7 @@ export default function SettingsPage() {
 
             <SettingsCard id="appearance" title={title('appearance')}>
               <p id="appearance-hint">
-                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your choice follows you to your other devices.'}
+                {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your theme follows you to your other devices.'}
               </p>
               <ColorSchemePicker />
               <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />

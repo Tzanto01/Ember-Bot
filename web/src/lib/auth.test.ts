@@ -281,6 +281,31 @@ describe('AuthService', () => {
       expect(navigate).toHaveBeenCalledWith('/login');
     });
 
+    it('keeps the session and reports failure when sign out everywhere answers 401', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      const done = auth.logout(true);
+
+      (await mock.next('POST', '/api/auth/logout-everywhere')).respond(401);
+
+      await expect(done).resolves.toBe(false);
+      expect(auth.me.get()).toEqual(me);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('forgets the address this device signed up with', async () => {
+      const auth = setup(null);
+      auth.setMe(me);
+      localStorage.setItem('ember.signupEmail', JSON.stringify({ email: 'new@example.test', at: Date.now() }));
+      const done = auth.logout();
+
+      (await mock.next('POST', '/api/auth/logout')).respond(204);
+      (await mock.next('GET', '/api/auth/antiforgery')).respond(204);
+
+      await expect(done).resolves.toBe(true);
+      expect(localStorage.getItem('ember.signupEmail')).toBeNull();
+    });
+
     it('signs out without touching push endpoints when there is no subscription', async () => {
       const auth = setup(null);
       auth.setMe(me);

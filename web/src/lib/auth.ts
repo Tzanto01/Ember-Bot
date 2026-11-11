@@ -179,8 +179,9 @@ export class AuthService {
   /**
    * Removes this device's push subscription (server first, then the browser), signs out,
    * refreshes antiforgery and goes to `/login`. `everywhere` ends every session of the account on every device
-   * (in the native build too). Resolves false and keeps the session when the server couldn't end it (offline, 5xx),
-   * because only the server can clear the auth cookie or the other sessions. Never throws.
+   * (in the native build too). Resolves false and keeps the session when the server couldn't end it (offline, 5xx, and
+   * for `everywhere` any failure, a 401 included), because only the server can clear the auth cookie or the other sessions.
+   * Never throws.
    */
   async logout(everywhere = false): Promise<boolean> {
     if (!this.native || everywhere) {
@@ -188,7 +189,7 @@ export class AuthService {
       try {
         await (everywhere ? this.api.logoutEverywhere() : this.api.logout());
       } catch (error) {
-        if (asApiError(error).status !== 401) return false;
+        if (everywhere || asApiError(error).status !== 401) return false;
       }
     }
     await this.wipeDevice();
@@ -213,7 +214,7 @@ export class AuthService {
     }
     if (userId) await this.queue.clear(userId);
     Object.keys(localStorage)
-      .filter((key) => key.startsWith('ember.channelsBeforePhone.'))
+      .filter((key) => key.startsWith('ember.channelsBeforePhone.') || key === 'ember.signupEmail')
       .forEach((key) => localStorage.removeItem(key));
     resetTheme();
   }

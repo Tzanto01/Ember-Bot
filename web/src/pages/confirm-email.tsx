@@ -101,7 +101,7 @@ export default function ConfirmEmailPage() {
       await api.confirmEmail(body.userId, body.code, body.password);
       const email = takeSignupEmail();
       if (!email) return false;
-      return auth.login(email, body.password, true).then(
+      return auth.login(email, body.password, false).then(
         (me) => !!me,
         () => false,
       );

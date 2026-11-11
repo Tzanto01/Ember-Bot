@@ -33,6 +33,6 @@ describe('SignupPage', () => {
     (await fetch.next('POST', '/api/auth/register')).respond(200);
 
     expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
-    expect(localStorage.getItem('ember.signupEmail')).toBe('new@example.test');
+    expect(JSON.parse(localStorage.getItem('ember.signupEmail') ?? '{}').email).toBe('new@example.test');
   });
 });
