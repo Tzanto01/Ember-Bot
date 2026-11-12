@@ -523,6 +523,24 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByRole('heading', { name: 'Timezone' })).toBeInTheDocument();
   });
 
+  it('sends feedback from its own Settings group with an account', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/feedback');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Send feedback');
+    await user.type(screen.getByRole('textbox', { name: /Your feedback/ }), 'Hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    (await fetch.next('POST', '/api/feedback')).respond(204);
+    await screen.findByText('Thank you, that really helps.');
+  });
+
+  it('shows the feedback form without an account too', async () => {
+    localMode.mode.set('local');
+    await open('/settings/feedback');
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Send feedback');
+    expect(screen.getByRole('textbox', { name: /Your feedback/ })).toBeInTheDocument();
+  });
+
   it('links to routines', async () => {
     const user = userEvent.setup();
     const { router } = await open('/settings/habits');

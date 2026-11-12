@@ -559,3 +559,61 @@ describe('Http offline cache', () => {
     expect(http.offlineData.get()).toBe(false);
   });
 });
+
+describe('Http server requests', () => {
+  it('reach fetch anonymously while the local backend answers /api, and never the local backend', async () => {
+    setCookie('xsrf-1');
+    const http = new Http(web);
+    const local = vi.fn(async () => new Response(null, { status: 204 }));
+    http.local = local;
+
+    const result = http.request('POST', '/api/feedback', { body: { text: 'hi' }, server: true });
+    const call = await mock.next('POST', '/api/feedback');
+    call.respond(204);
+
+    await result;
+    expect(local).not.toHaveBeenCalled();
+    expect(call.headers.get('Authorization')).toBeNull();
+    expect(call.headers.get('X-XSRF-TOKEN')).toBeNull();
+    expect(call.credentials).toBe('omit');
+    expect(call.body).toEqual({ text: 'hi' });
+  });
+
+  it('send no bearer token in the native build while the local backend answers /api', async () => {
+    const http = new Http({ native: true, apiBase: 'https://ember.example' });
+    http.local = vi.fn(async () => new Response(null, { status: 204 }));
+    http.bearer = { accessToken: 'tok', lastTransientError: null, refresh: async () => true };
+
+    const result = http.request('POST', '/api/feedback', { body: { text: 'hi' }, server: true });
+    const call = await mock.next('POST', 'https://ember.example/api/feedback');
+    call.respond(204);
+
+    await result;
+    expect(call.headers.get('Authorization')).toBeNull();
+  });
+
+  it('keep the bearer token in the native build without a local backend', async () => {
+    const http = new Http({ native: true, apiBase: 'https://ember.example' });
+    http.bearer = { accessToken: 'tok', lastTransientError: null, refresh: async () => true };
+
+    const result = http.request('POST', '/api/feedback', { body: { text: 'hi' }, server: true });
+    const call = await mock.next('POST', 'https://ember.example/api/feedback');
+    call.respond(204);
+
+    await result;
+    expect(call.headers.get('Authorization')).toBe('Bearer tok');
+  });
+
+  it('keep the session credentials without a local backend', async () => {
+    setCookie('xsrf-1');
+    const http = new Http(web);
+
+    const result = http.request('POST', '/api/feedback', { body: { text: 'hi' }, server: true });
+    const call = await mock.next('POST', '/api/feedback');
+    call.respond(204);
+
+    await result;
+    expect(call.headers.get('X-XSRF-TOKEN')).toBe('xsrf-1');
+    expect(call.credentials).toBe('same-origin');
+  });
+});
