@@ -156,6 +156,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       expect.stringContaining('Habits & days'),
       expect.stringContaining('Appearance'),
       expect.stringContaining('Privacy & data'),
+      expect.stringContaining('Send feedback'),
     ]);
     const reminders = list.getByRole('link', { name: 'Reminders' });
     expect(reminders).toHaveAccessibleDescription('Second reminder');
@@ -195,6 +196,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       'Habits & days',
       'Appearance',
       'Privacy & data',
+      'Send feedback',
     ]);
     expect(rail.getByRole('link', { name: 'Account & security' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('region', { name: 'Account' })).toBeInTheDocument();
@@ -222,6 +224,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       '/settings/habits',
       '/settings/appearance',
       '/settings/privacy',
+      '/settings/feedback',
     ]);
     expect(list.getByRole('link', { name: 'Account & security' })).toHaveAccessibleDescription('On this device');
 

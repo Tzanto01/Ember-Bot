@@ -18,6 +18,11 @@ export interface RequestOptions {
   timeoutMs?: number;
   /** Extra request headers; undefined values are left out. */
   headers?: Record<string, string | undefined>;
+  /**
+   * Sends an own `/api/` request to the server even while {@link Http.local} answers them, then without bearer token,
+   * cookies or XSRF token.
+   */
+  server?: boolean;
 }
 
 /** A downloaded body with the response headers (for `Content-Disposition`). */
@@ -239,17 +244,18 @@ export class Http {
     options: RequestOptions,
     token: string | null,
   ): Promise<Response> {
-    if (this.local && this.isOwnApi(url)) {
+    const anonymous = !!options.server && !!this.local;
+    if (this.local && !options.server && this.isOwnApi(url)) {
       const path = url.startsWith('/api/') ? url : url.slice(this.config.apiBase.length);
       return this.local(method, withQuery(path, options.params), options.body ?? null);
     }
     const headers = new Headers();
     const hasBody = options.body !== undefined && options.body !== null;
     if (hasBody) headers.set('Content-Type', 'application/json');
-    if (token) headers.set('Authorization', `Bearer ${token}`);
+    if (token && !anonymous) headers.set('Authorization', `Bearer ${token}`);
     for (const [name, value] of Object.entries(options.headers ?? {})) if (value !== undefined) headers.set(name, value);
     const resolved = this.resolve(url, options.params);
-    if (!this.config.native && mutating.has(method) && isSameOrigin(resolved)) {
+    if (!this.config.native && !anonymous && mutating.has(method) && isSameOrigin(resolved)) {
       const xsrf = readCookie('XSRF-TOKEN');
       if (xsrf) headers.set('X-XSRF-TOKEN', xsrf);
     }
@@ -257,7 +263,7 @@ export class Http {
       method,
       headers,
       body: hasBody ? JSON.stringify(options.body) : undefined,
-      credentials: this.config.native ? 'omit' : 'same-origin',
+      credentials: this.config.native || anonymous ? 'omit' : 'same-origin',
       signal: AbortSignal.timeout(options.timeoutMs ?? requestTimeoutMs),
     });
   }

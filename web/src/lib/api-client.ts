@@ -8,6 +8,7 @@ import type {
   DeleteAccountRequest,
   EmailCode,
   ExportFormat,
+  FeedbackRequest,
   Habit,
   HabitPatch,
   HabitTemplate,
@@ -467,6 +468,11 @@ export class ApiClient {
   async getVapidPublicKey(): Promise<string> {
     const body = await this.http.request<{ key: string }>('GET', '/api/push/vapid-public-key');
     return body.key;
+  }
+
+  /** `POST /api/feedback` (v1.13): reaches the server in no-account mode too, then anonymously; 429 `rate_limited`. */
+  sendFeedback(body: FeedbackRequest): Promise<void> {
+    return this.http.request('POST', '/api/feedback', { body, server: true });
   }
 
   /** `POST /api/me/push-subscriptions`. */

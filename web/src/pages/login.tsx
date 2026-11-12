@@ -360,6 +360,9 @@ export default function LoginPage() {
           <TapLink to="/download">Get the app</TapLink>
         </p>
       )}
+      <p className="text-center">
+        <TapLink to="/feedback">Send feedback</TapLink>
+      </p>
     </>
   );
 }
