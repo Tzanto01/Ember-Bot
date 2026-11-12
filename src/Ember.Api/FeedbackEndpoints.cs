@@ -75,18 +75,59 @@ internal static class FeedbackEndpoints
         return api;
     }
 
+    /// <summary>The server's request body limit, which every other request keeps.</summary>
+    public const long SmallBodyBytes = 64 * 1024;
+
+    /// <summary>Most requests over <see cref="SmallBodyBytes"/> to <c>POST /api/feedback</c> read at the same time, across all users.</summary>
+    public const int MaxConcurrentBigBodies = 3;
+
+    private static readonly SemaphoreSlim BigBodies = new(MaxConcurrentBigBodies);
+
     /// <summary>
-    /// Middleware before the endpoints: raises the body limit of <c>POST /api/feedback</c> to <see cref="MaxBodyBytes"/> for a
-    /// signed-in caller, so only they can send pictures; everyone else keeps the server's 64 KiB.
+    /// Middleware before the endpoints: for a signed-in caller's <c>POST /api/feedback</c> without a <c>Content-Length</c> or
+    /// with one over <see cref="SmallBodyBytes"/>, takes a <see cref="RateLimits.FeedbackBigBodyKey"/> permit and one of
+    /// <see cref="MaxConcurrentBigBodies"/> slots before the body is read, then raises the body limit to
+    /// <see cref="MaxBodyBytes"/>, so only signed-in callers can send pictures and they can't flood the server with large
+    /// invalid bodies. Without a permit or slot it answers 429 (<c>Retry-After</c> from the lease, else 60 s for a slot).
+    /// Everyone else, and small bodies, keep the server's limit.
     /// </summary>
-    public static Task RaiseBodyLimit(HttpContext http, RequestDelegate next)
+    public static async Task RaiseBodyLimit(HttpContext http, RequestDelegate next)
     {
-        if (HttpMethods.IsPost(http.Request.Method)
-            && http.User.Identity?.IsAuthenticated == true
-            && http.Request.Path.Equals("/api/feedback", StringComparison.OrdinalIgnoreCase)
-            && http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
-            limit.MaxRequestBodySize = MaxBodyBytes;
-        return next(http);
+        if (!HttpMethods.IsPost(http.Request.Method)
+            || http.User.Identity?.IsAuthenticated != true
+            || !http.Request.Path.Equals("/api/feedback", StringComparison.OrdinalIgnoreCase)
+            || http.Request.ContentLength <= SmallBodyBytes)
+        {
+            await next(http);
+            return;
+        }
+
+        var limiter = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>();
+        using (var lease = limiter.AttemptAcquire(RateLimits.FeedbackBigBodyKey(http.User.UserId())))
+        {
+            if (!lease.IsAcquired)
+            {
+                await RateLimits.Reject(http, lease, RateLimits.MailWindow).ExecuteAsync(http);
+                return;
+            }
+        }
+
+        if (!BigBodies.Wait(0))
+        {
+            http.Response.Headers.RetryAfter = "60";
+            await Problems.RateLimited().ExecuteAsync(http);
+            return;
+        }
+
+        try
+        {
+            if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = MaxBodyBytes;
+            await next(http);
+        }
+        finally
+        {
+            BigBodies.Release();
+        }
     }
 
     private static bool IsVersion(string version)

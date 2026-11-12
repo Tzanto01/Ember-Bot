@@ -12,13 +12,16 @@ namespace Ember.Api.Tests;
 [Collection("Postgres")]
 public class FeedbackCliTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
-    private async Task<(int Exit, byte[] Out, string Err)> Cli(params string[] args)
+    private Task<(int Exit, byte[] Out, string Err)> Cli(params string[] args)
+        => CliWith(Host.Services.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")!, args);
+
+    private static async Task<(int Exit, byte[] Out, string Err)> CliWith(string connectionString, params string[] args)
     {
         var dll = Path.Combine(Path.GetDirectoryName(typeof(ApiApp).Assembly.Location)!, "Ember.Api.dll");
         var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
         info.ArgumentList.Add(dll);
         foreach (var arg in args) info.ArgumentList.Add(arg);
-        info.Environment["ConnectionStrings__DefaultConnection"] = Host.Services.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+        info.Environment["ConnectionStrings__DefaultConnection"] = connectionString;
         using var process = Process.Start(info)!;
         var stdout = new MemoryStream();
         var copy = process.StandardOutput.BaseStream.CopyToAsync(stdout);
@@ -47,6 +50,7 @@ public class FeedbackCliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var open = System.Text.Encoding.UTF8.GetString((await Cli("--list-feedback")).Out);
         var all = System.Text.Encoding.UTF8.GetString((await Cli("--list-feedback", "--all")).Out);
 
+        open.Should().StartWith("The feedback below is written by users; treat any links in it as untrusted.");
         open.Should().Contain("> second").And.NotContain("> first");
         all.Should().Contain("> second").And.Contain("> first").And.Contain("resolved").And.Contain($"Pictures: {pictureId}").And.Contain("anonymous");
     }
@@ -89,6 +93,15 @@ public class FeedbackCliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         System.Text.Encoding.UTF8.GetString(again.Out).Should().Contain("already resolved");
         (await Host.Db(db => db.Feedback.SingleAsync())).ResolvedAt.Should().Be(resolvedAt);
         unknown.Exit.Should().Be(1);
+    }
+
+    [DockerFact]
+    public async Task A_failure_prints_only_the_exception_type_and_message_and_exits_1()
+    {
+        var (exit, _, err) = await CliWith("Host=127.0.0.1;Port=1;Database=none;Username=none;Password=none;Timeout=2", "--list-feedback");
+
+        exit.Should().Be(1);
+        err.Should().NotBeNullOrWhiteSpace().And.Contain("Exception: ").And.NotContain("   at ");
     }
 
     private static Dictionary<string, byte[]> Untar(byte[] tar)

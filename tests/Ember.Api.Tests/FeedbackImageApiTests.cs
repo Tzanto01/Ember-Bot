@@ -87,6 +87,18 @@ public class FeedbackImageApiTests(PostgresFixture postgres) : ApiTestBase(postg
     }
 
     [DockerFact]
+    public async Task A_title_with_a_unicode_line_or_paragraph_separator_is_refused()
+    {
+        foreach (var title in new[] { "one\u2028two", "one\u2029two" })
+        {
+            var problem = await (await Host.NewClient().Post(Url, Body(title: title))).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+            problem.GetProperty("errors").GetProperty("title")[0].GetString().Should().Be("Keep the title on one line.");
+        }
+
+        (await Stored()).Should().BeEmpty();
+    }
+
+    [DockerFact]
     public async Task A_missing_title_from_an_older_app_is_taken_from_the_first_line_of_the_text()
     {
         await (await Host.NewClient().Post(Url, new { text = "Dark mode please\nIt hurts at night", platform = "web" })).Expect(HttpStatusCode.NoContent);
@@ -151,6 +163,19 @@ public class FeedbackImageApiTests(PostgresFixture postgres) : ApiTestBase(postg
         (await Stored()).Should().ContainSingle().Which.Images.Should().ContainSingle().Which.Size.Should().BeGreaterThan(700 * 1024);
     }
 
+    [DockerFact]
+    public async Task A_report_from_an_account_that_no_longer_exists_is_kept_anonymous_without_its_pictures()
+    {
+        var picture = new FeedbackImage { ContentType = "image/jpeg", Data = SyntheticImages.Jpeg() };
+
+        (await Host.Service(s => s.SaveFeedbackAsync(Guid.NewGuid(), "web", "1.0", "It closes", default, "Crash", [picture]))).Should().BeTrue();
+
+        var item = (await Stored()).Should().ContainSingle().Subject;
+        (item.UserId, item.Title, item.Text).Should().Be(((Guid?)null, "Crash", "It closes"));
+        item.Images.Should().BeEmpty();
+        (await Host.Db(db => db.FeedbackImages.CountAsync())).Should().Be(0);
+    }
+
     private async Task<HttpClient> KestrelUserAsync()
     {
         var http = Host.CreateClient();
@@ -205,5 +230,56 @@ public class FeedbackImageDigestTests(PostgresFixture postgres) : FeedbackDigest
         var left = await Host.Db(db => db.Feedback.Where(f => f.Images.Any()).Select(f => f.Title).OrderBy(t => t).ToListAsync());
         left.Should().Equal("open", "recent");
         (await Stored()).Should().HaveCount(3, "the reports themselves stay");
+    }
+
+    [DockerFact]
+    public async Task Pictures_of_an_open_report_within_a_day_of_the_12_month_retention_are_deleted_so_they_never_outlive_it()
+    {
+        await Report("nearly a year", 1);
+        await Report("half a year", 1);
+        var now = Host.Time.GetUtcNow().UtcDateTime;
+        await Host.Db(db => db.Feedback.Where(f => f.Title == "nearly a year").ExecuteUpdateAsync(s => s.SetProperty(f => f.CreatedAt, now.AddMonths(-12).AddHours(12))));
+        await Host.Db(db => db.Feedback.Where(f => f.Title == "half a year").ExecuteUpdateAsync(s => s.SetProperty(f => f.CreatedAt, now.AddMonths(-6))));
+
+        await RunDigest();
+
+        (await Host.Db(db => db.Feedback.Where(f => f.Images.Any()).Select(f => f.Title).ToListAsync())).Should().Equal("half a year");
+        (await Stored()).Should().HaveCount(2);
+    }
+
+    [DockerFact]
+    public async Task A_title_with_a_unicode_line_separator_is_quoted_line_by_line_so_it_cannot_fake_a_header()
+    {
+        await Report("legacy", 0);
+        await Host.Db(db => db.Feedback.ExecuteUpdateAsync(s => s.SetProperty(f => f.Title, "a\u2028#999 · fake header")));
+
+        await RunDigest();
+
+        Transport.Sent.Should().ContainSingle().Which.Body.Should().Contain("> a\n> #999 · fake header\n>\n");
+    }
+}
+
+[Collection("Postgres")]
+public class FeedbackBigBodyRateLimitTests(PostgresFixture postgres) : ApiTestBase(postgres)
+{
+    protected override Dictionary<string, string?>? Settings => new() { ["Ember:RateLimits:FeedbackPerHour"] = "2" };
+
+    [DockerFact]
+    public async Task Large_invalid_bodies_use_up_the_users_big_body_permits_and_then_get_a_429_while_small_reports_still_pass()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        var large = new { title = "", text = "x", platform = "web", padding = new string('p', 100 * 1024) };
+
+        for (var i = 0; i < 2; i++) await (await user.Post("/api/feedback", large)).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var limited = await user.Post("/api/feedback", large);
+
+        await limited.ExpectProblem((HttpStatusCode)429, "rate_limited");
+        limited.Headers.RetryAfter.Should().NotBeNull();
+        var small = new HttpRequestMessage(HttpMethod.Post, "/api/feedback")
+        {
+            Content = new StringContent("{\"title\":\"Small\",\"text\":\"Still works\",\"platform\":\"web\"}", System.Text.Encoding.UTF8, "application/json"),
+        };
+        small.Headers.Add("X-XSRF-TOKEN", user.Csrf);
+        await (await user.Http.SendAsync(small)).Expect(HttpStatusCode.NoContent);
     }
 }

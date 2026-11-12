@@ -18,7 +18,7 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
 {
     internal const string ModalId = "feedback:modal";
 
-    /// <summary>The named <see cref="HttpClient"/> for picture downloads: 15 s timeout, no redirects.</summary>
+    /// <summary>The named <see cref="HttpClient"/> for picture downloads: 15 s timeout, no redirects; each whole download (headers and body) also gets 15 s.</summary>
     public const string HttpClientName = "feedback-images";
 
     internal const string AnonymousValue = "anonymous";
@@ -40,6 +40,8 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
     internal const string PictureBudgetText = "You've sent a lot of pictures today. 💙 Try again tomorrow, or send it without pictures.";
 
     private static readonly string[] AttachmentHosts = ["cdn.discordapp.com", "media.discordapp.net"];
+
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(15);
 
     private readonly HabitService _habits;
     private readonly FeedbackCooldown _cooldown;
@@ -133,17 +135,18 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
 
         try
         {
-            using var response = await _httpClients.CreateClient(HttpClientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            using var timeout = new CancellationTokenSource(DownloadTimeout);
+            using var response = await _httpClients.CreateClient(HttpClientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             if (!response.IsSuccessStatusCode) return null;
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
             var buffer = new byte[attachment.Size + 1];
             var read = 0;
             int chunk;
-            while (read < buffer.Length && (chunk = await stream.ReadAsync(buffer.AsMemory(read))) > 0) read += chunk;
+            while (read < buffer.Length && (chunk = await stream.ReadAsync(buffer.AsMemory(read), timeout.Token)) > 0) read += chunk;
             return read == 0 || read > attachment.Size ? null : buffer[..read];
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException)
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
         {
             return null;
         }

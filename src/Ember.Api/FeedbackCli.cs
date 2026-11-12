@@ -8,9 +8,9 @@ namespace Ember.Api;
 /// <summary>
 /// Operator commands on the stored feedback, run inside the API container (<c>docker compose exec -T api dotnet Ember.Api.dll
 /// ...</c>) against <c>ConnectionStrings:DefaultConnection</c> from the environment, without starting the web host. Never
-/// reachable over HTTP.
+/// reachable over HTTP. Any failure prints the exception type and message (no stack trace) to stderr and exits 1.
 /// <list type="bullet">
-/// <item><c>--list-feedback [--all]</c>: read-only; prints the unresolved reports (with <c>--all</c> every report), oldest first:
+/// <item><c>--list-feedback [--all]</c>: read-only; prints the untrusted-content notice, then the unresolved reports (with <c>--all</c> every report), oldest first:
 /// id, created and resolved time (UTC), platform, version, <c>user {id}</c> or <c>anonymous</c>, the title and text quoted with
 /// <c>&gt; </c> and the picture ids. Exit 0.</item>
 /// <item><c>--feedback-images &lt;id&gt;...</c>: each id a report id (integer, all its pictures) or a picture id (GUID); writes a
@@ -29,17 +29,25 @@ internal static class FeedbackCli
     /// <summary>Runs the verb in <paramref name="args"/> and returns the exit code.</summary>
     public static async Task<int> RunAsync(string[] args)
     {
-        var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
-        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(configuration.GetConnectionString("DefaultConnection")).Options;
-        await using var db = new EmberDbContext(options);
-        return args switch
+        try
         {
-            ["--list-feedback"] => await ListAsync(db, all: false),
-            ["--list-feedback", "--all"] => await ListAsync(db, all: true),
-            ["--feedback-images", _, ..] => await ImagesAsync(db, args[1..]),
-            ["--resolve-feedback", _, ..] => await ResolveAsync(db, args[1..]),
-            _ => Usage(),
-        };
+            var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+            var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(configuration.GetConnectionString("DefaultConnection")).Options;
+            await using var db = new EmberDbContext(options);
+            return args switch
+            {
+                ["--list-feedback"] => await ListAsync(db, all: false),
+                ["--list-feedback", "--all"] => await ListAsync(db, all: true),
+                ["--feedback-images", _, ..] => await ImagesAsync(db, args[1..]),
+                ["--resolve-feedback", _, ..] => await ResolveAsync(db, args[1..]),
+                _ => Usage(),
+            };
+        }
+        catch (Exception e)
+        {
+            await Console.Error.WriteLineAsync($"{e.GetType().Name}: {e.Message}");
+            return 1;
+        }
     }
 
     private static int Usage()
@@ -56,13 +64,15 @@ internal static class FeedbackCli
             .Select(f => new { f.Id, f.CreatedAt, f.ResolvedAt, f.Platform, f.Version, f.UserId, f.Title, f.Text, Pictures = f.Images.OrderBy(i => i.Id).Select(i => i.Id).ToList() })
             .ToListAsync();
         var output = Console.Out;
+        await output.WriteLineAsync(FeedbackDigest.UntrustedNotice);
+        await output.WriteLineAsync();
         foreach (var item in items)
         {
             await output.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
                 $"#{item.Id} · {Utc(item.CreatedAt)}{(item.ResolvedAt is { } resolved ? " · resolved " + Utc(resolved) : "")} · {item.Platform} {item.Version ?? "unknown version"} · {(item.UserId is { } userId ? $"user {userId}" : "anonymous")}"));
-            await output.WriteLineAsync("> " + item.Title);
+            foreach (var line in FeedbackDigest.Quote(item.Title)) await output.WriteLineAsync(line);
             await output.WriteLineAsync(">");
-            foreach (var line in item.Text.ReplaceLineEndings("\n").Split('\n')) await output.WriteLineAsync("> " + line);
+            foreach (var line in FeedbackDigest.Quote(item.Text)) await output.WriteLineAsync(line);
             if (item.Pictures.Count > 0) await output.WriteLineAsync("Pictures: " + string.Join(", ", item.Pictures));
             await output.WriteLineAsync();
         }

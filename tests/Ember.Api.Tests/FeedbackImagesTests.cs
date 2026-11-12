@@ -95,6 +95,25 @@ public class FeedbackImagesTests
         }
     }
 
+    [Fact]
+    public void A_webp_chunk_size_near_the_uint_limit_is_rejected_without_throwing()
+    {
+        var input = SyntheticImages.Join("RIFF"u8.ToArray(), [0x0C, 0, 0, 0], "WEBP"u8.ToArray(), "VP8 "u8.ToArray(), [0xFF, 0xFF, 0xFF, 0xFF]);
+
+        FeedbackImages.Sanitize(input, out var error).Should().BeNull();
+        error.Should().Be(FeedbackImages.Unreadable);
+    }
+
+    [Fact]
+    public void A_jpeg_may_have_up_to_64_scans_and_one_with_more_is_rejected()
+    {
+        FeedbackImages.Sanitize(SyntheticImages.JpegWithScans(FeedbackImages.MaxJpegScans), out var error).Should().NotBeNull();
+        error.Should().BeNull();
+
+        FeedbackImages.Sanitize(SyntheticImages.JpegWithScans(FeedbackImages.MaxJpegScans + 1), out error).Should().BeNull();
+        error.Should().Be(FeedbackImages.Unreadable);
+    }
+
     [Theory]
     [InlineData(4096, 4096, true)]
     [InlineData(4097, 8, false)]

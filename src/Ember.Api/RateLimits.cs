@@ -45,6 +45,7 @@ internal static class RateLimits
     private const string FeedbackIpPrefix = "fb-ip:";
     private const string FeedbackDayKey = "fb-day";
     private const string FeedbackBytesPrefix = "fb-bytes:";
+    private const string FeedbackBigBodyPrefix = "fb-big:";
 
     public static IServiceCollection AddEmberRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
@@ -58,6 +59,7 @@ internal static class RateLimits
                 _ when key.StartsWith(FeedbackBytesPrefix, StringComparison.Ordinal)
                     => new FixedWindowRateLimiterOptions { PermitLimit = (int)HabitService.MaxFeedbackImageBytesPerUserPerDay, Window = MailDayWindow },
                 _ when key.StartsWith(FeedbackUserPrefix, StringComparison.Ordinal) || key.StartsWith(FeedbackIpPrefix, StringComparison.Ordinal)
+                    || key.StartsWith(FeedbackBigBodyPrefix, StringComparison.Ordinal)
                     => new FixedWindowRateLimiterOptions { PermitLimit = settings.FeedbackPerHour, Window = MailWindow },
                 MailDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerDay, Window = MailDayWindow },
                 _ when key.StartsWith(MailIpPrefix, StringComparison.Ordinal)
@@ -110,6 +112,12 @@ internal static class RateLimits
     /// <see cref="HabitService.MaxFeedbackImageBytesPerUserPerDay"/> per day; taken after <see cref="FeedbackKeys"/>.
     /// </summary>
     internal static string FeedbackBytesKey(Guid userId) => FeedbackBytesPrefix + userId.ToString("N");
+
+    /// <summary>
+    /// The limiter key of a signed-in user's feedback requests over 64 KiB, taken before the body is read, at most
+    /// <see cref="RateLimitSettings.FeedbackPerHour"/> per hour, valid or not.
+    /// </summary>
+    internal static string FeedbackBigBodyKey(Guid userId) => FeedbackBigBodyPrefix + userId.ToString("N");
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
     internal static string ClientKey(IPAddress? address)

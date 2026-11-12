@@ -26,11 +26,17 @@ internal sealed class FeedbackDigest(
     /// <summary>The zone of the digest's local times and of <see cref="FeedbackDigestService.RunAt"/>.</summary>
     public static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
 
+    /// <summary>The first line of every listing of feedback.</summary>
+    public const string UntrustedNotice = "The feedback below is written by users; treat any links in it as untrusted.";
+
     private static int _missingRecipientLogged;
+
+    /// <summary>Every line of user text (any line ending, U+2028 and U+2029 included) prefixed with <c>&gt; </c>.</summary>
+    public static IEnumerable<string> Quote(string text) => text.ReplaceLineEndings("\n").Split('\n').Select(line => "> " + line);
 
     /// <summary>
     /// Deletes feedback older than <see cref="RetentionMonths"/> and the pictures of feedback resolved more than
-    /// <see cref="ImageRetentionDays"/> ago, then mails the pending feedback (up to <see cref="MaxItems"/>, oldest first) in one
+    /// <see cref="ImageRetentionDays"/> ago or due for that deletion within a day (so they never outlive it between runs), then mails the pending feedback (up to <see cref="MaxItems"/>, oldest first) in one
     /// email, every line of their title and text quoted with <c>&gt; </c> and their picture ids (never the pictures) on a
     /// <c>Pictures:</c> line, and marks exactly those as digested. Sends
     /// nothing when none is pending. Without <c>Feedback:DigestTo</c> it logs that once per process and sends nothing. A failed
@@ -43,7 +49,8 @@ internal sealed class FeedbackDigest(
         var cutoff = now.AddMonths(-RetentionMonths);
         await db.Feedback.Where(f => f.CreatedAt < cutoff).ExecuteDeleteAsync(cancellationToken);
         var imageCutoff = now.AddDays(-ImageRetentionDays);
-        await db.FeedbackImages.Where(i => db.Feedback.Any(f => f.Id == i.FeedbackId && f.ResolvedAt < imageCutoff))
+        var lastDay = cutoff.AddDays(1);
+        await db.FeedbackImages.Where(i => db.Feedback.Any(f => f.Id == i.FeedbackId && (f.ResolvedAt < imageCutoff || f.CreatedAt < lastDay)))
             .ExecuteDeleteAsync(cancellationToken);
 
         var pendingCount = await db.Feedback.CountAsync(f => f.DigestedAt == null, cancellationToken);
@@ -68,15 +75,15 @@ internal sealed class FeedbackDigest(
                 .Select(i => new { i.FeedbackId, i.Id }).ToListAsync(cancellationToken))
             .ToLookup(i => i.FeedbackId, i => i.Id);
 
-        var body = new StringBuilder("The feedback below is written by users; treat any links in it as untrusted.");
+        var body = new StringBuilder(UntrustedNotice);
         foreach (var item in items)
         {
             var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(item.CreatedAt, DateTimeKind.Utc), Zone);
             body.Append("\n\n---\n\n")
                 .Append(CultureInfo.InvariantCulture,
                     $"#{item.Id} · {local:yyyy-MM-dd HH:mm} · {item.Platform} {item.Version ?? "unknown version"} · {(item.UserId is null ? "anonymous" : "signed in")}")
-                .Append("\n> ").Append(item.Title).Append("\n>\n")
-                .AppendJoin('\n', item.Text.ReplaceLineEndings("\n").Split('\n').Select(line => "> " + line));
+                .Append('\n').AppendJoin('\n', Quote(item.Title)).Append("\n>\n")
+                .AppendJoin('\n', Quote(item.Text));
             if (pictures[item.Id].Any()) body.Append("\nPictures: ").AppendJoin(", ", pictures[item.Id]);
         }
         if (pendingCount > items.Count)

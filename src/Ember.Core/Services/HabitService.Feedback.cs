@@ -44,12 +44,12 @@ public partial class HabitService
 
     /// <summary>
     /// Why a feedback title can't be stored, or null when it can. <paramref name="title"/> must already be trimmed. The rules of
-    /// <see cref="FeedbackTextError"/>, at most <see cref="MaxFeedbackTitleLength"/> and on one line (no line break or tab).
+    /// <see cref="FeedbackTextError"/>, at most <see cref="MaxFeedbackTitleLength"/> and on one line (no line break, tab, U+2028 or U+2029).
     /// </summary>
     public static string? FeedbackTitleError(string title)
     {
         if (title.Length > MaxFeedbackTitleLength) return $"At most {MaxFeedbackTitleLength} characters.";
-        if (title.AsSpan().IndexOfAny('\n', '\r', '\t') >= 0) return "Keep the title on one line.";
+        if (title.AsSpan().IndexOfAny("\n\r\t\u2028\u2029") >= 0) return "Keep the title on one line.";
         return FeedbackTextError(title);
     }
 
@@ -59,7 +59,7 @@ public partial class HabitService
     /// hours over <see cref="MaxFeedbackImageBytesPerDay"/> (checked before the insert, not atomically, so parallel requests can
     /// overshoot it by what they carry). The per-sender byte budget (<see cref="MaxFeedbackImageBytesPerUserPerDay"/>) is the
     /// caller's. <paramref name="userId"/> is kept only while that user exists; when the user is deleted or merged away in the
-    /// meantime the feedback is stored without one. The caller validates the input (<see cref="FeedbackTextError"/>,
+    /// meantime the feedback is stored without one and without its pictures, so they never outlive the account. The caller validates the input (<see cref="FeedbackTextError"/>,
     /// <see cref="FeedbackTitleError"/>, trimmed, pictures from <see cref="FeedbackImages.Sanitize"/>).
     /// </summary>
     /// <param name="userId">The sender's account, or null when they have none or send anonymously.</param>
@@ -87,7 +87,11 @@ public partial class HabitService
             if (stored + images.Sum(i => (long)i.Size) > MaxFeedbackImageBytesPerDay) return false;
         }
 
-        if (userId is { } id && !await _db.Users.AnyAsync(u => u.Id == id, cancellationToken)) userId = null;
+        if (userId is { } id && !await _db.Users.AnyAsync(u => u.Id == id, cancellationToken))
+        {
+            userId = null;
+            images = null;
+        }
 
         var feedback = new Feedback
         {
@@ -109,6 +113,8 @@ public partial class HabitService
             if (await _db.Users.AnyAsync(u => u.Id == feedback.UserId, cancellationToken)) throw;
 
             feedback.UserId = null;
+            foreach (var image in feedback.Images) _db.Entry(image).State = EntityState.Detached;
+            feedback.Images.Clear();
             await _db.SaveChangesAsync(cancellationToken);
         }
 

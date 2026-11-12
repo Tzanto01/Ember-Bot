@@ -29,6 +29,13 @@ internal static class SyntheticImages
             trailing ? ExifMarker : []);
     }
 
+    public static byte[] JpegWithScans(int scans)
+    {
+        var jpeg = Jpeg();
+        var scan = Join(JpegSegment(0xDA, [1, 1, 0, 0, 63, 0]), Enumerable.Repeat((byte)0x11, 4).ToArray());
+        return Join(jpeg[..^2], Join(Enumerable.Repeat(scan, scans - 1).ToArray()), [0xFF, 0xD9]);
+    }
+
     public static byte[] JpegWithSegmentLength(int length) => Join([0xFF, 0xD8, 0xFF, 0xE1], Be16(length), new byte[4]);
 
     public static byte[] PngChunk(string type, byte[] data, bool badCrc = false)

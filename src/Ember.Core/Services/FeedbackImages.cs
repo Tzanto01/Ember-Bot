@@ -23,6 +23,9 @@ public static class FeedbackImages
     /// <summary>Most pixels a picture can have per side.</summary>
     public const int MaxSide = 4096;
 
+    /// <summary>Most SOS scans a JPEG can have (progressive ones have about 10), so a picture can't make the copy loop scan forever.</summary>
+    public const int MaxJpegScans = 64;
+
     /// <summary>The error for a picture that isn't valid base64 or whose structure is broken.</summary>
     public const string Unreadable = "One of the pictures couldn't be read. Try another one.";
 
@@ -99,7 +102,7 @@ public static class FeedbackImages
         output.Write([0xFF, 0xD8]);
         var position = 2;
         var frame = false;
-        var scanned = false;
+        var scans = 0;
         while (true)
         {
             if (position >= data.Length || data[position] != 0xFF) return Unreadable;
@@ -108,7 +111,7 @@ public static class FeedbackImages
             var marker = data[position++];
             if (marker == 0xD9)
             {
-                if (!scanned) return Unreadable;
+                if (scans == 0) return Unreadable;
                 output.Write([0xFF, 0xD9]);
                 return null;
             }
@@ -134,7 +137,7 @@ public static class FeedbackImages
                     output.Write(segment);
                     break;
                 case 0xDA:
-                    if (!frame) return Unreadable;
+                    if (!frame || ++scans > MaxJpegScans) return Unreadable;
                     output.Write(segment);
                     var start = position;
                     while (true)
@@ -146,7 +149,6 @@ public static class FeedbackImages
                         position += 2;
                     }
                     output.Write(data[start..position]);
-                    scanned = true;
                     break;
                 default:
                     return Unreadable;
@@ -201,10 +203,10 @@ public static class FeedbackImages
             if (end - position < 8) return Unreadable;
             var fourCc = Encoding.ASCII.GetString(data.Slice(position, 4));
             var size = BinaryPrimitives.ReadUInt32LittleEndian(data[(position + 4)..]);
-            if (size + (size & 1) > end - position - 8L) return Unreadable;
+            if ((long)size + (size & 1) > end - position - 8L) return Unreadable;
             var payload = data.Slice(position + 8, (int)size);
             var chunkStart = position;
-            position += 8 + (int)(size + (size & 1));
+            position += 8 + (int)((long)size + (size & 1));
             if (chunkStart == 12 && fourCc is not ("VP8 " or "VP8L" or "VP8X")) return Unreadable;
 
             switch (fourCc)
