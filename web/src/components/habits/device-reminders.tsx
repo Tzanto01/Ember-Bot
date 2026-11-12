@@ -18,7 +18,8 @@ export function useReminderDestinations(enabled = true) {
 export function DestinationName({ destination }: { destination: ReminderDestination }) {
   return (
     <>
-      <span className="[overflow-wrap:anywhere]">{destination.label}</span>{' '}
+      <span className="[overflow-wrap:anywhere]">{destination.label}</span>
+      {destination.current && <span className="sr-only">,</span>}{' '}
       {destination.current && <Badge>{destination.kind === 'phone' ? 'This phone' : 'This browser'}</Badge>}
     </>
   );

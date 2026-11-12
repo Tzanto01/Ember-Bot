@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useNavigate } from 'react-router';
@@ -36,6 +37,7 @@ import {
   type HabitPatch,
   type LocalDateString,
   type ReminderChannel,
+  type ReminderDestination,
   reminderTimesOf,
   type Routine,
 } from '@/lib/models';
@@ -331,20 +333,27 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
   const pushAvailable = useStore(push.available);
   const [shown, setShown] = useState<{ base: string; next: string[] } | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!env.native) void push.check();
   }, []);
 
   const change = useMutation({
-    mutationFn: (next: string[]) => save({ reminderExclusions: next }),
+    mutationFn: ({ next }: { next: string[]; destination: ReminderDestination; checked: boolean }) =>
+      save({ reminderExclusions: next }),
     onSuccess: () => {
-      setFeedback({ tone: 'success', text: 'Saved.' });
+      setSaved(true);
     },
-    onError: (error) => {
+    onError: (error, { destination, checked }) => {
       setShown(null);
-      const problem = failure(error);
-      if (problem) setFeedback({ tone: 'notice', text: problem.message });
+      if (failure(error)) {
+        const kept = checked ? 'off' : 'on';
+        setFeedback({
+          tone: 'notice',
+          text: `That didn't save, so ${destination.label} is still ${kept}. Try again in a moment.`,
+        });
+      }
     },
   });
 
@@ -353,12 +362,14 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
   const reaching = list.filter((d) => d.enabled && !skipped.includes(d.id)).length;
   const loadProblem = destinations.isError && !destinations.data ? failure(destinations.error) : null;
 
-  function toggle(id: string, checked: boolean): void {
+  function toggle(destination: ReminderDestination, checked: boolean): void {
     if (change.isPending) return;
+    const { id } = destination;
     const next = checked ? exclusions.filter((x) => x !== id) : [...exclusions, id];
     setShown({ base: exclusions.join(), next });
     setFeedback(null);
-    change.mutate(next);
+    setSaved(false);
+    change.mutate({ next, destination, checked });
   }
 
   let content: ReactNode;
@@ -367,20 +378,30 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
       list.length === 0 ? (
         <p className="text-muted-foreground">
           Nothing can remind you yet. You can turn reminders on in{' '}
-          <Link to={destinationsLink}>Settings</Link>.
+          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+            Settings
+          </Link>
+          .
         </p>
       ) : (
-        <div role="group" aria-labelledby="channels-heading" className="flex flex-col gap-1">
+        <div
+          role="group"
+          aria-labelledby="channels-heading"
+          aria-describedby="channels-hint"
+          aria-busy={change.isPending || undefined}
+          className="flex flex-col gap-1"
+        >
           {list.map((destination) => {
             const id = `destination-${destination.id}`;
+            const locked = change.isPending && change.variables.destination.id !== destination.id;
             return (
               <div key={destination.id} className="flex min-h-[44px] items-center gap-3 py-1">
                 <Checkbox
                   id={id}
                   checked={destination.enabled && !skipped.includes(destination.id)}
-                  disabled={!destination.enabled}
+                  disabled={!destination.enabled || locked}
                   aria-describedby={destination.enabled ? undefined : `${id}-off`}
-                  onCheckedChange={(checked) => toggle(destination.id, checked === true)}
+                  onCheckedChange={(checked) => toggle(destination, checked === true)}
                 />
                 <div className="flex min-w-0 flex-col">
                   <Label
@@ -394,7 +415,11 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
                   </Label>
                   {!destination.enabled && (
                     <p id={`${id}-off`} className="text-[14px] text-muted-foreground">
-                      Turned off in <Link to={destinationsLink}>Settings</Link>.
+                      Turned off in{' '}
+                      <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+                        Settings
+                      </Link>
+                      .
                     </p>
                   )}
                 </div>
@@ -437,6 +462,11 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
       <h2 id="channels-heading" className="text-[22px]">
         Remind me on
       </h2>
+      {list.length > 0 && (
+        <p id="channels-hint" className="text-[14px] text-muted-foreground">
+          Untick a place to skip it for this {subject}.
+        </p>
+      )}
       {content}
       {list.length > 0 &&
         (reaching === 0 ? (
@@ -452,7 +482,21 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
         ))}
       {missingHere && (
         <p className="text-[14px] text-muted-foreground">
-          To be reminded on this {thisDevice} too, turn it on in <Link to={destinationsLink}>Settings</Link>.
+          To be reminded on this {thisDevice} too, turn it on in{' '}
+          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+            Settings
+          </Link>
+          .
+        </p>
+      )}
+      {list.length > 0 && (
+        <p role="status" className="inline-flex items-center gap-1.5 font-medium text-foreground">
+          {saved && (
+            <>
+              <Check aria-hidden className="size-[18px] text-primary" />
+              Saved.
+            </>
+          )}
         </p>
       )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}

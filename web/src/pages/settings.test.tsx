@@ -333,7 +333,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       const { fetch } = await open('/settings/reminders');
       (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop, phone]);
 
-      const here = await screen.findByRole('switch', { name: 'Firefox on Linux This browser' });
+      const here = await screen.findByRole('switch', { name: 'Firefox on Linux, This browser' });
       expect(here).toBeChecked();
       expect(screen.getByRole('switch', { name: 'Discord DMs' })).toBeChecked();
       expect(screen.getByRole('switch', { name: 'Pixel 8' })).not.toBeChecked();
@@ -358,7 +358,28 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       (await fetch.next('PATCH', '/api/me/reminder-destinations/discord')).respond(500, { type: 'internal' });
 
       expect(await screen.findByRole('switch', { name: 'Discord DMs' })).toBeChecked();
-      expect(await within(screen.getByRole('region', { name: 'Where Ember reminds you' })).findByRole('alert')).toBeVisible();
+      expect(
+        await within(screen.getByRole('region', { name: 'Where Ember reminds you' })).findByRole('alert'),
+      ).toHaveTextContent("That didn't save, so Discord DMs is still on. Try again in a moment.");
+    });
+
+    it('saves two destinations at once and confirms each row', async () => {
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop, phone]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Discord DMs' }));
+      await user.click(screen.getByRole('switch', { name: 'Pixel 8' }));
+      const first = await fetch.next('PATCH', '/api/me/reminder-destinations/discord');
+      const second = await fetch.next('PATCH', '/api/me/reminder-destinations/phone-5');
+      expect(second.body).toEqual({ enabled: true });
+
+      second.respond(200, { ...phone, enabled: true });
+      first.respond(200, { ...discord, enabled: false });
+
+      await waitFor(() => expect(screen.getAllByText('Saved.')).toHaveLength(2));
+      expect(screen.getByRole('switch', { name: 'Discord DMs' })).not.toBeChecked();
+      expect(screen.getByRole('switch', { name: 'Pixel 8' })).toBeChecked();
     });
 
     it('turns reminders on in this browser when it is not listed yet, then shows its row', async () => {
@@ -373,7 +394,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       expect(subscribe).toHaveBeenCalledTimes(1);
       (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop]);
 
-      expect(await screen.findByRole('switch', { name: 'Firefox on Linux This browser' })).toBeChecked();
+      expect(await screen.findByRole('switch', { name: 'Firefox on Linux, This browser' })).toBeChecked();
       expect(screen.queryByRole('button', { name: 'Turn on reminders in this browser' })).toBeNull();
     });
 
@@ -396,7 +417,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       await user.click(screen.getByRole('button', { name: 'Turn on reminders on this phone' }));
       (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, mine]);
 
-      expect(await screen.findByRole('switch', { name: 'Pixel 8 This phone' })).toBeChecked();
+      expect(await screen.findByRole('switch', { name: 'Pixel 8, This phone' })).toBeChecked();
       expect(rebuild).toHaveBeenCalled();
     });
 
@@ -408,12 +429,26 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       const { fetch } = await open('/settings/reminders');
       (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [mine]);
 
-      await user.click(await screen.findByRole('switch', { name: 'Pixel 8 This phone' }));
+      await user.click(await screen.findByRole('switch', { name: 'Pixel 8, This phone' }));
       rebuild.mockClear();
       (await fetch.next('PATCH', '/api/me/reminder-destinations/phone-5')).respond(200, { ...mine, enabled: false });
 
       await waitFor(() => expect(rebuild).toHaveBeenCalled());
-      expect(screen.getByRole('switch', { name: 'Pixel 8 This phone' })).not.toBeChecked();
+      expect(screen.getByRole('switch', { name: 'Pixel 8, This phone' })).not.toBeChecked();
+    });
+
+    it('in the app, switching Discord off rebuilds this phone\'s reminders too', async () => {
+      env.native = true;
+      const rebuild = vi.spyOn(deviceSync, 'rebuildReminders').mockImplementation(() => undefined);
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, { ...phone, current: true }]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Discord DMs' }));
+      rebuild.mockClear();
+      (await fetch.next('PATCH', '/api/me/reminder-destinations/discord')).respond(200, { ...discord, enabled: false });
+
+      await waitFor(() => expect(rebuild).toHaveBeenCalled());
     });
   });
 

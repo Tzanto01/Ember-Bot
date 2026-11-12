@@ -12,8 +12,11 @@ namespace Ember.Bot.Modules;
 public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionContext>
 {
     internal const string AskText =
-        "Want your reminders here in Discord too? 🔥\n" +
-        "I can DM you each reminder you set, next to the ones in the app. You can change this any time in Settings.";
+        "Want me to send your reminders here as Discord DMs? 🔥\n" +
+        "You can change this any time in Ember's Settings.";
+
+    internal const string OffText =
+        "\nDiscord reminders are off for you, so I won't DM this one. You can turn them back on in Ember's Settings or with the button in my earlier message.";
 
     internal const string YesText =
         "Lovely, your reminders will come here too. 💙 You can change where Ember reminds you any time in Settings.";

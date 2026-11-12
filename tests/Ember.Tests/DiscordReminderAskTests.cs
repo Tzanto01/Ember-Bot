@@ -77,6 +77,43 @@ public class DiscordReminderAskTests
     }
 
     [Fact]
+    public async Task An_ask_that_fails_transiently_is_sent_again_next_run()
+    {
+        await using var host = await CreateAsync(DiscordUser(10));
+        var attempts = 0;
+        host.Discord.Deliver = _ => ++attempts == 1 ? throw new HttpRequestException("503") : DeliveryOutcome.Delivered;
+
+        await RunAskAsync(host);
+        await RunAskAsync(host);
+        await RunAskAsync(host);
+
+        host.Discord.Messages.Should().HaveCount(2);
+        (await UserAsync(host, 10)).DiscordRemindersAskedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task A_reminder_set_through_the_bot_turns_unanswered_discord_reminders_on_and_tells_a_no_they_stay_off()
+    {
+        var unanswered = DiscordUser(10);
+        var declined = DiscordUser(20, answer: false);
+        foreach (var habit in unanswered.Habits.Concat(declined.Habits)) habit.NextReminderUtc = Now.UtcDateTime;
+        await using var host = await CreateAsync(unanswered, declined);
+        var note = (ulong discordId) => host.WithScopeAsync(sp =>
+            ReminderSetupModule.DiscordRemindersNoteAsync(sp.GetRequiredService<HabitService>(), discordId));
+
+        (await note(10)).Should().BeEmpty();
+        (await note(20)).Should().Be(DiscordRemindersModule.OffText);
+        await RunAskAsync(host);
+        await ActivatorUtilities.CreateInstance<ReminderDispatchJob>(host.Host.Services).RunAsync();
+
+        host.Discord.Messages.Select(m => m.UserId).Should().Equal(10UL);
+        host.Discord.Messages.Single().Text.Should().NotBe(DiscordRemindersModule.AskText);
+        var user = await UserAsync(host, 10);
+        (user.DiscordReminders, user.DiscordRemindersAskedAt).Should().Be((true, Now.UtcDateTime));
+        (await UserAsync(host, 20)).DiscordReminders.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Each_run_asks_at_most_twenty_users()
     {
         await using var host = await CreateAsync(Enumerable.Range(1, HabitService.MaxDiscordAsksPerRun + 5).Select(i => DiscordUser(i)).ToArray());

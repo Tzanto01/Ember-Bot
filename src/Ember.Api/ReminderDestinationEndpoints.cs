@@ -19,7 +19,7 @@ internal static partial class ReminderDestinationEndpoints
     public const string DiscordLabel = "Discord DMs";
     public const string FallbackPhoneLabel = "Android phone";
 
-    [GeneratedRegex("^[A-Za-z0-9_-]{16,64}$")]
+    [GeneratedRegex(@"\A[A-Za-z0-9_-]{16,64}\z")]
     private static partial Regex InstallIdPattern();
 
     public static RouteGroupBuilder MapReminderDestinations(this RouteGroupBuilder api)

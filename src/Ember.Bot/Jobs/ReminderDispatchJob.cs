@@ -487,7 +487,7 @@ public class ReminderDispatchJob : IJob
     /// Sends the reminder to each target. <see cref="Delivery.Retry"/> when no channel delivered it, a send failed transiently and
     /// <paramref name="key"/> has attempts left, so the caller keeps it due and changes nothing else. Otherwise the final Discord
     /// outcome updates the user's DM failure count and pause, once per due reminder: undeliverable, or transient failures until the
-    /// last attempt, count as one failure.
+    /// last attempt when no other channel delivered it, count as one failure.
     /// </summary>
     private async Task<Delivery> DeliverAsync(List<IReminderChannel> targets, Reminder reminder, User user, DateTime now,
         (string Kind, int Id, DateTime DueAt) key, CancellationToken cancellationToken)
@@ -513,7 +513,7 @@ public class ReminderDispatchJob : IJob
         {
             user.DmFailureCount = 0;
         }
-        else if ((discord is not null || discordTransient) && !reminder.Second && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
+        else if ((discord is not null || (discordTransient && !delivered)) && !reminder.Second && ++user.DmFailureCount >= MaxConsecutiveDmFailures)
         {
             user.DmRemindersPausedAt = now;
             _logger.LogWarning("Pausing DM reminders for user {UserId} after {Count} undeliverable reminders.",

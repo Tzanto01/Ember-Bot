@@ -527,4 +527,73 @@ public class WebPushReminderTests
         push.Requests.Should().ContainSingle();
         (await PushRemindersAsync(host)).Should().Be(0);
     }
+
+    [Fact]
+    public async Task Transient_discord_failures_next_to_a_delivered_push_never_pause_dm_reminders()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(20, [Endpoint("a")]));
+        await using var hostScope = host;
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            foreach (var id in new[] { 21, 22 })
+                db.Habits.Add(new Habit
+                {
+                    Id = id, UserId = TestUsers.Id(20), Name = $"Habit {id}", ReminderTime = new TimeOnly(9, 0),
+                    NextReminderUtc = Now.UtcDateTime, CreatedAt = Now.UtcDateTime.AddDays(-30),
+                });
+            return await db.SaveChangesAsync();
+        });
+        host.Discord.Deliver = _ => throw new HttpRequestException("503");
+
+        await RunJobAsync(host);
+
+        push.Requests.Should().HaveCount(3);
+        var user = await UserAsync(host, 20);
+        user.DmRemindersPausedAt.Should().BeNull();
+        user.DmFailureCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_routine_reminder_delivered_by_web_push_is_cleared_once_when_every_member_is_logged()
+    {
+        var (host, push, _) = await CreateAsync(new Seed(20, [Endpoint("a")], Discord: false));
+        await using var hostScope = host;
+        var routineId = await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            var routine = new Routine
+            {
+                UserId = TestUsers.Id(20), Name = "Morning", ReminderTime = new TimeOnly(9, 0), NextReminderUtc = Now.UtcDateTime,
+                ReminderExclusions = [ReminderDestinations.Discord],
+            };
+            db.Routines.Add(routine);
+            await db.SaveChangesAsync();
+            db.Habits.Add(new Habit
+            {
+                Id = 21, UserId = TestUsers.Id(20), Name = "Habit 21", RoutineId = routine.Id, RoutinePosition = 1,
+                CreatedAt = Now.UtcDateTime.AddDays(-30),
+            });
+            var member = await db.Habits.SingleAsync(h => h.Id == 20);
+            (member.RoutineId, member.ReminderTime, member.NextReminderUtc) = (routine.Id, null, null);
+            await db.SaveChangesAsync();
+            return routine.Id;
+        });
+        await RunJobAsync(host);
+        push.Requests.Should().ContainSingle();
+        (await PushRemindersAsync(host)).Should().Be(1);
+
+        await LogAsync(host, 20, Today);
+        await RunJobAsync(host);
+        push.Requests.Should().ContainSingle();
+        await LogAsync(host, 21, Today);
+        await RunJobAsync(host);
+        await RunJobAsync(host);
+
+        var requests = push.Requests.Should().HaveCount(2).And.Subject.ToList();
+        var tag = WebPushReminderChannel.RoutineTag(routineId);
+        (requests[1].BodyLength - requests[0].BodyLength).Should()
+            .Be(WebPushReminderChannel.ClearPayload(tag).Length - WebPushReminderChannel.BuildPayload("A gentle nudge from Ember", tag: tag).Length);
+        (await PushRemindersAsync(host)).Should().Be(0);
+    }
 }

@@ -18,6 +18,10 @@ describe('phoneLabel', () => {
     ['no Android token', 'Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0'],
     ['an empty model', 'Mozilla/5.0 (Linux; Android 14; ) AppleWebKit/537.36'],
     ['a bidi control in the model', 'Mozilla/5.0 (Linux; Android 14; Pix‮el) AppleWebKit/537.36'],
+    ['a line separator in the model', 'Mozilla/5.0 (Linux; Android 14; Pix\u2028el) AppleWebKit/537.36'],
+    ['a paragraph separator in the model', 'Mozilla/5.0 (Linux; Android 14; Pix\u2029el) AppleWebKit/537.36'],
+    ['a lone surrogate in the model', 'Mozilla/5.0 (Linux; Android 14; Pix\ud83del) AppleWebKit/537.36'],
+    ['a surrogate pair cut at 60 characters', `Mozilla/5.0 (Linux; Android 14; ${'X'.repeat(59)}\u{1F600})`],
   ])('says "Android phone" for %s', (_name, userAgent) => {
     expect(phoneLabel(userAgent)).toBe('Android phone');
   });

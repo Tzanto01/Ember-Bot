@@ -217,7 +217,9 @@ export default function SettingsPage() {
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
   const [notificationsOff, setNotificationsOff] = useState(false);
   const [remindersLate, setRemindersLate] = useState(false);
-  const [toggling, setToggling] = useState<{ id: string; enabled: boolean } | null>(null);
+  const togglingRef = useRef(new Set<string>());
+  const [toggling, setToggling] = useState<Partial<Record<string, boolean>>>({});
+  const [toggled, setToggled] = useState<Partial<Record<string, { error: string | null }>>>({});
   const [browserZone] = useState(browserTimeZone);
   const [showIosHint] = useState(() => isIos() && !isStandalone());
   const [discordNotice] = useState<Message | null>(() => {
@@ -390,21 +392,27 @@ export default function SettingsPage() {
     });
 
   async function toggleDestination(destination: ReminderDestination, enabled: boolean): Promise<void> {
-    if (busyRef.current) return;
-    start('push');
-    setToggling({ id: destination.id, enabled });
+    const { id } = destination;
+    if (togglingRef.current.has(id)) return;
+    togglingRef.current.add(id);
+    setToggling((t) => ({ ...t, [id]: enabled }));
+    setToggled((t) => ({ ...t, [id]: undefined }));
     try {
-      const updated = await api.setReminderDestination(destination.id, enabled);
+      const updated = await api.setReminderDestination(id, enabled);
       queryClient.setQueryData<ReminderDestination[]>(reminderDestinationsKey, (list) =>
         list?.map((d) => (d.id === updated.id ? updated : d)),
       );
-      if (updated.kind === 'phone' && updated.current) deviceSync.rebuildReminders();
-      setSaved('push');
+      if (env.native) deviceSync.rebuildReminders();
+      setToggled((t) => ({ ...t, [id]: { error: null } }));
     } catch (error) {
-      fail('push', asApiError(error));
+      if (!asApiError(error).handled) {
+        const kept = destination.enabled ? 'on' : 'off';
+        const text = `That didn't save, so ${destination.label} is still ${kept}. Try again in a moment.`;
+        setToggled((t) => ({ ...t, [id]: { error: text } }));
+      }
     } finally {
-      setToggling(null);
-      finish();
+      togglingRef.current.delete(id);
+      setToggling((t) => ({ ...t, [id]: undefined }));
     }
   }
 
@@ -771,32 +779,47 @@ export default function SettingsPage() {
 
             {shown('push') && (
               <SettingsCard id="push" title={title('push')}>
-                <p>
-                  Every habit and routine reminds you everywhere that's on here. Off means nothing goes there, for any
-                  habit or routine.
-                </p>
                 {destinations.data ? (
                   destinations.data.length > 0 ? (
-                    <ul className="flex flex-col divide-y divide-border">
-                      {destinations.data.map((destination) => (
-                        <li
-                          key={destination.id}
-                          className="flex min-h-[56px] items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
-                        >
-                          <Label
-                            htmlFor={`destination-${destination.id}`}
-                            className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-normal"
-                          >
-                            <DestinationName destination={destination} />
-                          </Label>
-                          <Switch
-                            id={`destination-${destination.id}`}
-                            checked={toggling?.id === destination.id ? toggling.enabled : destination.enabled}
-                            onCheckedChange={(checked) => void toggleDestination(destination, checked)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <p>
+                        These are the places Ember can remind you. Each habit and routine uses all of them unless you
+                        untick one when you edit it. Switch a place off and nothing reminds you there.
+                      </p>
+                      <ul className="flex flex-col divide-y divide-border">
+                        {destinations.data.map((destination) => (
+                          <li key={destination.id} className="flex flex-col py-2 first:pt-0 last:pb-0">
+                            <div className="flex min-h-[44px] items-center justify-between gap-4">
+                              <Label
+                                htmlFor={`destination-${destination.id}`}
+                                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-normal"
+                              >
+                                <DestinationName destination={destination} />
+                              </Label>
+                              <Switch
+                                id={`destination-${destination.id}`}
+                                checked={toggling[destination.id] ?? destination.enabled}
+                                aria-disabled={toggling[destination.id] !== undefined || undefined}
+                                onCheckedChange={(checked) => void toggleDestination(destination, checked)}
+                              />
+                            </div>
+                            <p role="status" className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                              {toggled[destination.id]?.error === null && (
+                                <>
+                                  <Check aria-hidden className="size-[18px] text-primary" />
+                                  Saved.
+                                </>
+                              )}
+                            </p>
+                            {toggled[destination.id]?.error && (
+                              <Notice tone="notice" className="mt-2">
+                                <p>{toggled[destination.id]?.error}</p>
+                              </Notice>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   ) : (
                     <p className="text-muted-foreground">
                       Nothing can remind you yet.
@@ -804,7 +827,13 @@ export default function SettingsPage() {
                         <>
                           {' '}
                           You can link Discord in{' '}
-                          <Link to={{ pathname: '/settings', hash: 'discord' }}>Account &amp; security</Link>.
+                          <Link
+                            to={{ pathname: '/settings', hash: 'discord' }}
+                            className="text-primary underline underline-offset-4"
+                          >
+                            Account &amp; security
+                          </Link>
+                          .
                         </>
                       )}
                     </p>
@@ -870,7 +899,6 @@ export default function SettingsPage() {
                       </>
                     )
                   ))}
-                {savedStatus('push')}
                 {outcome('push')}
               </SettingsCard>
             )}

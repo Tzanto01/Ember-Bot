@@ -324,6 +324,7 @@ describe('HabitNewPage', () => {
     const fetch = mockFetch();
     renderPage();
     (await fetch.next('GET', '/api/habit-templates')).respond(200, [template]);
+    (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, []);
 
     await user.click(await screen.findByRole('button', { name: /Walk/ }));
 

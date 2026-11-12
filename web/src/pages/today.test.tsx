@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Habit, Routine, WeeklyStats } from '@/lib/models';
+import type { Habit, ReminderDestination, Routine, WeeklyStats } from '@/lib/models';
 import { auth, backup, deviceSync, localMode } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import TodayPage from './today';
@@ -378,9 +378,25 @@ describe('TodayPage', () => {
     expect(screen.queryByText("It's been a quiet week.")).toBeNull();
   });
 
-  it('asks to turn on reminders when a habit has a reminder time and nothing can deliver it', async () => {
+  const discordUnanswered: ReminderDestination = {
+    id: 'discord',
+    kind: 'discord',
+    label: 'Discord DMs',
+    enabled: false,
+    current: false,
+  };
+  const browserOff: ReminderDestination = {
+    id: 'browser-3',
+    kind: 'browser',
+    label: 'Firefox on Linux',
+    enabled: false,
+    current: true,
+  };
+
+  it('asks to turn on reminders when a habit has a reminder time and no reminder destination is on', async () => {
     renderToday();
     await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+    (await f.next('GET', '/api/me/reminder-destinations')).respond(200, [discordUnanswered, browserOff]);
 
     expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Turn on reminders in Settings' })).toHaveAttribute('href', '/settings#discord');
@@ -398,23 +414,19 @@ describe('TodayPage', () => {
     (await f.next('GET', '/api/low-days?from=2026-11-01&to=2026-11-01')).respond(200, []);
     (await f.next('GET', '/api/stats/weekly')).respond(200, weekly);
     (await f.next('GET', '/api/routines')).respond(200, []);
+    (await f.next('GET', '/api/me/reminder-destinations')).respond(200, [{ ...discordUnanswered, enabled: true }]);
 
     expect(await screen.findByText("Your reminders can't reach you yet")).toBeInTheDocument();
   });
 
-  it('shows no reminder warning when the push check failed in a browser that supports push', async () => {
-    vi.stubGlobal('PushManager', class {});
-    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { getRegistration: async () => undefined } });
-    try {
-      renderToday();
-      await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+  it('shows no reminder warning once any reminder destination is on', async () => {
+    renderToday();
+    await answerLoad(f, [{ ...habit, reminderTime: '08:00' }]);
+    (await f.next('GET', '/api/me/reminder-destinations')).respond(200, [discordUnanswered, { ...browserOff, enabled: true }]);
 
-      await checkButton();
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(screen.queryByText("Your reminders can't reach you yet")).toBeNull();
-    } finally {
-      Reflect.deleteProperty(navigator, 'serviceWorker');
-    }
+    await checkButton();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("Your reminders can't reach you yet")).toBeNull();
   });
 
   it('says yesterday is still open when nothing was checked in on a planned day', async () => {

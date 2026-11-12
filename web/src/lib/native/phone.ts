@@ -26,12 +26,13 @@ export function installId(): string {
 /**
  * The phone's name for Settings: the model from the WebView user agent (`Android 14; Pixel 8 Build/…`), at most
  * 60 characters; "Android phone" when there is none, it is shorter than 2 characters (a reduced user agent says
- * "K") or it holds control or format characters.
+ * "K") or it holds control, format, line or paragraph separator characters or a lone surrogate.
  */
 export function phoneLabel(userAgent: string = navigator.userAgent): string {
   const model = /Android [^;)]*;\s*([^;)]*?)(?:\s+Build\/|[;)])/.exec(userAgent)?.[1]?.trim() ?? '';
-  if (model.length < 2 || /[\p{Cc}\p{Cf}]/u.test(model)) return 'Android phone';
-  return model.slice(0, 60).trim();
+  const label = model.slice(0, 60).trim();
+  if (label.length < 2 || /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Cs}]/u.test(label)) return 'Android phone';
+  return label;
 }
 
 /** The phone's destination from the last registration (for offline rebuilds), or null. */

@@ -4,7 +4,10 @@ namespace Ember.Core.Models;
 
 public enum FrequencyType { Daily, Weekly, Weekdays }
 
-/// <summary>The kinds of reminder channels; <see cref="Services.HabitService.ReminderChannelNames"/> names them for the deprecated <c>reminderChannels</c> API field.</summary>
+/// <summary>
+/// The server channels the bot dispatches by (<see cref="Discord"/>, <see cref="WebPush"/>) and the names of the deprecated
+/// <c>reminderChannels</c> field (v1.14 derives them, <see cref="Services.ReminderDestinations.LegacyChannels"/>).
+/// </summary>
 [Flags]
 public enum ReminderChannels
 {
@@ -12,7 +15,7 @@ public enum ReminderChannels
     Discord = 1,
     WebPush = 2,
 
-    /// <summary>Stored for the native app, which schedules local notifications on the device; the server never dispatches it.</summary>
+    /// <summary>Only a name of the deprecated <c>reminderChannels</c> field (v1.14 derives it when no server destination is a target); never dispatched.</summary>
     Mobile = 4,
 }
 

@@ -481,7 +481,8 @@ Exactly like push subscriptions (v1.10): ending a session deletes the phones it 
 ### Discord asks first
 
 - `User.DiscordReminders` (null = never answered) and when the bot asked. Until the answer is yes, Discord is not a target.
-- Each minute the bot DMs at most 20 accounts that have a Discord login, never answered, were never asked, and have a habit with reminder times or a routine with a reminder time: "Want your reminders here in Discord too?" with the buttons "Yes, remind me here" and "No thanks". The ask is recorded whether or not the DM arrives and is never repeated.
+- Each minute the bot DMs at most 20 accounts that have a Discord login, never answered, were never asked, and have a habit with reminder times or a routine with a reminder time: "Want me to send your reminders here as Discord DMs?" with the buttons "Yes, remind me here" and "No thanks". The ask is recorded whether or not the DM arrives and is never repeated, except after a transient send failure (timeout, network error, Discord 5xx or 429), which clears the mark so a later minute asks again.
+- Setting a reminder time through the bot counts as yes when the account never answered (the ask is then recorded too, so it is not sent). When the answer is no, the bot's confirmation adds that Discord reminders are off, so it won't DM this one, and how to turn them back on.
 - Yes edits the message to a short confirmation pointing to Settings. No edits it to a confirmation with a "Turn them on" button. The latest answer wins, from a button or from Settings.
 - Accounts that got Discord reminders before v1.14 (a Discord login and a habit with the Discord channel and a reminder time, or a routine with the Discord channel and a reminder time) count as yes.
 - The weekly summary and missed-day DMs are not affected by the answer.

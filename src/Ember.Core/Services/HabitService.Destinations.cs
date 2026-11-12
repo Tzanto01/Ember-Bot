@@ -87,7 +87,7 @@ public partial class HabitService
             _db.Entry(phone).State = EntityState.Detached;
             await _db.ReminderPhones.Where(p => p.InstallId == installId && p.UserId != userId).ExecuteDeleteAsync();
             var updated = await _db.ReminderPhones
-                .Where(p => p.InstallId == installId)
+                .Where(p => p.InstallId == installId && p.UserId == userId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(p => p.Label, label)
                     .SetProperty(p => p.SessionId, sessionId)
@@ -100,7 +100,7 @@ public partial class HabitService
             }
             else
             {
-                phone = await _db.ReminderPhones.AsNoTracking().FirstAsync(p => p.InstallId == installId);
+                phone = await _db.ReminderPhones.AsNoTracking().FirstAsync(p => p.InstallId == installId && p.UserId == userId);
             }
         }
 
@@ -143,6 +143,26 @@ public partial class HabitService
         var now = _time.GetUtcNow().UtcDateTime;
         return _db.Users.Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DiscordRemindersAskedAt, now), cancellationToken);
+    }
+
+    /// <summary>Bot only: forgets that the user was asked about Discord reminders, so the next ask run asks again.</summary>
+    public Task ClearDiscordRemindersAskedAsync(Guid userId, CancellationToken cancellationToken = default)
+        => _db.Users.Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.DiscordRemindersAskedAt, (DateTime?)null), cancellationToken);
+
+    /// <summary>
+    /// Bot only, for a reminder time set through the bot: records yes (and the ask, so it isn't sent) when the Discord user's account
+    /// never answered about Discord reminders. Returns whether Discord reminders are on for the account afterwards.
+    /// </summary>
+    public async Task<bool> DefaultDiscordRemindersOnAsync(ulong discordUserId)
+    {
+        var userId = await FindDiscordUserAsync(discordUserId);
+        var now = _time.GetUtcNow().UtcDateTime;
+        await _db.Users.Where(u => u.Id == userId && u.DiscordReminders == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.DiscordReminders, true)
+                .SetProperty(u => u.DiscordRemindersAskedAt, u => u.DiscordRemindersAskedAt ?? now));
+        return await _db.Users.Where(u => u.Id == userId).Select(u => u.DiscordReminders).FirstOrDefaultAsync() == true;
     }
 
     /// <summary>Records the answer of the Discord user's account to "remind me in Discord DMs" (latest answer wins).</summary>

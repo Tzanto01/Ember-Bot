@@ -154,7 +154,7 @@ public class ReminderDestinationsApiTests(PostgresFixture postgres) : ApiTestBas
         var install = InstallId();
         foreach (var body in new object[]
                  {
-                     new { installId = "short" }, new { installId = install + "!" }, new { label = "Pixel" },
+                     new { installId = "short" }, new { installId = install + "!" }, new { installId = install + "\n" }, new { label = "Pixel" },
                      new { installId = install, label = "Pixel‮8" }, new { installId = install, label = new string('x', 61) },
                  })
             await (await a.Post("/api/me/phones", body)).ExpectProblem(HttpStatusCode.BadRequest, "validation");

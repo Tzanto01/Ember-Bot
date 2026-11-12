@@ -114,7 +114,7 @@ describe('HabitEditPage', () => {
 
       const group = within(await screen.findByRole('group', { name: 'Remind me on' }));
       expect(group.getByRole('checkbox', { name: 'Discord DMs' })).toBeChecked();
-      expect(group.getByRole('checkbox', { name: 'Firefox on Linux This browser' })).toBeChecked();
+      expect(group.getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeChecked();
       expect(group.getByRole('checkbox', { name: 'Pixel 8' })).not.toBeChecked();
 
       await user.click(group.getByRole('checkbox', { name: 'Discord DMs' }));
@@ -127,6 +127,30 @@ describe('HabitEditPage', () => {
 
       await user.click(group.getByRole('checkbox', { name: 'Pixel 8' }));
       expect((await fetch.next('PATCH', '/api/habits/7')).body).toEqual({ reminderExclusions: ['discord'] });
+    });
+
+    it('locks the other places while a change saves, and says what was kept when it fails', async () => {
+      const user = userEvent.setup();
+      const fetch = mockFetch();
+      renderPage();
+      await load(fetch);
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop]);
+
+      const group = await screen.findByRole('group', { name: 'Remind me on' });
+      await user.click(within(group).getByRole('checkbox', { name: 'Discord DMs' }));
+      const patch = await fetch.next('PATCH', '/api/habits/7');
+
+      expect(group).toHaveAttribute('aria-busy', 'true');
+      expect(within(group).getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeDisabled();
+
+      patch.respond(500, { type: 'internal' });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "That didn't save, so Discord DMs is still on. Try again in a moment.",
+      );
+      expect(within(group).getByRole('checkbox', { name: 'Discord DMs' })).toBeChecked();
+      expect(within(group).getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeEnabled();
+      expect(group).not.toHaveAttribute('aria-busy');
     });
 
     it('shows a destination switched off in Settings as disabled, with a link to Settings', async () => {
