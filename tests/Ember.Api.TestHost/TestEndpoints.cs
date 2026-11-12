@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Ember.Core.Services;
@@ -16,6 +17,7 @@ public static class TestEndpoints
     public sealed record BotOnlyRequest(string? DiscordId, string? HabitStartDate);
     public sealed record BotOnlyDto(Guid UserId, int HabitId);
     public sealed record TotpDto(string Code);
+    public sealed record TargetsDto(bool Discord, IReadOnlyList<int> PushSubscriptionIds);
 
     public static WebApplication MapEmberTestEndpoints(this WebApplication app)
     {
@@ -72,6 +74,22 @@ public static class TestEndpoints
             }
             return Results.Created((string?)null, new BotOnlyDto(userId, habit.Id));
         });
+
+        test.MapGet("/reminders/targets", async (int? habitId, int? routineId, ClaimsPrincipal principal, UserManager<User> users,
+            HabitService habits, EmberDbContext db) =>
+        {
+            if (habitId is null == routineId is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["habitId"] = ["Pass habitId or routineId."] });
+
+            var userId = Guid.Parse(users.GetUserId(principal)!);
+            var exclusions = habitId is { } id
+                ? await db.Habits.Where(h => h.Id == id && h.UserId == userId).Select(h => h.ReminderExclusions).FirstOrDefaultAsync()
+                : await db.Routines.Where(r => r.Id == routineId && r.UserId == userId).Select(r => r.ReminderExclusions).FirstOrDefaultAsync();
+            if (exclusions is null || await habits.GetUserWithDestinationsAsync(userId) is not { } user) return Results.NotFound();
+
+            var targets = ReminderDestinations.Resolve(user, exclusions);
+            return Results.Ok(new TargetsDto(targets.Discord, targets.PushSubscriptionIds));
+        }).RequireAuthorization();
 
         return app;
     }

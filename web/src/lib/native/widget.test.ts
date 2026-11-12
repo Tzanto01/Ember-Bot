@@ -49,6 +49,15 @@ describe('widget snapshot', () => {
     vi.unstubAllGlobals();
   });
 
+  const phoneRegistered = async () =>
+    (await mock.next('POST', '/api/me/phones')).respond(200, {
+      id: 'phone-5',
+      kind: 'phone',
+      label: 'Pixel 8',
+      enabled: true,
+      current: true,
+    });
+
   const day = (state: Habit['today']['state'], count = 0) => ({
     date: '2026-11-01',
     state,
@@ -66,6 +75,7 @@ describe('widget snapshot', () => {
       { ...habit, id: 5, name: 'Journal', today: day('pending') },
     ]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await done;
 
     expect(update).toHaveBeenCalledWith({

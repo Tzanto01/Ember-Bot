@@ -23,6 +23,7 @@ import type {
   NewMoodBody,
   NewRoutine,
   PushSubscriptionRequest,
+  ReminderDestination,
   ResetPasswordRequest,
   Routine,
   RoutinePatch,
@@ -483,6 +484,23 @@ export class ApiClient {
   /** `DELETE /api/me/push-subscriptions?endpoint=`: only the caller's own. */
   removePushSubscription(endpoint: string): Promise<void> {
     return this.http.request('DELETE', '/api/me/push-subscriptions', { params: { endpoint } });
+  }
+
+  /** `GET /api/me/reminder-destinations` (v1.14): Discord first, then browsers, then phones. */
+  listReminderDestinations(): Promise<ReminderDestination[]> {
+    return this.http.request('GET', '/api/me/reminder-destinations');
+  }
+
+  /** `PATCH /api/me/reminder-destinations/{id}` (v1.14): turns one destination on or off; 404 when not the caller's. */
+  setReminderDestination(id: string, enabled: boolean): Promise<ReminderDestination> {
+    return this.http.request('PATCH', `/api/me/reminder-destinations/${encodeURIComponent(id)}`, {
+      body: { enabled },
+    });
+  }
+
+  /** `POST /api/me/phones` (v1.14): registers this phone for the caller's session; answers its destination (`current`). */
+  registerPhone(installId: string, label: string): Promise<ReminderDestination> {
+    return this.http.request('POST', '/api/me/phones', { body: { installId, label } });
   }
 }
 

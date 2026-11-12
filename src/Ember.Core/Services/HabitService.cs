@@ -101,7 +101,7 @@ public partial class HabitService
     /// <paramref name="reminderTimes"/>, when given, replaces <paramref name="reminderTime"/> and is kept as <see cref="NormalizeReminderTimes"/> does.
     /// </remarks>
     public async Task<Habit> AddHabitAsync(Guid userId, string name, TimeOnly? reminderTime,
-        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, ReminderChannels channels = ReminderChannels.Discord,
+        FrequencyType frequency = FrequencyType.Daily, int? weeklyTarget = null, IReadOnlyCollection<string>? reminderExclusions = null,
         ScheduleDays? days = null, int timesPerDay = 1, IReadOnlyCollection<TimeOnly>? reminderTimes = null)
     {
         if (!await HasHealthDataConsentAsync(userId))
@@ -118,7 +118,7 @@ public partial class HabitService
             WeeklyTarget = frequency == FrequencyType.Weekly ? (weeklyTarget ?? 3) : null,
             Days = frequency == FrequencyType.Weekdays ? days : null,
             TimesPerDay = frequency == FrequencyType.Weekly ? 1 : timesPerDay,
-            ReminderChannels = channels,
+            ReminderExclusions = reminderExclusions?.Distinct().ToList() ?? [],
             CreatedAt = _time.GetUtcNow().UtcDateTime
         };
         if (reminderTimes is not null) habit.ReminderTimes = NormalizeReminderTimes(reminderTimes, habit.TimesPerDay);
@@ -604,10 +604,11 @@ public partial class HabitService
     /// <summary>
     /// Edits the user's habit; null arguments keep the current value. <paramref name="newReminderTime"/> replaces all reminder times
     /// with that one; <paramref name="newReminderTimes"/> replaces them with those (empty clears the reminder), kept as
-    /// <see cref="NormalizeReminderTimes"/> does. Null when the habit isn't the user's.
+    /// <see cref="NormalizeReminderTimes"/> does. <paramref name="reminderExclusions"/> replaces <see cref="Habit.ReminderExclusions"/>.
+    /// Null when the habit isn't the user's.
     /// </summary>
     public async Task<Habit?> EditHabitAsync(Guid userId, int habitId, string? newName, TimeOnly? newReminderTime, bool clearReminder,
-        ReminderChannels? channels = null, IReadOnlyCollection<TimeOnly>? newReminderTimes = null)
+        IReadOnlyCollection<string>? reminderExclusions = null, IReadOnlyCollection<TimeOnly>? newReminderTimes = null)
     {
         var habit = await _db.Habits
             .FirstOrDefaultAsync(h => h.Id == habitId && h.UserId == userId);
@@ -615,7 +616,7 @@ public partial class HabitService
         if (habit is null) return null;
 
         if (newName is not null) habit.Name = newName;
-        if (channels is { } c) habit.ReminderChannels = c;
+        if (reminderExclusions is not null) habit.ReminderExclusions = reminderExclusions.Distinct().ToList();
 
         if (clearReminder)
         {
@@ -726,11 +727,16 @@ public partial class HabitService
         return await deletable.Where(u => stale.Contains(u.Id)).ExecuteDeleteAsync(cancellationToken);
     }
 
-    /// <summary>Deletes every expired sign-in session (<see cref="AuthSession"/>). Returns how many were deleted.</summary>
-    public Task<int> DeleteExpiredSessionsAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Deletes every expired sign-in session (<see cref="AuthSession"/>) and every phone whose session no longer exists. Returns how
+    /// many sessions were deleted.
+    /// </summary>
+    public async Task<int> DeleteExpiredSessionsAsync(CancellationToken cancellationToken = default)
     {
         var now = _time.GetUtcNow();
-        return _db.AuthSessions.Where(s => s.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
+        var deleted = await _db.AuthSessions.Where(s => s.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
+        await _db.ReminderPhones.Where(p => !_db.AuthSessions.Any(s => s.Id == p.SessionId)).ExecuteDeleteAsync(cancellationToken);
+        return deleted;
     }
 
     private static DateTimeOffset UuidV7Time(Guid id)
@@ -850,7 +856,7 @@ public partial class HabitService
     }
 
     /// <summary>
-    /// The user with their logins, push subscriptions, every habit, log, day mark, routine, journal entry and own mood, and the
+    /// The user with their logins, push subscriptions, phones, every habit, log, day mark, routine, journal entry and own mood, and the
     /// journal key (untracked), or null when Ember stores nothing about them.
     /// </summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
@@ -860,6 +866,7 @@ public partial class HabitService
             .Include(u => u.Habits).ThenInclude(h => h.Logs)
             .Include(u => u.DayMarks)
             .Include(u => u.PushSubscriptions)
+            .Include(u => u.ReminderPhones)
             .Include(u => u.Routines)
             .Include(u => u.DayNotes)
             .Include(u => u.Moods)

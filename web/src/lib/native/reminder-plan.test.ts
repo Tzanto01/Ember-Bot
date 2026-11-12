@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Habit, Routine } from '../models';
-import { planCap, planDays, planReminders, reminderId, zonedToUtc } from './reminder-plan';
+import {
+  planCap,
+  planDays,
+  planReminders,
+  type ReminderTarget,
+  reminderId,
+  zonedToUtc,
+} from './reminder-plan';
 
 function habit(overrides: Partial<Habit> = {}): Habit {
   return {
@@ -325,6 +332,99 @@ describe('planReminders', () => {
       at: Date.parse('2026-11-02T11:15:00Z'),
     });
     expect(plan[planCap - 1].date).toBe('2026-11-11');
+  });
+});
+
+describe('planReminders in the account mode', () => {
+  const zone = 'Europe/Berlin';
+  const here = (phone: { id: string; enabled: boolean } | null = { id: 'phone-5', enabled: true }): ReminderTarget => ({
+    mode: 'account',
+    phone,
+  });
+  const routine: Routine = { id: 7, name: 'Evening', reminderTime: '18:00', reminderChannels: [], habitIds: [3] };
+  const reminded = (target: ReminderTarget, habits: Habit[], routines: Routine[] = [], second = 0) =>
+    new Set(planReminders(habits, zone, berlinMorning, routines, second, target).map((r) => r.habitId ?? -(r.routineId ?? 0)));
+
+  it('reminds on this phone for every item not excluded for it, whatever the legacy channels say', () => {
+    const habits = [
+      habit({ id: 1, reminderChannels: ['discord'] }),
+      habit({ id: 2, reminderExclusions: ['phone-5'] }),
+      habit({ id: 4, reminderExclusions: ['phone-9', 'discord'] }),
+      habit({ id: 3, reminderTime: null }),
+    ];
+
+    expect(reminded(here(), habits, [routine, { ...routine, id: 8, reminderExclusions: ['phone-5'] }])).toEqual(
+      new Set([1, 4, -7]),
+    );
+  });
+
+  it('plans nothing while the phone is not registered or turned off in Settings', () => {
+    const habits = [habit({ id: 1 })];
+
+    expect(planReminders(habits, zone, berlinMorning, [routine], 30, here(null))).toEqual([]);
+    expect(planReminders(habits, zone, berlinMorning, [routine], 30, here({ id: 'phone-5', enabled: false }))).toEqual([]);
+  });
+
+  it('leaves the second reminder to the server for items a server destination reminds on, and keeps both otherwise', () => {
+    const plan = planReminders(
+      [habit({ id: 1, serverReminders: true }), habit({ id: 2, serverReminders: false }), habit({ id: 3 })],
+      zone,
+      berlinMorning,
+      [{ ...routine, serverReminders: true }],
+      30,
+      here(),
+    );
+    const seconds = (pick: (r: (typeof plan)[number]) => boolean) => plan.filter((r) => pick(r) && r.second).length;
+
+    expect(plan.filter((r) => r.habitId === 1)).toHaveLength(planDays);
+    expect(seconds((r) => r.habitId === 1)).toBe(0);
+    expect(seconds((r) => r.habitId === 2)).toBe(planDays);
+    expect(plan.filter((r) => r.routineId === 7)).toHaveLength(planDays);
+    expect(seconds((r) => r.routineId === 7)).toBe(0);
+  });
+
+  it('keeps both reminders of a routine when the phone is its only destination', () => {
+    const plan = planReminders(
+      [habit({ id: 4 })],
+      zone,
+      berlinMorning,
+      [{ ...routine, habitIds: [4], serverReminders: false }],
+      30,
+      here(),
+    );
+
+    expect(plan.filter((r) => r.routineId === 7 && r.second)).toHaveLength(planDays);
+  });
+
+  it('plans from habits and routines cached before v1.14 without throwing, as reminding everywhere with both reminders', () => {
+    const { reminderChannels: _channels, ...old } = habit({ id: 1 });
+    const { reminderChannels: _routineChannels, ...oldRoutine } = { ...routine, habitIds: [2] };
+    const habits = [old as Habit, habit({ id: 2 })];
+    const routines = [oldRoutine as Routine];
+
+    expect(planReminders(habits, zone, berlinMorning, routines, 30, here()).filter((r) => r.second)).toHaveLength(
+      2 * planDays,
+    );
+    expect(planReminders(habits, zone, berlinMorning, routines, 30, { mode: 'local' })).toEqual([]);
+  });
+});
+
+describe('planReminders in no-account mode', () => {
+  it('keeps the mobile channel rule and both reminders, ignoring exclusions and server reminders', () => {
+    const plan = planReminders(
+      [
+        habit({ id: 1, reminderExclusions: ['phone-5'], serverReminders: true }),
+        habit({ id: 2, reminderChannels: [] }),
+      ],
+      'Europe/Berlin',
+      berlinMorning,
+      [],
+      30,
+      { mode: 'local' },
+    );
+
+    expect(plan.every((r) => r.habitId === 1)).toBe(true);
+    expect(plan.filter((r) => r.second)).toHaveLength(planDays);
   });
 });
 

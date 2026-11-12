@@ -2,12 +2,14 @@ import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
 import type { ApiClient } from '../api-client';
 import { type DeviceStore, withDayEdit } from '../device-store';
 import { addDays, isLocalDate } from '../local-date';
-import type { Habit, LocalDateString, Routine } from '../models';
+import { localModeOn } from '../local/mode';
+import type { Habit, LocalDateString, ReminderDestination, Routine } from '../models';
 import type { OfflineQueue } from '../offline-queue';
 import { asApiError } from '../problem';
 import { notificationColor } from '../theme';
 import { reminderNames } from './reminder-names';
-import { localDate, planReminders } from './reminder-plan';
+import { cachedPhone, forgetPhone, installId, phoneLabel, type ReminderPhone, rememberPhone } from './phone';
+import { localDate, planReminders, type ReminderTarget } from './reminder-plan';
 import { updaterAvailable } from './updater';
 import { capacitorWidget, type EmberWidgetPlugin, widgetSnapshot } from './widget';
 
@@ -72,8 +74,10 @@ export function checkInTarget(extra: unknown, userId: string): CheckInTarget | n
 }
 
 /**
- * Native build only: keeps the device's local reminder notifications in step with the habits that have the
- * `mobile` channel, so they fire offline. A rebuild whose plan differs from the last scheduled one replaces every
+ * Native build only: keeps the device's local reminder notifications in step with the habits and routines that
+ * remind on this phone ({@link ReminderTarget}: in no-account mode the `mobile` channel; with an account this
+ * phone's destination, registered on every online rebuild while notifications are allowed and cached for offline
+ * ones), so they fire offline. A rebuild whose plan differs from the last scheduled one replaces every
  * pending notification with it; an unchanged plan leaves them alone.
  */
 export class Reminders {
@@ -115,11 +119,26 @@ export class Reminders {
   }
 
   /**
-   * Cancels every scheduled reminder, clears delivered ones and the widget, and resets "Show habit names in
-   * reminders" (sign-out, session end, account deletion).
+   * Settings "This phone" (account mode): asks for the notification permission ({@link requestPermission}), then
+   * registers this phone and turns its destination on. Resolves with the destination, or null when the permission
+   * was refused; rejects with the API error when the server refuses or can't be reached. Rebuild the reminders
+   * afterwards.
+   */
+  async enablePhone(): Promise<ReminderDestination | null> {
+    if (!(await this.requestPermission())) return null;
+    let destination = await this.api.registerPhone(installId(), phoneLabel());
+    if (!destination.enabled) destination = await this.api.setReminderDestination(destination.id, true);
+    rememberPhone(destination);
+    return destination;
+  }
+
+  /**
+   * Cancels every scheduled reminder, clears delivered ones and the widget, forgets this phone's cached destination
+   * and resets "Show habit names in reminders" (sign-out, session end, account deletion).
    */
   async clearAll(): Promise<void> {
     reminderNames.set(false);
+    forgetPhone();
     localStorage.removeItem(issuedKey);
     localStorage.removeItem(plannedKey);
     this.chain = this.chain
@@ -190,14 +209,14 @@ export class Reminders {
   private async load(
     userId: string,
     timeZone: string,
-  ): Promise<{ habits: Habit[]; routines: Routine[] } | null> {
+  ): Promise<{ habits: Habit[]; routines: Routine[]; live: boolean } | null> {
     try {
       const habits = await this.api.listHabits();
       const routines = await this.api
         .listRoutines()
         .catch(async () => (await this.store.habits(userId).catch(() => null))?.routines);
       await this.store.saveHabits({ userId, timeZone, habits, routines }).catch(() => undefined);
-      return { habits, routines: routines ?? [] };
+      return { habits, routines: routines ?? [], live: true };
     } catch (error) {
       if (asApiError(error).status === 401) return null;
       const cached = await this.store.habits(userId).catch(() => null);
@@ -206,6 +225,7 @@ export class Reminders {
       return {
         habits: cached.habits.map((habit) => queued.reduce(withDayEdit, habit)),
         routines: cached.routines ?? [],
+        live: false,
       };
     }
   }
@@ -213,7 +233,7 @@ export class Reminders {
   private async run(userId: string, timeZone: string, secondMinutes: number): Promise<void> {
     const loaded = await this.load(userId, timeZone);
     if (!loaded) return;
-    const { habits, routines } = loaded;
+    const { habits, routines, live } = loaded;
     const now = Date.now();
     const today = localDate(now, timeZone);
     const next = widgetSnapshot(userId, timeZone, addDays(today, 1), habits);
@@ -223,8 +243,22 @@ export class Reminders {
         next: { date: next.date, habits: next.habits, more: next.more },
       }),
     );
-    const plan = planReminders(habits, timeZone, now, routines, secondMinutes);
     const plugin = (await this.notifications()).LocalNotifications;
+    const target: ReminderTarget = localModeOn()
+      ? { mode: 'local' }
+      : {
+          mode: 'account',
+          phone: await this.phone(
+            plugin,
+            live,
+            () =>
+              planReminders(habits, timeZone, now, routines, 0, {
+                mode: 'account',
+                phone: { id: '', enabled: true },
+              }).length > 0,
+          ),
+        };
+    const plan = planReminders(habits, timeZone, now, routines, secondMinutes, target);
     const names = reminderNames.get();
     if (!this.channelReady) {
       await plugin.createChannel({
@@ -293,6 +327,29 @@ export class Reminders {
     try {
       localStorage.setItem(plannedKey, planned);
     } catch {}
+  }
+
+  /**
+   * This phone's destination for an account-mode plan. Online and with notifications allowed (asked first while
+   * Android has never asked and `wanted` says reminders would be planned), registers this phone and caches the
+   * answer; otherwise, or when registering fails, the cached one (null when never registered).
+   */
+  private async phone(
+    plugin: LocalNotificationsPlugin,
+    live: boolean,
+    wanted: () => boolean,
+  ): Promise<ReminderPhone | null> {
+    if (!live) return cachedPhone();
+    const { display } = await plugin.checkPermissions();
+    const granted =
+      display === 'granted' ||
+      (display === 'prompt' && wanted() && (await plugin.requestPermissions()).display === 'granted');
+    if (!granted) return cachedPhone();
+    try {
+      return rememberPhone(await this.api.registerPhone(installId(), phoneLabel()));
+    } catch {
+      return cachedPhone();
+    }
   }
 
   /** True when notifications may show; asks once while Android has never asked (a new phone or a reinstall). */

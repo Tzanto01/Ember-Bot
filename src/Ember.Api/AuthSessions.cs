@@ -33,11 +33,15 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
     public static Guid? IdOf(ClaimsPrincipal? principal)
         => Guid.TryParse(principal?.FindFirstValue(ClaimType), out var id) ? id : null;
 
-    /// <summary>Starts a session for <paramref name="userId"/>, ending its oldest beyond <see cref="MaxPerUser"/>, and deletes every expired session.</summary>
+    /// <summary>
+    /// Starts a session for <paramref name="userId"/>, ending its oldest beyond <see cref="MaxPerUser"/>, and deletes every expired
+    /// session and every phone whose session no longer exists.
+    /// </summary>
     public async Task<Guid> StartAsync(Guid userId)
     {
         var now = time.GetUtcNow();
         await db.AuthSessions.Where(s => s.ExpiresUtc <= now).ExecuteDeleteAsync();
+        await db.ReminderPhones.Where(p => !db.AuthSessions.Any(s => s.Id == p.SessionId)).ExecuteDeleteAsync();
         await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId).OrderByDescending(s => s.CreatedUtc)
             .Skip(MaxPerUser - 1).Select(s => s.Id).ToListAsync());
         var id = Guid.NewGuid();
@@ -76,12 +80,15 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
 
     public Task EndAsync(Guid id) => EndManyAsync([id]);
 
-    /// <summary>Ends every session of <paramref name="userId"/> and deletes the push subscriptions they registered; subscriptions without a session stay.</summary>
+    /// <summary>
+    /// Ends every session of <paramref name="userId"/> and deletes the push subscriptions and phones they registered; subscriptions
+    /// without a session stay.
+    /// </summary>
     public async Task EndSessionsAsync(Guid userId)
         => await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync());
 
     /// <summary>
-    /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, deletes every push subscription not
+    /// Ends every session of <paramref name="userId"/>, except <paramref name="keep"/>, deletes every push subscription and phone not
     /// registered by <paramref name="keep"/> (including ones without a session) and all of the user's reminder "Done" tokens,
     /// so a notification already delivered to another device can't log anything.
     /// </summary>
@@ -89,17 +96,19 @@ internal sealed class AuthSessions(EmberDbContext db, IMemoryCache cache, TimePr
     {
         await EndManyAsync(await db.AuthSessions.Where(s => s.UserId == userId && s.Id != keep).Select(s => s.Id).ToListAsync());
         await db.PushSubscriptions.Where(s => s.UserId == userId && !(keep != null && s.SessionId == keep)).ExecuteDeleteAsync();
+        await db.ReminderPhones.Where(p => p.UserId == userId && !(keep != null && p.SessionId == keep)).ExecuteDeleteAsync();
         await db.ReminderActionTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync();
     }
 
     /// <summary>
-    /// Deletes the sessions and the push subscriptions they registered, and marks the sessions ended for <see cref="CacheFor"/>,
+    /// Deletes the sessions and the push subscriptions and phones they registered, and marks the sessions ended for <see cref="CacheFor"/>,
     /// so a lookup already past its read drops them.
     /// </summary>
     private async Task EndManyAsync(List<Guid> ids)
     {
         if (ids.Count == 0) return;
         await db.PushSubscriptions.Where(s => s.SessionId != null && ids.Contains(s.SessionId.Value)).ExecuteDeleteAsync();
+        await db.ReminderPhones.Where(p => p.SessionId != null && ids.Contains(p.SessionId.Value)).ExecuteDeleteAsync();
         await db.AuthSessions.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
         foreach (var id in ids)
         {

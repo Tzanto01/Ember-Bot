@@ -32,6 +32,48 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
     private Task<bool> UserExists(Guid id) => Host.Db(db => db.Users.AnyAsync(u => u.Id == id));
 
+    private Task BotAnsweredDiscordWithAPhoneAsync(Guid botId, DateTime askedAt)
+        => Host.Db(async db =>
+        {
+            await db.Users.Where(u => u.Id == botId).ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.DiscordReminders, true).SetProperty(u => u.DiscordRemindersAskedAt, askedAt));
+            db.ReminderPhones.Add(new ReminderPhone { UserId = botId, InstallId = $"bot-phone-{Guid.NewGuid():N}", Label = "Pixel 8" });
+            return await db.SaveChangesAsync();
+        });
+
+    [DockerFact]
+    public async Task Merging_brings_the_bots_discord_answer_and_its_phones_to_an_account_that_never_answered()
+    {
+        var user = await Host.SignedInAsync();
+        var userId = await user.IdAsync();
+        var bot = await BotOnlyAsync([]);
+        var askedAt = Host.Time.GetUtcNow().UtcDateTime.AddDays(-3);
+        await BotAnsweredDiscordWithAPhoneAsync(bot.UserId, askedAt);
+        await StartMergeAsync(user, bot.DiscordId);
+
+        await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
+
+        var merged = await Host.Db(db => db.Users.Include(u => u.ReminderPhones).SingleAsync(u => u.Id == userId));
+        (merged.DiscordReminders, merged.DiscordRemindersAskedAt).Should().Be((true, askedAt));
+        merged.ReminderPhones.Should().ContainSingle(p => p.Label == "Pixel 8" && p.SessionId != null);
+    }
+
+    [DockerFact]
+    public async Task Merging_keeps_the_accounts_own_discord_answer()
+    {
+        var user = await Host.SignedInAsync();
+        var userId = await user.IdAsync();
+        await Host.Db(db => db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.DiscordReminders, false)));
+        var bot = await BotOnlyAsync([]);
+        await BotAnsweredDiscordWithAPhoneAsync(bot.UserId, Host.Time.GetUtcNow().UtcDateTime);
+        await StartMergeAsync(user, bot.DiscordId);
+
+        await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
+
+        (await Host.Db(db => db.Users.Where(u => u.Id == userId).Select(u => new { u.DiscordReminders, u.DiscordRemindersAskedAt }).SingleAsync()))
+            .Should().Be(new { DiscordReminders = (bool?)false, DiscordRemindersAskedAt = (DateTime?)null });
+    }
+
     [DockerFact]
     public async Task Merging_ends_the_bot_accounts_sessions_at_once()
     {

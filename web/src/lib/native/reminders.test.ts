@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import { ApiClient } from '../api-client';
 import { DeviceStore } from '../device-store';
 import { Http } from '../http';
-import type { Habit, Routine } from '../models';
+import type { Habit, ReminderDestination, Routine } from '../models';
 import { OfflineQueue } from '../offline-queue';
 import { type FetchMock, habit, mockFetch } from '../test-support';
 import { applyTheme } from '../theme';
@@ -77,10 +77,26 @@ describe('Reminders', () => {
     localStorage.clear();
   });
 
+  const phone: ReminderDestination = {
+    id: 'phone-5',
+    kind: 'phone',
+    label: 'Pixel 8',
+    enabled: true,
+    current: true,
+  };
+
+  async function phoneRegistered(answer: ReminderDestination | null = phone) {
+    const call = await mock.next('POST', '/api/me/phones');
+    if (answer) call.respond(200, answer);
+    else call.fail();
+    return call;
+  }
+
   async function rebuildOnline(habits: Habit[], routines: unknown[] = []) {
     const done = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, habits);
     (await mock.next('GET', '/api/routines')).respond(200, routines);
+    await phoneRegistered();
     await done;
     return schedule.mock.calls[0][0].notifications;
   }
@@ -89,6 +105,7 @@ describe('Reminders', () => {
     schedule.mock.calls[0][0].notifications.map((n) => n.schedule?.at?.toISOString());
 
   it("offline, plans from the cached habits with the queued check-in applied, so today's reminder is cancelled", async () => {
+    localStorage.setItem('ember.reminderPhone', JSON.stringify({ id: 'phone-5', enabled: true }));
     await device.addEdit('u1', { habitId: 1, date: '2026-11-01', completed: true });
 
     const done = reminders.rebuild('u1', zone);
@@ -102,6 +119,10 @@ describe('Reminders', () => {
 
   it('asks for the notification permission when the phone never asked, then schedules once granted', async () => {
     checkPermissions.mockResolvedValue({ display: 'prompt' });
+    requestPermissions.mockImplementation(async () => {
+      checkPermissions.mockResolvedValue({ display: 'granted' });
+      return { display: 'granted' };
+    });
 
     const notifications = await rebuildOnline([reminded]);
 
@@ -178,6 +199,7 @@ describe('Reminders', () => {
     const edited = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded, water]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await edited;
     const second = schedule.mock.calls[1][0].notifications;
     const waterIds = (list: typeof first) =>
@@ -190,6 +212,7 @@ describe('Reminders', () => {
     const deleted = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, []);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await deleted;
 
     expect(schedule).toHaveBeenCalledTimes(2);
@@ -218,6 +241,7 @@ describe('Reminders', () => {
     const done = reminders.rebuild('u1', 'Asia/Tokyo');
     (await mock.next('GET', '/api/habits')).respond(200, [{ ...reminded, name: 'Read' }]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await done;
 
     expect(scheduledAt()[0]).toBe('2026-11-01T11:00:00.000Z');
@@ -273,6 +297,7 @@ describe('Reminders', () => {
     const done = reminders.rebuild('u1', zone, 30);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await done;
     const [first, second] = schedule.mock.calls[0][0].notifications;
 
@@ -313,6 +338,7 @@ describe('Reminders', () => {
     const again = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await again;
 
     expect(localStorage.getItem('ember.reminderIssued')).toBe(once);
@@ -326,6 +352,7 @@ describe('Reminders', () => {
     const full = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
     (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered();
     await full;
     vi.restoreAllMocks();
 
@@ -345,6 +372,7 @@ describe('Reminders', () => {
     const done = reminders.rebuild('u1', zone);
     (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
     (await mock.next('GET', '/api/routines')).respond(500);
+    await phoneRegistered();
     await done;
 
     expect(schedule.mock.calls[0][0].notifications[0].extra).toMatchObject({ routineId: 4 });
@@ -352,6 +380,7 @@ describe('Reminders', () => {
   });
 
   it('offline, plans the cached routines too', async () => {
+    localStorage.setItem('ember.reminderPhone', JSON.stringify({ id: 'phone-5', enabled: true }));
     await device.saveHabits({
       userId: 'u1',
       timeZone: zone,
@@ -368,6 +397,129 @@ describe('Reminders', () => {
       routineId: 4,
       date: '2026-11-01',
     });
+  });
+
+  it('registers this phone by its install id and model, and follows Settings and per-item choices for it', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP1A; wv) Chrome/130' });
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [
+      reminded,
+      { ...reminded, id: 2, reminderExclusions: ['phone-5'] },
+    ]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    const registration = (await phoneRegistered()) as { body: { installId: string; label: string } };
+    await done;
+
+    expect(registration.body).toEqual({ installId: localStorage.getItem('ember.installId'), label: 'Pixel 8' });
+    expect(registration.body.installId).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+    expect(scheduledAt()).toHaveLength(planDays);
+    expect(schedule.mock.calls[0][0].notifications.every((n) => (n.extra as { habitId: number }).habitId === 1)).toBe(
+      true,
+    );
+
+    getPending.mockResolvedValue({ notifications: [{ id: 1 }] });
+    const off = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    expect((await phoneRegistered({ ...phone, enabled: false })).body).toEqual(registration.body);
+    await off;
+
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenLastCalledWith({ notifications: [{ id: 1 }] });
+  });
+
+  it('plans with the last registration when registering fails, and with nothing when it never succeeded', async () => {
+    const never = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered(null);
+    await never;
+
+    expect(schedule).not.toHaveBeenCalled();
+
+    await rebuildOnline([reminded]);
+    localStorage.removeItem('ember.reminderPlanned');
+    const failed = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await phoneRegistered(null);
+    await failed;
+
+    expect(schedule).toHaveBeenCalledTimes(2);
+  });
+
+  it('forgets the cached registration on clearAll, so an offline rebuild plans nothing and asks no server', async () => {
+    await rebuildOnline([reminded]);
+    await reminders.clearAll();
+    await device.saveHabits({ userId: 'u1', timeZone: zone, habits: [reminded] });
+
+    const offline = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).fail();
+    await offline;
+
+    expect(mock.all.filter((c) => c.url === '/api/me/phones')).toHaveLength(1);
+    expect(schedule).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers nothing while notifications are denied', async () => {
+    checkPermissions.mockResolvedValue({ display: 'denied' });
+
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [reminded]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await done;
+
+    expect(mock.all.some((c) => c.url === '/api/me/phones')).toBe(false);
+    expect(requestPermissions).not.toHaveBeenCalled();
+    expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it('never asks for the notification permission on a rebuild when no item has a reminder', async () => {
+    checkPermissions.mockResolvedValue({ display: 'prompt' });
+
+    const done = reminders.rebuild('u1', zone);
+    (await mock.next('GET', '/api/habits')).respond(200, [habit]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await done;
+
+    expect(requestPermissions).not.toHaveBeenCalled();
+    expect(mock.all.some((c) => c.url === '/api/me/phones')).toBe(false);
+  });
+
+  it('in no-account mode, registers nothing and plans the habits with the mobile channel', async () => {
+    localStorage.setItem('ember.mode', 'local');
+
+    const done = reminders.rebuild('u1', zone, 30);
+    (await mock.next('GET', '/api/habits')).respond(200, [
+      { ...reminded, serverReminders: true, reminderExclusions: ['phone-5'] },
+      { ...reminded, id: 2, reminderChannels: [] },
+    ]);
+    (await mock.next('GET', '/api/routines')).respond(200, []);
+    await done;
+    const notifications = schedule.mock.calls[0][0].notifications;
+
+    expect(mock.all.some((c) => c.url === '/api/me/phones')).toBe(false);
+    expect(notifications).toHaveLength(2 * planDays);
+    expect(notifications.every((n) => (n.extra as { habitId: number }).habitId === 1)).toBe(true);
+  });
+
+  it('turns this phone on from Settings: asks for the permission, registers it and switches its destination on', async () => {
+    const enabling = reminders.enablePhone();
+    (await mock.next('POST', '/api/me/phones')).respond(200, { ...phone, enabled: false });
+    const patch = await mock.next('PATCH', '/api/me/reminder-destinations/phone-5');
+    expect(patch.body).toEqual({ enabled: true });
+    patch.respond(200, phone);
+
+    expect(await enabling).toEqual(phone);
+    expect(JSON.parse(localStorage.getItem('ember.reminderPhone') ?? 'null')).toEqual({ id: 'phone-5', enabled: true });
+  });
+
+  it('turns this phone on with nothing sent when the permission is refused', async () => {
+    checkPermissions.mockResolvedValue({ display: 'denied' });
+    requestPermissions.mockResolvedValue({ display: 'denied' });
+
+    expect(await reminders.enablePhone()).toBeNull();
+    expect(mock.all).toHaveLength(0);
   });
 
   it('calls the native notifications plugin without awaiting the proxy itself', async () => {

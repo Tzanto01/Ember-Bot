@@ -8,13 +8,13 @@ using Quartz;
 namespace Ember.Bot.Jobs;
 
 /// <summary>
-/// Runs every minute and sends every reminder whose <see cref="Habit.NextReminderUtc"/> is due once to each of the habit's
-/// <see cref="Habit.ReminderChannels"/> the user can receive (Discord: a Discord login and DM reminders not paused;
-/// web push: the channel is registered and the user has push subscriptions), then advances it once to the next local
+/// Runs every minute and sends every reminder whose <see cref="Habit.NextReminderUtc"/> is due once to each server destination
+/// <see cref="ReminderDestinations.Resolve"/> picks for the habit (Discord: a Discord login, the account answered yes, DM reminders not
+/// paused and not excluded; web push: each enabled push subscription not in <see cref="Habit.ReminderExclusions"/>, when the channel is
+/// registered), then advances it once to the next local
 /// occurrence of any of the habit's <see cref="Habit.ReminderTimes"/>, so a habit with several times sends at each of them while
 /// its day is still open. Only the Discord outcome counts towards the DM pause.
-/// <see cref="ReminderChannels.Mobile"/> is never sent from here (no <see cref="IReminderChannel"/> exists for it): the
-/// native app schedules those reminders as local notifications on the device.
+/// Phones are never sent to from here: the native app schedules their reminders as local notifications on the device.
 /// Reminders overdue by more than <see cref="StaleAfter"/> (e.g. after downtime) are advanced
 /// without sending, as are habits paused or already completed on the user's local day, weekly habits whose target is already
 /// reached in the user's local Monday–Sunday week, and habits in a routine that has a
@@ -29,7 +29,9 @@ namespace Ember.Bot.Jobs;
 /// is on, falls on the same local day and comes before the habit's next regular reminder; it is sent like the first only if the day
 /// (and a weekly habit's week) is still open then, and never followed by another.
 /// Each run then closes the open Discord reminder messages whose habits are done for their day, or whose buttons expired
-/// (<see cref="IsExpired"/>).
+/// (<see cref="IsExpired"/>), and for each web push reminder delivered for an item that is now done for its day sends the clear push
+/// (<see cref="WebPushReminderChannel.SendClearAsync"/>) to the user's push subscriptions that are targets of that item; then forgets
+/// it, as it forgets expired ones without a push.
 /// </summary>
 [DisallowConcurrentExecution]
 public class ReminderDispatchJob : IJob
@@ -172,6 +174,59 @@ public class ReminderDispatchJob : IJob
         }
 
         await CloseReminderMessagesAsync(cancellationToken);
+        await ClosePushRemindersAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// For each delivered web push reminder whose habit or routine is done for its day, sends the clear push to the push subscriptions
+    /// that are its targets now, then forgets it; forgets expired ones without a push. A failed clear is forgotten too (sent at most once).
+    /// </summary>
+    private async Task ClosePushRemindersAsync(CancellationToken cancellationToken)
+    {
+        List<(PushReminder Reminder, string Timezone, bool HabitDone)> open;
+        using (var scope = _services.CreateScope())
+            open = await scope.ServiceProvider.GetRequiredService<HabitService>().GetPushRemindersAsync(cancellationToken);
+
+        var push = _channels.OfType<WebPushReminderChannel>().FirstOrDefault();
+        foreach (var (reminder, timezone, habitDone) in open)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            var expired = IsExpired(reminder.Date, TimezoneHelper.LocalNow(timezone, _time).DateTime);
+            if (reminder.HabitId is not null && !habitDone && !expired) continue;
+            try
+            {
+                using var scope = _services.CreateScope();
+                var habits = scope.ServiceProvider.GetRequiredService<HabitService>();
+                if (!expired)
+                {
+                    User? user = null;
+                    List<string> exclusions = [];
+                    var tag = "";
+                    if (reminder.HabitId is { } habitId)
+                    {
+                        if (await habits.GetHabitWithUserAsync(habitId, cancellationToken) is { } habit)
+                            (user, exclusions, tag) = (habit.User, habit.ReminderExclusions, WebPushReminderChannel.HabitTag(habitId));
+                    }
+                    else if (await habits.GetRoutineWithUserAsync(reminder.RoutineId!.Value, cancellationToken) is { } routine)
+                    {
+                        if (!IsRoutineDone(routine, reminder.Date)) continue;
+                        (user, exclusions, tag) = (routine.User, routine.ReminderExclusions, WebPushReminderChannel.RoutineTag(routine.Id));
+                    }
+                    if (user is not null && push is not null
+                        && ReminderDestinations.Resolve(user, exclusions).PushSubscriptionIds is { Count: > 0 } ids)
+                        await push.SendClearAsync(user.Id, ids, tag, cancellationToken);
+                }
+                await habits.DeletePushReminderAsync(reminder.Id, CancellationToken.None);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not clear web push reminder {PushReminderId}.", reminder.Id);
+            }
+        }
     }
 
     /// <summary>
@@ -214,8 +269,12 @@ public class ReminderDispatchJob : IJob
     /// <summary>True when the routine still has members and every one of them is done on the message's day.</summary>
     private static async Task<bool> IsRoutineDoneAsync(HabitService habits, ReminderMessage message, CancellationToken cancellationToken)
         => message.RoutineId is { } routineId
-            && await habits.GetRoutineWithUserAsync(routineId, cancellationToken) is { Habits.Count: > 0 } routine
-            && routine.Habits.All(h => h.Logs.Any(l => l.Date == message.Date && l.Completed));
+            && await habits.GetRoutineWithUserAsync(routineId, cancellationToken) is { } routine
+            && IsRoutineDone(routine, message.Date);
+
+    /// <summary>True when the routine has members and every one of them is done on <paramref name="date"/>. Needs that day's logs loaded.</summary>
+    private static bool IsRoutineDone(Routine routine, DateOnly date)
+        => routine.Habits.Count > 0 && routine.Habits.All(h => h.Logs.Any(l => l.Date == date && l.Completed));
 
     /// <summary>
     /// Sends the habit's due second reminder when the setting is on, the reminder isn't stale, the local day is the first reminder's,
@@ -232,7 +291,7 @@ public class ReminderDispatchJob : IJob
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(user.Timezone, _time);
         var discordId = user.DiscordId();
-        var targets = Targets(habit.ReminderChannels, user, discordId);
+        var (targets, pushIds) = Targets(user, habit.ReminderExclusions);
         var send = targets.Count > 0
             && user.SecondReminderMinutes > 0
             && habit.ReminderTime is not null
@@ -248,7 +307,8 @@ public class ReminderDispatchJob : IJob
         if (send)
         {
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, today.AddDays(-7), today, cancellationToken);
-            delivery = await DeliverAsync(targets, new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, false, today, Second: true),
+            delivery = await DeliverAsync(targets, new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, false, today, Second: true,
+                PushSubscriptionIds: pushIds),
                 user, now, (SecondHabitKind, habit.Id, dueAt), cancellationToken);
         }
 
@@ -272,7 +332,7 @@ public class ReminderDispatchJob : IJob
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(user.Timezone, _time);
         var discordId = user.DiscordId();
-        var targets = Targets(routine.ReminderChannels, user, discordId);
+        var (targets, pushIds) = Targets(user, routine.ReminderExclusions);
 
         List<RoutineHabit> pending = [];
         if (targets.Count > 0 && user.SecondReminderMinutes > 0 && routine.ReminderTime is not null
@@ -286,7 +346,8 @@ public class ReminderDispatchJob : IJob
 
         var send = pending.Count > 0;
         var delivery = send
-            ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending, Second: true),
+            ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending, Second: true,
+                PushSubscriptionIds: pushIds),
                 user, now, (SecondRoutineKind, routine.Id, dueAt), cancellationToken)
             : Delivery.NotDelivered;
 
@@ -340,7 +401,7 @@ public class ReminderDispatchJob : IJob
 
         var user = habit.User;
         var discordId = user.DiscordId();
-        var targets = Targets(habit.ReminderChannels, user, discordId);
+        var (targets, pushIds) = Targets(user, habit.ReminderExclusions);
         var send = targets.Count > 0
             && habit.Routine?.ReminderTime is null
             && now - dueAt <= StaleAfter
@@ -356,7 +417,7 @@ public class ReminderDispatchJob : IJob
             var weekAgo = today.AddDays(-7);
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, weekAgo, today, cancellationToken);
             var snoozed = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, dueAt.AddTicks(-1)) != dueAt;
-            var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed, today);
+            var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed, today, PushSubscriptionIds: pushIds);
             delivery = await DeliverAsync(targets, reminder, user, now, (HabitKind, habit.Id, dueAt), cancellationToken);
             if (delivery == Delivery.Delivered && !snoozed && SecondReminderAt(user, tz, today, now) is { } second
                 && (TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, now) is not { } next || next > second))
@@ -380,7 +441,7 @@ public class ReminderDispatchJob : IJob
         var tz = TimezoneHelper.Find(user.Timezone) ?? TimeZoneInfo.Utc;
         var today = TimezoneHelper.LocalToday(user.Timezone, _time);
         var discordId = user.DiscordId();
-        var targets = Targets(routine.ReminderChannels, user, discordId);
+        var (targets, pushIds) = Targets(user, routine.ReminderExclusions);
 
         List<RoutineHabit> pending = [];
         if (targets.Count > 0 && now - dueAt <= StaleAfter)
@@ -393,7 +454,8 @@ public class ReminderDispatchJob : IJob
 
         var send = pending.Count > 0;
         var delivery = send
-            ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending), user, now,
+            ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending,
+                PushSubscriptionIds: pushIds), user, now,
                 (RoutineKind, routine.Id, dueAt), cancellationToken)
             : Delivery.NotDelivered;
         routine.SecondReminderUtc = delivery == Delivery.Delivered ? SecondReminderAt(user, tz, today, now) : null;
@@ -406,14 +468,20 @@ public class ReminderDispatchJob : IJob
         if (delivery != Delivery.Retry) _retries.Forget(RoutineKind, routineId, dueAt);
     }
 
-    /// <summary>The registered channels among <paramref name="channels"/> that the user can receive.</summary>
-    private List<IReminderChannel> Targets(ReminderChannels channels, User user, ulong? discordId)
-        => _channels.Where(c => channels.HasFlag(c.Channel) && c.Channel switch
+    /// <summary>
+    /// The registered channels that reach at least one of the item's server destinations (<see cref="ReminderDestinations.Resolve"/>),
+    /// and the push subscriptions web push may send to.
+    /// </summary>
+    private (List<IReminderChannel> Channels, IReadOnlyList<int> PushSubscriptionIds) Targets(User user, IReadOnlyCollection<string> exclusions)
+    {
+        var targets = ReminderDestinations.Resolve(user, exclusions);
+        return (_channels.Where(c => c.Channel switch
         {
-            ReminderChannels.Discord => discordId is not null && user.DmRemindersPausedAt is null,
-            ReminderChannels.WebPush => user.PushSubscriptions.Count > 0,
+            ReminderChannels.Discord => targets.Discord,
+            ReminderChannels.WebPush => targets.PushSubscriptionIds.Count > 0,
             _ => false,
-        }).ToList();
+        }).ToList(), targets.PushSubscriptionIds);
+    }
 
     /// <summary>
     /// Sends the reminder to each target. <see cref="Delivery.Retry"/> when no channel delivered it, a send failed transiently and

@@ -18,10 +18,12 @@ public partial class HabitService
 
     /// <summary>
     /// Stores the browser subscription for the user. An endpoint already stored (for this or another account) is moved to the
-    /// user with the new keys and <paramref name="sessionId"/> and counts as saved now. Afterwards the user keeps at most <see cref="MaxPushSubscriptionsPerUser"/>
+    /// user with the new keys, <paramref name="sessionId"/> and <paramref name="label"/> and counts as saved now; it stays
+    /// <see cref="PushSubscription.Enabled"/> as it was when it stays with the same user and is enabled again when it moves. Afterwards the user keeps at most <see cref="MaxPushSubscriptionsPerUser"/>
     /// subscriptions; the least recently saved ones beyond that are deleted.
     /// </summary>
-    public async Task SavePushSubscriptionAsync(Guid userId, string endpoint, string p256dh, string auth, Guid? sessionId = null)
+    public async Task SavePushSubscriptionAsync(Guid userId, string endpoint, string p256dh, string auth, Guid? sessionId = null,
+        string? label = null)
     {
         var now = _time.GetUtcNow().UtcDateTime;
         var subscription = await _db.PushSubscriptions.FirstOrDefaultAsync(s => s.Endpoint == endpoint);
@@ -31,7 +33,9 @@ public partial class HabitService
             _db.PushSubscriptions.Add(subscription);
         }
 
+        if (subscription.UserId != userId) subscription.Enabled = true;
         subscription.UserId = userId;
+        subscription.Label = label;
         subscription.P256dh = p256dh;
         subscription.Auth = auth;
         subscription.SessionId = sessionId;
@@ -46,7 +50,9 @@ public partial class HabitService
             var updated = await _db.PushSubscriptions
                 .Where(s => s.Endpoint == endpoint)
                 .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.Enabled, p => p.UserId == userId ? p.Enabled : true)
                     .SetProperty(p => p.UserId, userId)
+                    .SetProperty(p => p.Label, label)
                     .SetProperty(p => p.P256dh, p256dh)
                     .SetProperty(p => p.Auth, auth)
                     .SetProperty(p => p.SessionId, sessionId)

@@ -64,6 +64,12 @@ public static class AppHost
                         .WithIdentity("reminder-dispatch-trigger", "reminders")
                         .WithCronSchedule("0 * * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
 
+                    q.AddJob<DiscordReminderAskJob>(opts => opts.WithIdentity(DiscordReminderAskJob.Key).StoreDurably());
+                    q.AddTrigger(opts => opts
+                        .ForJob(DiscordReminderAskJob.Key)
+                        .WithIdentity("discord-reminder-ask-trigger", "asks")
+                        .WithCronSchedule("30 * * * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
+
                     q.AddJob<WeeklySummaryJob>(opts => opts.WithIdentity(WeeklySummaryJob.Key).StoreDurably());
                     q.AddTrigger(opts => opts
                         .ForJob(WeeklySummaryJob.Key)

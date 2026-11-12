@@ -17,18 +17,19 @@ internal static class HabitEndpoints
         int Id, string Name, string Frequency, int? WeeklyTarget, string? ReminderTime,
         DateOnly? PausedFrom, DateOnly? PausedUntil, bool PausedToday, DateTime CreatedAt, DateOnly StartDate,
         DayDto Today, StatsDto Stats, List<string> ReminderChannels, List<string>? Days, int TimesPerDay, int? RoutineId,
-        List<string> ReminderTimes);
+        List<string> ReminderTimes, List<string> ReminderExclusions, bool ServerReminders);
 
     public sealed record TemplateDto(string Key, string Name, string Description, string SuggestedReminderTime, string Frequency, int? WeeklyTarget);
 
     public sealed record CreateHabitRequest(string? Name, string? ReminderTime, string? Frequency, int? WeeklyTarget,
-        string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes, string?[]? ReminderChannels);
+        string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes, string?[]? ReminderExclusions);
     public sealed record UpdateHabitRequest(string? Name, string? ReminderTime, bool? ClearReminder, string? Frequency, int? WeeklyTarget,
-        string?[]? ReminderChannels, string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes);
+        string?[]? ReminderExclusions, string?[]? Days, int? TimesPerDay, string?[]? ReminderTimes);
     public sealed record PauseRequest(string? Until);
     public sealed record DayRequest(bool? Completed, int? Count);
 
-    private sealed record UserDays(TimeZoneInfo Tz, DateOnly Today, int GraceDays, IReadOnlySet<DateOnly> LowDays);
+    private sealed record UserDays(TimeZoneInfo Tz, DateOnly Today, int GraceDays, IReadOnlySet<DateOnly> LowDays, User Destinations,
+        HashSet<string> DestinationIds);
 
     public static RouteGroupBuilder MapHabits(this RouteGroupBuilder api)
     {
@@ -54,15 +55,15 @@ internal static class HabitEndpoints
             var days = ValidateDays(request.Days, frequency, null, errors);
             var timesPerDay = ValidateTimesPerDay(request.TimesPerDay ?? 1, frequency, errors);
             var reminderTimes = ParseReminderTimes(request.ReminderTimes, timesPerDay, errors);
-            var channels = ParseReminderChannels(request.ReminderChannels, errors);
+            var userId = principal.UserId();
+            var exclusions = await ParseReminderExclusionsAsync(request.ReminderExclusions, habits, userId, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
-            var userId = principal.UserId();
             Habit habit;
             try
             {
                 habit = await habits.AddHabitAsync(userId, name!, reminder, frequency!.Value, request.WeeklyTarget,
-                    channels ?? ReminderChannels.WebPush, days, timesPerDay, reminderTimes);
+                    exclusions, days, timesPerDay, reminderTimes);
             }
             catch (ConsentRequiredException)
             {
@@ -97,13 +98,13 @@ internal static class HabitEndpoints
             var timesPerDay = ValidateTimesPerDay(
                 request.TimesPerDay ?? (newFrequency == FrequencyType.Weekly ? 1 : habit.TimesPerDay), newFrequency, errors);
             var reminderTimes = ParseReminderTimes(request.ReminderTimes, timesPerDay, errors);
-            var channels = ParseReminderChannels(request.ReminderChannels, errors);
+            var exclusions = await ParseReminderExclusionsAsync(request.ReminderExclusions, habits, userId, errors);
             if (errors.Count > 0) return Problems.Validation(errors);
 
             if (frequency is not null || request.WeeklyTarget is not null || request.Days is not null || request.TimesPerDay is not null)
                 await habits.SetScheduleAsync(userId, id, newFrequency!.Value, request.WeeklyTarget ?? habit.WeeklyTarget, days, timesPerDay);
-            if (name is not null || reminder is not null || reminderTimes is not null || request.ClearReminder == true || channels is not null)
-                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true, channels, reminderTimes);
+            if (name is not null || reminder is not null || reminderTimes is not null || request.ClearReminder == true || exclusions is not null)
+                await habits.EditHabitAsync(userId, id, name, reminder, request.ClearReminder == true, exclusions, reminderTimes);
 
             return await HabitResult(habits, userId, id);
         });
@@ -195,13 +196,17 @@ internal static class HabitEndpoints
             : Problems.NotFound();
 
     private static async Task<UserDays> LoadUserDays(HabitService habits, Guid userId)
-        => new(await habits.GetUserTzAsync(userId), await habits.GetLocalTodayAsync(userId),
-            await habits.GetGraceDaysAsync(userId), await habits.GetLowDaysAsync(userId));
+    {
+        var destinations = await habits.GetUserWithDestinationsAsync(userId) ?? new User { Id = userId };
+        return new(await habits.GetUserTzAsync(userId), await habits.GetLocalTodayAsync(userId),
+            await habits.GetGraceDaysAsync(userId), await habits.GetLowDaysAsync(userId), destinations, ReminderDestinations.Ids(destinations));
+    }
 
     private static HabitDto ToDto(Habit habit, UserDays user)
     {
         var s = HabitService.StatsOn(habit, user.Today, user.GraceDays, user.LowDays, user.Tz);
         var stats = new StatsDto(s.Streak, s.GraceUsed, s.BestStreak, s.Last7, s.Week is { } week ? new WeekDto(week.Done, week.Target) : null);
+        var targets = ReminderDestinations.Resolve(user.Destinations, habit.ReminderExclusions);
 
         return new HabitDto(
             habit.Id, habit.Name, Lower(habit.FrequencyType), habit.WeeklyTarget,
@@ -209,9 +214,10 @@ internal static class HabitEndpoints
             habit.PausedFrom, habit.PausedUntil, HabitService.IsPausedOn(habit, user.Today),
             DateTime.SpecifyKind(habit.CreatedAt, DateTimeKind.Utc), HabitService.StartDate(habit, user.Tz),
             ToDayDto(HabitService.DayOn(habit, user.Today, user.Today, user.Tz, user.LowDays)), stats,
-            HabitService.ReminderChannelNames(habit.ReminderChannels),
+            ReminderDestinations.LegacyChannels(targets),
             habit.FrequencyType == FrequencyType.Weekdays && habit.Days is { } days ? ScheduleDayNames.ToNames(days) : null,
-            habit.TimesPerDay, habit.RoutineId, habit.ReminderTimes.Select(Formats.Time).ToList());
+            habit.TimesPerDay, habit.RoutineId, habit.ReminderTimes.Select(Formats.Time).ToList(),
+            habit.ReminderExclusions.Where(user.DestinationIds.Contains).ToList(), targets.Any);
     }
 
     private static DayDto ToDayDto(HabitDay day) => new(day.Date, Lower(day.State), day.Completed, day.Count);
@@ -259,23 +265,18 @@ internal static class HabitEndpoints
         return null;
     }
 
-    internal static ReminderChannels? ParseReminderChannels(string?[]? values, Dictionary<string, string[]> errors)
+    /// <summary>
+    /// The distinct <paramref name="values"/>, or null when <paramref name="values"/> is null or invalid: each must be the id of one of
+    /// the user's current reminder destinations.
+    /// </summary>
+    internal static async Task<List<string>?> ParseReminderExclusionsAsync(string?[]? values, HabitService habits, Guid userId,
+        Dictionary<string, string[]> errors)
     {
         if (values is null) return null;
-        var channels = ReminderChannels.None;
-        foreach (var value in values)
-        {
-            switch (value)
-            {
-                case "discord": channels |= ReminderChannels.Discord; break;
-                case "webpush": channels |= ReminderChannels.WebPush; break;
-                case "mobile": channels |= ReminderChannels.Mobile; break;
-                default:
-                    errors["reminderChannels"] = ["Each must be discord, webpush or mobile."];
-                    return null;
-            }
-        }
-        return channels;
+        var ids = await habits.GetUserWithDestinationsAsync(userId) is { } user ? ReminderDestinations.Ids(user) : [];
+        if (values.All(v => v is not null && ids.Contains(v))) return values.Select(v => v!).Distinct().ToList();
+        errors["reminderExclusions"] = ["Each must be the id of one of your reminder destinations."];
+        return null;
     }
 
     internal static FrequencyType? ParseFrequency(string? value) => value switch

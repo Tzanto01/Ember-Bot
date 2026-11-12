@@ -24,9 +24,6 @@ public class PushApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
     private static string FcmEndpoint() => $"https://fcm.googleapis.com/fcm/send/{Guid.NewGuid():N}";
 
-    private static List<string?> Channels(System.Text.Json.JsonElement habit)
-        => habit.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).ToList();
-
     [DockerFact]
     public async Task The_vapid_public_key_is_returned_when_configured()
     {
@@ -108,51 +105,6 @@ public class PushApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
             await (await Subscribe(user, endpoint)).Expect(HttpStatusCode.NoContent);
 
         (await EndpointsOf(await user.IdAsync())).Should().BeEquivalentTo(endpoints.Skip(2));
-    }
-
-    [DockerFact]
-    public async Task Reminder_channels_round_trip_reject_unknown_values_and_differ_for_bot_created_habits()
-    {
-        var user = await Host.SignedInAsync();
-        var userId = await user.IdAsync();
-        var created = await user.CreateHabitAsync();
-        var id = created.GetProperty("id").GetInt32();
-        Channels(created).Should().Equal("webpush");
-
-        var both = await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "webpush" } })).ExpectJson();
-        Channels(both).Should().BeEquivalentTo("discord", "webpush");
-        Channels(await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "mobile" } })).ExpectJson()).Should().Equal("mobile");
-        Channels(await (await user.Get($"/api/habits/{id}")).ExpectJson()).Should().Equal("mobile");
-        var mixed = await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "mobile" } })).ExpectJson();
-        Channels(mixed).Should().BeEquivalentTo("discord", "mobile");
-        await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "webpush" } })).ExpectJson();
-        await (await user.Patch($"/api/habits/{id}", new { name = "Renamed", reminderChannels = new[] { "sms" } })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
-        var unchanged = await (await user.Get($"/api/habits/{id}")).ExpectJson();
-        Channels(unchanged).Should().BeEquivalentTo("discord", "webpush");
-        unchanged.GetProperty("name").GetString().Should().NotBe("Renamed");
-        var none = await (await user.Patch($"/api/habits/{id}", new { reminderChannels = Array.Empty<string>() })).ExpectJson();
-        Channels(none).Should().BeEmpty();
-
-        var botHabit = await Host.Service(s => s.AddHabitAsync(userId, "From the bot", null));
-        Channels(await (await user.Get($"/api/habits/{botHabit.Id}")).ExpectJson()).Should().Equal("discord");
-    }
-
-    [DockerFact]
-    public async Task Export_lists_reminder_channels_and_push_subscription_endpoints()
-    {
-        var user = await Host.SignedInAsync();
-        var id = (await user.CreateHabitAsync()).GetProperty("id").GetInt32();
-        await (await user.Patch($"/api/habits/{id}", new { reminderChannels = new[] { "discord", "webpush" } })).ExpectJson();
-        var endpoint = FcmEndpoint();
-        await (await Subscribe(user, endpoint)).Expect(HttpStatusCode.NoContent);
-
-        var export = await (await user.Get("/api/me/export?format=json")).ExpectJson();
-
-        export.GetProperty("habits")[0].GetProperty("reminder_channels").EnumerateArray().Select(c => c.GetString())
-            .Should().BeEquivalentTo("discord", "webpush");
-        export.GetProperty("push_subscriptions").EnumerateArray().Select(p => p.GetProperty("endpoint").GetString())
-            .Should().Equal(endpoint);
-        export.GetProperty("push_subscriptions").ToString().Should().NotContain("p256dh").And.NotContain("auth");
     }
 
     [DockerFact]

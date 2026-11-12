@@ -17,8 +17,13 @@ const donePayload =
 
 const origin = 'https://ember.example';
 
-function registration() {
-  return { showNotification: vi.fn(async () => undefined) };
+function registration(shown: { tag: string; close: Mock }[] = []) {
+  return {
+    showNotification: vi.fn(async (_title: string, _options?: NotificationOptions) => undefined),
+    getNotifications: vi.fn(async (filter?: GetNotificationOptions) =>
+      shown.filter((n) => n.tag === filter?.tag) as unknown as Notification[],
+    ),
+  };
 }
 
 describe('handlePush', () => {
@@ -71,6 +76,63 @@ describe('handlePush', () => {
 
     expect(reg.showNotification).toHaveBeenCalledTimes(1);
     expect(reg.showNotification).toHaveBeenCalledWith('Ember', { body: 'A gentle nudge from Ember' });
+  });
+});
+
+describe('handlePush tags and clears (v1.14)', () => {
+  const tagged = JSON.parse(botPayload) as { notification: Record<string, unknown> };
+  tagged.notification['tag'] = 'habit-7';
+
+  it('shows a tagged reminder under its tag and alerts again, so the second reminder replaces the first audibly', async () => {
+    const reg = registration();
+
+    await handlePush({ json: () => tagged }, reg);
+
+    expect(reg.showNotification).toHaveBeenCalledWith(
+      'Ember',
+      expect.objectContaining({ body: 'A gentle nudge from Ember', tag: 'habit-7', renotify: true }),
+    );
+  });
+
+  it('closes every notification with the cleared tag after a silent Logged one, and leaves other tags alone', async () => {
+    const reminder = { tag: 'habit-7', close: vi.fn() };
+    const second = { tag: 'habit-7', close: vi.fn() };
+    const other = { tag: 'routine-3', close: vi.fn() };
+    const reg = registration([reminder, second, other]);
+    const clear = {
+      clear: { tag: 'habit-7' },
+      notification: { title: 'Ember', body: loggedBody, data: { onActionClick: { default: { url: '/today' } } } },
+    };
+
+    await handlePush({ json: () => clear }, reg);
+
+    expect(reg.showNotification).toHaveBeenCalledTimes(1);
+    expect(reg.showNotification).toHaveBeenCalledWith('Ember', { tag: 'habit-7', body: loggedBody, silent: true });
+    expect(reminder.close).toHaveBeenCalled();
+    expect(second.close).toHaveBeenCalled();
+    expect(other.close).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a tag that is not a string', { clear: { tag: 7 } }],
+    ['an empty tag', { clear: { tag: '' } }],
+    ['a clear that is not an object', { clear: 'habit-7' }],
+  ])('treats a clear with %s as a normal push and still shows one', async (_name, payload) => {
+    const reminder = { tag: 'habit-7', close: vi.fn() };
+    const reg = registration([reminder]);
+
+    await handlePush({ json: () => payload }, reg);
+
+    expect(reg.showNotification).toHaveBeenCalledWith('Ember', { body: 'A gentle nudge from Ember' });
+    expect(reminder.close).not.toHaveBeenCalled();
+  });
+
+  it('shows the payload notification when the clear is malformed but a notification came with it', async () => {
+    const reg = registration();
+
+    await handlePush({ json: () => ({ clear: { tag: null }, notification: { title: 'Ember', body: loggedBody } }) }, reg);
+
+    expect(reg.showNotification).toHaveBeenCalledWith('Ember', { body: loggedBody });
   });
 });
 

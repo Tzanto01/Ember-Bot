@@ -33,6 +33,7 @@ public class ReminderMessageTests
             {
                 Id = TestUsers.Id(DiscordUser),
                 Logins = TestUsers.Discord(DiscordUser),
+                DiscordReminders = true,
                 Timezone = "Europe/Berlin",
                 SecondReminderMinutes = secondReminderMinutes,
                 HealthDataConsentAt = Now.UtcDateTime,
@@ -309,7 +310,6 @@ public class ReminderMessageTests
                 Name = "Morning",
                 ReminderTime = new TimeOnly(9, 0),
                 NextReminderUtc = Now.UtcDateTime,
-                ReminderChannels = ReminderChannels.Discord,
             });
             await db.SaveChangesAsync();
             await db.Habits.ExecuteUpdateAsync(s => s.SetProperty(h => h.RoutineId, 1));
@@ -361,7 +361,6 @@ public class ReminderMessageTests
                 Name = "Morning",
                 ReminderTime = new TimeOnly(9, 0),
                 NextReminderUtc = Now.UtcDateTime,
-                ReminderChannels = ReminderChannels.Discord,
             });
             await db.SaveChangesAsync();
             await db.Habits.ExecuteUpdateAsync(s => s.SetProperty(h => h.RoutineId, 1));

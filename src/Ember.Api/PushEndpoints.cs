@@ -28,7 +28,8 @@ internal static class PushEndpoints
                 ? Results.StatusCode(StatusCodes.Status501NotImplemented)
                 : Results.Ok(new VapidKeyDto(config["WebPush:PublicKey"]!)));
 
-        api.MapPost("/me/push-subscriptions", async (PushSubscriptionRequest request, ClaimsPrincipal principal, HabitService habits) =>
+        api.MapPost("/me/push-subscriptions", async (PushSubscriptionRequest request, ClaimsPrincipal principal, HabitService habits,
+            HttpRequest http) =>
         {
             var errors = new Dictionary<string, string[]>();
             if (!IsAllowedEndpoint(request.Endpoint)) errors["endpoint"] = [EndpointMessage];
@@ -39,7 +40,7 @@ internal static class PushEndpoints
             if (errors.Count > 0) return Problems.Validation(errors);
 
             await habits.SavePushSubscriptionAsync(principal.UserId(), request.Endpoint!, request.Keys!.P256dh!, request.Keys.Auth!,
-                AuthSessions.IdOf(principal));
+                AuthSessions.IdOf(principal), BrowserLabels.From(http.Headers.UserAgent.ToString()));
             return Results.NoContent();
         }).RequireAuthorization();
 

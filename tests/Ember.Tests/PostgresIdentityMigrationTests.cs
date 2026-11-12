@@ -85,7 +85,7 @@ public class PostgresIdentityMigrationTests(PostgresFixture postgres)
         bob.Habits.Should().ContainSingle(h => h.Name == "Walk").Which.Logs.Should().ContainSingle();
         bob.DayMarks.Should().ContainSingle();
 
-        users.SelectMany(u => u.Habits).Should().OnlyContain(h => h.ReminderChannels == ReminderChannels.Discord);
+        users.SelectMany(u => u.Habits).Should().OnlyContain(h => h.ReminderExclusions.Count == 0);
 
         var carol = users.Single(u => u.DiscordId() == Carol);
         carol.Habits.Should().BeEmpty();

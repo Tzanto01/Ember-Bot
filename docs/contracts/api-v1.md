@@ -1,4 +1,6 @@
-# Ember API contract v1.13
+# Ember API contract v1.14
+
+v1.14 (2026-11-12, Nico: "what if we just make it so that every habit always reminds you everywhere you have allowed it?" and "I believe we should not limit to one device."): reminders go to every destination the user allowed: Discord DMs (after the bot asks once), each browser and each phone running the app, each switched on or off in Settings (`GET`/`PATCH /api/me/reminder-destinations`, `POST /api/me/phones`); habits and routines store only the destinations they skip (`reminderExclusions`); `reminderChannels` is derived and deprecated; logging anywhere closes the browser notification. See "Reminder destinations v1.14".
 
 v1.13 (2026-11-12, Nico: "Well we can change that, no?", and on the email: "we should probably make it so resend sends it like once a day or something, if something new exists."): in-app feedback from the web app, the Android app and Discord (`POST /api/feedback`, `/feedback`), mailed to the operator in one daily digest when there is new feedback. See "Feedback v1.13".
 
@@ -123,7 +125,7 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
 - Android: `MainActivity` (`singleTask`) has a `VIEW`/`BROWSABLE` intent filter for `app.ember.habits://auth/discord`; the app listens with `@capacitor/app` `appUrlOpen` and closes the browser. Another app can claim the same scheme and see the code, which PKCE makes useless to it. PKCE does not stop a malicious app from starting its own flow with its own verifier and receiving the code for an account whose owner approves it in the browser (client impersonation, RFC 8252 §8.6); a verified Android App Link (`https` redirect plus `/.well-known/assetlinks.json` with the release signing certificate) closes that and is planned before a public Play release.
 - `DELETE /api/me/discord` → 204. 409 `conflict` unless the account has a password and a confirmed email (otherwise it could no longer sign in).
 
-### Account merge
+### Account merge *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 
 - `GET /api/account/merge` → 200 `{ habits: int, logs: int, dayMarks: int, habitNames: string[], kept: { timezone, graceDaysPerWeek, leaderboardOptIn } }`, or 404 when no valid merge is pending. `kept` is the signed-in account's settings, which win.
 - `POST /api/account/merge` → 204. Needs consent on the signed-in account. In one transaction, after re-checking that the source is still bot-only, the Discord login still points at it and the signed-in account still has no Discord login:
@@ -152,7 +154,7 @@ Rate limits: per client IP (after forwarded headers) on the credential endpoints
 - Clients (web and native): after sign-in, when `timezoneSet` is false, the app sends `PATCH /api/me { timezone }` once with the device's IANA zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) if the server knows it; a failure is ignored and retried on the next app start. A zone the user picked (`timezoneSet: true`) is never changed automatically.
 - `POST /api/me/consent` `{ policyVersion }` → 204. 400 when it isn't the current version.
 - `POST /api/me/dm-reminders/resume` → 204.
-- `GET /api/me/export?format=json|csv` → file download. Same content as the bot's `/export`, plus the account's email and Discord ID (and, after the push slice, reminder channels and push subscription endpoints).
+- `GET /api/me/export?format=json|csv` → file download. Same content as the bot's `/export`, plus the account's email and Discord ID (and, after the push slice, reminder channels and push subscription endpoints). *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - `POST /api/me/delete` `{ password?, confirm: "DELETE" }` → 204, deletes everything, signs out. Needs the current password when the account has one; otherwise the typed `confirm` value. 400 `validation` on a mismatch.
 
 ## Habits
@@ -197,9 +199,9 @@ Endpoints:
 - `GET /api/push/vapid-public-key` → `{ key }`.
 - `POST /api/me/push-subscriptions` `{ endpoint, keys: { p256dh, auth } }` → 204. `endpoint` must be `https` on a known push service host (Google FCM, Mozilla, Microsoft WNS, Apple); anything else → 400. An endpoint already stored for another account moves to the caller (shared device). At most 10 per account.
 - `DELETE /api/me/push-subscriptions?endpoint=<url-encoded>` → 204, only the caller's own. The web app calls it before logout.
-- `Habit.reminderChannels`: `("discord" | "webpush" | "mobile")[]`, settable via `PATCH /api/habits/{id}`. Default: `discord` for habits created in the bot or before this slice, `webpush` for habits created in the web app. Empty means no reminders. A channel the user can't receive (no Discord login, no push subscription) is skipped silently. `mobile` is never dispatched by the server: the native app schedules local notifications on the device for habits that have it, so they fire offline. Turning on "Remind me on this phone" for a habit sets its channels to `mobile` only (replacing `discord` and `webpush`), so the same reminder never arrives twice; the UI says so. Turning it off restores the channels this device remembered for the habit, or else `discord` when the account has Discord, else `webpush` (the server doesn't store the creation channel). Adding `discord` or `webpush` to a `mobile` habit removes `mobile`.
+- `Habit.reminderChannels`: `("discord" | "webpush" | "mobile")[]`, settable via `PATCH /api/habits/{id}`. Default: `discord` for habits created in the bot or before this slice, `webpush` for habits created in the web app. Empty means no reminders. A channel the user can't receive (no Discord login, no push subscription) is skipped silently. `mobile` is never dispatched by the server: the native app schedules local notifications on the device for habits that have it, so they fire offline. Turning on "Remind me on this phone" for a habit sets its channels to `mobile` only (replacing `discord` and `webpush`), so the same reminder never arrives twice; the UI says so. Turning it off restores the channels this device remembered for the habit, or else `discord` when the account has Discord, else `webpush` (the server doesn't store the creation channel). Adding `discord` or `webpush` to a `mobile` habit removes `mobile`. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - Notification payload (Angular service worker shape): `{ "notification": { "title": "Ember", "body": "<text>", "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } } } } }`. The body names no habit by default ("A gentle nudge from Ember"), since it can show on a lock screen.
-- Until the slice lands these return 501 and `reminderChannels` is absent; the web app hides push settings on 501.
+- Until the slice lands these return 501 and `reminderChannels` is absent; the web app hides push settings on 501. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 
 ## Health
 
@@ -248,13 +250,13 @@ Producer: team `backend` (`src/Ember.Core`, `src/Ember.Bot`, `src/Ember.Api`, mi
 ### Routines
 
 ```json
-{ "id": 1, "name": "Morning", "reminderTime": "07:30" | null, "reminderChannels": ["mobile"], "habitIds": [3, 1] }
+{ "id": 1, "name": "Morning", "reminderTime": "07:30" | null, "reminderChannels": ["mobile"], "habitIds": [3, 1] } *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 ```
 
 - `GET /api/routines` → `Routine[]`. `POST /api/routines` `{ name (1–50 after trimming), reminderTime?, reminderChannels?, habitIds? }` → 201. `PATCH /api/routines/{id}` (any of those, `clearReminder?`) → 200. `DELETE /api/routines/{id}` → 204 (its habits stay, ungrouped). At most 10 routines per user → 409 `conflict`.
 - `habitIds` is ordered and sets membership: a habit belongs to at most one routine; listing it moves it from its old routine. Unknown or foreign ids → 404. `Habit` gains `routineId: int | null`.
 - *(default)* While a habit is in a routine with a reminder, the routine's reminder replaces the habit's own (the habit keeps its `reminderTime` for when it leaves the routine; the UI shows it as overridden). A routine reminder fires once per scheduled day for the member habits that are still `pending` or `partial`, and not at all when none are.
-- Channels work as for habits (`discord`, `webpush` dispatched by the server; `mobile` scheduled by the app). A routine created without `reminderChannels` gets `webpush`, like a habit created on the web; the native app sends `["mobile"]` when the user picks "Remind me on this phone". The Discord DM may list the pending habit names with check-in buttons (DMs are private). Web push uses the generic body.
+- Channels work as for habits (`discord`, `webpush` dispatched by the server; `mobile` scheduled by the app). A routine created without `reminderChannels` gets `webpush`, like a habit created on the web; the native app sends `["mobile"]` when the user picks "Remind me on this phone". The Discord DM may list the pending habit names with check-in buttons (DMs are private). Web push uses the generic body. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - Routines are in the export and merge; the bot doesn't manage routines (web and app only). Routine writes need no consent.
 
 ### Journal for the day (Nico: free text, five moods plus your own)
@@ -324,7 +326,7 @@ snake_case like today, plus `"format_version": 2` at the top level (an export wi
 
 - `habits[]`: `days` (`["mon",…]` or null), `times_per_day`, `routine_id` (or null), `routine_position` (or null).
 - `logs[]`: `count`.
-- `routines`: `[{ id, name, reminder_time, reminder_channels }]` (membership lives on the habits).
+- `routines`: `[{ id, name, reminder_time, reminder_channels }]` (membership lives on the habits). *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - `moods`: `[{ id, label, emoji, archived }]` or, when encrypted, `[{ id, encrypted: { v, iv, ct }, archived }]`.
 - `day_notes`: `[{ date, text, mood }]` or, when encrypted, `[{ date, encrypted: { v, iv, ct } }]`.
 - `journal_key`: `{ passphrase: { salt, iterations, iv, wrapped }, recovery: { salt, iv, wrapped } }` or null.
@@ -372,7 +374,7 @@ v1.10 (2026-11-11, Nico: "Done action on reminders outside Discord", including o
 ### Web push payload
 
 - A single-habit reminder (first or second, not a routine) adds a "Done" action and a one-time token; the rest of the payload is unchanged and the title stays `Ember`:
-  `{ "notification": { "title": "Ember", "body": "<text>", "actions": [{ "action": "done", "title": "Done ✅" }], "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } }, "doneToken": "<token>" } } }`. A routine reminder has neither `actions` nor `doneToken`.
+  `{ "notification": { "title": "Ember", "body": "<text>", "actions": [{ "action": "done", "title": "Done ✅" }], "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } }, "doneToken": "<token>" } } }`. A routine reminder has neither `actions` nor `doneToken`. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - The service worker shows the action. Tapping the notification itself still opens `/today`. Tapping "Done" posts `{ token }` to `POST /api/reminders/done` without cookies and without opening the app; on 204 it shows a notification titled `Ember` with the body `Logged. Nice work. ✅` (no habit name); on any other answer or a network failure it opens `/today`.
 
 ### Tokens
@@ -437,10 +439,73 @@ Nico chose "Same device only": the code alone signs in only on the device that s
 - Lowering `timesPerDay` (also by switching to `weekly`) keeps the earliest `timesPerDay` times. A PATCH that sends both `timesPerDay` and `reminderTimes` checks the times against the new `timesPerDay`.
 - Dispatch: the next reminder is the next of any of the times in the user's timezone. Each time sends like a single reminder (same channels, buttons, Done token, skip rules): only while the day is still open (`count < timesPerDay`), not paused and scheduled. A second reminder (v1.8) still follows a delivered regular reminder, but is skipped when the habit's next regular reminder comes first or at the same time. Routines keep one `reminderTime`; a habit in a routine with a reminder still sends none of its own.
 - Weekly habits: a reminder (regular or second) is sent only on a day without a check-in yet and while the week's `weeklyTarget` isn't reached, counting check-ins in the user's local Monday–Sunday week, the same week as the weekly progress. Once the target is met, its reminders stay quiet until the next Monday; the next reminder time still advances day by day.
-- The native app schedules one local notification per entry for habits with the `mobile` channel.
+- The native app schedules one local notification per entry for habits with the `mobile` channel. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
 - Discord shows all times (`Reminders: 08:00, 13:00, 20:00 your time` in `/habit list`). Setting a reminder in Discord still sets one time: it replaces all of the habit's times with it, and the bot's reply names the times it replaced when there were several.
 - Export: JSON `habits[]` gains `reminder_times` (`["08:00:00", …]`, sorted; `reminder_time` stays as the first). The CSV `reminder_time` column of a habit row lists all times joined with `;`. Import reads `reminder_times` (wins) or else `reminder_time`; more distinct times than the habit's `times_per_day` → 400 on `reminder_times`. Account merge moves habits with their times.
-- `POST /api/habits` also takes `reminderChannels?` with the same values and validation as `PATCH /api/habits/{id}` (`discord`, `webpush`, `mobile`; empty means no reminders; an unknown value → 400 `validation`). Without it a web-created habit gets `webpush`, as before.
+- `POST /api/habits` also takes `reminderChannels?` with the same values and validation as `PATCH /api/habits/{id}` (`discord`, `webpush`, `mobile`; empty means no reminders; an unknown value → 400 `validation`). Without it a web-created habit gets `webpush`, as before. *(Superseded in v1.14, see "Reminder destinations v1.14".)*
+
+## Reminder destinations v1.14
+
+Every reminder (first and second) goes to every destination that is switched on and that the habit or routine doesn't exclude. Each browser counts on its own: excluding one never mutes another.
+
+### Destinations
+
+- Ids are strings, scoped to the account: `discord`, `browser-<pushSubscriptionId>`, `phone-<phoneId>`.
+- `ReminderDestination`: `{ "id": "browser-12", "kind": "discord" | "browser" | "phone", "label": "Firefox on Linux", "enabled": true, "current": false }`.
+- `current` is true when the push subscription or phone was registered by the caller's own sign-in session. Discord is never current.
+- Discord is listed only when the account has a Discord login, labelled `Discord DMs`. Its `enabled` is the account's answer: `true` only after yes; never answered and no are both `false`.
+- Browser label: derived server-side from the `User-Agent` of every `POST /api/me/push-subscriptions` and stored with the subscription: `<Browser> on <OS>`. Browsers are checked in this order: Samsung Internet (`SamsungBrowser/`), Edge (`Edg/`, `EdgA/`, `EdgiOS/`), Opera (`OPR/`), Firefox (`Firefox/`, `FxiOS/`), Chrome (`Chrome/`, `CriOS/`), then Safari (`Safari/`); systems: Windows, iOS (`iPhone`, `iPad`, `iPod`), macOS, Android, ChromeOS (`CrOS`), Linux. An unknown browser is `Browser` (`Browser on Linux`); with an unknown system the label is the browser alone. Subscriptions saved before v1.14 have no label and show `Browser` until they are saved again.
+- A browser that subscribes again with a new endpoint is a new destination; the old one's exclusions don't carry over.
+- Phone label: sent by the app (the model from the WebView User-Agent; a model shorter than 2 characters or none gives `Android phone`), trimmed, at most 60 characters; control characters, Unicode format characters (bidi controls included) and line or paragraph separators → 400. Empty or missing → `Android phone`.
+
+### Endpoints
+
+All need a signed-in session and only ever see the caller's own destinations.
+
+- `GET /api/me/reminder-destinations` → 200 `ReminderDestination[]`: Discord first, then browsers, then phones, each ordered by id.
+- `PATCH /api/me/reminder-destinations/{id}` `{ "enabled": bool }` → 200 `ReminderDestination`. Off means nothing goes there for any habit or routine. A missing `enabled` → 400 `validation`. An unknown or malformed id, an id of another account, and `discord` without a Discord login all answer the same 404 `not_found`. Turning `discord` on or off records the account's answer, so the bot never asks again.
+- `POST /api/me/phones` `{ "installId": string, "label"?: string }` → 200 `ReminderDestination` (`current: true`). `installId` is 16 to 64 characters of `A-Z a-z 0-9 _ -`, else 400 `validation`. Upsert by `installId`: registering again from the same account keeps the id and `enabled` and updates label and session; an install stored for another account moves to the caller as a new phone (new id, enabled), like a shared push endpoint. At most 10 phones per account; registering an 11th removes the least recently registered. The app registers on every reminder rebuild (only with notification permission) and caches the result for offline rebuilds.
+- `POST /api/me/push-subscriptions` is unchanged on the wire. Saving again keeps the subscription's `enabled` while the endpoint stays with the same account; an endpoint that moves to another account starts enabled.
+
+### Phones follow their session
+
+Exactly like push subscriptions (v1.10): ending a session deletes the phones it registered; ending all other sessions deletes every phone not registered by the kept session; deleting the account deletes them; and when expired sessions are cleaned up, phones whose session no longer exists are deleted. So after signing out and in again a phone comes back enabled.
+
+### Habits and routines
+
+- Habit and Routine responses gain `reminderExclusions: string[]` (destination ids the item does not remind on; only ids of the caller's current destinations are returned, ids of destinations that are gone are left out) and `serverReminders: boolean`: true when the bot sends the item's reminder to at least one destination right now (Discord linked, answered yes, DM reminders not paused and not excluded; or an enabled browser not excluded). The phone skips its own second reminder when it is true; a phone that is the only destination keeps both.
+- `reminderChannels` stays in responses, deprecated and derived: `["mobile"]` when `serverReminders` is false, else the server channels that are targets (`discord`, `webpush`). Apps before v1.14 keep scheduling their local reminders only for items no server destination reaches.
+- `POST /api/habits`, `PATCH /api/habits/{id}`, `POST /api/routines`, `PATCH /api/routines/{id}` take `reminderExclusions?: string[]`, replacing the whole set; duplicates collapse. Each value must be the id of one of the caller's current destinations, else 400 `validation` on `reminderExclusions`. Absent keeps the current set (create: none, so a new item reminds everywhere, and a new destination covers every item). `reminderChannels` in a request is ignored entirely (never validated, never 400).
+- Existing habits and routines start with no exclusions.
+
+### Discord asks first
+
+- `User.DiscordReminders` (null = never answered) and when the bot asked. Until the answer is yes, Discord is not a target.
+- Each minute the bot DMs at most 20 accounts that have a Discord login, never answered, were never asked, and have a habit with reminder times or a routine with a reminder time: "Want your reminders here in Discord too?" with the buttons "Yes, remind me here" and "No thanks". The ask is recorded whether or not the DM arrives and is never repeated.
+- Yes edits the message to a short confirmation pointing to Settings. No edits it to a confirmation with a "Turn them on" button. The latest answer wins, from a button or from Settings.
+- Accounts that got Discord reminders before v1.14 (a Discord login and a habit with the Discord channel and a reminder time, or a routine with the Discord channel and a reminder time) count as yes.
+- The weekly summary and missed-day DMs are not affected by the answer.
+
+### Web push payload
+
+- Reminder notifications gain `notification.tag`: `habit-<id>` or `routine-<id>` (no name, lock-screen safe). The service worker passes it to `showNotification` with `renotify: true` whenever a tag is present, so the second reminder replaces the first and still alerts.
+- Clear payload: `{ "clear": { "tag": "habit-<id>" }, "notification": { "title": "Ember", "body": "Logged. Nice work. ✅", "data": { "onActionClick": { "default": { "operation": "navigateLastFocusedOrOpen", "url": "/today" } } } } }`. A v1.14 service worker shows `Ember` with that tag, body and `silent: true`, then closes every notification with the tag, so nothing remains. A service worker before v1.14 ignores `clear` and shows the "Logged" notification.
+- When a habit or routine reminder delivered by web push becomes done for its day (logged anywhere), the bot's minute job sends the clear payload once to the account's push subscriptions that are enabled and not excluded for the item, then forgets the delivery. Deliveries that expire (10:00 local the next day) are forgotten without a push. Known risk: Chrome may show its generic "site updated in the background" notification if its silent-push budget runs out; at most one clear per delivered reminder.
+
+### Account merge
+
+- In addition to "Account merge": the signed-in account takes the source's Discord answer and ask time when it has no answer of its own; phones move like push subscriptions (one without a session joins the merging session; at most 10 kept); push subscriptions keep their label and `enabled`.
+
+### Export and import
+
+- Habits and routines: `reminder_channels` is replaced by `reminder_exclusions` (JSON array of destination ids; CSV column `reminder_exclusions`, joined with `;`).
+- `push_subscriptions[]` gain `label` (null before v1.14) and `enabled`; new `phones[]`: `{ label, enabled, created_at }` (CSV `record_type` `phone`; the install id is not exported). CSV gains an `enabled` column.
+- Import ignores `reminder_channels` and `reminder_exclusions` (ids belong to one account): imported items remind everywhere. Local (no-account) backups keep their own `reminder_channels`.
+
+### Migration
+
+- `MultiDeviceReminders`: adds the columns and the `ReminderPhones` and `PushReminders` tables, sets the Discord answer to yes as above, then drops `ReminderChannels` from habits and routines. Bot and API deploy together.
+- Down is approximate: `ReminderChannels` comes back as discord, web push and mobile, without discord where the account's answer isn't yes or the item excluded Discord; phones, delivered-push records, labels and switches are dropped.
 
 ## Feedback v1.13
 

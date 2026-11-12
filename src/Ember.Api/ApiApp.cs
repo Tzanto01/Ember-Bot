@@ -180,6 +180,7 @@ public static class ApiApp
         signedIn.MapMerge();
         signedIn.MapHabits();
         signedIn.MapRoutines();
+        signedIn.MapReminderDestinations();
         signedIn.MapLowDays();
         signedIn.MapJournal();
         signedIn.MapStats();

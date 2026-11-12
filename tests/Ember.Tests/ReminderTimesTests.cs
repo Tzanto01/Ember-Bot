@@ -57,6 +57,7 @@ public class ReminderTimesTests
             {
                 Id = TestUsers.Id(DiscordUser),
                 Logins = TestUsers.Discord(DiscordUser),
+                DiscordReminders = true,
                 Timezone = "Europe/Berlin",
                 SecondReminderMinutes = secondReminderMinutes,
                 HealthDataConsentAt = Now.UtcDateTime,

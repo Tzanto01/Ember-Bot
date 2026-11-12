@@ -45,7 +45,7 @@ public partial class HabitService
     /// Creates a routine. <paramref name="habitIds"/> (ordered) become its members, moving them out of any other routine.
     /// </summary>
     public async Task<(RoutineWriteResult Result, Routine? Routine)> AddRoutineAsync(Guid userId, string name, TimeOnly? reminderTime,
-        ReminderChannels channels, IReadOnlyList<int>? habitIds)
+        IReadOnlyCollection<string>? reminderExclusions, IReadOnlyList<int>? habitIds)
     {
         if (await _db.Routines.CountAsync(r => r.UserId == userId) >= MaxRoutinesPerUser)
             return (RoutineWriteResult.LimitReached, null);
@@ -55,7 +55,7 @@ public partial class HabitService
             UserId = userId,
             Name = name,
             ReminderTime = reminderTime,
-            ReminderChannels = channels,
+            ReminderExclusions = reminderExclusions?.Distinct().ToList() ?? [],
             CreatedAt = _time.GetUtcNow().UtcDateTime,
         };
         if (habitIds is not null && !await SetRoutineHabitsAsync(userId, routine, habitIds))
@@ -68,11 +68,12 @@ public partial class HabitService
     }
 
     /// <summary>
-    /// Edits the user's routine; null arguments keep the current value. <paramref name="habitIds"/> (ordered) replaces the members:
+    /// Edits the user's routine; null arguments keep the current value. <paramref name="reminderExclusions"/> replaces
+    /// <see cref="Routine.ReminderExclusions"/>. <paramref name="habitIds"/> (ordered) replaces the members:
     /// listed habits move into this routine, members not listed leave it.
     /// </summary>
     public async Task<RoutineWriteResult> EditRoutineAsync(Guid userId, int routineId, string? name, TimeOnly? reminderTime,
-        bool clearReminder, ReminderChannels? channels, IReadOnlyList<int>? habitIds)
+        bool clearReminder, IReadOnlyCollection<string>? reminderExclusions, IReadOnlyList<int>? habitIds)
     {
         var routine = await _db.Routines
             .Include(r => r.Habits)
@@ -82,7 +83,7 @@ public partial class HabitService
             return RoutineWriteResult.NotFound;
 
         if (name is not null) routine.Name = name;
-        if (channels is { } c) routine.ReminderChannels = c;
+        if (reminderExclusions is not null) routine.ReminderExclusions = reminderExclusions.Distinct().ToList();
         if (clearReminder)
         {
             routine.ReminderTime = null;

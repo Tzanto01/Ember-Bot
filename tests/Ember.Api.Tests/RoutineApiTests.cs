@@ -20,7 +20,7 @@ public class RoutineApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
             h => h.GetProperty("routineId").ValueKind == JsonValueKind.Null ? (int?)null : h.GetProperty("routineId").GetInt32());
 
     [DockerFact]
-    public async Task Create_sets_ordered_members_defaults_to_webpush_and_habits_show_their_routine()
+    public async Task Create_sets_ordered_members_reminds_everywhere_and_habits_show_their_routine()
     {
         var user = await Host.SignedInAsync();
         var a = await HabitIdAsync(user);
@@ -34,7 +34,8 @@ public class RoutineApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         response.Headers.Location!.ToString().Should().Be($"/api/routines/{id}");
         created.GetProperty("name").GetString().Should().Be("Morning");
         created.GetProperty("reminderTime").GetString().Should().Be("07:30");
-        created.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).Should().Equal("webpush");
+        created.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).Should().Equal("mobile");
+        created.GetProperty("reminderExclusions").GetArrayLength().Should().Be(0);
         HabitIds(created).Should().Equal(b, a);
         HabitIds((await (await user.Get("/api/routines")).ExpectJson()).EnumerateArray().Single()).Should().Equal(b, a);
         (await RoutineIdsByHabitAsync(user)).Should().BeEquivalentTo(new Dictionary<int, int?> { [a] = id, [b] = id, [loose] = null });

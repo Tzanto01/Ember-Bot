@@ -19,8 +19,8 @@ public class Routine
     /// </summary>
     public DateTime? SecondReminderUtc { get; set; }
 
-    /// <summary>Channels the routine's reminder is sent to.</summary>
-    public ReminderChannels ReminderChannels { get; set; } = ReminderChannels.WebPush;
+    /// <summary>Reminder destination ids (<see cref="Services.ReminderDestinations"/>) this routine does not remind on; empty means everywhere.</summary>
+    public List<string> ReminderExclusions { get; set; } = [];
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
