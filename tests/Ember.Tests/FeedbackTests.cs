@@ -75,6 +75,38 @@ public class FeedbackCooldownTests
     }
 }
 
+public class FeedbackCooldownBytesTests
+{
+    private static readonly DateTimeOffset Start = new(2026, 11, 1, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void A_user_may_send_30_MiB_of_pictures_a_day_then_is_refused_and_a_refusal_counts_nothing()
+    {
+        var cooldown = new FeedbackCooldown(new FakeTimeProvider(Start));
+        const long MiB = 1024 * 1024;
+
+        cooldown.TryRecordBytes(1, 20 * MiB).Should().BeTrue();
+        cooldown.TryRecordBytes(1, 11 * MiB).Should().BeFalse();
+        cooldown.TryRecordBytes(1, 10 * MiB).Should().BeTrue();
+        cooldown.TryRecordBytes(1, 1).Should().BeFalse();
+        cooldown.TryRecordBytes(2, 30 * MiB).Should().BeTrue();
+    }
+
+    [Fact]
+    public void The_budget_frees_up_once_the_day_has_passed()
+    {
+        var time = new FakeTimeProvider(Start);
+        var cooldown = new FeedbackCooldown(time);
+        cooldown.TryRecordBytes(1, HabitService.MaxFeedbackImageBytesPerUserPerDay);
+
+        time.Advance(TimeSpan.FromHours(23));
+        cooldown.TryRecordBytes(1, 1).Should().BeFalse();
+        time.Advance(TimeSpan.FromHours(1));
+
+        cooldown.TryRecordBytes(1, 1).Should().BeTrue();
+    }
+}
+
 public class FeedbackTextValidationTests
 {
     [Theory]
