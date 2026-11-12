@@ -55,6 +55,7 @@ services:
       Discord__ClientId: ${DISCORD_CLIENT_ID}
       Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
       WebPush__PublicKey: ${VAPID_PUBLIC_KEY:-}
+      Feedback__DigestTo: ${FEEDBACK_DIGEST_TO:-}
     healthcheck:
       test: ["CMD", "dotnet", "/app/Ember.Api.dll", "--healthcheck"]
       interval: 30s
