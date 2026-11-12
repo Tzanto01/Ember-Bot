@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Habit } from '@/lib/models';
+import type { Habit, ReminderDestination, Routine } from '@/lib/models';
 import { localMode } from '@/lib/services';
 import { type FetchMock, habit, mockFetch } from '@/lib/test-support';
 import RoutineEditPage from './routine-edit';
@@ -89,5 +89,45 @@ describe('RoutineEditPage (new)', () => {
     expect(
       await screen.findByText('You have 10 routines, the most Ember keeps. Remove one you no longer need to make room.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('RoutineEditPage (edit)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('saves the destinations a routine skips when one is unticked', async () => {
+    const morning: Routine = {
+      id: 4,
+      name: 'Morning',
+      reminderTime: '07:30',
+      reminderChannels: ['discord'],
+      habitIds: [habit.id, water.id],
+      reminderExclusions: [],
+    };
+    const discord: ReminderDestination = { id: 'discord', kind: 'discord', label: 'Discord DMs', enabled: true, current: false };
+    const f = mockFetch();
+    const router = createMemoryRouter([{ path: '/routines/:id/edit', Component: RoutineEditPage }], {
+      initialEntries: ['/routines/4/edit'],
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    (await f.next('GET', '/api/routines')).respond(200, [morning]);
+    (await f.next('GET', '/api/habits')).respond(200, [habit, water]);
+    (await f.next('GET', '/api/me/reminder-destinations')).respond(200, [discord]);
+
+    await userEvent.setup().click(await screen.findByRole('checkbox', { name: 'Discord DMs' }));
+
+    const patch = await f.next('PATCH', '/api/routines/4');
+    expect(patch.body).toEqual({ reminderExclusions: ['discord'] });
+    patch.respond(200, { ...morning, reminderExclusions: ['discord'] });
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Discord DMs' })).not.toBeChecked();
+    expect(screen.getByText(/No reminders will go out for this routine/)).toBeInTheDocument();
   });
 });

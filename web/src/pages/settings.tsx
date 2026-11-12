@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   type FormEvent,
@@ -13,6 +14,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
+import { DestinationName, reminderDestinationsKey } from '@/components/habits/device-reminders';
 import { MoodManager } from '@/components/journal/mood-manager';
 import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
@@ -26,13 +28,21 @@ import { ThemePicker } from '@/components/theme-picker';
 import { Button } from '@/components/ui/button';
 import { cardVariants } from '@/components/ui/card';
 import { Input, PasswordInput } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { NativeSelect } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { saveFile } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { browserTimeZone, isValidTimeZone, timeZoneLabel } from '@/lib/local-date';
-import { type ExportFormat, type MePatch, secondReminderChoices, type SecondReminderMinutes } from '@/lib/models';
+import {
+  type ExportFormat,
+  type MePatch,
+  type ReminderDestination,
+  secondReminderChoices,
+  type SecondReminderMinutes,
+} from '@/lib/models';
 import { openOnWeb } from '@/lib/native/browser';
 import { updaterAvailable } from '@/lib/native/updater';
 import { loadPage } from '@/lib/navigation';
@@ -73,6 +83,8 @@ const discordOutcomes: Record<string, Message> = {
 
 const pushDeniedText =
   'Your browser is blocking notifications from Ember. To allow them, open the site settings (often the icon next to the address bar), set Notifications to Allow, then try again.';
+const phoneNotificationsOffText =
+  "Notifications are off for Ember on this phone. You can turn them on in your phone's settings.";
 const passwordMismatch = "That password doesn't match. Try again.";
 const typeDeleteText = 'Type DELETE in capital letters to confirm.';
 const unknownZoneText = "Ember doesn't know that timezone. Pick one from the list.";
@@ -177,7 +189,7 @@ export default function SettingsPage() {
   const me = useStore(auth.me);
   const local = useStore(localMode.mode) === 'local';
   const pushAvailable = useStore(push.available);
-  const pushSubscribed = useStore(push.subscribed);
+  const queryClient = useQueryClient();
 
   const busyRef = useRef<Section | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
@@ -189,6 +201,7 @@ export default function SettingsPage() {
   const everywhereButton = useRef<HTMLButtonElement>(null);
   const everywhereText = useRef<HTMLParagraphElement>(null);
   const linkDiscordButton = useRef<HTMLButtonElement>(null);
+  const claimed = useRef<Promise<void> | null>(null);
 
   const [busy, setBusy] = useState<Section | null>(null);
   const [saved, setSaved] = useState<Section | null>(null);
@@ -204,6 +217,7 @@ export default function SettingsPage() {
   const [deleteErrors, setDeleteErrors] = useState<{ password?: string; confirm?: string }>({});
   const [notificationsOff, setNotificationsOff] = useState(false);
   const [remindersLate, setRemindersLate] = useState(false);
+  const [toggling, setToggling] = useState<{ id: string; enabled: boolean } | null>(null);
   const [browserZone] = useState(browserTimeZone);
   const [showIosHint] = useState(() => isIos() && !isStandalone());
   const [discordNotice] = useState<Message | null>(() => {
@@ -218,7 +232,7 @@ export default function SettingsPage() {
     const params = new URLSearchParams(location.search);
     const linked = params.get('discord') === 'linked';
     void (linked ? auth.refreshAntiforgery() : Promise.resolve()).then(() => auth.loadMe(true)).catch(() => null);
-    if (!local) void push.claim();
+    if (!local) claimed.current = push.claim();
     if (env.native) {
       void import('@capacitor/local-notifications')
         .then(({ LocalNotifications }) => LocalNotifications.checkPermissions())
@@ -375,10 +389,32 @@ export default function SettingsPage() {
       return { tone: 'success', text: 'DM reminders are back on.' };
     });
 
-  const disablePush = () =>
+  async function toggleDestination(destination: ReminderDestination, enabled: boolean): Promise<void> {
+    if (busyRef.current) return;
+    start('push');
+    setToggling({ id: destination.id, enabled });
+    try {
+      const updated = await api.setReminderDestination(destination.id, enabled);
+      queryClient.setQueryData<ReminderDestination[]>(reminderDestinationsKey, (list) =>
+        list?.map((d) => (d.id === updated.id ? updated : d)),
+      );
+      if (updated.kind === 'phone' && updated.current) deviceSync.rebuildReminders();
+      setSaved('push');
+    } catch (error) {
+      fail('push', asApiError(error));
+    } finally {
+      setToggling(null);
+      finish();
+    }
+  }
+
+  const enablePhone = () =>
     act('push', async () => {
-      await push.unsubscribe();
-      return { tone: 'info', text: 'Notifications are off for this device.' };
+      const phone = (await reminders?.enablePhone()) ?? null;
+      if (!phone) return { tone: 'info', text: phoneNotificationsOffText };
+      await queryClient.invalidateQueries({ queryKey: reminderDestinationsKey });
+      deviceSync.rebuildReminders();
+      return { tone: 'success', text: 'Reminders are on for this phone.' };
     });
 
   async function enablePush(): Promise<void> {
@@ -386,6 +422,7 @@ export default function SettingsPage() {
     start('push');
     try {
       await push.subscribe();
+      await queryClient.invalidateQueries({ queryKey: reminderDestinationsKey });
       show('push', { tone: 'success', text: 'Notifications are on. Reminders can now reach this device.' });
     } catch (error) {
       if (error instanceof ApiError) fail('push', error);
@@ -476,12 +513,11 @@ export default function SettingsPage() {
   }
 
   const showDm = !local && !!me && (me.dmReminders.paused || message?.section === 'dm');
-  const showPush = !local && !env.native && pushAvailable;
   const showSecond = !local || env.native;
   const sections = [
     ...(local ? [{ id: 'device', title: 'On this device' }] : [{ id: 'account', title: 'Account' }]),
     { id: 'appearance', title: 'Appearance' },
-    ...(showPush ? [{ id: 'push', title: 'Notifications on this device' }] : []),
+    ...(local ? [] : [{ id: 'push', title: 'Where Ember reminds you' }]),
     ...(showDm ? [{ id: 'dm-reminders', title: 'Discord reminders' }] : []),
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
     ...(showSecond ? [{ id: 'second-reminder', title: 'Second reminder' }] : []),
@@ -513,6 +549,14 @@ export default function SettingsPage() {
     (discordPending ? visibleGroup(settingsGroupOf('discord')?.slug) : undefined) ??
     (wide ? groups[0] : undefined);
   const shown = (id: string) => !!current?.cards.some((card) => card.id === id);
+  const destinations = useQuery({
+    queryKey: reminderDestinationsKey,
+    queryFn: async () => {
+      await claimed.current;
+      return api.listReminderDestinations();
+    },
+    enabled: shown('push'),
+  });
   query.delete('discord');
   const pathname = current ? `/settings/${current.slug}` : '/settings';
   const search = query.toString();
@@ -728,38 +772,105 @@ export default function SettingsPage() {
             {shown('push') && (
               <SettingsCard id="push" title={title('push')}>
                 <p>
-                  Get gentle reminders here, even when Ember isn't open. By default a notification doesn't name your
-                  habit, since it can show on a lock screen.
+                  Every habit and routine reminds you everywhere that's on here. Off means nothing goes there, for any
+                  habit or routine.
                 </p>
-                {showIosHint && (
-                  <p className="text-muted-foreground">
-                    On iPhone and iPad, notifications work once Ember is on your Home Screen: tap Share, choose "Add to
-                    Home Screen", then open Ember from there.
-                  </p>
-                )}
-                {pushSubscribed && <p>Notifications are on for this device.</p>}
-                <div>
-                  {pushSubscribed ? (
-                    <BusyButton
-                      type="button"
-                      variant="secondary"
-                      busy={busy === 'push'}
-                      busyLabel="Turning off…"
-                      onClick={() => void disablePush()}
-                    >
-                      Turn off notifications
-                    </BusyButton>
+                {destinations.data ? (
+                  destinations.data.length > 0 ? (
+                    <ul className="flex flex-col divide-y divide-border">
+                      {destinations.data.map((destination) => (
+                        <li
+                          key={destination.id}
+                          className="flex min-h-[56px] items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
+                        >
+                          <Label
+                            htmlFor={`destination-${destination.id}`}
+                            className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-normal"
+                          >
+                            <DestinationName destination={destination} />
+                          </Label>
+                          <Switch
+                            id={`destination-${destination.id}`}
+                            checked={toggling?.id === destination.id ? toggling.enabled : destination.enabled}
+                            onCheckedChange={(checked) => void toggleDestination(destination, checked)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
                   ) : (
-                    <BusyButton
-                      type="button"
-                      busy={busy === 'push'}
-                      busyLabel="Turning on…"
-                      onClick={() => void enablePush()}
-                    >
-                      Turn on notifications
-                    </BusyButton>
-                  )}
-                </div>
+                    <p className="text-muted-foreground">
+                      Nothing can remind you yet.
+                      {!(env.native || pushAvailable) && (
+                        <>
+                          {' '}
+                          You can link Discord in{' '}
+                          <Link to={{ pathname: '/settings', hash: 'discord' }}>Account &amp; security</Link>.
+                        </>
+                      )}
+                    </p>
+                  )
+                ) : destinations.isError ? (
+                  !asApiError(destinations.error).handled && (
+                    <Notice tone="notice">
+                      <p>{problemToMessage(asApiError(destinations.error)).message}</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        aria-disabled={destinations.isFetching || undefined}
+                        onClick={() => void destinations.refetch()}
+                      >
+                        Try again
+                      </Button>
+                    </Notice>
+                  )
+                ) : (
+                  <>
+                    <p role="status" className="sr-only">
+                      Loading where Ember can remind you…
+                    </p>
+                    <Skeleton className="h-[7rem] rounded-md" />
+                  </>
+                )}
+                {destinations.data &&
+                  !destinations.data.some((d) => d.current) &&
+                  (env.native ? (
+                    <div>
+                      <BusyButton
+                        type="button"
+                        busy={busy === 'push'}
+                        busyLabel="Turning on…"
+                        onClick={() => void enablePhone()}
+                      >
+                        Turn on reminders on this phone
+                      </BusyButton>
+                    </div>
+                  ) : (
+                    pushAvailable && (
+                      <>
+                        <p className="text-muted-foreground">
+                          Reminders can show in this browser too, even when Ember isn't open. By default a notification
+                          doesn't name your habit, since it can show on a lock screen.
+                        </p>
+                        {showIosHint && (
+                          <p className="text-muted-foreground">
+                            On iPhone and iPad, notifications work once Ember is on your Home Screen: tap Share, choose
+                            "Add to Home Screen", then open Ember from there.
+                          </p>
+                        )}
+                        <div>
+                          <BusyButton
+                            type="button"
+                            busy={busy === 'push'}
+                            busyLabel="Turning on…"
+                            onClick={() => void enablePush()}
+                          >
+                            Turn on reminders in this browser
+                          </BusyButton>
+                        </div>
+                      </>
+                    )
+                  ))}
+                {savedStatus('push')}
                 {outcome('push')}
               </SettingsCard>
             )}
@@ -793,8 +904,8 @@ export default function SettingsPage() {
             {shown('phone-reminders') && (
               <SettingsCard id="phone-reminders" title={title('phone-reminders')}>
                 <p>
-                  Turn on "Remind me on this phone" for a habit when you edit it. Reminders are set on this phone, so
-                  they arrive even without a connection.
+                  {local && 'Turn on "Remind me on this phone" for a habit when you edit it. '}Reminders are set on this
+                  phone, so they arrive even without a connection.
                 </p>
                 <ReminderNamesSetting />
                 {remindersLate && (
@@ -818,7 +929,7 @@ export default function SettingsPage() {
                 )}
                 {notificationsOff && (
                   <Notice tone="info">
-                    <p>Notifications are off for Ember on this phone. You can turn them on in your phone's settings.</p>
+                    <p>{phoneNotificationsOffText}</p>
                   </Notice>
                 )}
               </SettingsCard>

@@ -7,7 +7,7 @@ import {
   DeleteSection,
   DetailsSection,
   DriftingSpark,
-  HabitChannelsSection,
+  HabitRemindersSection,
   PauseSection,
 } from '@/components/habits/habit-edit-sections';
 import { PageHeader } from '@/components/page-header';
@@ -36,7 +36,7 @@ function Summary({ habit }: { habit: Habit }) {
   );
 }
 
-/** `/habits/:id/edit`: details, reminder channels, pause and delete; reloads `me` on entry for a fresh local today. */
+/** `/habits/:id/edit`: details, where reminders go, pause and delete; reloads `me` on entry for a fresh local today. */
 export default function HabitEditPage() {
   const id = Number(useParams()['id']);
   const valid = Number.isInteger(id) && id > 0;
@@ -82,9 +82,7 @@ export default function HabitEditPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,40rem)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <DetailsSection key={habit.id} habit={habit} onChange={onChange} routine={routine} />
-          {habit.reminderChannels && (
-            <HabitChannelsSection habit={habit} channels={habit.reminderChannels} onChange={onChange} />
-          )}
+          {habit.reminderChannels && <HabitRemindersSection habit={habit} onChange={onChange} />}
           <PauseSection habit={habit} onChange={onChange} />
           <DeleteSection habit={habit} />
         </div>

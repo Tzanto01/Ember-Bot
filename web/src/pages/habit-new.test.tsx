@@ -3,11 +3,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { env } from '@/lib/env';
 import type { HabitTemplate } from '@/lib/models';
 import { auth, localMode, push } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import HabitNewPage from './habit-new';
 
+vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
 vi.mock('@/lib/services', async (original) => {
   const { Store } = await import('@/lib/store');
   return { ...(await original<typeof import('@/lib/services')>()), localMode: { mode: new Store('account') } };
@@ -55,6 +57,7 @@ describe('HabitNewPage', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     localMode.mode.set('account');
+    env.native = false;
     auth.me.set(null);
     push.available.set(false);
     push.subscribed.set(false);
@@ -130,11 +133,9 @@ describe('HabitNewPage', () => {
       vi.spyOn(push, 'check').mockResolvedValue();
     });
 
-    async function createWith(fetch: FetchMock, name: string, time: string, untick: string[] = [], tick: string[] = []) {
+    async function createWith(fetch: FetchMock, name: string, time: string) {
       await user().type(await screen.findByLabelText('Name', { exact: true }), name);
       fireEvent.change(screen.getByLabelText(/Reminder time/), { target: { value: time } });
-      for (const label of untick) await user().click(screen.getByRole('checkbox', { name: label }));
-      for (const label of tick) await user().click(screen.getByRole('checkbox', { name: label }));
       await user().click(screen.getByRole('button', { name: 'Create habit' }));
       return fetch.next('POST', '/api/habits');
     }
@@ -144,43 +145,36 @@ describe('HabitNewPage', () => {
       current = userEvent.setup();
     });
 
-    it('asks this browser for notifications on the first device reminder, not again once subscribed, and keeps each choice', async () => {
+    it('reminds everywhere without a channel choice, asking this browser on the first reminder and not again once subscribed', async () => {
       const subscribe = vi.spyOn(push, 'subscribe').mockImplementation(async () => push.subscribed.set(true));
       const fetch = mockFetch();
       const router = renderPage();
       (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
 
+      expect(await screen.findByLabelText('Name', { exact: true })).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).toBeNull();
       const first = await createWith(fetch, 'Water', '08:00');
-      expect(first.body).toMatchObject({ reminderTimes: ['08:00'], reminderChannels: ['webpush'] });
+      expect(first.body).toEqual({ name: 'Water', frequency: 'daily', timesPerDay: 1, reminderTimes: ['08:00'] });
       expect(subscribe).toHaveBeenCalledTimes(1);
       first.respond(201, { ...habit, name: 'Water' });
       expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
 
       await router.navigate('/habits/new');
       (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
-      expect(screen.getByRole('checkbox', { name: 'Notifications on this device' })).toBeChecked();
-      expect(screen.getByRole('checkbox', { name: 'Discord DM' })).not.toBeChecked();
-      const second = await createWith(fetch, 'Read', '21:00', ['Notifications on this device'], ['Discord DM']);
-      expect(second.body).toMatchObject({ reminderTimes: ['21:00'], reminderChannels: ['discord'] });
-      second.respond(201, { ...habit, id: 2, name: 'Read' });
+      (await createWith(fetch, 'Read', '21:00')).respond(201, { ...habit, id: 2, name: 'Read' });
       expect(await screen.findByRole('heading', { name: 'Today' })).toBeInTheDocument();
-
-      await router.navigate('/habits/new');
-      (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
-      const third = await createWith(fetch, 'Stretch', '07:00');
-      expect(third.body).toMatchObject({ reminderChannels: ['webpush'] });
       expect(subscribe).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the choice when the browser blocks notifications, and says where to turn them on', async () => {
+    it('creates the habit when the browser blocks notifications, and says where to turn them on', async () => {
       vi.spyOn(push, 'subscribe').mockRejectedValue(new DOMException('Denied', 'NotAllowedError'));
       const fetch = mockFetch();
       const router = renderPage();
       (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
 
       const create = await createWith(fetch, 'Water', '08:00');
-      expect(create.body).toMatchObject({ reminderTimes: ['08:00'], reminderChannels: ['webpush'] });
-      create.respond(201, { ...habit, name: 'Water', reminderChannels: ['webpush'] });
+      expect(create.body).toMatchObject({ reminderTimes: ['08:00'] });
+      create.respond(201, { ...habit, name: 'Water' });
 
       expect(await screen.findByText(/Notifications are off for Ember in this browser/)).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Turn them on in Settings' })).toHaveAttribute('href', '/settings#push');
@@ -188,15 +182,16 @@ describe('HabitNewPage', () => {
       expect(screen.queryByRole('button', { name: 'Create habit' })).toBeNull();
     });
 
-    it('sends no reminder times when every channel is off, and says nothing will go out', async () => {
-      const subscribe = vi.spyOn(push, 'subscribe');
+    it('in the app without an account, sends no reminder times with the phone turned off, and says nothing will go out', async () => {
+      env.native = true;
+      localMode.mode.set('local');
       const fetch = mockFetch();
       renderPage();
       (await fetch.next('GET', '/api/habit-templates')).respond(200, []);
 
       await user().type(await screen.findByLabelText('Name', { exact: true }), 'Water');
       fireEvent.change(screen.getByLabelText(/Reminder time/), { target: { value: '08:00' } });
-      await user().click(screen.getByRole('checkbox', { name: 'Notifications on this device' }));
+      await user().click(screen.getByRole('checkbox', { name: 'Remind me on this phone' }));
       expect(screen.getByText(/No reminders will go out for this habit/)).toBeInTheDocument();
       await user().click(screen.getByRole('button', { name: 'Create habit' }));
 
@@ -206,7 +201,6 @@ describe('HabitNewPage', () => {
         timesPerDay: 1,
         reminderChannels: [],
       });
-      expect(subscribe).not.toHaveBeenCalled();
     });
   });
 

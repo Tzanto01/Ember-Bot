@@ -1,8 +1,28 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { Badge } from '@/components/ui/badge';
 import { Notice } from '@/components/ui/notice';
 import { env } from '@/lib/env';
-import type { ReminderChannel } from '@/lib/models';
-import { push, reminders } from '@/lib/services';
+import type { ReminderChannel, ReminderDestination } from '@/lib/models';
+import { api, push, reminders } from '@/lib/services';
+
+/** Query key of `GET /api/me/reminder-destinations`, shared by Settings and the habit and routine editors. */
+export const reminderDestinationsKey = ['reminder-destinations'];
+
+/** The account's reminder destinations (v1.14); pass `enabled: false` without an account. */
+export function useReminderDestinations(enabled = true) {
+  return useQuery({ queryKey: reminderDestinationsKey, queryFn: () => api.listReminderDestinations(), enabled });
+}
+
+/** A destination's label, plus a "This phone" or "This browser" badge when it is this device. */
+export function DestinationName({ destination }: { destination: ReminderDestination }) {
+  return (
+    <>
+      <span className="[overflow-wrap:anywhere]">{destination.label}</span>{' '}
+      {destination.current && <Badge>{destination.kind === 'phone' ? 'This phone' : 'This browser'}</Badge>}
+    </>
+  );
+}
 
 /** The channel that shows reminders on this device: `mobile` in the app, `webpush` in the browser. */
 export function deviceChannel(): ReminderChannel {
