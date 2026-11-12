@@ -18,14 +18,17 @@ internal sealed class RateLimitSettings
     public int MailPerEmailAnyClientPerHour { get; set; } = 20;
     public int MailPerIpPerHour { get; set; } = 10;
     public int MailPerDay { get; set; } = 200;
+    public int FeedbackPerHour { get; set; } = 5;
+    public int FeedbackPerDay { get; set; } = 200;
 }
 
 /// <summary>
 /// Per client IP on the credential endpoints of <c>/api/auth</c> (the strict <see cref="AuthPolicy"/> policy) and on every
 /// other <c>/api/auth</c> request (the loose <see cref="AuthOtherPolicy"/> policy, and the same limit as a global limiter on
 /// the Discord OAuth callback, which the authentication handler answers before any endpoint runs), and on the mail-sending
-/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day (the singleton
-/// <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/>).
+/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day, and <c>POST /api/feedback</c> per user, or per client IP and in total per
+/// day for anonymous senders (the singleton <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/> and
+/// <see cref="FeedbackKeys"/>, which never share a partition).
 /// </summary>
 internal static class RateLimits
 {
@@ -37,6 +40,9 @@ internal static class RateLimits
     private const string MailIpPrefix = "ip:";
     private const string MailEmailPrefix = "email:";
     private const string MailDayKey = "day";
+    private const string FeedbackUserPrefix = "fb-user:";
+    private const string FeedbackIpPrefix = "fb-ip:";
+    private const string FeedbackDayKey = "fb-day";
 
     public static IServiceCollection AddEmberRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
@@ -46,6 +52,9 @@ internal static class RateLimits
             var settings = sp.GetRequiredService<IOptions<RateLimitSettings>>().Value;
             return PartitionedRateLimiter.Create<string, string>(key => RateLimitPartition.GetFixedWindowLimiter(key, _ => key switch
             {
+                FeedbackDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.FeedbackPerDay, Window = MailDayWindow },
+                _ when key.StartsWith(FeedbackUserPrefix, StringComparison.Ordinal) || key.StartsWith(FeedbackIpPrefix, StringComparison.Ordinal)
+                    => new FixedWindowRateLimiterOptions { PermitLimit = settings.FeedbackPerHour, Window = MailWindow },
                 MailDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerDay, Window = MailDayWindow },
                 _ when key.StartsWith(MailIpPrefix, StringComparison.Ordinal)
                     => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerIpPerHour, Window = MailWindow },
@@ -83,6 +92,14 @@ internal static class RateLimits
         var email = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedEmail)));
         return [MailIpPrefix + client, $"{endpoint}:{email}:{client}", MailEmailPrefix + email, MailDayKey];
     }
+
+    /// <summary>
+    /// The feedback limiter keys for one feedback, in the order to take them: a signed-in sender only by user, so anonymous
+    /// traffic can't use up their allowance; an anonymous sender by client IP first and the anonymous daily total last, so a
+    /// sender over their limit doesn't use up the shared allowance.
+    /// </summary>
+    internal static string[] FeedbackKeys(Guid? userId, IPAddress? address)
+        => userId is { } id ? [FeedbackUserPrefix + id.ToString("N")] : [FeedbackIpPrefix + ClientKey(address), FeedbackDayKey];
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
     internal static string ClientKey(IPAddress? address)

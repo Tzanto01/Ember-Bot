@@ -19,7 +19,7 @@ namespace Ember.Api;
 /// Composition of the Ember API. <see cref="CreateBuilder"/> registers every service (tests and the test host replace
 /// registrations such as <see cref="IEmailTransport"/>, <see cref="TimeProvider"/> or the <see cref="EmberDbContext"/> options
 /// before calling <see cref="Build"/>); <see cref="Build"/> validates the configuration and builds the pipeline.
-/// The API never runs migrations and hosts no background jobs.
+/// The API never runs migrations; its only background job is the daily <see cref="FeedbackDigestService"/>.
 /// </summary>
 public static class ApiApp
 {
@@ -102,6 +102,8 @@ public static class ApiApp
             services.AddSingleton<IEmailTransport, LoggingEmailTransport>();
         else
             services.AddSingleton<IEmailTransport, SmtpEmailTransport>();
+        services.AddScoped<FeedbackDigest>();
+        services.AddHostedService<FeedbackDigestService>();
 
         services.AddEmberRateLimits(config);
         services.Configure<ForwardedHeadersOptions>(options =>
@@ -185,6 +187,7 @@ public static class ApiApp
         api.MapHabitTemplates();
         api.MapPush();
         api.MapReminders();
+        api.MapFeedback();
 
         mapExtra?.Invoke(app);
 

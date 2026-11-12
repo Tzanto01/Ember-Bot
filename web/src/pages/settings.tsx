@@ -17,6 +17,7 @@ import { MoodManager } from '@/components/journal/mood-manager';
 import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
+import { FeedbackForm } from '@/components/settings/feedback-form';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
 import { settingsGroupOf, settingsGroups } from '@/components/settings/settings-groups';
@@ -497,6 +498,7 @@ export default function SettingsPage() {
           { id: 'export', title: 'Your data' },
         ]),
     { id: 'delete', title: local ? 'Delete everything on this device' : 'Delete your account' },
+    { id: 'feedback', title: 'Send feedback' },
   ];
   const title = (id: string) => sections.find((section) => section.id === id)?.title ?? '';
   const groups = settingsGroups
@@ -1117,6 +1119,12 @@ export default function SettingsPage() {
                     </form>
                   </>
                 )}
+              </SettingsCard>
+            )}
+
+            {shown('feedback') && (
+              <SettingsCard id="feedback" title={title('feedback')}>
+                <FeedbackForm />
               </SettingsCard>
             )}
           </>

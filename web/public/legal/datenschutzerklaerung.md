@@ -137,11 +137,25 @@ Beim Abmelden meldet die Web-App das Gerät beim Server ab und entfernt das Push
 
 ### 3.9 Ohne Konto: Daten nur auf dem Gerät
 
-Wenn du Ember ohne Konto nutzt, bleiben alle Daten auf deinem Gerät: Habits, Check-ins, Tiefs, Routinen, Tagesnotizen, Stimmungen und Einstellungen. Sie gehen nicht an den Server, nicht an Discord und nicht an Push-Dienste. Der Browser oder das Betriebssystem kann sie löschen, zum Beispiel wenn du die Website-Daten entfernst, die App deinstallierst oder Safari eine Website nach sieben Tagen ohne Besuch aufräumt. Mit „Export backup“ speicherst du eine Datei mit deinen Daten.
+Wenn du Ember ohne Konto nutzt, bleiben alle Daten auf deinem Gerät: Habits, Check-ins, Tiefs, Routinen, Tagesnotizen, Stimmungen und Einstellungen. Sie gehen nicht an den Server, nicht an Discord und nicht an Push-Dienste. Nur Feedback, das du selbst abschickst, geht an den Server (Abschnitt 3.10). Der Browser oder das Betriebssystem kann sie löschen, zum Beispiel wenn du die Website-Daten entfernst, die App deinstallierst oder Safari eine Website nach sieben Tagen ohne Besuch aufräumt. Mit „Export backup“ speicherst du eine Datei mit deinen Daten.
 
 Legst du später ein Konto an, lädt die App deine Daten hoch. Die lokale Kopie löscht sie erst, wenn alle Schritte erfolgreich waren.
 
-### 3.10 Was Ember nicht verarbeitet
+### 3.10 Feedback
+
+Über „Send feedback“ in den Einstellungen der Web-App und der App, auf der Seite `/feedback` der Web-App oder mit `/feedback` im Discord-Bot kannst du uns eine Nachricht schicken. Ember speichert dazu:
+
+- den Text, den du schreibst (höchstens 2000 Zeichen),
+- über welchen Weg er kam (Web-App, Android-App oder Discord),
+- die Version der App, wenn sie bekannt ist,
+- den Zeitpunkt,
+- die Verknüpfung mit deinem Konto, wenn du angemeldet bist. Ohne Konto, abgemeldet oder in Discord ohne Ember-Konto speichert Ember das Feedback ohne Bezug zu einem Konto.
+
+Deine Habits, Check-ins, Tagesnotizen und anderen Daten schickt Ember dabei nicht mit. Auch ohne Konto geht nur das Feedback an den Server; deine Daten auf dem Gerät bleiben dort. Im Discord-Bot läuft der Text über Discord (Abschnitt 6.1). Bitte schreib nichts ins Feedback, was du nicht teilen möchtest, zum Beispiel Angaben zu deiner Gesundheit.
+
+Wir nutzen das Feedback nur, um Ember zu verbessern. Einmal am Tag schickt Ember alle neuen Rückmeldungen gesammelt per E-Mail an den Betreiber, über Resend (Abschnitt 6.3). Die E-Mail enthält den Text, den Weg, die App-Version, den Zeitpunkt und ob du angemeldet warst, aber keine Konto-ID und keine E-Mail-Adresse. Ember löscht Feedback nach 12 Monaten automatisch, mit deinem Konto auch früher (Abschnitt 7). Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse ist, Fehler zu finden und Ember so weiterzuentwickeln, wie es den Menschen hilft, die es nutzen. Du kannst widersprechen (Art. 21 DSGVO, Abschnitt 9). [PRÜFEN: Feedback-Text kann Gesundheitsangaben enthalten, nach denen Ember nicht fragt. Reicht der Hinweis oben, oder braucht es eine Einwilligung? Feedback ist nicht im Export enthalten (Frage 16). Muss die Version der Einwilligung wegen dieses Abschnitts steigen? Siehe docs/legal/README.md, Frage 23.]
+
+### 3.11 Was Ember nicht verarbeitet
 
 - Nachrichteninhalte aus Discord. Der Bot liest keine Nachrichten mit und nutzt keine privilegierten Gateway-Intents.
 - Mitgliederlisten, Online-Status und Freundeslisten.
@@ -181,6 +195,7 @@ Du kannst deine Einwilligung jederzeit widerrufen (Art. 7 Abs. 3 DSGVO). Ohne Ha
 | Routinen, Umbenennen von Habits, Push-Abos | Art. 6 Abs. 1 lit. b DSGVO. Keine Einwilligung bisher. [PRÜFEN: siehe Abschnitt 4.] |
 | Erinnerungen über Discord, Web-Push und lokal in der App | Art. 6 Abs. 1 lit. b DSGVO. Jeden Kanal schaltest du selbst ein. |
 | E-Mails zur Bestätigung und zum Zurücksetzen des Passworts | Art. 6 Abs. 1 lit. b DSGVO |
+| Feedback und die tägliche Feedback-E-Mail an den Betreiber (Abschnitt 3.10) | Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse ist, Ember zu verbessern. |
 | Einwilligungsnachweis | Art. 6 Abs. 1 lit. c DSGVO in Verbindung mit Art. 7 Abs. 1 DSGVO |
 | Technische Protokolle, Ratenbegrenzung, Fehlersuche, Sicherheit, Backups | Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse ist ein sicherer, stabiler Betrieb und dass deine Daten nach einem technischen Ausfall nicht verloren gehen. |
 | Cookies und Speicher im Browser und in der App (Abschnitt 3.8) | § 25 Abs. 2 Nr. 2 TDDDG. Die Verarbeitung der Daten selbst richtet sich nach den Zeilen oben. |
@@ -216,7 +231,7 @@ Die Web-App und die API sind öffentlich über einen Cloudflare Tunnel erreichba
 
 ### 6.3 E-Mail-Versand
 
-Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Code und einen Link für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind für diese Mails ausgeschaltet. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend. [PRÜFEN: Auftragsverarbeitungsvertrag mit Resend, Verarbeitungsregion (EU gewählt?), Zertifizierung im Data Privacy Framework, Speicherdauer bei Resend; Öffnungs- und Klickverfolgung in Resend für ember-glow.app aus.]
+Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Code und einen Link für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind für diese Mails ausgeschaltet. Außerdem schickt Ember einmal am Tag eine E-Mail mit dem neuen Feedback (Abschnitt 3.10) über Resend an den Betreiber; darin steht der Text des Feedbacks. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend. [PRÜFEN: Auftragsverarbeitungsvertrag mit Resend, Verarbeitungsregion (EU gewählt?), Zertifizierung im Data Privacy Framework, Speicherdauer bei Resend; Öffnungs- und Klickverfolgung in Resend für ember-glow.app aus.]
 
 ### 6.4 Push-Dienste der Browser
 
@@ -233,6 +248,7 @@ Außer an die oben genannten Dienste und an den Speicher für die verschlüsselt
 - **Anmeldesitzungen:** Eine Sitzung läuft 14 Tage nach der letzten Nutzung ab. Abgelaufene Sitzungen löscht Ember einmal am Tag. Pro Konto bleiben höchstens 50 Sitzungen, bei einer neuen Anmeldung endet dann die älteste.
 - **Erinnerungen in Discord:** Der Eintrag bleibt, bis die Nachricht geschlossen oder ersetzt wird. Danach wird er gelöscht.
 - **Web-Push-Abos:** bis du sie abmeldest, Benachrichtigungen ausschaltest, der Push-Dienst das Abo als ungültig meldet oder dein Konto gelöscht wird. Beim Abmelden entfernt die Web-App das Abo.
+- **Feedback:** 12 Monate nach dem Eingang, mit deinem Konto auch früher. [PRÜFEN: Die täglichen Feedback-E-Mails im Postfach des Betreibers ebenfalls nach 12 Monaten löschen.]
 - **Technische Protokolle:** siehe Abschnitt 3.7.
 - **Backups:** Die Datenbank wird jede Nacht gesichert. Wir behalten die Sicherungen der letzten 7 Tage und eine Sicherung pro Woche für die letzten 4 Wochen, ältere werden gelöscht. Eine Kopie liegt Ende-zu-Ende verschlüsselt bei Proton Drive (Proton AG, Schweiz; für die Schweiz gilt ein Angemessenheitsbeschluss der EU-Kommission). Bis zur Löschung können gelöschte Daten also bis zu etwa 5 Wochen in einem Backup stehen. Backups nutzen wir nur, um den Betrieb nach einem technischen Ausfall wiederherzustellen. Müssen wir ein Backup einspielen, löschen wir die seitdem gelöschten Konten und Daten danach erneut. [PRÜFEN: Backup-Ablauf, Proton Drive und Verschlüsselung sind nicht im Repository belegt. Vor dem Start prüfen, siehe docs/legal/README.md.]
 - **Daten bei Discord:** nach den Regeln von Discord.

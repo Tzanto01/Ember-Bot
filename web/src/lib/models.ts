@@ -337,6 +337,13 @@ export interface PushSubscriptionRequest {
   keys: { p256dh: string; auth: string };
 }
 
+/** `POST /api/feedback` body (v1.13): `version` only when the app knows it. */
+export interface FeedbackRequest {
+  text: string;
+  platform: 'web' | 'android';
+  version?: string;
+}
+
 export type ExportFormat = 'json' | 'csv';
 
 /** Problem type codes from the contract. Identity endpoints may send other `type` values. */

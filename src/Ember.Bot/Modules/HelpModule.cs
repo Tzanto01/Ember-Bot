@@ -61,6 +61,9 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 "`/export` — get your habits, check-ins and settings by DM\n" +
                 "`/privacy delete` — permanently delete all your Ember data",
                 inline: false)
+            .AddField("Feedback",
+                "`/feedback` — tell the Ember team what would make Ember better",
+                inline: false)
             .WithFooter("Progress over perfection. Every check-in counts.");
 
         if (config[ConsentModule.PolicyUrlKey] is { Length: > 0 } url)

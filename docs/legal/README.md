@@ -86,6 +86,8 @@ The markers are inline. Each category has a question below.
 | Sitzungen und Signup-Adresse auf dem Gerät | Privacy policy, sections 3.8 and 7 | 17 |
 | Export-Lücken | Privacy policy, section 9 | 16 |
 | Resend, Tracking | Privacy policy, section 6.3 | 7 |
+| Feedback: Gesundheitsangaben, Export, Einwilligungsversion | Privacy policy, section 3.10 | 23 |
+| Feedback-E-Mails im Postfach | Privacy policy, section 7 | 23 |
 | Cloudflare | Privacy policy, section 6.2 | 6 |
 | Discord als Verantwortlicher, Drittlandübermittlung | Privacy policy, section 6.1 and 6.4 | 5 |
 | Android-Push | Privacy policy, section 3.5 | (check before release) |
@@ -143,3 +145,4 @@ The markers are inline. Each category has a question below.
 20. **Discord `/privacy delete` without password.** The bot's `/privacy delete` deletes an account after two clicks, even when the account has a password and two-factor sign-in. Accept this and say so in the policy, or require the web app for accounts with a password. (Security review H1, related.)
 21. **Recovery codes stored unhashed.** Whoever can read the database can read the recovery codes and the authenticator secret. Accept and say so, or hash the recovery codes. The authenticator secret has to stay readable either way.
 22. **Free service.** The terms say Ember is free. If a paid tier (Ember+, plan D5) is ever added, the terms and the policy must change first.
+23. **Feedback (v1.13).** Feedback text, platform, app version, time and the account link (when signed in) are stored for 12 months and mailed once a day to the operator through Resend, without account ID or email address. Decide: (a) is the hint "don't include health details" enough under Art. 9, or is consent needed; (b) add feedback to the export (question 16) or answer requests by hand; (c) does the consent policy version (`2026-11`) need a bump for section 3.10; (d) delete the digest emails in the operator's mailbox after 12 months. Resend now also carries feedback text (question 7).
