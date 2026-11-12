@@ -97,7 +97,7 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
             long bytes = 0;
             foreach (var picture in pictures)
             {
-                if (await DownloadAsync(picture) is not { } data)
+                if (await DownloadAsync(_httpClients, picture.Url, picture.Size) is not { } data)
                 {
                     await FollowupAsync(FetchFailedText, ephemeral: true);
                     return;
@@ -127,24 +127,28 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
         else await RespondAsync(saved ? ThanksText : DailyLimitText, ephemeral: true);
     }
 
-    private async Task<byte[]?> DownloadAsync(IAttachment attachment)
+    /// <summary>
+    /// Downloads a Discord attachment of <paramref name="size"/> declared bytes, only over https from the Discord CDN hosts on the
+    /// default port, within the download timeout and never reading more than declared. Null when any of that fails.
+    /// </summary>
+    internal static async Task<byte[]?> DownloadAsync(IHttpClientFactory clients, string url, int size)
     {
-        if (!Uri.TryCreate(attachment.Url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !uri.IsDefaultPort
-            || !AttachmentHosts.Contains(uri.Host) || attachment.Size <= 0)
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !uri.IsDefaultPort
+            || !AttachmentHosts.Contains(uri.Host) || size <= 0)
             return null;
 
         try
         {
             using var timeout = new CancellationTokenSource(DownloadTimeout);
-            using var response = await _httpClients.CreateClient(HttpClientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            using var response = await clients.CreateClient(HttpClientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             if (!response.IsSuccessStatusCode) return null;
 
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
-            var buffer = new byte[attachment.Size + 1];
+            var buffer = new byte[size + 1];
             var read = 0;
             int chunk;
             while (read < buffer.Length && (chunk = await stream.ReadAsync(buffer.AsMemory(read), timeout.Token)) > 0) read += chunk;
-            return read == 0 || read > attachment.Size ? null : buffer[..read];
+            return read == 0 || read > size ? null : buffer[..read];
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
         {

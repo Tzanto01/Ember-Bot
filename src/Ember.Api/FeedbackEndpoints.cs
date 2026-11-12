@@ -2,6 +2,8 @@ using System.Threading.RateLimiting;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 
 namespace Ember.Api;
 
@@ -79,15 +81,18 @@ internal static class FeedbackEndpoints
     public const long SmallBodyBytes = 64 * 1024;
 
     /// <summary>Most requests over <see cref="SmallBodyBytes"/> to <c>POST /api/feedback</c> read at the same time, across all users.</summary>
-    public const int MaxConcurrentBigBodies = 3;
+    public const int MaxConcurrentBigBodies = 2;
+
+    /// <summary>Slowest upload rate a request over <see cref="SmallBodyBytes"/> may keep (after a 10 s grace), so a slow upload can't hold a slot for long.</summary>
+    public const double MinBigBodyBytesPerSecond = 50 * 1024;
 
     private static readonly SemaphoreSlim BigBodies = new(MaxConcurrentBigBodies);
 
     /// <summary>
     /// Middleware before the endpoints: for a signed-in caller's <c>POST /api/feedback</c> without a <c>Content-Length</c> or
-    /// with one over <see cref="SmallBodyBytes"/>, takes a <see cref="RateLimits.FeedbackBigBodyKey"/> permit and one of
-    /// <see cref="MaxConcurrentBigBodies"/> slots before the body is read, then raises the body limit to
-    /// <see cref="MaxBodyBytes"/>, so only signed-in callers can send pictures and they can't flood the server with large
+    /// with one over <see cref="SmallBodyBytes"/>, takes one of <see cref="MaxConcurrentBigBodies"/> slots and then a
+    /// <see cref="RateLimits.FeedbackBigBodyKey"/> permit before the body is read, then raises the body limit to
+    /// <see cref="MaxBodyBytes"/> and requires at least <see cref="MinBigBodyBytesPerSecond"/>, so only signed-in callers can send pictures and they can't flood the server with large
     /// invalid bodies. Without a permit or slot it answers 429 (<c>Retry-After</c> from the lease, else 60 s for a slot).
     /// Everyone else, and small bodies, keep the server's limit.
     /// </summary>
@@ -102,16 +107,6 @@ internal static class FeedbackEndpoints
             return;
         }
 
-        var limiter = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>();
-        using (var lease = limiter.AttemptAcquire(RateLimits.FeedbackBigBodyKey(http.User.UserId())))
-        {
-            if (!lease.IsAcquired)
-            {
-                await RateLimits.Reject(http, lease, RateLimits.MailWindow).ExecuteAsync(http);
-                return;
-            }
-        }
-
         if (!BigBodies.Wait(0))
         {
             http.Response.Headers.RetryAfter = "60";
@@ -121,7 +116,19 @@ internal static class FeedbackEndpoints
 
         try
         {
+            var limiter = http.RequestServices.GetRequiredService<PartitionedRateLimiter<string>>();
+            using (var lease = limiter.AttemptAcquire(RateLimits.FeedbackBigBodyKey(http.User.UserId())))
+            {
+                if (!lease.IsAcquired)
+                {
+                    await RateLimits.Reject(http, lease, RateLimits.MailWindow).ExecuteAsync(http);
+                    return;
+                }
+            }
+
             if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = MaxBodyBytes;
+            if (http.Features.Get<IHttpMinRequestBodyDataRateFeature>() is { } rate)
+                rate.MinDataRate = new MinDataRate(MinBigBodyBytesPerSecond, TimeSpan.FromSeconds(10));
             await next(http);
         }
         finally

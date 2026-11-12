@@ -184,3 +184,50 @@ public class FeedbackBotStorageTests
         (await host.WithScopeAsync(sp => sp.GetRequiredService<EmberDbContext>().Users.CountAsync())).Should().Be(0);
     }
 }
+
+public class FeedbackDownloadTests
+{
+    private sealed class Cdn(byte[] body) : HttpMessageHandler, IHttpClientFactory
+    {
+        public List<Uri> Requested { get; } = [];
+
+        public HttpClient CreateClient(string name) => new(this, disposeHandler: false);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requested.Add(request.RequestUri!);
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(body) });
+        }
+    }
+
+    [Fact]
+    public async Task A_picture_from_the_discord_cdn_within_its_declared_size_is_downloaded()
+    {
+        var cdn = new Cdn([1, 2, 3]);
+
+        (await Ember.Bot.Modules.FeedbackModule.DownloadAsync(cdn, "https://cdn.discordapp.com/attachments/1/2/a.png", 3))
+            .Should().Equal(1, 2, 3);
+    }
+
+    [Theory]
+    [InlineData("http://cdn.discordapp.com/a.png")]
+    [InlineData("https://cdn.discordapp.com:8443/a.png")]
+    [InlineData("https://evil.example/a.png")]
+    [InlineData("https://cdn.discordapp.com.evil.example/a.png")]
+    [InlineData("https://cdn.discordapp.com@evil.example/a.png")]
+    public async Task Other_schemes_ports_and_hosts_are_never_requested(string url)
+    {
+        var cdn = new Cdn([1, 2, 3]);
+
+        (await Ember.Bot.Modules.FeedbackModule.DownloadAsync(cdn, url, 3)).Should().BeNull();
+        cdn.Requested.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_body_larger_than_the_declared_size_is_refused()
+    {
+        var cdn = new Cdn([1, 2, 3, 4]);
+
+        (await Ember.Bot.Modules.FeedbackModule.DownloadAsync(cdn, "https://media.discordapp.net/a.png", 3)).Should().BeNull();
+    }
+}
