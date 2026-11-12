@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
@@ -104,6 +105,24 @@ describe('router guards', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Get Ember' })).toBeInTheDocument();
     expect(url(router)).toBe('/download');
     expect(mock.all.some((call) => call.url === '/api/me')).toBe(false);
+  });
+
+  it('sends an old /year link to the year view of History and switches back to the month', async () => {
+    const user = userEvent.setup();
+    const router = await visit('/year');
+    (await mock.next('GET', '/api/me')).respond(200, me);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your year' })).toBeInTheDocument();
+    expect(url(router)).toBe('/history/year');
+    const views = screen.getByRole('navigation', { name: 'History view' });
+    expect(within(views).getByRole('link', { name: 'Year' })).toHaveAttribute('aria-current', 'page');
+
+    await user.click(within(views).getByRole('link', { name: 'Month' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'History' })).toBeInTheDocument();
+    expect(url(router)).toBe('/history');
+    const month = within(screen.getByRole('navigation', { name: 'History view' })).getByRole('link', { name: 'Month' });
+    expect(month).toHaveAttribute('aria-current', 'page');
   });
 
   it('shows the not-found page for an unknown address', async () => {

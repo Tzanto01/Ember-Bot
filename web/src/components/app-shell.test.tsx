@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,12 @@ describe('AppShell', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('has Today, History and Settings in the main nav, with the year view inside History', async () => {
+    await renderShell();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Today', 'History', 'Settings']);
   });
 
   it('offers "Sign out" with an account or mid-upgrade but not in no-account mode', async () => {

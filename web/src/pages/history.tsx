@@ -9,6 +9,7 @@ import { keptDays, windowStart } from '@/components/history/kept-days';
 import { Legend } from '@/components/history/legend';
 import { MonthCalendar } from '@/components/history/month-calendar';
 import { StatTiles } from '@/components/history/stat-tiles';
+import { HistoryViewSwitch } from '@/components/history/view-switch';
 import { DayJournal } from '@/components/journal/day-journal';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
@@ -360,6 +361,7 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="History" lede="Any day can be filled in later. Tap a day to change it." />
+      <HistoryViewSwitch view="month" />
       <LiveRegion message={announcement} />
       {content}
     </div>

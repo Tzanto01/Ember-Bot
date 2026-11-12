@@ -1,4 +1,4 @@
-import { CalendarDays, Flame, LayoutGrid, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 const nav = [
   { to: '/today', label: 'Today', icon: Flame },
   { to: '/history', label: 'History', icon: CalendarDays },
-  { to: '/year', label: 'Year', icon: LayoutGrid },
   { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
 ];
 
