@@ -114,3 +114,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+.boot-splash {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  font-family: var(--ember-font-sans, system-ui, sans-serif);
+  color: var(--muted-foreground, #6b5a4c);
+}

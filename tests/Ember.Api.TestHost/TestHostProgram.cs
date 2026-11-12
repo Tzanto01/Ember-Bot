@@ -32,6 +32,9 @@ public static class TestHostProgram
         builder.Configuration["ConnectionStrings:DefaultConnection"] = postgres.GetConnectionString();
         builder.Configuration["Ember:WebOrigin"] = startup["Ember:WebOrigin"] is { Length: > 0 } origin ? origin : url;
         builder.Configuration["Feedback:DigestEnabled"] = "false";
+        builder.Configuration["Ember:RateLimits:MailPerIpPerHour"] = "1000";
+        builder.Configuration["Ember:RateLimits:MailPerDay"] = "10000";
+        builder.Configuration["Ember:RateLimits:AuthPerIpPerMinute"] = "1000";
         builder.Services.AddEmberTestFakes($"{url}{TestFakes.AuthorizePath}");
 
         await using var app = ApiApp.Build(builder, extra => extra.MapEmberTestEndpoints());
