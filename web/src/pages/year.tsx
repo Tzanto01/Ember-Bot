@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
 import { NotebookIllustration } from '@/components/history/illustrations';
+import { HistoryViewSwitch } from '@/components/history/view-switch';
 import { useJournal } from '@/components/journal/journal-context';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,10 @@ async function loadHabits(): Promise<Habit[]> {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** `/year`: the last 12 months as a calendar heatmap, across all habits or for one, with moods when readable. */
+/**
+ * `/history/year` (`/year` redirects here): the last 12 months as a calendar heatmap, across all habits or for one,
+ * with moods when readable.
+ */
 export default function YearPage() {
   const journal = useJournal();
   const queryClient = useQueryClient();
@@ -243,6 +247,7 @@ export default function YearPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Your year" lede="Every day you showed up, across the last 12 months. Tap a day for more." />
+      <HistoryViewSwitch view="year" />
       {content}
     </div>
   );

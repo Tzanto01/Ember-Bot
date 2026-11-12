@@ -5,7 +5,7 @@ export interface PageHeaderProps {
   /** The screen's single `h1` (28 px, 36 px from `md`); the router focuses it after navigation. */
   title: ReactNode;
   lede?: ReactNode;
-  /** Content to the right of the heading, for example the Today's ember summary on small screens. */
+  /** Content on its own line under the heading, for example the Today's ember summary on small screens. */
   aside?: ReactNode;
   className?: string;
 }
@@ -13,7 +13,7 @@ export interface PageHeaderProps {
 /** Page heading block: `h1`, optional muted lede, optional aside. */
 export function PageHeader({ title, lede, aside, className }: PageHeaderProps) {
   return (
-    <header className={cn('flex items-start justify-between gap-4', className)}>
+    <header className={cn('flex flex-col gap-3', className)}>
       <div className="flex min-w-0 flex-col gap-2">
         <h1 tabIndex={-1} className="text-[28px] [overflow-wrap:anywhere] focus:outline-none md:text-[36px]">
           {title}
