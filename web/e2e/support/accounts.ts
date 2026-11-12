@@ -31,9 +31,14 @@ export async function signUp(page: Page, email: string): Promise<void> {
 export async function confirmEmail(page: Page, email: string): Promise<void> {
   const link = await findOutboxLink(page.request, email, '/confirm-email?');
   await page.goto(link);
-  await page.getByLabel('Password', { exact: true }).fill(SECRET);
-  await page.getByRole('button', { name: 'Confirm email' }).click();
-  await expect(page.getByRole('heading', { name: 'One quick question' })).toBeVisible();
+  const consent = page.getByRole('heading', { name: 'One quick question' });
+  const password = page.getByLabel('Password', { exact: true });
+  await expect(password.or(consent)).toBeVisible();
+  if (await password.isVisible()) {
+    await password.fill(SECRET);
+    await page.getByRole('button', { name: 'Confirm email' }).click();
+  }
+  await expect(consent).toBeVisible();
 }
 
 export async function logIn(page: Page, email: string): Promise<void> {

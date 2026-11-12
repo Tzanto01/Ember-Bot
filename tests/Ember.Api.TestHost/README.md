@@ -31,6 +31,7 @@ A relative `--webroot` path resolves against the repo root (the folder with `Emb
 | `GET /test/outbox?email=<address>` | 200 `{ "to", "subject", "links": ["http://…"] }` of the latest email to that address, 404 when none. Mail is sent in the background, so poll briefly after the request that sends it. |
 | `GET /test/users/totp?email=<address>` | 200 `{ "code" }`: the current 6-digit TOTP for that account's authenticator key (after `POST /api/me/2fa/setup`), for completing 2FA setup and sign-in. 404 when the account or key doesn't exist. Codes change every 30 seconds. |
 | `POST /test/users/bot-only` `{ "discordId": "<id>", "habitStartDate": "yyyy-MM-dd" }` | 201 `{ "userId", "habitId" }`: a bot-only user (no email, no password, UTC timezone) with consent and one habit "Water" without reminder. `habitStartDate` is optional (default today) and backdates the habit's creation to noon UTC that day so past days can be backfilled; an invalid or future date → 400. 409 when the Discord ID is already taken. |
+| `GET /test/feedback/latest` | 200 `{ "id", "title", "userId", "pictureCount" }` of the newest stored feedback report (`userId` null when anonymous), 404 when none. |
 
 `GET /test/discord/authorize` is the fake Discord consent page: the API's challenge sends the browser there and it redirects straight to the callback.
 
