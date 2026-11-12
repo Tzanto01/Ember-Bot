@@ -18,6 +18,7 @@ public static class TestEndpoints
     public sealed record BotOnlyDto(Guid UserId, int HabitId);
     public sealed record TotpDto(string Code);
     public sealed record TargetsDto(bool Discord, IReadOnlyList<int> PushSubscriptionIds);
+    public sealed record FeedbackDto(int Id, string Title, Guid? UserId, int PictureCount);
 
     public static WebApplication MapEmberTestEndpoints(this WebApplication app)
     {
@@ -47,6 +48,13 @@ public static class TestEndpoints
         test.MapGet("/users/totp", async (string email, UserManager<User> users) =>
             await users.FindByEmailAsync(email) is { } user && await users.GetAuthenticatorKeyAsync(user) is { } key
                 ? Results.Ok(new TotpDto(Totp.Code(key)))
+                : Results.NotFound());
+
+        test.MapGet("/feedback/latest", async (EmberDbContext db) =>
+            await db.Feedback.OrderByDescending(f => f.Id)
+                .Select(f => new FeedbackDto(f.Id, f.Title, f.UserId, f.Images.Count))
+                .FirstOrDefaultAsync() is { } latest
+                ? Results.Ok(latest)
                 : Results.NotFound());
 
         test.MapPost("/users/bot-only", async (BotOnlyRequest request, HabitService habits, EmberDbContext db, TimeProvider time) =>

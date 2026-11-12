@@ -188,6 +188,9 @@ export function problemToMessage(
           ? 'You have 25 habits, the most Ember keeps. Remove one you no longer need to make room.'
           : (detail ?? "That couldn't be done right now.");
       return result;
+    case 413:
+      result.message = 'That was more than Ember can take in one go. Try fewer or smaller pictures.';
+      return result;
     case 422:
       result.message =
         error.type === 'in_future'

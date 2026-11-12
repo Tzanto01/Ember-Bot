@@ -62,7 +62,7 @@ public class FeedbackDigestTests(PostgresFixture postgres) : FeedbackDigestTestB
         mail.Subject.Should().Be("Ember feedback: 2 new");
         mail.Body.Should().Contain("first thing").And.Contain("second thing");
         mail.Body.IndexOf("first thing", StringComparison.Ordinal).Should().BeLessThan(mail.Body.IndexOf("second thing", StringComparison.Ordinal));
-        mail.Body.Should().Contain("web 1.0").And.Contain("android unknown version").And.Contain("no account");
+        mail.Body.Should().Contain("web 1.0").And.Contain("android unknown version").And.Contain("anonymous");
         (await Stored()).Should().OnlyContain(f => f.DigestedAt != null);
     }
 

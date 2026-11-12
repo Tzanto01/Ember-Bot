@@ -46,7 +46,7 @@ Most commands open a menu or buttons. Three take an option: `/export`, `/timezon
 |---|---|
 | `/help` | See all commands in one place |
 | `/link` | Open the web app (Sign in with Discord uses the same account), or link Discord to an email account and optionally move your habits there |
-| `/feedback` | Tell the Ember team what would make Ember better, in a short form (up to 5 per hour) |
+| `/feedback` | Tell the Ember team what would make Ember better: a title, a description and up to 5 pictures (JPEG, PNG or WebP, 10 MB together), with your Ember account or anonymously (up to 5 per hour) |
 
 <details>
 <summary>How days, reminders and consent work</summary>
@@ -105,6 +105,19 @@ Back up the database before you deploy a build with a new migration.
 **Client IP behind a tunnel.** Rate limits are keyed on the client IP. The API only reads it from `X-Forwarded-For` when the request comes from a trusted proxy. From anywhere else it ignores the header, and then every visitor shares one limit. If cloudflared runs as a container on `homeserver-net`, Docker assigns its address and may change it on restart, so trust the network rather than one address: get the subnet with `docker network inspect homeserver-net --format '{{(index .IPAM.Config 0).Subnet}}'` and set it as `API_KNOWN_NETWORK` (for example `172.18.0.0/16`). Every container on that network can then claim any client IP, so only do this if you trust all of them. Otherwise give cloudflared a fixed `ipv4_address` and set that as `API_KNOWN_PROXY`. Keep the API port bound to `127.0.0.1` (the compose file does this) so the tunnel is the only way in from outside. To check the setup, send a burst of login attempts from one connection, then make sure a second connection still gets through.
 
 **Deploying (maintainer).** Copy `deploy.ps1.example` to `deploy.ps1` (gitignored), fill in your server details and the path to the homeserver-deploy tool (a separate, private repository), then run `.\deploy.ps1`. Its usage line is `.\deploy.ps1 [-DryRun] [-SkipTests]`. The example's config runs `dotnet test` on `tests/Ember.Tests` first, unless you pass `-SkipTests`.
+
+**Reading feedback (maintainer).** Feedback and its pictures stay in the database; the daily digest names picture ids only. On the homeserver, from the Ember compose directory:
+
+```bash
+# Open reports with their picture ids (add --all for handled ones too)
+docker compose exec -T api dotnet Ember.Api.dll --list-feedback
+# Save pictures by report id or picture id to ./feedback/{reportId}/{pictureId}.{ext}
+tools/feedback-images.sh ./feedback 42 0193a6f2-...
+# Mark reports handled; their pictures are deleted 30 days later
+docker compose exec -T api dotnet Ember.Api.dll --resolve-feedback 42
+```
+
+Pictures are never kept past 12 months after the report. There is no HTTP endpoint for any of this.
 
 ## Development
 

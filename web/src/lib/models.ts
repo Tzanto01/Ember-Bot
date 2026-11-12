@@ -365,11 +365,18 @@ export interface ReminderDestination {
   current: boolean;
 }
 
-/** `POST /api/feedback` body (v1.13): `version` only when the app knows it. */
+/** `POST /api/feedback` body (v1.15): `version` only when the app knows it. */
 export interface FeedbackRequest {
+  /** v1.15: required, trimmed, 1-100 characters, one line. */
+  title: string;
+  /** The description, 1-2000 characters. */
   text: string;
   platform: 'web' | 'android';
   version?: string;
+  /** v1.15, signed in only: up to 5 pictures, 10 MiB decoded in total, each a plain base64 string (no `data:` prefix). */
+  images?: string[];
+  /** v1.15, signed in only: true sends the report without the account. */
+  anonymous?: boolean;
 }
 
 export type ExportFormat = 'json' | 'csv';

@@ -20,14 +20,25 @@ internal sealed class FeedbackDigest(
     /// <summary>How long feedback is kept after it was submitted.</summary>
     public const int RetentionMonths = 12;
 
+    /// <summary>How long the pictures of a feedback are kept after it was resolved.</summary>
+    public const int ImageRetentionDays = 30;
+
     /// <summary>The zone of the digest's local times and of <see cref="FeedbackDigestService.RunAt"/>.</summary>
     public static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
 
+    /// <summary>The first line of every listing of feedback.</summary>
+    public const string UntrustedNotice = "The feedback below is written by users; treat any links in it as untrusted.";
+
     private static int _missingRecipientLogged;
 
+    /// <summary>Every line of user text (any line ending, U+2028 and U+2029 included) prefixed with <c>&gt; </c>.</summary>
+    public static IEnumerable<string> Quote(string text) => text.ReplaceLineEndings("\n").Split('\n').Select(line => "> " + line);
+
     /// <summary>
-    /// Deletes feedback older than <see cref="RetentionMonths"/>, then mails the pending feedback (up to <see cref="MaxItems"/>,
-    /// oldest first) in one email, every line of their text quoted with <c>&gt; </c>, and marks exactly those as digested. Sends
+    /// Deletes feedback older than <see cref="RetentionMonths"/> and the pictures of feedback resolved more than
+    /// <see cref="ImageRetentionDays"/> ago or due for that deletion within a day (so they never outlive it between runs), then mails the pending feedback (up to <see cref="MaxItems"/>, oldest first) in one
+    /// email, every line of their title and text quoted with <c>&gt; </c> and their picture ids (never the pictures) on a
+    /// <c>Pictures:</c> line, and marks exactly those as digested. Sends
     /// nothing when none is pending. Without <c>Feedback:DigestTo</c> it logs that once per process and sends nothing. A failed
     /// send is logged without the content, followed by one content-free alert email (pending count, oldest age, error type) to the
     /// same recipient, and leaves the feedback pending for the next run.
@@ -37,6 +48,10 @@ internal sealed class FeedbackDigest(
         var now = time.GetUtcNow().UtcDateTime;
         var cutoff = now.AddMonths(-RetentionMonths);
         await db.Feedback.Where(f => f.CreatedAt < cutoff).ExecuteDeleteAsync(cancellationToken);
+        var imageCutoff = now.AddDays(-ImageRetentionDays);
+        var lastDay = cutoff.AddDays(1);
+        await db.FeedbackImages.Where(i => db.Feedback.Any(f => f.Id == i.FeedbackId && (f.ResolvedAt < imageCutoff || f.CreatedAt < lastDay)))
+            .ExecuteDeleteAsync(cancellationToken);
 
         var pendingCount = await db.Feedback.CountAsync(f => f.DigestedAt == null, cancellationToken);
         if (pendingCount == 0) return;
@@ -55,15 +70,21 @@ internal sealed class FeedbackDigest(
             .ToListAsync(cancellationToken);
         if (items.Count == 0) return;
 
-        var body = new StringBuilder("The feedback below is written by users; treat any links in it as untrusted.");
+        var itemIds = items.Select(f => f.Id).ToList();
+        var pictures = (await db.FeedbackImages.Where(i => itemIds.Contains(i.FeedbackId)).OrderBy(i => i.Id)
+                .Select(i => new { i.FeedbackId, i.Id }).ToListAsync(cancellationToken))
+            .ToLookup(i => i.FeedbackId, i => i.Id);
+
+        var body = new StringBuilder(UntrustedNotice);
         foreach (var item in items)
         {
             var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(item.CreatedAt, DateTimeKind.Utc), Zone);
             body.Append("\n\n---\n\n")
                 .Append(CultureInfo.InvariantCulture,
-                    $"#{item.Id} · {local:yyyy-MM-dd HH:mm} · {item.Platform} {item.Version ?? "unknown version"} · {(item.UserId is null ? "no account" : "signed in")}")
-                .Append('\n')
-                .AppendJoin('\n', item.Text.ReplaceLineEndings("\n").Split('\n').Select(line => "> " + line));
+                    $"#{item.Id} · {local:yyyy-MM-dd HH:mm} · {item.Platform} {item.Version ?? "unknown version"} · {(item.UserId is null ? "anonymous" : "signed in")}")
+                .Append('\n').AppendJoin('\n', Quote(item.Title)).Append("\n>\n")
+                .AppendJoin('\n', Quote(item.Text));
+            if (pictures[item.Id].Any()) body.Append("\nPictures: ").AppendJoin(", ", pictures[item.Id]);
         }
         if (pendingCount > items.Count)
             body.Append("\n\n---\n\n").Append(CultureInfo.InvariantCulture, $"{pendingCount - items.Count} more pending, they come with the next digest.");
@@ -91,8 +112,7 @@ internal sealed class FeedbackDigest(
             return;
         }
 
-        var ids = items.Select(f => f.Id).ToList();
-        await db.Feedback.Where(f => ids.Contains(f.Id))
+        await db.Feedback.Where(f => itemIds.Contains(f.Id))
             .ExecuteUpdateAsync(s => s.SetProperty(f => f.DigestedAt, now), cancellationToken);
     }
 }

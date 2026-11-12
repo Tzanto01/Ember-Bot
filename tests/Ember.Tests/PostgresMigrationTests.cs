@@ -182,6 +182,29 @@ public class PostgresMigrationTests(PostgresFixture postgres)
             .Should().Equal(0);
     }
 
+    [DockerFact]
+    public async Task FeedbackTitleMigration_GivesEachExistingReportATitleFromItsFirstLine()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20261112001345_AddFeedback");
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"Feedback\" (\"Platform\", \"Text\", \"CreatedAt\") VALUES " +
+            "('web', E'Dark mode please\r\nIt hurts my eyes at night', now()), " +
+            "('android', E'one line', now()), " +
+            "('web', repeat('x', 150), now())");
+
+        await migrator.MigrateAsync();
+
+        var stored = await db.Feedback.AsNoTracking().OrderBy(f => f.Id).ToListAsync();
+        stored.Select(f => f.Title).Should().Equal("Dark mode please", "one line", new string('x', 100));
+        stored.Select(f => f.Text).Should().Equal("Dark mode please\r\nIt hurts my eyes at night", "one line", new string('x', 150));
+        stored.Should().OnlyContain(f => f.ResolvedAt == null);
+    }
+
     private static async Task<DateOnly> CurrentDateAsync(EmberDbContext db)
         => (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
 

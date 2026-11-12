@@ -134,10 +134,18 @@ namespace Ember.Core.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
@@ -153,6 +161,33 @@ namespace Ember.Core.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Feedback");
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.FeedbackImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("FeedbackId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Size")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.ToTable("FeedbackImages");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.Habit", b =>
@@ -820,6 +855,15 @@ namespace Ember.Core.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.FeedbackImage", b =>
+                {
+                    b.HasOne("Ember.Core.Models.Feedback", null)
+                        .WithMany("Images")
+                        .HasForeignKey("FeedbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Ember.Core.Models.Habit", b =>
                 {
                     b.HasOne("Ember.Core.Models.Routine", "Routine")
@@ -982,6 +1026,11 @@ namespace Ember.Core.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.Feedback", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.Habit", b =>
