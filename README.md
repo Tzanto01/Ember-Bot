@@ -64,7 +64,7 @@ Everything is driven by **menus and buttons**. No slash command parameters to me
 |---|---|
 | `/help` | See all commands in one place |
 | `/link` | Open the web app (Sign in with Discord lands in the same account), or link Discord to an email account, which offers to move your habits there |
-| `/feedback` | Tell the Ember team what would make Ember better, in a short form (up to 5 per hour) |
+| `/feedback` | Tell the Ember team what would make Ember better: a title, a description and up to 5 pictures (JPEG, PNG or WebP, 10 MB together), with your Ember account or anonymously (up to 5 per hour) |
 
 ---
 
@@ -128,6 +128,19 @@ The API container reports its health to Docker (`docker compose ps`) by calling 
 Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
 
 **Deploying (maintainer).** Copy `deploy.ps1.example` to `deploy.ps1` (gitignored), fill in your server details and the path to the shared [homeserver-deploy](https://github.com/Tzanto01/homeserver-deploy) tool, then run `.\deploy.ps1` (`-DryRun` and `-SkipTests` are available). It runs the tests and ships only committed code; see the homeserver-deploy README for what happens on the server.
+
+**Reading feedback (maintainer).** Feedback and its pictures stay in the database; the daily digest names picture ids only. On the homeserver, from the Ember compose directory:
+
+```bash
+# Open reports with their picture ids (add --all for handled ones too)
+docker compose exec -T api dotnet Ember.Api.dll --list-feedback
+# Save pictures by report id or picture id to ./feedback/{reportId}/{pictureId}.{ext}
+tools/feedback-images.sh ./feedback 42 0193a6f2-...
+# Mark reports handled; their pictures are deleted 30 days later
+docker compose exec -T api dotnet Ember.Api.dll --resolve-feedback 42
+```
+
+Pictures are never kept past 12 months after the report. There is no HTTP endpoint for any of this.
 
 ---
 

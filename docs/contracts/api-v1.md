@@ -1,4 +1,6 @@
-# Ember API contract v1.13
+# Ember API contract v1.14
+
+v1.14 (2026-11-12, Nico: "It should be limited to pictures, but not one. Maybe up to 5 with a combined size of like at most 10mb or something?", and: "the feedback should give the options for a title, a description, attachments and it should auto send the version, the time at which it was sent and the user that sent it. ... unless they choose to be anonymous."): feedback has a title, up to 5 pictures and an anonymous option, in the apps and in Discord; pictures stay on the server until the report is handled, and the digest names their ids only. See "Feedback pictures v1.14".
 
 v1.13 (2026-11-12, Nico: "Well we can change that, no?", and on the email: "we should probably make it so resend sends it like once a day or something, if something new exists."): in-app feedback from the web app, the Android app and Discord (`POST /api/feedback`, `/feedback`), mailed to the operator in one daily digest when there is new feedback. See "Feedback v1.13".
 
@@ -333,7 +335,7 @@ snake_case like today, plus `"format_version": 2` at the top level (an export wi
 - A `journal_key` in an import needs the login password inside it (`journal_key.password`) on accounts that have one, like `PUT /api/me/journal-key` (wrong or missing → 400 on `password`).
 - Before importing, the client sends `PATCH /api/me { timezone }` with the device's zone (as for any new account); otherwise a first-day log can fall before a habit's start and the whole import is refused.
 - Import answers 204. On account merge, the signed-in account's day note wins when both accounts have one for the same date, and same-label plaintext moods are combined.
-- `POST /api/me/import` alone accepts bodies up to 5 MiB (signed-in callers only; every other endpoint keeps the 64 KiB cap). Larger → 413.
+- `POST /api/me/import` accepts bodies up to 5 MiB (signed-in callers only) and `POST /api/feedback` up to 14 MiB for signed-in callers (v1.14); every other endpoint, and anonymous feedback, keeps the 64 KiB cap. Larger → 413.
 - Upgrading with the private journal chosen: the client imports everything except `moods` and `day_notes` (sent empty, since the server can't remap mood ids inside ciphertext), then creates the journal key and uploads encrypted moods and entries through the journal endpoints. No plaintext journal data is ever sent. The local copy stays until every step succeeded, and a retry resumes where it stopped.
 
 ## Reminders v1.8
@@ -469,3 +471,42 @@ Nico chose "Same device only": the code alone signs in only on the device that s
 - Mails every pending feedback, oldest first, at most 300 per email, in one email to `Feedback:DigestTo` over the account-email SMTP settings (written as plain text; the transport also adds an HTML copy, in which links are clickable); nothing when none is pending. Without `Feedback:DigestTo` nothing is sent (logged once per process) and feedback stays pending.
 - Subject `Ember feedback: {n} new`. The body opens with a line saying the feedback is written by users and links in it are untrusted, then per feedback, separated by `---`: `#{id} · {yyyy-MM-dd HH:mm Europe/Berlin} · {platform} {version or "unknown version"} · {signed in | no account}` and the text, every line prefixed with `> ` so it can't pose as a header or separator. With more than 300 pending it ends with `{N} more pending, they come with the next digest.` No account IDs or email addresses are in the mail.
 - Only the feedback in a sent email is marked digested, after the send returns. A failed send is logged (without the content), then one alert email goes to the same recipient, subject `Ember feedback digest failed`, with only the pending count, the oldest item's age in hours and the error type (a failure of that is logged too); the feedback stays pending for the next day. Delivery is at least once: if marking fails after a successful send, those items come again.
+
+## Feedback pictures v1.14
+
+Replaces the parts of "Feedback v1.13" it names; the rest stays.
+
+### `POST /api/feedback`
+
+- Body `{ "title"?: string, "text": string, "platform": "web" | "android", "version"?: string | null, "images"?: string[], "anonymous"?: boolean }`.
+- `title`: trimmed, 1 to 100 UTF-16 code units, the same character rules as `text`, and on one line (no line feed, carriage return, tab, U+2028 or U+2029: "Keep the title on one line."). Missing (app versions before v1.14) → the first line of the text, cut to 100. Present but empty → 400 "Required.".
+- `anonymous: true` stores no account with the report, also for a signed-in caller. Signed out it changes nothing (already anonymous).
+- `images`: signed-in callers only (anonymous or not), each a standard base64 string of one picture file, no `data:` prefix. At most 5, at most 10 MiB decoded together. The server decides the type by magic bytes, not by any declared type: JPEG, PNG or WebP only, still (no animated WebP), at most 4096 px per side. It removes metadata without decoding pixels: JPEG keeps only the segments needed to decode (APP14, DQT, DHT, DRI, SOF, SOS scans, at most 64), PNG keeps IHDR, PLTE, IDAT, IEND, tRNS, gAMA, cHRM, sRGB, sBIT, bKGD, pHYs (CRCs checked), WebP keeps VP8X (only the alpha flag), ALPH and VP8/VP8L. EXIF (also GPS), XMP, ICC, text chunks, the JFIF thumbnail and anything after the image end are gone. Pictures are stored in upload order.
+- 400 `validation` on `images`: "Sign in to add pictures." (signed out), "Up to 5 pictures.", "One of the pictures is empty.", "Pictures can be up to 10 MB together.", "One of the pictures couldn't be read. Try another one.", "Ember can take JPEG, PNG or WebP pictures.", "That picture is too large, up to 4096 pixels per side.", "Ember can take still pictures only, no animations.". 400 on `title` as above.
+- Body size: signed-in callers up to 14 MiB, everyone else 64 KiB (413 beyond). A signed-in body over 64 KiB first takes a per-account permit (`FeedbackPerHour` per hour) and one of 3 server-wide upload slots; without one → 429 `rate_limited` before the body is read.
+- Rate limits: a report with pictures counts as one feedback (`FeedbackPerHour` per account, 300 per 24 h across platforms). The per-account hourly permit is taken before pictures are decoded. Plus 30 MiB of pictures per account per 24 h (in memory, also for anonymous reports; a restart resets it) and 100 MiB of stored pictures across everyone per 24 h (database). Over a limit → 429 `rate_limited` with `Retry-After`, nothing stored.
+- When the account no longer exists by the time the report is saved, it is stored without account and without its pictures.
+- Clients: the web app and the Android app shrink each picture on the device first (longest side 1920 px, WebP, else JPEG on white), show the picker only with an account, and before sending pictures make sure the session is fresh; on 413 or "Sign in to add pictures." they refresh once and retry. A send with pictures waits up to 120 s.
+
+### Discord `/feedback`
+
+- Opens a modal: Title (1 to 100), "What would make Ember better?" (1 to 2000), a file upload (0 to 5 files) and "Send as" (with my Ember account, the default, or anonymously).
+- Declared sizes over 10 MiB together or more than 5 files → gentle ephemeral error before downloading. Files are fetched only from `https://cdn.discordapp.com` or `https://media.discordapp.net` (default port, no redirects, 15 s for the whole download, read capped at the declared size), then get the same checks and stripping as the API. If any file isn't a JPEG, PNG or WebP picture, the whole report is refused with a gentle ephemeral message. 30 MiB of pictures per Discord user per 24 h, in memory.
+- Stored with platform `discord`; with "anonymously", or when the Discord user has no Ember account, without account.
+
+### Storage and retention
+
+- `Feedback` gains `Title` (existing reports got the first line of their text) and `ResolvedAt` (null until handled). New table `FeedbackImages`: id (opaque UUID), report (cascade), content type, size, bytes (Postgres `bytea`).
+- Pictures are deleted 30 days after their report is marked handled, and never kept past 12 months after the report (the daily digest run deletes them; a report is deleted after 12 months as before). Deleted with the account through the report, unless the report was anonymous (it has no link to the account). An account merge moves reports with their pictures. Not part of the export. No HTTP endpoint serves pictures.
+
+### Daily digest
+
+- No attachments. The header line ends with `signed in` or `anonymous` (was `no account`); the title follows as the first quoted line, then a lone `>` and the quoted text. A report with pictures ends with `Pictures: {id}, {id}`. No commands, paths or hostnames.
+
+### Homeserver command (not HTTP)
+
+Run from the Ember compose directory on the homeserver; documented in the README:
+
+- `docker compose exec -T api dotnet Ember.Api.dll --list-feedback [--all]`: open reports (all with `--all`), oldest first, as text: id, created and resolved time (UTC), platform, version, `user {id}` or `anonymous`, quoted title and text, picture ids. Read-only.
+- `tools/feedback-images.sh <out-dir> <id>...` (wraps `--feedback-images <id>...`): each id is a report id or a picture id; writes `{out-dir}/{reportId}/{pictureId}.{jpg|png|webp}`. Unknown ids are named on stderr; exit 1 when nothing was found.
+- `docker compose exec -T api dotnet Ember.Api.dll --resolve-feedback <reportId>...`: marks reports handled now (a second call keeps the first time); unknown ids → exit 1.
