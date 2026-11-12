@@ -31,6 +31,7 @@ public static class TestHostProgram
         var builder = ApiApp.CreateBuilder(["--environment", "Development", .. args]);
         builder.Configuration["ConnectionStrings:DefaultConnection"] = postgres.GetConnectionString();
         builder.Configuration["Ember:WebOrigin"] = startup["Ember:WebOrigin"] is { Length: > 0 } origin ? origin : url;
+        builder.Configuration["Feedback:DigestEnabled"] = "false";
         builder.Services.AddEmberTestFakes($"{url}{TestFakes.AuthorizePath}");
 
         await using var app = ApiApp.Build(builder, extra => extra.MapEmberTestEndpoints());

@@ -1,4 +1,6 @@
-# Ember API contract v1.12
+# Ember API contract v1.13
+
+v1.13 (2026-11-12, Nico: "Well we can change that, no?", and on the email: "we should probably make it so resend sends it like once a day or something, if something new exists."): in-app feedback from the web app, the Android app and Discord (`POST /api/feedback`, `/feedback`), mailed to the operator in one daily digest when there is new feedback. See "Feedback v1.13".
 
 v1.12 (2026-11-11, after v1.11, Nico: "we need the option to set when that happens throughout the day"): a habit has several reminder times a day (`reminderTimes`), up to its `timesPerDay`; `POST /api/habits` takes `reminderChannels`. See "Reminder times v1.12".
 
@@ -439,3 +441,30 @@ Nico chose "Same device only": the code alone signs in only on the device that s
 - Discord shows all times (`Reminders: 08:00, 13:00, 20:00 your time` in `/habit list`). Setting a reminder in Discord still sets one time: it replaces all of the habit's times with it, and the bot's reply names the times it replaced when there were several.
 - Export: JSON `habits[]` gains `reminder_times` (`["08:00:00", …]`, sorted; `reminder_time` stays as the first). The CSV `reminder_time` column of a habit row lists all times joined with `;`. Import reads `reminder_times` (wins) or else `reminder_time`; more distinct times than the habit's `times_per_day` → 400 on `reminder_times`. Account merge moves habits with their times.
 - `POST /api/habits` also takes `reminderChannels?` with the same values and validation as `PATCH /api/habits/{id}` (`discord`, `webpush`, `mobile`; empty means no reminders; an unknown value → 400 `validation`). Without it a web-created habit gets `webpush`, as before.
+
+## Feedback v1.13
+
+### `POST /api/feedback`
+
+- Anonymous or signed in (cookie or bearer); outside the signed-in group. A signed-in caller's account is stored with the feedback, else none. Cookie-authenticated calls need `X-XSRF-TOKEN` like every other cookie POST; anonymous and bearer calls don't.
+- Body `{ "text": string, "platform": "web" | "android", "version"?: string | null }`. Unknown members are ignored and never stored.
+- `text`: trimmed, then 1 to 2000 UTF-16 code units, without control characters other than tab, line feed and carriage return, and without unpaired surrogates. `platform`: exactly `web` or `android` (`discord` is the bot's only). `version`: when present, 1 to 32 characters of `0-9 A-Z a-z . + _ -`.
+- 204 on success. 400 `validation` with errors on `text`, `platform` or `version`. 429 `rate_limited` with `Retry-After`.
+- Rate limits (`Ember:RateLimits`): `FeedbackPerHour` (default 5) per signed-in account, else per client IP (an IPv6 caller by its /64), and `FeedbackPerDay` (default 200) across everyone. The per-sender limit is taken first, so a sender over it doesn't use up the daily allowance. These limits are separate from the mail limits.
+
+### Discord `/feedback`
+
+- Top-level command; opens a modal with one paragraph field (1 to 2000 characters). The text gets the same check as `text` above; an empty or invalid one gets a gentle ephemeral error. Stored with platform `discord`, no version, and the user's Ember account when the Discord user has one (none is created). The answer is ephemeral.
+- At most 5 per Discord user per hour, in memory (a bot restart resets it): checked when the command opens the modal and counted on submit; over the limit the command answers ephemerally instead.
+
+### Storage and retention
+
+- Table `Feedback`: id, account (nullable), platform (`web`, `android`, `discord`), version, text, created and digested times. Deleted with the account; an account merge moves it to the target. Not part of the export.
+- Feedback is deleted 12 months after it was sent (on each digest run).
+
+### Daily digest
+
+- The API runs it every day at 08:00 Europe/Berlin (daylight saving included). A run missed while the API was down is caught up at the next 08:00. `Feedback:DigestEnabled=false` turns the schedule off (tests).
+- Mails every pending feedback, oldest first, at most 300 per email, in one plain-text email to `Feedback:DigestTo` over the account-email SMTP settings; nothing when none is pending. Without `Feedback:DigestTo` nothing is sent (logged once per process) and feedback stays pending.
+- Subject `Ember feedback: {n} new`. The body opens with a line saying the feedback is written by users and links in it are untrusted, then per feedback, separated by `---`: `#{id} · {yyyy-MM-dd HH:mm Europe/Berlin} · {platform} {version or "unknown version"} · {signed in | no account}` and the text. With more than 300 pending it ends with `{N} more pending, they come with the next digest.` No account IDs or email addresses are in the mail.
+- Only the feedback in a sent email is marked digested, after the send returns. A failed send is logged (without the content) and the feedback stays pending for the next day. Delivery is at least once: if marking fails after a successful send, those items come again.

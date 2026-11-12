@@ -52,6 +52,7 @@ services:
       Smtp__Password: ${SMTP_PASSWORD}
       Smtp__From: ${SMTP_FROM}
       Smtp__ReplyTo: ${SMTP_REPLY_TO:-}
+      Feedback__DigestTo: ${FEEDBACK_DIGEST_TO:-}
       Discord__ClientId: ${DISCORD_CLIENT_ID}
       Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
       WebPush__PublicKey: ${VAPID_PUBLIC_KEY:-}

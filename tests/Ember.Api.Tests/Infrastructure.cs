@@ -154,6 +154,9 @@ public sealed class ApiHost : WebApplicationFactory<Program>
             ["Ember:RateLimits:MailPerEmailAnyClientPerHour"] = "1000",
             ["Ember:RateLimits:MailPerIpPerHour"] = "1000",
             ["Ember:RateLimits:MailPerDay"] = "100000",
+            ["Ember:RateLimits:FeedbackPerHour"] = "1000",
+            ["Ember:RateLimits:FeedbackPerDay"] = "100000",
+            ["Feedback:DigestEnabled"] = "false",
         };
         foreach (var (key, value) in extraSettings ?? [])
             _settings[key] = value;
