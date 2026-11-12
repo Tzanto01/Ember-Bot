@@ -448,9 +448,10 @@ Nico chose "Same device only": the code alone signs in only on the device that s
 
 - Anonymous or signed in (cookie or bearer); outside the signed-in group. A signed-in caller's account is stored with the feedback, else none. Cookie-authenticated calls need `X-XSRF-TOKEN` like every other cookie POST; anonymous and bearer calls don't.
 - Body `{ "text": string, "platform": "web" | "android", "version"?: string | null }`. Unknown members are ignored and never stored.
-- `text`: trimmed, then 1 to 2000 UTF-16 code units, without control characters other than tab, line feed and carriage return, and without unpaired surrogates. `platform`: exactly `web` or `android` (`discord` is the bot's only). `version`: when present, 1 to 32 characters of `0-9 A-Z a-z . + _ -`.
+- `text`: trimmed, then 1 to 2000 UTF-16 code units, without control characters other than tab, line feed and carriage return, without bidi controls (U+202A to U+202E, U+2066 to U+2069) and without unpaired surrogates. `platform`: exactly `web` or `android` (`discord` is the bot's only). `version`: when present, 1 to 32 characters of `0-9 A-Z a-z . + _ -`.
 - 204 on success. 400 `validation` with errors on `text`, `platform` or `version`. 429 `rate_limited` with `Retry-After`.
-- Rate limits (`Ember:RateLimits`): `FeedbackPerHour` (default 5) per signed-in account, else per client IP (an IPv6 caller by its /64), and `FeedbackPerDay` (default 200) across everyone. The per-sender limit is taken first, so a sender over it doesn't use up the daily allowance. These limits are separate from the mail limits.
+- Rate limits (`Ember:RateLimits`): `FeedbackPerHour` (default 5) per signed-in account; an anonymous sender per client IP (an IPv6 caller by its /64) and `FeedbackPerDay` (default 200) across all anonymous senders. Signed-in senders don't count toward and aren't stopped by that anonymous daily limit. The per-sender limit is taken first, so a sender over it doesn't use up the daily allowance. These limits are separate from the mail limits.
+- Global cap: at most 300 feedback stored in any 24 hours across every platform (web, Android, Discord; the most one digest carries). Beyond it the API answers 429 `rate_limited` with `Retry-After: 3600` and stores nothing; the bot answers "Ember has had a lot of feedback today. 💙 Try again tomorrow."
 
 ### Discord `/feedback`
 
@@ -460,11 +461,11 @@ Nico chose "Same device only": the code alone signs in only on the device that s
 ### Storage and retention
 
 - Table `Feedback`: id, account (nullable), platform (`web`, `android`, `discord`), version, text, created and digested times. Deleted with the account; an account merge moves it to the target. Not part of the export.
-- Feedback is deleted 12 months after it was sent (on each digest run).
+- Feedback is deleted 12 months after it was submitted (on each digest run).
 
 ### Daily digest
 
 - The API runs it every day at 08:00 Europe/Berlin (daylight saving included). A run missed while the API was down is caught up at the next 08:00. `Feedback:DigestEnabled=false` turns the schedule off (tests).
-- Mails every pending feedback, oldest first, at most 300 per email, in one plain-text email to `Feedback:DigestTo` over the account-email SMTP settings; nothing when none is pending. Without `Feedback:DigestTo` nothing is sent (logged once per process) and feedback stays pending.
-- Subject `Ember feedback: {n} new`. The body opens with a line saying the feedback is written by users and links in it are untrusted, then per feedback, separated by `---`: `#{id} · {yyyy-MM-dd HH:mm Europe/Berlin} · {platform} {version or "unknown version"} · {signed in | no account}` and the text. With more than 300 pending it ends with `{N} more pending, they come with the next digest.` No account IDs or email addresses are in the mail.
-- Only the feedback in a sent email is marked digested, after the send returns. A failed send is logged (without the content) and the feedback stays pending for the next day. Delivery is at least once: if marking fails after a successful send, those items come again.
+- Mails every pending feedback, oldest first, at most 300 per email, in one email to `Feedback:DigestTo` over the account-email SMTP settings (written as plain text; the transport also adds an HTML copy, in which links are clickable); nothing when none is pending. Without `Feedback:DigestTo` nothing is sent (logged once per process) and feedback stays pending.
+- Subject `Ember feedback: {n} new`. The body opens with a line saying the feedback is written by users and links in it are untrusted, then per feedback, separated by `---`: `#{id} · {yyyy-MM-dd HH:mm Europe/Berlin} · {platform} {version or "unknown version"} · {signed in | no account}` and the text, every line prefixed with `> ` so it can't pose as a header or separator. With more than 300 pending it ends with `{N} more pending, they come with the next digest.` No account IDs or email addresses are in the mail.
+- Only the feedback in a sent email is marked digested, after the send returns. A failed send is logged (without the content), then one alert email goes to the same recipient, subject `Ember feedback digest failed`, with only the pending count, the oldest item's age in hours and the error type (a failure of that is logged too); the feedback stays pending for the next day. Delivery is at least once: if marking fails after a successful send, those items come again.

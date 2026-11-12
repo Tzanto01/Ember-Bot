@@ -12,7 +12,8 @@ internal static class FeedbackEndpoints
 
     /// <summary>
     /// <c>POST /api/feedback</c>: validates, rate-limits (<see cref="RateLimits.FeedbackKeys"/>) and stores the trimmed text with
-    /// the platform, version and the signed-in user, if any. Unknown body members are ignored.
+    /// the platform, version and the signed-in user, if any. Unknown body members are ignored. 429 also when
+    /// <see cref="HabitService.MaxFeedbackPerDay"/> were submitted in the last 24 hours on any platform.
     /// </summary>
     public static RouteGroupBuilder MapFeedback(this RouteGroupBuilder api)
     {
@@ -33,7 +34,12 @@ internal static class FeedbackEndpoints
                 if (!lease.IsAcquired) return RateLimits.Reject(http, lease, RateLimits.MailWindow);
             }
 
-            await habits.SaveFeedbackAsync(userId, request.Platform!, request.Version, text, http.RequestAborted);
+            if (!await habits.SaveFeedbackAsync(userId, request.Platform!, request.Version, text, http.RequestAborted))
+            {
+                http.Response.Headers.RetryAfter = "3600";
+                return Problems.RateLimited();
+            }
+
             return Results.NoContent();
         });
 

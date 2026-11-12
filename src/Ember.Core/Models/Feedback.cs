@@ -3,7 +3,7 @@ namespace Ember.Core.Models;
 /// <summary>
 /// One piece of in-app feedback from the web app, the Android app or Discord. Linked to the sender's account when they were
 /// signed in (deleted with it, moved by an account merge), else anonymous. Mailed to the operator in the daily digest and
-/// deleted 12 months after it was sent. Not part of the export.
+/// deleted 12 months after it was submitted. Not part of the export.
 /// </summary>
 public class Feedback
 {

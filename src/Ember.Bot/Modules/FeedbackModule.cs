@@ -17,6 +17,8 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
 
     internal const string CooldownText = "You've sent a lot of feedback this hour. 💙 Try again a little later.";
 
+    internal const string DailyLimitText = "Ember has had a lot of feedback today. 💙 Try again tomorrow.";
+
     internal const string InvalidText = "That feedback came through empty or with characters Ember can't keep. 💙 Try again with plain text.";
 
     private readonly HabitService _habits;
@@ -57,8 +59,8 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var userId = await _habits.FindDiscordUserAsync(Context.User.Id);
-        await _habits.SaveFeedbackAsync(userId == Guid.Empty ? null : userId, "discord", null, text);
-        await RespondAsync(ThanksText, ephemeral: true);
+        var saved = await _habits.SaveFeedbackAsync(userId == Guid.Empty ? null : userId, "discord", null, text);
+        await RespondAsync(saved ? ThanksText : DailyLimitText, ephemeral: true);
     }
 }
 

@@ -26,8 +26,8 @@ internal sealed class RateLimitSettings
 /// Per client IP on the credential endpoints of <c>/api/auth</c> (the strict <see cref="AuthPolicy"/> policy) and on every
 /// other <c>/api/auth</c> request (the loose <see cref="AuthOtherPolicy"/> policy, and the same limit as a global limiter on
 /// the Discord OAuth callback, which the authentication handler answers before any endpoint runs), and on the mail-sending
-/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day, and <c>POST /api/feedback</c> per user or client IP and in total per day
-/// (the singleton <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/> and
+/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day, and <c>POST /api/feedback</c> per user, or per client IP and in total per
+/// day for anonymous senders (the singleton <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/> and
 /// <see cref="FeedbackKeys"/>, which never share a partition).
 /// </summary>
 internal static class RateLimits
@@ -94,11 +94,12 @@ internal static class RateLimits
     }
 
     /// <summary>
-    /// The feedback limiter keys for one feedback, in the order to take them: the sender (the signed-in user, else the client
-    /// IP) first, the daily total last, so a sender over their limit doesn't use up the shared allowance.
+    /// The feedback limiter keys for one feedback, in the order to take them: a signed-in sender only by user, so anonymous
+    /// traffic can't use up their allowance; an anonymous sender by client IP first and the anonymous daily total last, so a
+    /// sender over their limit doesn't use up the shared allowance.
     /// </summary>
     internal static string[] FeedbackKeys(Guid? userId, IPAddress? address)
-        => [userId is { } id ? FeedbackUserPrefix + id.ToString("N") : FeedbackIpPrefix + ClientKey(address), FeedbackDayKey];
+        => userId is { } id ? [FeedbackUserPrefix + id.ToString("N")] : [FeedbackIpPrefix + ClientKey(address), FeedbackDayKey];
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
     internal static string ClientKey(IPAddress? address)
