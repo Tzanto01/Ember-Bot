@@ -17,7 +17,7 @@ test('a day note keeps its built-in and own mood, an archived mood leaves the pi
   await expect(page.getByRole('radio', { name: 'Good' })).toBeChecked();
   await expect(words).toHaveValue('Slept badly, still went for a walk.');
 
-  await page.goto('/settings');
+  await page.goto('/settings/habits');
   const addMood = page.getByRole('form', { name: 'Add a mood' });
   await addMood.getByLabel('Name', { exact: true }).fill('Cozy');
   await addMood.getByLabel('Emoji').fill('🧸');
@@ -26,10 +26,9 @@ test('a day note keeps its built-in and own mood, an archived mood leaves the pi
 
   await page.goto('/today');
   await page.getByRole('radio', { name: /Cozy/ }).click();
-  await save.click();
-  await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Mood saved' })).toBeVisible();
 
-  await page.goto('/settings');
+  await page.goto('/settings/habits');
   await page.getByRole('button', { name: 'Archive Cozy' }).click();
   await expect(page.getByRole('button', { name: 'Unarchive Cozy' })).toBeVisible();
 
@@ -42,8 +41,10 @@ test('a day note keeps its built-in and own mood, an archived mood leaves the pi
 
   await page.getByRole('radio', { name: 'Great' }).click();
   await expect(page.getByRole('radio', { name: /Cozy/ })).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Mood saved' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('radio', { name: /Cozy/ })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Great' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: /Cozy/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Check in Walk for today' }).click();
   await expect(page.getByRole('button', { name: 'Check in Walk for today' })).toHaveAttribute('aria-pressed', 'true');
@@ -55,11 +56,15 @@ test('a day note keeps its built-in and own mood, an archived mood leaves the pi
 
 test('the leaderboard is gone from Settings', async ({ page }) => {
   await createWebUser(page);
-  await page.goto('/settings');
+  for (const group of ['account', 'reminders', 'habits', 'appearance', 'privacy']) {
+    await page.goto(`/settings/${group}`);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByText(/leaderboard/i)).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: /leaderboard/i })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: /leaderboard/i })).toHaveCount(0);
+  }
+  await page.goto('/settings/habits');
   await expect(page.getByRole('heading', { name: 'Moods' })).toBeVisible();
-  await expect(page.getByText(/leaderboard/i)).toHaveCount(0);
-  await expect(page.getByRole('switch', { name: /leaderboard/i })).toHaveCount(0);
-  await expect(page.getByRole('checkbox', { name: /leaderboard/i })).toHaveCount(0);
 });
 
 test('a day note written offline is queued, syncs when back online and persists', async ({ page, context }) => {

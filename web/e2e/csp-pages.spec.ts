@@ -29,8 +29,9 @@ test('Today, History and Settings load without CSP violations', async ({ page })
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await page.goto('/history');
   await expect(page.getByRole('heading', { name: 'History', exact: true })).toBeVisible();
-  await page.goto('/settings');
+  await page.goto('/settings/privacy');
   await expect(page.getByRole('button', { name: 'Delete my account' })).toBeVisible();
+  await page.goto('/settings/appearance');
 
   await page.getByRole('radio', { name: 'Marigold' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'marigold');

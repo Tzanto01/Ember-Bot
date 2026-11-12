@@ -25,7 +25,7 @@ export async function fillNewPassphrase(
 
 /** Turns the private journal on from Settings; returns the one-time recovery code. */
 export async function enableJournal(page: Page, passphrase: string): Promise<string> {
-  await page.goto('/settings');
+  await page.goto('/settings/privacy');
   const section = journalSection(page);
   await fillNewPassphrase(section, 'Journal passphrase', passphrase);
   await section.getByLabel('Your login password').fill(SECRET);
@@ -44,6 +44,12 @@ export async function enableJournal(page: Page, passphrase: string): Promise<str
 export async function openPage(page: Page, name: 'Today' | 'Settings'): Promise<void> {
   await page.getByRole('banner').getByRole('link', { name }).click();
   await expect(page).toHaveURL(new RegExp(`/${name.toLowerCase()}`));
+}
+
+export async function openSettingsGroup(page: Page, name: string): Promise<void> {
+  await openPage(page, 'Settings');
+  await page.getByRole('link', { name: new RegExp(`^${name}`) }).first().click();
+  await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
 }
 
 export async function saveTodayNote(page: Page, text: string): Promise<void> {
@@ -90,7 +96,7 @@ export async function enableTwoFactor(
   page: Page,
   email: string,
 ): Promise<{ usedCode: string; recoveryCodes: string[] }> {
-  await page.goto('/settings');
+  await page.goto('/settings/account');
   const section = twoFactorSection(page);
   await section.getByRole('button', { name: 'Set up two-step sign-in' }).click();
   await expect(section.getByRole('img', { name: 'QR code for adding Ember to your authenticator app' })).toBeVisible();

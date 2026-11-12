@@ -1,14 +1,22 @@
 import { expect, test } from '@playwright/test';
-import { createWebUser, nextDiscordId, seedBotOnlyUser, uniqueDiscordId } from './support/accounts';
+import {
+  createWebUser,
+  nextDiscordId,
+  SECRET,
+  seedBotOnlyUser,
+  uniqueDiscordId,
+} from './support/accounts';
 
 test('linking a bot-only Discord account merges its habit into the web account', async ({ page }) => {
   const discordId = uniqueDiscordId();
   await seedBotOnlyUser(page.request, discordId);
   await createWebUser(page);
 
-  await page.goto('/settings');
+  await page.goto('/settings/account');
   await nextDiscordId(page.request, discordId);
-  await page.getByRole('link', { name: 'Link Discord' }).click();
+  await page.getByRole('button', { name: 'Link Discord' }).click();
+  await page.getByLabel('Your password', { exact: true }).fill(SECRET);
+  await page.getByRole('button', { name: 'Continue to Discord' }).click();
 
   await expect(page).toHaveURL(/\/link\/merge$/);
   await expect(page.getByRole('heading', { name: 'Bring your Discord habits over' })).toBeVisible();
@@ -31,9 +39,11 @@ test('linking a bot-only Discord account merges its habit into the web account',
 test('linking a Discord account nobody has used goes straight to linked', async ({ page }) => {
   await createWebUser(page);
 
-  await page.goto('/settings');
+  await page.goto('/settings/account');
   await nextDiscordId(page.request, uniqueDiscordId());
-  await page.getByRole('link', { name: 'Link Discord' }).click();
+  await page.getByRole('button', { name: 'Link Discord' }).click();
+  await page.getByLabel('Your password', { exact: true }).fill(SECRET);
+  await page.getByRole('button', { name: 'Continue to Discord' }).click();
 
   await expect(page).toHaveURL(/\/settings/);
   await expect(page).not.toHaveURL(/\/link\/merge/);

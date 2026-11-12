@@ -36,7 +36,7 @@ test('two-step sign-in: set up, authenticator code, recovery code, turn off', as
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
 
-  await page.goto('/settings');
+  await page.goto('/settings/account');
   const section = twoFactorSection(page);
   await expect(section.getByText(`You have ${recoveryCodes.length - 1} recovery codes left.`)).toBeVisible();
   await section.getByRole('button', { name: 'Turn off two-step sign-in' }).click();
@@ -55,7 +55,9 @@ test('a Discord sign-in for an account with two-step sign-in asks for the code',
   const { usedCode } = await enableTwoFactor(page, email);
 
   await nextDiscordId(page.request, discordId);
-  await page.getByRole('link', { name: 'Link Discord' }).click();
+  await page.getByRole('button', { name: 'Link Discord' }).click();
+  await page.getByLabel('Your password', { exact: true }).fill(SECRET);
+  await page.getByRole('button', { name: 'Continue to Discord' }).click();
   await expect(page.getByRole('button', { name: 'Unlink Discord' })).toBeVisible();
 
   await signOut(page);
