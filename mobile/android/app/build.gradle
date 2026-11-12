@@ -17,7 +17,7 @@ android {
         applicationId "app.ember.habits"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode((project.findProperty('emberVersionCode') ?: '5') as int)
+        versionCode((project.findProperty('emberVersionCode') ?: '6') as int)
         versionName(project.findProperty('emberVersionName') ?: '0.9.0-beta.3.1')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
