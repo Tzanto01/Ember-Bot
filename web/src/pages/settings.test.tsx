@@ -527,7 +527,8 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     const user = userEvent.setup();
     const { fetch } = await open('/settings/feedback');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Send feedback');
-    await user.type(screen.getByRole('textbox', { name: /Your feedback/ }), 'Hello');
+    await user.type(screen.getByRole('textbox', { name: /Title/ }), 'Hi');
+    await user.type(screen.getByRole('textbox', { name: /Description/ }), 'Hello');
     await user.click(screen.getByRole('button', { name: 'Send' }));
     (await fetch.next('POST', '/api/feedback')).respond(204);
     await screen.findByText('Thank you, that really helps.');
@@ -538,7 +539,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     await open('/settings/feedback');
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Send feedback');
-    expect(screen.getByRole('textbox', { name: /Your feedback/ })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /Description/ })).toBeInTheDocument();
   });
 
   it('links to routines', async () => {
