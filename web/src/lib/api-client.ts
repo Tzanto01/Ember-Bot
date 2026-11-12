@@ -33,7 +33,7 @@ import type {
   WeeklyStats,
 } from './models';
 import type { OfflineQueue } from './offline-queue';
-import { asApiError } from './problem';
+import { asApiError, problemToMessage } from './problem';
 
 /** A downloaded export file. */
 export interface ExportFile {
@@ -470,9 +470,32 @@ export class ApiClient {
     return body.key;
   }
 
-  /** `POST /api/feedback` (v1.13): reaches the server in no-account mode too, then anonymously; 429 `rate_limited`. */
-  sendFeedback(body: FeedbackRequest): Promise<void> {
-    return this.http.request('POST', '/api/feedback', { body, server: true });
+  /**
+   * `POST /api/feedback` (v1.14): reaches the server in no-account mode too, then anonymously; 429 `rate_limited`.
+   * With `images` (signed in only) it first makes sure the session is fresh with `GET /api/me`, allows 120 s, and
+   * retries once after another `GET /api/me` on 413 or the 400 `images` "Sign in to add pictures." (an expired token
+   * reaches the server as anonymous).
+   */
+  async sendFeedback(body: FeedbackRequest): Promise<void> {
+    if (!body.images?.length) return this.http.request('POST', '/api/feedback', { body, server: true });
+    const send = () =>
+      this.http.request<void>('POST', '/api/feedback', {
+        body,
+        server: true,
+        timeoutMs: longRequestTimeoutMs,
+      });
+    await this.getMe();
+    try {
+      await send();
+    } catch (error) {
+      const apiError = asApiError(error);
+      const anonymous =
+        apiError.status === 413 ||
+        (apiError.status === 400 && problemToMessage(apiError).fields['images'] === 'Sign in to add pictures.');
+      if (!anonymous) throw apiError;
+      await this.getMe();
+      await send();
+    }
   }
 
   /** `POST /api/me/push-subscriptions`. */

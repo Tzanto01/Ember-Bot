@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
             tag: 'meta',
             attrs: {
               'http-equiv': 'Content-Security-Policy',
-              content: `default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ${new URL(vars['VITE_API_BASE']!).origin}`,
+              content: `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self' ${new URL(vars['VITE_API_BASE']!).origin}`,
             },
             injectTo: 'head-prepend',
           },
