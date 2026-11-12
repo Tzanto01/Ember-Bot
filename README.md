@@ -1,170 +1,101 @@
 <div align="center">
 
-# 🔥 Ember
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/banner-dark.svg">
+  <img src="docs/readme/banner-light.svg" width="846" alt="Ember. A calm place for your habits. The Ember flame beside a small campfire on an evening hillside.">
+</picture>
 
-**A low-pressure, neurodivergent-friendly Discord habit tracker.**
+<p>
+  <a href="https://beta.ember-glow.app"><img src="docs/readme/get-web.svg" height="46" alt="Open the web app"></a>
+  <a href="https://beta.ember-glow.app/download"><img src="docs/readme/get-android.svg" height="46" alt="Get the Android app"></a>
+  <a href="https://beta.ember-glow.app/download"><img src="docs/readme/get-discord.svg" height="46" alt="Add to Discord"></a>
+</p>
 
-*No punishment. No guilt. Just progress.*
-
-[![License](https://img.shields.io/badge/license-Non--Commercial-orange)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com)
-[![Discord.Net](https://img.shields.io/badge/Discord.Net-3.19.1-5865F2)](https://github.com/discord-net/Discord.Net)
+[![License: Non-Commercial](https://img.shields.io/badge/license-Non--Commercial-f69835?style=flat-square&labelColor=2a211c)](LICENSE) [![Status: public beta](https://img.shields.io/badge/status-public%20beta-b35c00?style=flat-square&labelColor=2a211c)](https://beta.ember-glow.app) [![.NET 10](https://img.shields.io/badge/.NET-10-f69835?style=flat-square&labelColor=2a211c)](https://dotnet.microsoft.com) [![Discord.Net 3.19.1](https://img.shields.io/badge/Discord.Net-3.19.1-b35c00?style=flat-square&labelColor=2a211c)](https://github.com/discord-net/Discord.Net) ![React 19](https://img.shields.io/badge/React-19-c98a3c?style=flat-square&labelColor=2a211c) ![Capacitor 8](https://img.shields.io/badge/Capacitor-8-c98a3c?style=flat-square&labelColor=2a211c)
 
 </div>
 
----
-
 ## What is Ember?
 
-Ember is a Discord bot built for people who struggle with habit consistency — not because they don't care, but because of how their brain works. ADHD, autism, executive dysfunction — Ember meets you where you are.
+Ember is a habit tracker for people who find consistency hard, for example with ADHD, autism or executive dysfunction. Missing a day doesn't wipe out your progress, and Ember never scolds you for it.
 
-Everything is driven by **menus and buttons**. No slash command parameters to memorise, no syntax to get wrong.
+There are three ways in: a Discord bot, a web app and an Android app. Use the same account in all of them and they share your habits and check-ins, so a check-in in Discord shows up in the web app and on your phone.
 
----
+Ember is in public beta at [beta.ember-glow.app](https://beta.ember-glow.app).
 
-## Commands
+## Get Ember
 
-### 🌿 Habits
+| Way in | What it is | Get it |
+|---|---|---|
+| **Web app** | Runs in your browser. Sign in with Discord or email, or use it without an account on one device. | [beta.ember-glow.app](https://beta.ember-glow.app) |
+| **Android app** | The web app as an Android app, with a home screen widget and phone reminders. It is an APK file from the download page, not a Google Play app. | [Download page](https://beta.ember-glow.app/download) |
+| **Discord bot** | Slash commands and reminder DMs in Discord. | [Download page](https://beta.ember-glow.app/download), which has the invite link |
 
-| Command | What it does |
-|---|---|
-| `/habit add` | Create a new habit via a modal |
-| `/habit template` | Start from a pre-built habit template |
-| `/habit checkin` | Log today's check-in |
-| `/habit history` | See the last 14 days of a habit, fill in or fix any day, and mark low days |
-| `/habit list` | See all habits with progress and reminders |
-| `/habit streak` | View full stats — streak, 7-day, 30-day, best, total |
-| `/habit share` | Post a public streak card in this channel |
-| `/habit edit` | Rename a habit or update its reminder |
-| `/habit delete` | Stop tracking a habit |
-| `/habit pause` | Pause a habit — reminders stop, streak is protected |
-| `/habit frequency` | Switch between daily and weekly (1×–6×/week) |
-| `/habit grace` | Set how many flex days per week before a streak breaks (0–3) |
-| `/habit second-reminder` | Get one more nudge after a reminder if you haven't checked in yet |
+On the web and in the Android app you can sign in with Discord, or create an account with an email address and a password. An email address has to be confirmed before you can sign in. `/link` in Discord shows you how to open the web app. If you already have an email account, you can link Discord to it in Settings, and Ember offers to move your Discord habits over.
 
-### 🕐 Timezone
+You can also use the web app and the Android app without an account. Your data then stays on that device.
 
-| Command | What it does |
-|---|---|
-| `/timezone set` | Set your local timezone (just start typing your city) |
-| `/timezone show` | See your current timezone |
+## A look inside
 
-> Set your timezone before adding reminders so they fire at the right local time.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/history-dark.png">
+    <img src="docs/readme/history-light.png" width="820" alt="The History screen for one habit: a month calendar with done days, a paused stretch, a low day, open days and today, with streak and recent-period tiles beside it.">
+  </picture>
+</p>
 
-### 🔒 Privacy and your data
+**History** shows one habit by month. Tap a day to fill it in or change it. Beside the calendar you see the current streak, the last 7 and 30 days and the month's totals.
 
-| Command | What it does |
-|---|---|
-| `/export [format: csv\|json]` | Get your settings, habits, check-ins, low days and routines as CSV (default) or JSON, sent to your DMs. Day notes, moods and account details never go to Discord; the full export is in the web app's Settings |
-| `/privacy delete` | Permanently delete everything Ember stores about you, after a confirmation button |
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/year-dark.png">
+    <img src="docs/readme/year-light.png" width="820" alt="The Year screen: a heatmap of the last 12 months, each day shaded by how many habits were checked in, with a line saying how many of the last 30 days had a check-in.">
+  </picture>
+</p>
 
-### 📋 Other
+**History** also has a year view: the last 12 months as one heatmap, for all habits or for one habit.
 
-| Command | What it does |
-|---|---|
-| `/help` | See all commands in one place |
-| `/link` | Open the web app (Sign in with Discord lands in the same account), or link Discord to an email account, which offers to move your habits there |
-| `/feedback` | Tell the Ember team what would make Ember better, in a short form (up to 5 per hour) |
+## What makes it gentle
 
----
+- 🔥 **Flexible streaks.** Pick how many unlogged days a week a streak can carry before it resets, from 0 to 3. Set it with `/habit grace` in Discord or in Settings on the web.
+- 🌙 **Low days.** Mark a day as a low day. It covers all your habits: the streak neither breaks nor grows, and the day counts as kept in the 7 and 30 day views.
+- ✏️ **Open days and backfill.** Today and yesterday stay open. Older days can be filled in later: the last 14 days in Discord, and back to the habit's start on the web.
+- 📅 **Flexible schedules.** Daily, a weekly target of 1 to 6 times, specific weekdays, or up to 10 times a day for daily and weekday habits.
+- ⏰ **Reminders where you are.** Discord DMs have **Done**, **Skip for today** and **Snooze 1h** buttons. Web push and Android notifications have a **Done** button for single habits. Reminders follow your local time, including across daylight saving changes.
+- 🧭 **Routines.** Group habits into a routine with one reminder that lists only the habits still open that day. You set routines up on the web or in the Android app.
+- ⏸️ **Pause.** Pause a habit for a set time. Reminders stop, and the streak is kept.
+- 📨 **Gentle check-ins and a weekly recap.** In Discord, if a daily habit is still open for yesterday, Ember sends a DM at 10:00 your time. Every Sunday at 9:00 your time, you get a recap of the last 7 complete days. After a quiet week, the reminders are worded more softly.
+- 🔒 **Private by default.** Only you see Ember's replies in Discord. `/habit share` is the one command that posts in a channel. The optional private journal is end-to-end encrypted on your device.
 
-## Features
+## Themes
 
-| | |
-|---|---|
-| 🎛️ **Zero-parameter commands** | Everything is menus and buttons — nothing to memorise |
-| 📈 **Flexible streaks** | "X out of last 7 days", not just consecutive days |
-| 🌿 **Grace days** | Configurable flex days per week before a streak resets |
-| 📋 **Habit templates** | Pre-built habits to get started in seconds |
-| ⏸️ **Pause** | Take a break without losing your streak |
-| 📅 **Daily or weekly habits** | Track every day, or set a weekly target (1×–6×) |
-| 🔔 **DM reminders** | Sent at your local time, also across daylight saving changes, with **Done**, **Skip for today** and **Snooze 1h** buttons: one tap to check in, skip or snooze. If Discord has a hiccup, Ember tries again up to twice, 5 minutes apart. Reminders missed by more than 2 hours (for example during downtime) are skipped, not sent late. If 3 DMs in a row can't be delivered, reminders pause and Ember tells you the next time you use it, with a **Try again** button |
-| 💙 **Adaptive tone** | Softer language when you've had a quiet week |
-| 🤔 **Gentle check-in** | If yesterday is still unlogged, a DM invites you to log it or call it a low day. A nudge, not a guilt trip |
-| 📊 **Weekly summary** | Every Sunday morning, your local time — a 7-day recap in your DMs |
-| 🔒 **Private by default** | Replies are visible only to you. Only `/habit share` posts in a channel |
+Ember has four themes, each with a light and a dark version. Pick one in Settings under Appearance. The theme follows your account, and light or dark is set per device.
 
----
+- 🕯️ **Hearthlight.** A candle-lit kitchen table: warm, soft, familiar. This is the default.
+- 📓 **Fieldnotes.** A pocket notebook: grounded, quiet, literary.
+- 🌊 **Tidepool.** A morning by the water: cool, airy, unhurried.
+- 🌼 **Marigold.** A sticker sheet: playful, confident, high contrast.
 
-## Backfill, open days and low days
+<p align="center">
+  <img src="docs/readme/theme-hearthlight.png" width="23%" alt="The Today screen in the Hearthlight theme, with four habits and two of them checked in.">
+  <img src="docs/readme/theme-fieldnotes.png" width="23%" alt="The same Today screen in the Fieldnotes theme.">
+  <img src="docs/readme/theme-tidepool.png" width="23%" alt="The same Today screen in the Tidepool theme.">
+  <img src="docs/readme/theme-marigold.png" width="23%" alt="The same Today screen in the Marigold theme.">
+</p>
 
-- **Backfill:** `/habit history` shows the last 14 days of a habit as buttons. Tap a day to cycle it: ✅ done, ➖ not done, ▫️ not logged. Any day since the habit started can be filled in, so fixing last week takes a few taps, and streaks recalculate right away.
-- **Open days:** today and yesterday are always open. An unlogged open day never counts against a streak; a day only counts as a gap once it has closed. Older days can still be filled in later.
-- **Low days:** pick a day in the 🌙 menu under the history grid (or tap **It was a low day** in the check-in DM). A low day protects all your habits: it neither breaks nor extends a streak, and counts as kept in the 7-day and 30-day views. Pick it again to remove it.
-- **Reminder buttons** work until 10:00 the next morning, or until that day is logged anywhere (bot or web), whichever comes first. Then the buttons go away and the message says `✅ Logged.` or `This reminder has closed.`; an old day can still be filled in with `/habit history` or on the web.
-- **Second reminder:** `/habit second-reminder` (Off, 15 minutes, 30 minutes, 1 hour, 2 hours) sends one more nudge that long after a reminder if the day is still open. It replaces the first message, a snooze replaces it, Skip cancels it, and there is never a third.
-- **Everywhere you allow:** every reminder goes to each place you switched on in Settings, "Where Ember reminds you": Discord DMs (Ember asks once before it DMs you), each browser and each phone running the app. Each habit and routine can skip some of them under "Remind me on". Logging anywhere clears the browser notification too.
-- **Done outside Discord:** a web push reminder for a single habit has a **Done ✅** button that logs that day without opening Ember (the notification still names no habit), and the Android app's single-habit reminders offer **Done** even with habit names hidden.
-- **Consent:** habit names, check-ins, low days, day notes and moods can say something about your health, so Ember asks for your OK before storing them, and again when the privacy policy changes. After "No thanks" it waits 30 days before asking on its own. You can withdraw any time with `/privacy delete`.
-- **Unconfirmed accounts:** a web signup whose email is never confirmed is deleted after 7 days, unless it has a Discord or other linked login or holds any habits or other data.
+<p align="center"><sub>The Today screen in Hearthlight, Fieldnotes, Tidepool and Marigold, all in light mode.</sub></p>
 
----
+## Under the hood
 
-## Self-Hosting
+Curious how it works, or want to run it yourself? The technical side lives in [TECHNICAL.md](TECHNICAL.md):
 
-Ember runs as a hosted private preview for now; a public bot invite is planned for launch.
-
-You can also run your own instance from this source code.
-
-The bot runs as a Docker container (`docker/bot.Dockerfile`, `docker-compose.yml`). You need Docker with Compose, a Discord bot application, and a PostgreSQL server that the container reaches as host `postgres` on an existing external Docker network named `homeserver-net` (database `emberdb`). Put a `.env` file (gitignored) next to `docker-compose.yml`:
-
-| Variable | Purpose |
-|---|---|
-| `BOT_TOKEN` | Discord bot token |
-| `DB_USER`, `DB_PASSWORD` | PostgreSQL login |
-| `DEV_GUILD_ID` | Optional. Also registers the slash commands to this server, where changes show up instantly |
-| `PRIVACY_POLICY_URL` | Optional. Privacy policy link shown in the consent prompt and `/help`; when it ends in `/legal/privacy`, `/help` also links that site's `/legal/imprint` |
-| `WEB_ORIGIN` | Public origin of the web app; the bot links to it, and the API (required there) uses it for links in emails and CORS |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional. Web Push keys and contact; without them no push reminders are sent |
-| `API_KNOWN_PROXY`, `API_KNOWN_NETWORK` | API only, at least one required. The reverse proxy whose forwarded headers the API trusts: a single address, or a network in CIDR form (see below) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | API only. Mail server login and sender address for account emails; the port defaults to 587 |
-| `SMTP_REPLY_TO` | API only, optional. Address for the `Reply-To` header of account emails; without it replies go to `SMTP_FROM` |
-| `FEEDBACK_DIGEST_TO` | API only, optional. Address that gets the daily feedback digest (08:00 Europe/Berlin, only when there is new feedback) over the SMTP settings above; without it feedback is stored but not mailed |
-| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | API only. Discord OAuth application for signing in with and linking Discord (web and the Android app, which returns through `app.ember.habits://auth/discord`; Discord only needs the web redirect URI) |
-
-**Client IP behind a tunnel.** Rate limits key on the client IP, which the API only takes from `X-Forwarded-For` when the request comes from a trusted proxy; from anywhere else the header is ignored silently and every visitor shares one limit. When cloudflared runs as a container on `homeserver-net`, Docker assigns its address and may change it on restart, so trust the network instead of one address: find the subnet with `docker network inspect homeserver-net --format '{{(index .IPAM.Config 0).Subnet}}'` and set it as `API_KNOWN_NETWORK` (for example `172.18.0.0/16`). Every container on that network can then claim any client IP, so only do this when you trust them all; otherwise give cloudflared a fixed `ipv4_address` and set that as `API_KNOWN_PROXY`. Keep the API port bound to `127.0.0.1` so the tunnel stays the only way in from outside. To check, exceed a login limit from one connection and confirm a second connection still gets through.
-
-The API container reports its health to Docker (`docker compose ps`) by calling its own `/health`, which also checks the database. Both containers are capped at 512 MB of memory.
-
-Then run `docker compose up -d --build`. On startup the bot applies any pending database migrations and registers its slash commands. Back up the database before you deploy a build that contains a new migration.
-
-**Deploying (maintainer).** Copy `deploy.ps1.example` to `deploy.ps1` (gitignored), fill in your server details and the path to the shared [homeserver-deploy](https://github.com/Tzanto01/homeserver-deploy) tool, then run `.\deploy.ps1` (`-DryRun` and `-SkipTests` are available). It runs the tests and ships only committed code; see the homeserver-deploy README for what happens on the server.
-
----
-
-## Development
-
-```bash
-# Build
-dotnet build
-
-# Run tests
-dotnet test
-```
-
-Tests cover streak logic, weekly progress, local-day and timezone handling, reminder dispatch, export, data deletion, habit templates, and interaction routing contracts. The PostgreSQL migration tests need Docker; without it they are skipped locally (set `CI=true` to force them).
-
----
-
-## Tech Stack
-
-| Layer | Choice |
-|---|---|
-| Language | C# / .NET 10 |
-| Discord library | Discord.Net 3.19.1 |
-| Scheduler | Quartz.NET |
-| Database | PostgreSQL via Npgsql EF Core |
-| Hosting | Docker Compose on Linux |
-
----
-
-## Legal
-
-The privacy policy (Datenschutzerklärung), terms of use and imprint are in [`docs/legal/`](docs/legal/). They are drafts pending legal review and not published yet.
-
----
+- ⌨️ [**Discord commands.**](TECHNICAL.md#discord-commands) Every slash command and how days, reminders and consent work.
+- 🏠 [**Self-hosting.**](TECHNICAL.md#self-hosting) Run your own instance with Docker.
+- 🛠️ [**Development.**](TECHNICAL.md#development) Code layout, builds and tests.
+- 🧱 [**Tech stack.**](TECHNICAL.md#tech-stack) What Ember is built with.
+- ⚖️ [**Legal.**](TECHNICAL.md#legal) Where the privacy policy, terms and imprint live.
 
 ## License
 
-Custom non-commercial license — see [LICENSE](LICENSE).  
-© 2026 Tzanto01 · Non-commercial use only · Credit required.
+Custom non-commercial license, see [LICENSE](LICENSE).  
+© 2026 Tzanto01. Non-commercial use only, credit required.
