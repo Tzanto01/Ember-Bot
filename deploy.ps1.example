@@ -8,6 +8,6 @@ $config = @{
     RemotePath = "/path/to/ember"
     RepoRoot   = $PSScriptRoot
     Tests      = @({ dotnet test tests/Ember.Tests/Ember.Tests.csproj -v q })
-    PruneDirs  = @("src", "tests", "docker")
+    PruneDirs  = @("src", "tests", "docker", "web", "mobile", "tools")
 }
 & $DeployTool @config @args
