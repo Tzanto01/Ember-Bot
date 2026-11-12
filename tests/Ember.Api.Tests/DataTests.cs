@@ -94,7 +94,8 @@ public class DataTests(PostgresFixture postgres) : ApiTestBase(postgres)
         habit.GetProperty("startDate").GetString().Should().Be(Host.Today.Iso());
         habit.GetProperty("today").GetProperty("state").GetString().Should().Be("pending");
         habit.GetProperty("stats").GetProperty("streak").GetInt32().Should().Be(0);
-        habit.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).Should().Equal("webpush");
+        habit.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).Should().Equal("mobile");
+        habit.GetProperty("serverReminders").GetBoolean().Should().BeFalse();
         (await (await user.Get("/api/habits")).ExpectJson()).GetArrayLength().Should().Be(1);
     }
 

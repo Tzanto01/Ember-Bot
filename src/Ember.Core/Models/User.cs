@@ -40,6 +40,12 @@ public class User : IdentityUser<Guid>
     /// <summary>When the user was told their DM reminders are paused, so the notice is shown only once.</summary>
     public DateTime? DmPauseNoticeSentAt { get; set; }
 
+    /// <summary>The account's answer to "remind me in Discord DMs": null until answered; reminders go to Discord only when true.</summary>
+    public bool? DiscordReminders { get; set; }
+
+    /// <summary>When the bot asked about <see cref="DiscordReminders"/>, so it asks at most once; set whether or not the DM arrived.</summary>
+    public DateTime? DiscordRemindersAskedAt { get; set; }
+
     /// <summary>When (UTC) the user explicitly agreed that Ember may store habit names and check-ins (GDPR Art. 9(2)(a)); null until they agree.</summary>
     public DateTime? HealthDataConsentAt { get; set; }
 
@@ -69,6 +75,7 @@ public class User : IdentityUser<Guid>
     public ICollection<DayMark> DayMarks { get; set; } = new List<DayMark>();
     public ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
     public ICollection<Routine> Routines { get; set; } = new List<Routine>();
+    public ICollection<ReminderPhone> ReminderPhones { get; set; } = new List<ReminderPhone>();
     public ICollection<DayNote> DayNotes { get; set; } = new List<DayNote>();
     public ICollection<Mood> Moods { get; set; } = new List<Mood>();
 

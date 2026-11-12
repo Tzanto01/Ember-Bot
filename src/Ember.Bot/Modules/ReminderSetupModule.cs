@@ -78,10 +78,11 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
+        var discordNote = await DiscordRemindersNoteAsync(_habits, Context.User.Id);
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this." + ReplacedText(replaced);
+                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this." + ReplacedText(replaced) + discordNote;
                 m.Embed = null;
                 m.Components = new ComponentBuilder().Build();
             });
@@ -94,6 +95,13 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
         => replaced.Count > 1
             ? $"\nThis replaces your earlier reminders at {HabitModule.FormatTimes(replaced)}. To get several reminders a day, set the times in the Ember web app."
             : "";
+
+    /// <summary>
+    /// For a reminder time set through the bot: turns Discord reminders on when the user never answered the ask
+    /// (<see cref="HabitService.DefaultDiscordRemindersOnAsync"/>), and returns the note that they are off when the user said no.
+    /// </summary>
+    internal static async Task<string> DiscordRemindersNoteAsync(HabitService habits, ulong userId)
+        => await habits.DefaultDiscordRemindersOnAsync(userId) ? "" : DiscordRemindersModule.OffText;
 
     /// <summary>
     /// "every day", "on Mon, Wed" for a habit on set weekdays, or for a weekly habit the days without a check-in until the
@@ -204,11 +212,12 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
             return;
         }
 
+        var discordNote = await DiscordRemindersNoteAsync(_habits, Context.User.Id);
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
             .WithTitle("⏰ Reminder set!")
             .WithDescription($"I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{parsed:HH\\:mm}** your time."
-                + ReplacedText(replaced))
+                + ReplacedText(replaced) + discordNote)
             .WithFooter("You've got this. One day at a time.")
             .Build();
 

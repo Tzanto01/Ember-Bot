@@ -1,14 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Habit } from '@/lib/models';
+import type { Habit, ReminderDestination } from '@/lib/models';
 import { auth, push } from '@/lib/services';
 import { type FetchMock, habit, me, mockFetch } from '@/lib/test-support';
 import HabitEditPage from './habit-edit';
 
 const stretch: Habit = { ...habit, id: 7, name: 'Stretch', reminderTime: '08:00', reminderChannels: ['mobile'] };
+const discord: ReminderDestination = { id: 'discord', kind: 'discord', label: 'Discord DMs', enabled: true, current: false };
+const laptop: ReminderDestination = { id: 'browser-3', kind: 'browser', label: 'Firefox on Linux', enabled: true, current: true };
+const phone: ReminderDestination = { id: 'phone-5', kind: 'phone', label: 'Pixel 8', enabled: true, current: false };
 
 function renderPage() {
   const router = createMemoryRouter(
@@ -81,14 +84,15 @@ describe('HabitEditPage', () => {
     expect(screen.getByLabelText('Reminder time 2')).toHaveValue('13:00');
   });
 
-  it('asks this browser for notifications when a reminder time is set on a habit that notifies this device', async () => {
+  it('asks this browser for notifications when a reminder time is set and this browser is not a destination yet', async () => {
     push.available.set(true);
     vi.spyOn(push, 'check').mockResolvedValue();
     const subscribe = vi.spyOn(push, 'subscribe').mockRejectedValue(new DOMException('Denied', 'NotAllowedError'));
     const user = userEvent.setup();
     const fetch = mockFetch();
     renderPage();
-    await load(fetch, { ...stretch, reminderTime: null, reminderTimes: [], reminderChannels: ['webpush'] });
+    await load(fetch, { ...stretch, reminderTime: null, reminderTimes: [] });
+    (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord]);
 
     fireEvent.change(screen.getByLabelText(/Reminder time/), { target: { value: '07:00' } });
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -96,27 +100,90 @@ describe('HabitEditPage', () => {
     const patch = await fetch.next('PATCH', '/api/habits/7');
     expect(subscribe).toHaveBeenCalledTimes(1);
     expect(patch.body).toEqual({ reminderTimes: ['07:00'] });
-    patch.respond(200, { ...stretch, reminderTimes: ['07:00'], reminderChannels: ['webpush'] });
+    patch.respond(200, { ...stretch, reminderTimes: ['07:00'] });
     expect(await screen.findByText(/Notifications are off for Ember in this browser/)).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Notifications on this device' })).toBeChecked();
   });
 
-  it.each([
-    ['Discord DM', 'discord'],
-    ['Notifications on this device', 'webpush'],
-  ])('drops mobile when %s is added to a mobile-only habit', async (label, channel) => {
-    const user = userEvent.setup();
-    const fetch = mockFetch();
-    renderPage();
-    await load(fetch, stretch, me.localToday, { ...me, discord: { linked: true, id: '1' } });
+  describe('remind me on', () => {
+    it('ticks every destination the habit does not skip, marks this browser, and saves the skipped set', async () => {
+      const user = userEvent.setup();
+      const fetch = mockFetch();
+      renderPage();
+      await load(fetch, { ...stretch, reminderExclusions: ['phone-5'] });
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop, phone]);
 
-    await user.click(screen.getByRole('checkbox', { name: label }));
+      const group = within(await screen.findByRole('group', { name: 'Remind me on' }));
+      expect(group.getByRole('checkbox', { name: 'Discord DMs' })).toBeChecked();
+      expect(group.getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeChecked();
+      expect(group.getByRole('checkbox', { name: 'Pixel 8' })).not.toBeChecked();
 
-    const patch = await fetch.next('PATCH', '/api/habits/7');
-    expect(patch.body).toEqual({ reminderChannels: [channel] });
-    patch.respond(200, { ...stretch, reminderChannels: [channel] });
-    expect(await screen.findByText('Reminder channels saved.')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: label })).toBeChecked();
+      await user.click(group.getByRole('checkbox', { name: 'Discord DMs' }));
+      const patch = await fetch.next('PATCH', '/api/habits/7');
+      expect(patch.body).toEqual({ reminderExclusions: ['phone-5', 'discord'] });
+      patch.respond(200, { ...stretch, reminderExclusions: ['phone-5', 'discord'] });
+
+      expect(await screen.findByText('Saved.')).toBeInTheDocument();
+      expect(group.getByRole('checkbox', { name: 'Discord DMs' })).not.toBeChecked();
+
+      await user.click(group.getByRole('checkbox', { name: 'Pixel 8' }));
+      expect((await fetch.next('PATCH', '/api/habits/7')).body).toEqual({ reminderExclusions: ['discord'] });
+    });
+
+    it('locks the other places while a change saves, and says what was kept when it fails', async () => {
+      const user = userEvent.setup();
+      const fetch = mockFetch();
+      renderPage();
+      await load(fetch);
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop]);
+
+      const group = await screen.findByRole('group', { name: 'Remind me on' });
+      await user.click(within(group).getByRole('checkbox', { name: 'Discord DMs' }));
+      const patch = await fetch.next('PATCH', '/api/habits/7');
+
+      expect(group).toHaveAttribute('aria-busy', 'true');
+      expect(within(group).getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeDisabled();
+
+      patch.respond(500, { type: 'internal' });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "That didn't save, so Discord DMs is still on. Try again in a moment.",
+      );
+      expect(within(group).getByRole('checkbox', { name: 'Discord DMs' })).toBeChecked();
+      expect(within(group).getByRole('checkbox', { name: 'Firefox on Linux, This browser' })).toBeEnabled();
+      expect(group).not.toHaveAttribute('aria-busy');
+    });
+
+    it('shows a destination switched off in Settings as disabled, with a link to Settings', async () => {
+      const user = userEvent.setup();
+      const fetch = mockFetch();
+      renderPage();
+      await load(fetch);
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [{ ...discord, enabled: false }, laptop]);
+
+      const off = await screen.findByRole('checkbox', { name: 'Discord DMs' });
+      expect(off).toBeDisabled();
+      expect(off).not.toBeChecked();
+      expect(off).toHaveAccessibleDescription('Turned off in Settings.');
+      expect(
+        within(screen.getByRole('region', { name: 'Remind me on' })).getByRole('link', { name: 'Settings' }),
+      ).toHaveAttribute('href', '/settings#push');
+
+      await user.click(off);
+      expect(fetch.pending.filter((call) => call.method === 'PATCH')).toHaveLength(0);
+    });
+
+    it('without any destination, says nothing can remind you yet and links to Settings', async () => {
+      const fetch = mockFetch();
+      renderPage();
+      await load(fetch);
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, []);
+
+      expect(await screen.findByText(/Nothing can remind you yet/)).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      expect(
+        within(screen.getByRole('region', { name: 'Remind me on' })).getByRole('link', { name: 'Settings' }),
+      ).toHaveAttribute('href', '/settings#push');
+    });
   });
 
   it('sends nothing when unchanged, then patches only the changed field', async () => {

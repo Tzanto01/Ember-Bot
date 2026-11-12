@@ -12,13 +12,8 @@ import {
   habitFormValue,
   habitNameError,
 } from '@/components/habits/habit-fields';
-import {
-  allowDeviceReminders,
-  canAskDevice,
-  deviceChannel,
-  DeviceRemindersOff,
-} from '@/components/habits/device-reminders';
-import { ChannelChoices, channelOptions, toggledChannels } from '@/components/habits/habit-edit-sections';
+import { allowDeviceReminders, canAskDevice, DeviceRemindersOff } from '@/components/habits/device-reminders';
+import { ChannelChoices, phoneChoice } from '@/components/habits/habit-edit-sections';
 import { HabitPreview } from '@/components/habits/habit-preview';
 import { useReminderReach, useReminderSettingsHash } from '@/components/habits/reminder-reach';
 import { PageHeader } from '@/components/page-header';
@@ -28,9 +23,9 @@ import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { env } from '@/lib/env';
-import type { HabitTemplate, NewHabit, ReminderChannel } from '@/lib/models';
+import type { HabitTemplate, NewHabit } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
-import { api, auth, localMode, push } from '@/lib/services';
+import { api, localMode } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
@@ -50,22 +45,11 @@ export default function HabitNewPage() {
   const reach = useReminderReach();
   const reminderHash = useReminderSettingsHash();
   const reminders = reach !== 'local';
-  const me = useStore(auth.me);
-  const local = useStore(localMode.mode) === 'local';
-  const pushAvailable = useStore(push.available);
-  const [chosenChannels, setChannels] = useState<ReminderChannel[] | null>(null);
+  const localPhone = useStore(localMode.mode) === 'local' && env.native;
+  const [phoneOn, setPhoneOn] = useState(true);
   const [createdOff, setCreatedOff] = useState(false);
   const offRef = useRef<HTMLDivElement>(null);
-  const discordLinked = !!me?.discord.linked;
-  const channels: ReminderChannel[] =
-    chosenChannels ??
-    (env.native ? ['mobile'] : !pushAvailable && discordLinked ? ['discord'] : ['webpush']);
-  const channelChoices = channelOptions(channels, {
-    discordLinked,
-    local,
-    pushAvailable,
-    hideUnavailablePush: true,
-  });
+  const silent = localPhone && !phoneOn;
 
   const create = useMutation({
     mutationFn: async ({ body, ask }: { body: NewHabit; ask: boolean }) => {
@@ -106,7 +90,7 @@ export default function HabitNewPage() {
       );
       setTouched(false);
       setPicked(template?.name ?? null);
-      setChannels(null);
+      setPhoneOn(true);
       setProblem(null);
       setChosen(true);
     });
@@ -135,15 +119,12 @@ export default function HabitNewPage() {
     if (value.frequency !== 'weekly') body.timesPerDay = value.timesPerDay;
     if (value.weeklyTarget !== null) body.weeklyTarget = value.weeklyTarget;
     if (reminders) {
-      if (channelChoices.length) body.reminderChannels = channels;
-      if (value.reminderTimes.length && channels.length) body.reminderTimes = value.reminderTimes;
+      if (localPhone) body.reminderChannels = phoneOn ? ['mobile'] : [];
+      if (value.reminderTimes.length && !silent) body.reminderTimes = value.reminderTimes;
     }
     submitting.current = true;
     setProblem(null);
-    create.mutate({
-      body,
-      ask: !!body.reminderTimes && channels.includes(deviceChannel()) && canAskDevice(),
-    });
+    create.mutate({ body, ask: !!body.reminderTimes && canAskDevice() });
   }
 
   const preview = habitFormValue(form);
@@ -220,7 +201,7 @@ export default function HabitNewPage() {
                 errors={problem?.fields ?? {}}
                 nameId={nameId}
                 showReminder={reminders}
-                silent={channels.length === 0}
+                silent={silent}
                 reminderNote={
                   reach === 'none' && (
                     <>
@@ -230,18 +211,14 @@ export default function HabitNewPage() {
                   )
                 }
               />
-              {reminders && channelChoices.length > 0 && (
+              {localPhone && (
                 <div className="-mt-3 flex flex-col gap-2">
                   <p className="font-medium">How this habit reminds you</p>
                   <ChannelChoices
-                    options={channelChoices}
-                    current={channels}
+                    options={phoneChoice}
+                    current={phoneOn ? ['mobile'] : []}
                     idPrefix="new-channel"
-                    onToggle={(channel, checked) =>
-                      setChannels(
-                        toggledChannels(channels, channel, checked, local ? [] : discordLinked ? ['discord'] : ['webpush']),
-                      )
-                    }
+                    onToggle={(_, checked) => setPhoneOn(checked)}
                   />
                 </div>
               )}

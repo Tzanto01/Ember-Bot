@@ -24,6 +24,8 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<ReminderActionToken> ReminderActionTokens => Set<ReminderActionToken>();
     public DbSet<Feedback> Feedback => Set<Feedback>();
+    public DbSet<ReminderPhone> ReminderPhones => Set<ReminderPhone>();
+    public DbSet<PushReminder> PushReminders => Set<PushReminder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -159,12 +161,44 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.Property(s => s.Endpoint).HasMaxLength(2048).IsRequired();
             entity.Property(s => s.P256dh).HasMaxLength(256).IsRequired();
             entity.Property(s => s.Auth).HasMaxLength(64).IsRequired();
+            entity.Property(s => s.Label).HasMaxLength(100);
             entity.HasIndex(s => s.Endpoint).IsUnique();
             entity.HasIndex(s => s.UserId);
             entity.HasIndex(s => s.SessionId);
             entity.HasOne(s => s.User)
                   .WithMany(u => u.PushSubscriptions)
                   .HasForeignKey(s => s.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReminderPhone>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.InstallId).HasMaxLength(64).IsRequired();
+            entity.Property(p => p.Label).HasMaxLength(60).IsRequired();
+            entity.HasIndex(p => p.InstallId).IsUnique();
+            entity.HasIndex(p => p.UserId);
+            entity.HasIndex(p => p.SessionId);
+            entity.HasOne(p => p.User)
+                  .WithMany(u => u.ReminderPhones)
+                  .HasForeignKey(p => p.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PushReminder>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Habit>()
+                  .WithMany()
+                  .HasForeignKey(r => r.HabitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Routine>()
+                  .WithMany()
+                  .HasForeignKey(r => r.RoutineId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

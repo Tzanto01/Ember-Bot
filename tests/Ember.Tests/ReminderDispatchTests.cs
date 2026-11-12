@@ -35,7 +35,7 @@ public class ReminderDispatchTests
         {
             var db = sp.GetRequiredService<EmberDbContext>();
             foreach (var userId in habits.Select(h => TestUsers.DiscordIdOf(h.UserId)).Distinct())
-                db.Users.Add(new User { Id = TestUsers.Id(userId), Logins = TestUsers.Discord(userId), Timezone = Berlin });
+                db.Users.Add(new User { Id = TestUsers.Id(userId), DiscordReminders = true, Logins = TestUsers.Discord(userId), Timezone = Berlin });
             db.Habits.AddRange(habits);
             await db.SaveChangesAsync();
         });
@@ -396,7 +396,6 @@ public class ReminderDispatchTests
     {
         var time = new FakeTimeProvider(Now);
         var habit = DueHabit(1, 10);
-        habit.ReminderChannels = ReminderChannels.Discord | ReminderChannels.WebPush;
         await using var host = await IntegrationTestHost.CreateAsync(start: false, time: time,
             configureServices: services => services.AddSingleton<IReminderChannel, FlakyPushChannel>());
         await host.WithScopeAsync(async sp =>
@@ -404,7 +403,7 @@ public class ReminderDispatchTests
             var db = sp.GetRequiredService<EmberDbContext>();
             db.Users.Add(new User
             {
-                Id = TestUsers.Id(10), Logins = TestUsers.Discord(10), Timezone = Berlin,
+                Id = TestUsers.Id(10), Logins = TestUsers.Discord(10), DiscordReminders = true, Timezone = Berlin,
                 PushSubscriptions = [new PushSubscription { Endpoint = "https://push.example/u10", P256dh = "k", Auth = "a" }],
             });
             db.Habits.Add(habit);
@@ -452,7 +451,7 @@ public class ReminderDispatchTests
         var habit = await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            db.Users.Add(new User { Id = TestUsers.Id(10), Logins = TestUsers.Discord(10), Timezone = Berlin });
+            db.Users.Add(new User { Id = TestUsers.Id(10), DiscordReminders = true, Logins = TestUsers.Discord(10), Timezone = Berlin });
             await db.SaveChangesAsync();
             await sp.GetRequiredService<HabitService>().GiveHealthDataConsentAsync(10);
             return await sp.GetRequiredService<HabitService>().AddHabitAsync(10, "Stretch", new TimeOnly(10, 0));

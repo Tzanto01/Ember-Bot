@@ -17,11 +17,11 @@ internal static class ImportEndpoints
         JournalEndpoints.JournalKeyRequest? JournalKey);
     public sealed record ImportSettings(int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes);
     public sealed record ImportHabit(int? Id, string? Name, string? Frequency, int? WeeklyTarget, TimeOnly? ReminderTime,
-        DateOnly? PausedUntil, DateOnly? PausedFrom, DateTimeOffset? CreatedAt, string?[]? ReminderChannels, string?[]? Days,
+        DateOnly? PausedUntil, DateOnly? PausedFrom, DateTimeOffset? CreatedAt, string?[]? Days,
         int? TimesPerDay, int? RoutineId, int? RoutinePosition, TimeOnly[]? ReminderTimes);
     public sealed record ImportLog(int? HabitId, DateOnly? Date, bool? Completed, int? Count);
     public sealed record ImportDayMark(DateOnly? Date, string? Kind);
-    public sealed record ImportRoutine(int? Id, string? Name, TimeOnly? ReminderTime, string?[]? ReminderChannels);
+    public sealed record ImportRoutine(int? Id, string? Name, TimeOnly? ReminderTime);
     public sealed record ImportMood(int? Id, string? Label, string? Emoji, bool? Archived, JournalEndpoints.EncryptedDto? Encrypted);
     public sealed record ImportDayNote(DateOnly? Date, string? Text, string? Mood, JournalEndpoints.EncryptedDto? Encrypted);
 
@@ -86,12 +86,10 @@ internal static class ImportEndpoints
         foreach (var (r, path) in Items(doc.Routines, "routines", errors))
         {
             var name = HabitEndpoints.ValidName(r.Name, local, RoutineEndpoints.MaxNameLength);
-            var channels = HabitEndpoints.ParseReminderChannels(r.ReminderChannels, local);
             var routine = new Routine
             {
                 Name = name ?? "",
                 ReminderTime = r.ReminderTime,
-                ReminderChannels = channels ?? ReminderChannels.WebPush,
                 CreatedAt = now,
             };
             if (r.Id is { } id && !routineById.TryAdd(id, routine)) local["id"] = [UniqueId];
@@ -109,7 +107,6 @@ internal static class ImportEndpoints
             HabitEndpoints.ValidateWeeklyTarget(h.WeeklyTarget, frequency, local);
             var days = HabitEndpoints.ValidateDays(h.Days, frequency, null, local);
             var timesPerDay = HabitEndpoints.ValidateTimesPerDay(h.TimesPerDay ?? 1, frequency, local);
-            var channels = HabitEndpoints.ParseReminderChannels(h.ReminderChannels, local);
             if (h.PausedFrom is not null && h.PausedUntil is null) local["paused_from"] = ["Needs paused_until."];
             else if (h.PausedFrom > h.PausedUntil) local["paused_from"] = ["Can't be after paused_until."];
             var createdAt = h.CreatedAt?.UtcDateTime ?? now;
@@ -134,7 +131,6 @@ internal static class ImportEndpoints
                 TimesPerDay = frequency == FrequencyType.Weekly ? 1 : timesPerDay,
                 Routine = routine,
                 RoutinePosition = routine is null ? 0 : h.RoutinePosition ?? 0,
-                ReminderChannels = channels ?? ReminderChannels.WebPush,
                 CreatedAt = createdAt,
             };
             if (h.Id is { } id && !habitById.TryAdd(id, habit)) local["id"] = [UniqueId];

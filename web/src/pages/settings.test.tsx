@@ -4,12 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { reminderNames } from '@/lib/native/reminder-names';
-import { auth, localMode, push } from '@/lib/services';
+import type { ReminderDestination } from '@/lib/models';
+import { auth, deviceSync, localMode, push } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SettingsPage from './settings';
 
 vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
 const exactAlarms = vi.hoisted(() => ({ beta: false, allowed: false, allowExact: vi.fn() }));
+const enablePhone = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/native/updater', async (original) => ({
   ...(await original<typeof import('@/lib/native/updater')>()),
   updaterAvailable: () => exactAlarms.beta,
@@ -22,6 +24,7 @@ vi.mock('@/lib/services', async (original) => {
     reminders: {
       exactAllowed: async () => exactAlarms.allowed,
       allowExact: (...args: unknown[]) => exactAlarms.allowExact(...args),
+      enablePhone: () => enablePhone(),
     },
   };
 });
@@ -121,7 +124,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     auth.setMe(me);
     const fetch = mockFetch();
     const router = renderPage('/settings/:group?', SettingsPage, '/settings#push');
-    const heading = await screen.findByRole('heading', { name: 'Notifications on this device' });
+    const heading = await screen.findByRole('heading', { name: 'Where Ember reminds you' });
     (await fetch.next('GET', '/api/me')).respond(200, { ...me });
     await settle();
 
@@ -159,7 +162,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       expect.stringContaining('Send feedback'),
     ]);
     const reminders = list.getByRole('link', { name: 'Reminders' });
-    expect(reminders).toHaveAccessibleDescription('Second reminder');
+    expect(reminders).toHaveAccessibleDescription('Where Ember reminds you, Second reminder');
 
     await user.click(reminders);
     expect(router.state.location.pathname).toBe('/settings/reminders');
@@ -309,6 +312,146 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByText('Saved.')).toBeInTheDocument();
   });
 
+  describe('where Ember reminds you', () => {
+    const discord: ReminderDestination = { id: 'discord', kind: 'discord', label: 'Discord DMs', enabled: true, current: false };
+    const laptop: ReminderDestination = {
+      id: 'browser-3',
+      kind: 'browser',
+      label: 'Firefox on Linux',
+      enabled: true,
+      current: true,
+    };
+    const phone: ReminderDestination = { id: 'phone-5', kind: 'phone', label: 'Pixel 8', enabled: false, current: false };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      enablePhone.mockReset();
+    });
+
+    it('lists every destination with its switch, marks this browser, and turns one off', async () => {
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop, phone]);
+
+      const here = await screen.findByRole('switch', { name: 'Firefox on Linux, This browser' });
+      expect(here).toBeChecked();
+      expect(screen.getByRole('switch', { name: 'Discord DMs' })).toBeChecked();
+      expect(screen.getByRole('switch', { name: 'Pixel 8' })).not.toBeChecked();
+
+      await user.click(here);
+      const patch = await fetch.next('PATCH', '/api/me/reminder-destinations/browser-3');
+      expect(patch.body).toEqual({ enabled: false });
+      expect(here).not.toBeChecked();
+      patch.respond(200, { ...laptop, enabled: false });
+
+      expect(await screen.findByText('Saved.')).toBeInTheDocument();
+      expect(here).not.toBeChecked();
+      expect(screen.queryByRole('button', { name: 'Turn on reminders in this browser' })).toBeNull();
+    });
+
+    it('puts the switch back and says so gently when the change fails', async () => {
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Discord DMs' }));
+      (await fetch.next('PATCH', '/api/me/reminder-destinations/discord')).respond(500, { type: 'internal' });
+
+      expect(await screen.findByRole('switch', { name: 'Discord DMs' })).toBeChecked();
+      expect(
+        await within(screen.getByRole('region', { name: 'Where Ember reminds you' })).findByRole('alert'),
+      ).toHaveTextContent("That didn't save, so Discord DMs is still on. Try again in a moment.");
+    });
+
+    it('saves two destinations at once and confirms each row', async () => {
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop, phone]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Discord DMs' }));
+      await user.click(screen.getByRole('switch', { name: 'Pixel 8' }));
+      const first = await fetch.next('PATCH', '/api/me/reminder-destinations/discord');
+      const second = await fetch.next('PATCH', '/api/me/reminder-destinations/phone-5');
+      expect(second.body).toEqual({ enabled: true });
+
+      second.respond(200, { ...phone, enabled: true });
+      first.respond(200, { ...discord, enabled: false });
+
+      await waitFor(() => expect(screen.getAllByText('Saved.')).toHaveLength(2));
+      expect(screen.getByRole('switch', { name: 'Discord DMs' })).not.toBeChecked();
+      expect(screen.getByRole('switch', { name: 'Pixel 8' })).toBeChecked();
+    });
+
+    it('turns reminders on in this browser when it is not listed yet, then shows its row', async () => {
+      push.available.set(true);
+      vi.spyOn(push, 'check').mockResolvedValue();
+      const subscribe = vi.spyOn(push, 'subscribe').mockResolvedValue();
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord]);
+
+      await user.click(await screen.findByRole('button', { name: 'Turn on reminders in this browser' }));
+      expect(subscribe).toHaveBeenCalledTimes(1);
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, laptop]);
+
+      expect(await screen.findByRole('switch', { name: 'Firefox on Linux, This browser' })).toBeChecked();
+      expect(screen.queryByRole('button', { name: 'Turn on reminders in this browser' })).toBeNull();
+    });
+
+    it('in the app, turns this phone on and rebuilds its reminders, or says notifications are off when refused', async () => {
+      env.native = true;
+      const rebuild = vi.spyOn(deviceSync, 'rebuildReminders').mockImplementation(() => undefined);
+      enablePhone.mockResolvedValueOnce(null);
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord]);
+
+      await user.click(await screen.findByRole('button', { name: 'Turn on reminders on this phone' }));
+      expect(
+        await screen.findByText("Notifications are off for Ember on this phone. You can turn them on in your phone's settings."),
+      ).toBeInTheDocument();
+      rebuild.mockClear();
+
+      const mine = { ...phone, enabled: true, current: true };
+      enablePhone.mockResolvedValueOnce(mine);
+      await user.click(screen.getByRole('button', { name: 'Turn on reminders on this phone' }));
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, mine]);
+
+      expect(await screen.findByRole('switch', { name: 'Pixel 8, This phone' })).toBeChecked();
+      expect(rebuild).toHaveBeenCalled();
+    });
+
+    it('in the app, switching this phone off rebuilds its reminders', async () => {
+      env.native = true;
+      const rebuild = vi.spyOn(deviceSync, 'rebuildReminders').mockImplementation(() => undefined);
+      const mine = { ...phone, enabled: true, current: true };
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [mine]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Pixel 8, This phone' }));
+      rebuild.mockClear();
+      (await fetch.next('PATCH', '/api/me/reminder-destinations/phone-5')).respond(200, { ...mine, enabled: false });
+
+      await waitFor(() => expect(rebuild).toHaveBeenCalled());
+      expect(screen.getByRole('switch', { name: 'Pixel 8, This phone' })).not.toBeChecked();
+    });
+
+    it('in the app, switching Discord off rebuilds this phone\'s reminders too', async () => {
+      env.native = true;
+      const rebuild = vi.spyOn(deviceSync, 'rebuildReminders').mockImplementation(() => undefined);
+      const user = userEvent.setup();
+      const { fetch } = await open('/settings/reminders');
+      (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, [discord, { ...phone, current: true }]);
+
+      await user.click(await screen.findByRole('switch', { name: 'Discord DMs' }));
+      rebuild.mockClear();
+      (await fetch.next('PATCH', '/api/me/reminder-destinations/discord')).respond(200, { ...discord, enabled: false });
+
+      await waitFor(() => expect(rebuild).toHaveBeenCalled());
+    });
+  });
+
   it('saves the second reminder choice to the account', async () => {
     const user = userEvent.setup();
     const { fetch } = await open('/settings/reminders');
@@ -442,7 +585,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(auth.me.get()).not.toBeNull();
   });
 
-  it('hides the notifications section when the server answers 501 for the push key', async () => {
+  it('offers no browser reminders when the server answers 501 for the push key', async () => {
     const registration = { pushManager: { getSubscription: async () => null } };
     vi.stubGlobal('PushManager', class {});
     Object.defineProperty(navigator, 'serviceWorker', {
@@ -452,9 +595,11 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     const { fetch } = await open('/settings/reminders');
 
     (await fetch.next('GET', '/api/push/vapid-public-key')).respond(501);
+    (await fetch.next('GET', '/api/me/reminder-destinations')).respond(200, []);
     await settle();
 
-    expect(screen.queryByRole('heading', { name: 'Notifications on this device' })).toBeNull();
+    expect(await screen.findByText(/Nothing can remind you yet/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Turn on reminders in this browser' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Second reminder' })).toBeInTheDocument();
   });
 

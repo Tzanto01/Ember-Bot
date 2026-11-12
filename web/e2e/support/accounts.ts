@@ -27,12 +27,10 @@ export async function signUp(page: Page, email: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
 }
 
-/** Opens the emailed link and confirms; the same browser signed up, so it is signed in and lands on consent. */
+/** Opens the emailed link; the code confirms and signs in the browser that signed up, which lands on consent. */
 export async function confirmEmail(page: Page, email: string): Promise<void> {
   const link = await findOutboxLink(page.request, email, '/confirm-email?');
   await page.goto(link);
-  await page.getByLabel('Password', { exact: true }).fill(SECRET);
-  await page.getByRole('button', { name: 'Confirm email' }).click();
   await expect(page.getByRole('heading', { name: 'One quick question' })).toBeVisible();
 }
 

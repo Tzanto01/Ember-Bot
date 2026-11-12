@@ -118,8 +118,12 @@ export interface Habit {
   startDate: LocalDateString;
   today: DayEntry;
   stats: HabitStats;
-  /** Absent until the push slice lands. Empty means no reminders. */
+  /** Absent until the push slice lands. Empty means no reminders. In the account mode, derived by the server (v1.14). */
   reminderChannels?: ReminderChannel[];
+  /** v1.14: ids of the caller's {@link ReminderDestination}s this habit does not remind on; absent from older servers. */
+  reminderExclusions?: string[];
+  /** v1.14: true when a server destination (Discord or a browser) reminds for this habit; the phone then skips its second reminder. */
+  serverReminders?: boolean;
 }
 
 /** `POST /api/habits` body. */
@@ -130,6 +134,8 @@ export interface NewHabit {
   /** Wins over `reminderTime` when present. */
   reminderTimes?: TimeOfDay[];
   reminderChannels?: ReminderChannel[];
+  /** v1.14: destination ids this habit does not remind on. */
+  reminderExclusions?: string[];
   frequency: Frequency;
   weeklyTarget?: number | null;
   days?: Weekday[] | null;
@@ -148,6 +154,8 @@ export interface HabitPatch {
   days?: Weekday[] | null;
   timesPerDay?: number;
   reminderChannels?: ReminderChannel[];
+  /** v1.14: replaces the whole set; absent leaves it unchanged. */
+  reminderExclusions?: string[];
 }
 
 /** `GET /api/habit-templates` item. `name` includes its emoji. */
@@ -210,6 +218,10 @@ export interface Routine {
   reminderTime: TimeOfDay | null;
   reminderChannels: ReminderChannel[];
   habitIds: number[];
+  /** v1.14: see {@link Habit.reminderExclusions}. */
+  reminderExclusions?: string[];
+  /** v1.14: see {@link Habit.serverReminders}. */
+  serverReminders?: boolean;
 }
 
 /** `POST /api/routines` body. */
@@ -218,6 +230,8 @@ export interface NewRoutine {
   name: string;
   reminderTime?: TimeOfDay | null;
   reminderChannels?: ReminderChannel[];
+  /** v1.14: destination ids this routine does not remind on; on PATCH replaces the whole set, absent leaves it unchanged. */
+  reminderExclusions?: string[];
   habitIds?: number[];
 }
 
@@ -227,6 +241,8 @@ export interface RoutinePatch {
   reminderTime?: TimeOfDay | null;
   clearReminder?: boolean;
   reminderChannels?: ReminderChannel[];
+  /** v1.14: destination ids this routine does not remind on; on PATCH replaces the whole set, absent leaves it unchanged. */
+  reminderExclusions?: string[];
   habitIds?: number[];
 }
 
@@ -335,6 +351,18 @@ export interface DeleteAccountRequest {
 export interface PushSubscriptionRequest {
   endpoint: string;
   keys: { p256dh: string; auth: string };
+}
+
+/**
+ * v1.14 `GET /api/me/reminder-destinations` item: where the account's reminders can go. `id` is `discord`,
+ * `browser-<n>` or `phone-<n>`; `current` marks the browser or phone registered by this sign-in session.
+ */
+export interface ReminderDestination {
+  id: string;
+  kind: 'discord' | 'browser' | 'phone';
+  label: string;
+  enabled: boolean;
+  current: boolean;
 }
 
 /** `POST /api/feedback` body (v1.13): `version` only when the app knows it. */

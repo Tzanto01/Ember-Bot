@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
-import { ChannelsSection, DriftingSpark } from '@/components/habits/habit-edit-sections';
+import { DriftingSpark, RemindersSection } from '@/components/habits/habit-edit-sections';
 import { PageHeader } from '@/components/page-header';
 import {
   RoutineDelete,
@@ -17,7 +17,7 @@ import type { Routine } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
 
-/** `/routines/new` and `/routines/:id/edit`: the routine form; editing adds reminder channels and delete. */
+/** `/routines/new` and `/routines/:id/edit`: the routine form; editing adds where reminders go and delete. */
 export default function RoutineEditPage() {
   const raw = useParams()['id'];
   const creating = raw === undefined;
@@ -54,13 +54,13 @@ export default function RoutineEditPage() {
       <div className="flex max-w-[40rem] flex-col gap-6">
         <RoutineDetails key={routine?.id ?? 'new'} routine={routine} habits={habits.data} routines={routines.data} />
         {routine && (
-          <ChannelsSection
+          <RemindersSection
             subject="routine"
             channels={routine.reminderChannels}
-            memoryKey={`ember.channelsBeforePhone.routine.${routine.id}`}
+            exclusions={routine.reminderExclusions ?? []}
             hasReminderTime={routine.reminderTime !== null}
-            save={async (next) => {
-              replace(await api.updateRoutine(routine.id, { reminderChannels: next }));
+            save={async (choice) => {
+              replace(await api.updateRoutine(routine.id, choice));
             }}
           />
         )}

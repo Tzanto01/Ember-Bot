@@ -60,7 +60,7 @@ public class ExportBuilderTests
         {
             Id = 7, Name = "Morning", ReminderTime = new TimeOnly(7, 30),
             NextReminderUtc = new DateTime(2025, 6, 19, 5, 30, 0, DateTimeKind.Utc),
-            ReminderChannels = ReminderChannels.WebPush | ReminderChannels.Mobile,
+            ReminderExclusions = ["discord", "phone-4"],
             CreatedAt = new DateTime(2025, 6, 1, 8, 0, 0, DateTimeKind.Utc),
         });
         user.DayNotes.Add(new DayNote { Date = new DateOnly(2025, 6, 17), Text = "=cmd|' /C calc'!A0", Mood = "custom:5" });
@@ -170,7 +170,7 @@ public class ExportBuilderTests
 
         var routine = doc.Routines.Should().ContainSingle().Subject;
         routine.Should().BeEquivalentTo(new ExportBuilder.RoutineRecord(7, "Morning", new TimeOnly(7, 30),
-            new DateTime(2025, 6, 19, 5, 30, 0, DateTimeKind.Utc), ["webpush", "mobile"],
+            new DateTime(2025, 6, 19, 5, 30, 0, DateTimeKind.Utc), ["discord", "phone-4"],
             new DateTime(2025, 6, 1, 8, 0, 0, DateTimeKind.Utc)), o => o.WithStrictOrdering());
 
         doc.DayNotes.Should().BeEquivalentTo(new[]
@@ -213,7 +213,7 @@ public class ExportBuilderTests
         Names(root).First().Should().Be("format_version");
         Names(First("habits")).Should().Contain(["id", "days", "times_per_day", "routine_id", "routine_position"]).And.NotContain("habit_ids");
         Names(First("logs")).Should().Contain(["habit_id", "date", "completed", "count"]);
-        Names(First("routines")).Should().Contain(["id", "name", "reminder_time", "reminder_channels"]).And.NotContain("habit_ids");
+        Names(First("routines")).Should().Contain(["id", "name", "reminder_time", "reminder_exclusions"]).And.NotContain("habit_ids");
         Names(First("moods", m => m.GetProperty("label").ValueKind == JsonValueKind.String)).Should().Contain(["id", "label", "emoji", "archived"]);
         var encryptedMood = First("moods", m => m.GetProperty("encrypted").ValueKind == JsonValueKind.Object);
         Names(encryptedMood).Should().Contain(["id", "encrypted", "archived"]);
@@ -237,7 +237,7 @@ public class ExportBuilderTests
             && r["days"] == "mon;wed;sun" && r["times_per_day"] == "3" && r["routine_id"] == "7" && r["routine_position"] == "1");
         rows.Should().ContainSingle(r => r["record_type"] == "log" && r["guild_id"] == "123456789012345678" && r["count"] == "2");
         rows.Should().ContainSingle(r => r["record_type"] == "routine" && r["routine_id"] == "7" && r["name"] == "Morning"
-            && r["reminder_time"] == "07:30" && r["reminder_channels"] == "webpush;mobile" && r["routine_position"] == ""
+            && r["reminder_time"] == "07:30" && r["reminder_exclusions"] == "discord;phone-4" && r["routine_position"] == ""
             && r["created_at"] == "2025-06-01T08:00:00Z");
         rows.Should().ContainSingle(r => r["record_type"] == "day_note" && r["date"] == "2025-06-18"
             && r["text"] == "" && r["cipher_version"] == "1" && r["cipher_iv"] == "aXY=" && r["cipher_text"] == "Y3Q=");

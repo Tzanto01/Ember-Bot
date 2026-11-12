@@ -5,7 +5,7 @@ test('deleting the account signs out and the credentials stop working', async ({
   const email = await createWebUser(page);
   await createHabit(page, 'Stretch');
 
-  await page.goto('/settings');
+  await page.goto('/settings/privacy');
   await page.getByLabel('Your password', { exact: true }).fill(SECRET);
   await page.getByLabel('Type DELETE to confirm').fill('DELETE');
   await page.getByRole('button', { name: 'Delete my account' }).click();

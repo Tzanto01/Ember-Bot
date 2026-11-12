@@ -186,8 +186,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<DateOnly?>("PausedUntil")
                         .HasColumnType("date");
 
-                    b.Property<int>("ReminderChannels")
-                        .HasColumnType("integer");
+                    b.PrimitiveCollection<List<string>>("ReminderExclusions")
+                        .IsRequired()
+                        .HasColumnType("text[]");
 
                     b.PrimitiveCollection<List<TimeOnly>>("ReminderTimes")
                         .IsRequired()
@@ -349,6 +350,37 @@ namespace Ember.Core.Data.Migrations
                     b.ToTable("Moods");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.PushReminder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("HabitId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RoutineId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HabitId");
+
+                    b.HasIndex("RoutineId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PushReminders");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
                 {
                     b.Property<int>("Id")
@@ -365,10 +397,17 @@ namespace Ember.Core.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Endpoint")
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("P256dh")
                         .IsRequired()
@@ -474,6 +513,48 @@ namespace Ember.Core.Data.Migrations
                     b.ToTable("ReminderMessages");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.ReminderPhone", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InstallId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstallId")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReminderPhones");
+                });
+
             modelBuilder.Entity("Ember.Core.Models.Routine", b =>
                 {
                     b.Property<int>("Id")
@@ -493,8 +574,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<DateTime?>("NextReminderUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("ReminderChannels")
-                        .HasColumnType("integer");
+                    b.PrimitiveCollection<List<string>>("ReminderExclusions")
+                        .IsRequired()
+                        .HasColumnType("text[]");
 
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("time without time zone");
@@ -535,6 +617,12 @@ namespace Ember.Core.Data.Migrations
 
                     b.Property<DateOnly?>("ConsentPromptedOn")
                         .HasColumnType("date");
+
+                    b.Property<bool?>("DiscordReminders")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("DiscordRemindersAskedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DmFailureCount")
                         .HasColumnType("integer");
@@ -783,6 +871,25 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.PushReminder", b =>
+                {
+                    b.HasOne("Ember.Core.Models.Habit", null)
+                        .WithMany()
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ember.Core.Models.Routine", null)
+                        .WithMany()
+                        .HasForeignKey("RoutineId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ember.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Ember.Core.Models.PushSubscription", b =>
                 {
                     b.HasOne("Ember.Core.Models.User", "User")
@@ -826,6 +933,17 @@ namespace Ember.Core.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.ReminderPhone", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithMany("ReminderPhones")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ember.Core.Models.Routine", b =>
@@ -891,6 +1009,8 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("Moods");
 
                     b.Navigation("PushSubscriptions");
+
+                    b.Navigation("ReminderPhones");
 
                     b.Navigation("Routines");
                 });

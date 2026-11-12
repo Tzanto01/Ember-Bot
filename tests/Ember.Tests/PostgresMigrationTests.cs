@@ -134,6 +134,54 @@ public class PostgresMigrationTests(PostgresFixture postgres)
         habits[1].ReminderTimes.Should().BeEmpty();
     }
 
+    [DockerFact]
+    public async Task MultiDeviceRemindersMigration_StartsEverythingEverywhere_KeepsTodaysDiscordUsersAsYes_AndGoesBackDown()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20261112001345_AddFeedback");
+        string Id(int n) => $"'00000000-0000-0000-0000-00000000000{n}'";
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO \"AspNetUsers\" (\"Id\", \"Timezone\", \"GraceDaysPerWeek\", \"DmFailureCount\", \"EmailConfirmed\", " +
+            "\"PhoneNumberConfirmed\", \"TwoFactorEnabled\", \"LockoutEnabled\", \"AccessFailedCount\", \"SecondReminderMinutes\") VALUES " +
+            string.Join(", ", Enumerable.Range(1, 4).Select(n => $"({Id(n)}, 'Europe/Berlin', 1, 0, FALSE, FALSE, FALSE, FALSE, 0, 0)")) + ";" +
+            "INSERT INTO \"AspNetUserLogins\" (\"LoginProvider\", \"ProviderKey\", \"ProviderDisplayName\", \"UserId\") VALUES " +
+            $"('Discord', '101', 'Discord', {Id(1)}), ('Discord', '102', 'Discord', {Id(2)}), ('Discord', '103', 'Discord', {Id(3)});" +
+            "INSERT INTO \"Habits\" (\"Id\", \"UserId\", \"Name\", \"ReminderTimes\", \"CreatedAt\", \"FrequencyType\", \"ReminderChannels\", \"RoutinePosition\") VALUES " +
+            $"(1, {Id(1)}, 'Stretch', ARRAY['07:30'::time], now(), 0, 3, 0), " +
+            $"(2, {Id(2)}, 'Read', ARRAY[]::time[], now(), 0, 1, 0), " +
+            $"(3, {Id(4)}, 'Walk', ARRAY['09:00'::time], now(), 0, 1, 0);" +
+            "INSERT INTO \"Routines\" (\"Id\", \"UserId\", \"Name\", \"ReminderTime\", \"CreatedAt\", \"ReminderChannels\") VALUES " +
+            $"(1, {Id(2)}, 'Evening', '21:00', now(), 2), (2, {Id(3)}, 'Morning', '07:00', now(), 1);" +
+            "INSERT INTO \"PushSubscriptions\" (\"UserId\", \"Endpoint\", \"P256dh\", \"Auth\", \"CreatedAt\") VALUES " +
+            $"({Id(1)}, 'https://fcm.googleapis.com/fcm/send/a', 'k', 'a', now())");
+
+        await migrator.MigrateAsync();
+
+        (await db.Users.AsNoTracking().OrderBy(u => u.Id).Select(u => u.DiscordReminders).ToListAsync()).Should().Equal(true, null, true, null);
+        (await db.Habits.AsNoTracking().ToListAsync()).Should().OnlyContain(h => h.ReminderExclusions.Count == 0);
+        (await db.Routines.AsNoTracking().ToListAsync()).Should().OnlyContain(r => r.ReminderExclusions.Count == 0);
+        (await db.PushSubscriptions.AsNoTracking().SingleAsync()).Should().Match<Ember.Core.Models.PushSubscription>(s => s.Enabled && s.Label == null);
+
+        await db.Habits.Where(h => h.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(h => h.ReminderExclusions, new List<string> { "discord" }));
+        await db.Database.ExecuteSqlRawAsync(
+            $"INSERT INTO \"Habits\" (\"Id\", \"UserId\", \"Name\", \"ReminderTimes\", \"CreatedAt\", \"FrequencyType\", \"RoutinePosition\") VALUES (4, {Id(1)}, 'Water', ARRAY[]::time[], now(), 0, 0);" +
+            $"INSERT INTO \"ReminderPhones\" (\"UserId\", \"InstallId\", \"Label\", \"Enabled\", \"CreatedAt\") VALUES ({Id(1)}, 'install-0000000001', 'Pixel 8', TRUE, now());" +
+            $"INSERT INTO \"PushReminders\" (\"UserId\", \"HabitId\", \"Date\") VALUES ({Id(1)}, 4, '2027-01-15')");
+
+        await migrator.MigrateAsync("20261112001345_AddFeedback");
+
+        (await db.Database.SqlQueryRaw<int>("SELECT \"ReminderChannels\" AS \"Value\" FROM \"Habits\" ORDER BY \"Id\"").ToListAsync())
+            .Should().Equal(6, 6, 6, 7);
+        (await db.Database.SqlQueryRaw<int>("SELECT \"ReminderChannels\" AS \"Value\" FROM \"Routines\" ORDER BY \"Id\"").ToListAsync())
+            .Should().Equal(6, 7);
+        (await db.Database.SqlQueryRaw<int>("SELECT count(*)::int AS \"Value\" FROM information_schema.tables WHERE table_name IN ('ReminderPhones', 'PushReminders')").ToListAsync())
+            .Should().Equal(0);
+    }
+
     private static async Task<DateOnly> CurrentDateAsync(EmberDbContext db)
         => (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
 

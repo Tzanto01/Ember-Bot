@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { env } from '@/lib/env';
+import { reminders } from '@/lib/services';
 import type { ReminderChannel } from '@/lib/models';
-import { ChannelsSection } from './habit-edit-sections';
+import { type ReminderChoice, RemindersSection } from './habit-edit-sections';
 
 vi.mock('@/lib/env', async (original) => ({ env: { ...(await original<typeof import('@/lib/env')>()).env } }));
 vi.mock('@/lib/services', async (original) => {
@@ -17,12 +18,12 @@ vi.mock('@/lib/services', async (original) => {
   };
 });
 
-function renderSection(channels: ReminderChannel[], save = vi.fn(async (_next: ReminderChannel[]) => {})) {
+function renderSection(channels: ReminderChannel[], save = vi.fn(async (_choice: ReminderChoice) => {})) {
   const router = createMemoryRouter(
     [
       {
         path: '/',
-        element: <ChannelsSection subject="habit" channels={channels} memoryKey="k" hasReminderTime save={save} />,
+        element: <RemindersSection subject="habit" channels={channels} exclusions={[]} hasReminderTime save={save} />,
       },
     ],
     { initialEntries: ['/'] },
@@ -35,7 +36,7 @@ function renderSection(channels: ReminderChannel[], save = vi.fn(async (_next: R
   return save;
 }
 
-describe('ChannelsSection without an account', () => {
+describe('RemindersSection without an account', () => {
   afterEach(() => {
     env.native = false;
     localStorage.clear();
@@ -50,12 +51,23 @@ describe('ChannelsSection without an account', () => {
 
   it('in the app, offers only "Remind me on this phone" and turning it off saves no channels', async () => {
     env.native = true;
-    localStorage.setItem('k', JSON.stringify(['discord']));
     const save = renderSection(['mobile']);
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(1);
     await userEvent.setup().click(screen.getByRole('checkbox', { name: 'Remind me on this phone' }));
 
-    expect(save).toHaveBeenCalledWith([]);
+    expect(save).toHaveBeenCalledWith({ reminderChannels: [] });
+  });
+
+  it('in the app, turning the phone on asks for notifications first and saves the phone channel', async () => {
+    env.native = true;
+    const requestPermission = vi.mocked(reminders!.requestPermission);
+    const save = renderSection([]);
+
+    await userEvent.setup().click(screen.getByRole('checkbox', { name: 'Remind me on this phone' }));
+
+    expect(requestPermission).toHaveBeenCalled();
+    expect(save).toHaveBeenCalledWith({ reminderChannels: ['mobile'] });
+    expect(await screen.findByText('This phone will remind you.')).toBeInTheDocument();
   });
 });

@@ -110,17 +110,17 @@ public class ReminderTimesApiTests(PostgresFixture postgres) : ApiTestBase(postg
     }
 
     [DockerFact]
-    public async Task Create_takes_reminder_channels_with_the_patch_validation()
+    public async Task Create_ignores_legacy_reminder_channels_and_starts_everywhere()
     {
         var user = await Host.SignedInAsync();
 
-        await ExpectFieldError(await user.Post("/api/habits", new { name = "Water", frequency = "daily", reminderChannels = new[] { "sms" } }),
-            "reminderChannels");
-        var created = await (await user.Post("/api/habits", new { name = "Water", frequency = "daily", reminderChannels = new[] { "mobile" } }))
+        var created = await (await user.Post("/api/habits", new { name = "Water", frequency = "daily", reminderChannels = new[] { "sms" } }))
             .ExpectJson(HttpStatusCode.Created);
 
         created.GetProperty("reminderChannels").EnumerateArray().Select(c => c.GetString()).Should().Equal("mobile");
+        created.GetProperty("reminderExclusions").GetArrayLength().Should().Be(0);
+        created.GetProperty("serverReminders").GetBoolean().Should().BeFalse();
         var id = created.GetProperty("id").GetInt32();
-        (await Host.Db(db => db.Habits.Where(h => h.Id == id).Select(h => h.ReminderChannels).SingleAsync())).Should().Be(ReminderChannels.Mobile);
+        (await Host.Db(db => db.Habits.Where(h => h.Id == id).Select(h => h.ReminderExclusions).SingleAsync())).Should().BeEmpty();
     }
 }

@@ -31,7 +31,9 @@ public partial class HabitService
     /// In one transaction, after locking both user rows and re-checking that the source is still a bot-only account
     /// owning the Discord login and the target still has no Discord login: moves the source's habits (with their logs),
     /// routines, day marks (one per day and kind when both have it), journal entries (the target's wins on a date both have),
-    /// own moods, journal key, push subscriptions (a subscription without a session joins <paramref name="sessionId"/>), feedback and Discord login to the target, deletes the source and gives
+    /// own moods, journal key, push subscriptions and phones (one without a session joins <paramref name="sessionId"/>; each kept at
+    /// most at its per-user limit), feedback and Discord login to the target, gives the target the source's Discord reminder answer
+    /// (<see cref="User.DiscordReminders"/>, <see cref="User.DiscordRemindersAskedAt"/>) when the target has none, deletes the source and gives
     /// the target a new security stamp. A plaintext source mood whose trimmed label matches a plaintext target mood
     /// (ignoring case) is combined into it: the source's entries pointing at it point at the target's mood and the source mood
     /// is dropped (skipped when the source has encrypted entries, which may reference it inside the ciphertext).
@@ -91,6 +93,20 @@ public partial class HabitService
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId).SetProperty(p => p.SessionId, p => p.SessionId ?? sessionId), cancellationToken);
             await TrimPushSubscriptionsAsync(targetUserId, cancellationToken);
 
+            await _db.ReminderPhones
+                .Where(p => p.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, targetUserId).SetProperty(p => p.SessionId, p => p.SessionId ?? sessionId), cancellationToken);
+            await TrimReminderPhonesAsync(targetUserId, cancellationToken);
+
+            var source = await _db.Users.Where(u => u.Id == sourceUserId)
+                .Select(u => new { u.DiscordReminders, u.DiscordRemindersAskedAt })
+                .FirstAsync(cancellationToken);
+            await _db.Users
+                .Where(u => u.Id == targetUserId && u.DiscordReminders == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.DiscordReminders, source.DiscordReminders)
+                    .SetProperty(u => u.DiscordRemindersAskedAt, source.DiscordRemindersAskedAt), cancellationToken);
+
             var key = DiscordLogin.Key(discordUserId);
             await _db.UserLogins
                 .Where(l => l.LoginProvider == DiscordLogin.Provider && l.ProviderKey == key)
@@ -98,6 +114,8 @@ public partial class HabitService
 
             await _db.ReminderMessages.Where(m => m.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, targetUserId), cancellationToken);
+            await _db.PushReminders.Where(r => r.UserId == sourceUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.UserId, targetUserId), cancellationToken);
             await _db.ReminderActionTokens.Where(t => t.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.UserId, targetUserId), cancellationToken);
             await _db.Feedback.Where(f => f.UserId == sourceUserId)

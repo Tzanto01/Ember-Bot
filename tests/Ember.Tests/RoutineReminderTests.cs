@@ -36,7 +36,7 @@ public class RoutineReminderTests
         await host.WithScopeAsync(async sp =>
         {
             var db = sp.GetRequiredService<EmberDbContext>();
-            db.Users.Add(new User { Id = TestUsers.Id(DiscordUser), Logins = TestUsers.Discord(DiscordUser), Timezone = "Europe/Berlin" });
+            db.Users.Add(new User { Id = TestUsers.Id(DiscordUser), DiscordReminders = true, Logins = TestUsers.Discord(DiscordUser), Timezone = "Europe/Berlin" });
             db.Routines.Add(new Routine
             {
                 Id = 1,
@@ -44,7 +44,6 @@ public class RoutineReminderTests
                 Name = "Morning",
                 ReminderTime = Nine,
                 NextReminderUtc = routineDueUtc,
-                ReminderChannels = ReminderChannels.Discord,
             });
             db.Habits.AddRange(habits);
             await db.SaveChangesAsync();

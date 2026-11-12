@@ -4,7 +4,10 @@ namespace Ember.Core.Models;
 
 public enum FrequencyType { Daily, Weekly, Weekdays }
 
-/// <summary>Where a habit's reminders go. None means no reminders even when a reminder time is set.</summary>
+/// <summary>
+/// The server channels the bot dispatches by (<see cref="Discord"/>, <see cref="WebPush"/>) and the names of the deprecated
+/// <c>reminderChannels</c> field (v1.14 derives them, <see cref="Services.ReminderDestinations.LegacyChannels"/>).
+/// </summary>
 [Flags]
 public enum ReminderChannels
 {
@@ -12,7 +15,7 @@ public enum ReminderChannels
     Discord = 1,
     WebPush = 2,
 
-    /// <summary>Stored for the native app, which schedules local notifications on the device; the server never dispatches it.</summary>
+    /// <summary>Only a name of the deprecated <c>reminderChannels</c> field (v1.14 derives it when no server destination is a target); never dispatched.</summary>
     Mobile = 4,
 }
 
@@ -72,8 +75,8 @@ public class Habit
     /// <summary>Order of this habit inside its routine.</summary>
     public int RoutinePosition { get; set; }
 
-    /// <summary>Channels the reminder is sent to. Bot-created habits default to Discord; channels the user can't receive are skipped.</summary>
-    public ReminderChannels ReminderChannels { get; set; } = ReminderChannels.Discord;
+    /// <summary>Reminder destination ids (<see cref="Services.ReminderDestinations"/>) this habit does not remind on; empty means everywhere.</summary>
+    public List<string> ReminderExclusions { get; set; } = [];
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

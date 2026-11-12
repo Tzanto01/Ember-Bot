@@ -18,6 +18,11 @@ function readFlag(): string | null {
   }
 }
 
+/** True while the app runs in no-account mode (the persisted `ember.mode` flag, set before `Http.local`). */
+export function localModeOn(): boolean {
+  return readFlag() === 'local';
+}
+
 function writeFlag(mode: AppMode): void {
   try {
     if (mode === 'account') localStorage.removeItem(flagKey);

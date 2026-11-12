@@ -13,28 +13,39 @@ interface Action {
 }
 
 interface PushPayload {
-  notification?: { title?: unknown; body?: unknown; actions?: unknown; data?: unknown } | null;
+  notification?: { title?: unknown; body?: unknown; actions?: unknown; data?: unknown; tag?: unknown } | null;
+  clear?: { tag?: unknown } | null;
 }
 
 /**
- * Shows the notification for a push. Reads the bot's payload (contract v1.3, web push; v1.9 "Done")
- * `{"notification":{"title","body","actions"?,"data":{"onActionClick":{"default":{"operation","url"}},"doneToken"?}}}`,
- * passes `data` through for the click and shows the well-formed `actions`. Always shows one, with the title "Ember" when
- * the payload is missing or malformed.
+ * Shows the notification for a push. Reads the bot's payload (contract v1.3, web push; v1.9 "Done"; v1.14 tag)
+ * `{"notification":{"title","body","actions"?,"tag"?,"data":{"onActionClick":{"default":{"operation","url"}},"doneToken"?}}}`,
+ * passes `data` through for the click, shows the well-formed `actions` and, with a `tag`, replaces the notification
+ * under that tag and alerts again (`renotify`). Always shows one, with the title "Ember" when the payload is missing or
+ * malformed. A v1.14 clear payload `{"clear":{"tag"}}` shows a silent "Logged" notification under that tag, then
+ * closes every notification with it, so the reminder goes away and nothing stays.
  */
-export function handlePush(
+export async function handlePush(
   data: { json(): unknown } | null,
-  registration: Pick<ServiceWorkerRegistration, 'showNotification'>,
+  registration: Pick<ServiceWorkerRegistration, 'showNotification' | 'getNotifications'>,
 ): Promise<void> {
-  let notification: PushPayload['notification'] = null;
+  let payload: PushPayload | null = null;
   try {
-    const payload = data?.json() as PushPayload | null | undefined;
-    if (payload && typeof payload.notification === 'object') notification = payload.notification;
+    const parsed = data?.json() as PushPayload | null | undefined;
+    if (parsed && typeof parsed === 'object') payload = parsed;
   } catch {
-    notification = null;
+    payload = null;
   }
+  const clearTag = typeof payload?.clear === 'object' ? payload.clear?.tag : undefined;
+  if (typeof clearTag === 'string' && clearTag) {
+    await registration.showNotification(fallbackTitle, { tag: clearTag, body: loggedBody, silent: true });
+    for (const shown of await registration.getNotifications({ tag: clearTag })) shown.close();
+    return;
+  }
+  const notification = typeof payload?.notification === 'object' ? payload.notification : null;
   const title = notification?.title;
   const body = notification?.body;
+  const tag = notification?.tag;
   const options: NotificationOptions = {
     body: typeof body === 'string' && body ? body : 'A gentle nudge from Ember',
   };
@@ -45,6 +56,10 @@ export function handlePush(
       )
     : [];
   if (actions.length) (options as NotificationOptions & { actions: Action[] }).actions = actions;
+  if (typeof tag === 'string' && tag) {
+    options.tag = tag;
+    (options as NotificationOptions & { renotify: boolean }).renotify = true;
+  }
   return registration.showNotification(
     typeof title === 'string' && title ? title : fallbackTitle,
     options,

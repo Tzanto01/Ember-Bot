@@ -1,5 +1,6 @@
-import { useMutation } from '@tanstack/react-query';
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
+import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useNavigate } from 'react-router';
 import { DayCell } from '@/components/day-cell';
@@ -19,11 +20,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   allowDeviceReminders,
   canAskDevice,
+  DestinationName,
   deviceChannel,
   DeviceRemindersOff,
+  reminderDestinationsKey,
+  useReminderDestinations,
 } from '@/components/habits/device-reminders';
 import { env } from '@/lib/env';
 import { formatDate } from '@/lib/local-date';
@@ -32,17 +37,21 @@ import {
   type HabitPatch,
   type LocalDateString,
   type ReminderChannel,
+  type ReminderDestination,
   reminderTimesOf,
   type Routine,
 } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api, auth, localMode, push } from '@/lib/services';
 import { useStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 interface Feedback {
   tone: NoticeTone;
   text: string;
 }
+
+const destinationsLink = { pathname: '/settings', hash: 'push' };
 
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 
@@ -69,14 +78,21 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [deviceOff, setDeviceOff] = useState(false);
-  const localWeb = useStore(localMode.mode) === 'local' && !env.native;
+  const local = useStore(localMode.mode) === 'local';
+  const localWeb = local && !env.native;
+  const queryClient = useQueryClient();
+  const here = useReminderDestinations(!local).data?.find((d) => d.current);
+  const remindsHere = local
+    ? !!habit.reminderChannels?.includes(deviceChannel())
+    : !here || (here.enabled && !habit.reminderExclusions?.includes(here.id));
 
   const save = useMutation({
     mutationFn: async ({ patch, ask }: { patch: HabitPatch; ask: boolean }) => {
       const allowed = ask ? await allowDeviceReminders() : true;
-      return { updated: await api.updateHabit(habit.id, patch), allowed };
+      return { updated: await api.updateHabit(habit.id, patch), allowed, asked: ask };
     },
-    onSuccess: ({ updated, allowed }) => {
+    onSuccess: ({ updated, allowed, asked }) => {
+      if (asked && !local) void queryClient.invalidateQueries({ queryKey: reminderDestinationsKey });
       onChange(updated);
       setForm(habitToForm(updated));
       setTouched(false);
@@ -119,7 +135,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
     setFieldErrors({});
     save.mutate({
       patch,
-      ask: !!patch.reminderTimes?.length && !!habit.reminderChannels?.includes(deviceChannel()) && canAskDevice(),
+      ask: !!patch.reminderTimes?.length && remindsHere && canAskDevice(),
     });
   }
 
@@ -178,58 +194,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
   );
 }
 
-interface ChannelChange {
-  next: ReminderChannel[];
-  /** Set when "Remind me on this phone" changed: true turned on, false turned off. */
-  phone?: boolean;
-  /** The channels to remember on this device when the phone is turned on. */
-  before?: ReminderChannel[];
-  /** True when this change should make sure notifications can show on this device. */
-  ask?: boolean;
-}
-
-/**
- * The channel choices for one habit or routine, in order: Discord DM (when Discord is linked or it's already chosen),
- * web push ("Notifications on this device" in the browser, left out there with `hideUnavailablePush` while this
- * browser or the server offers no push) and, in the app, "Remind me on this phone". Without an account: only the
- * phone, in the app.
- */
-export function channelOptions(
-  current: readonly ReminderChannel[],
-  {
-    discordLinked,
-    local,
-    pushAvailable,
-    hideUnavailablePush = false,
-  }: { discordLinked: boolean; local: boolean; pushAvailable: boolean; hideUnavailablePush?: boolean },
-): { channel: ReminderChannel; label: string }[] {
-  const phone = env.native ? [{ channel: 'mobile' as const, label: 'Remind me on this phone' }] : [];
-  if (local) return phone;
-  return [
-    ...(discordLinked || current.includes('discord') ? [{ channel: 'discord' as const, label: 'Discord DM' }] : []),
-    ...(env.native || pushAvailable || !hideUnavailablePush
-      ? [{ channel: 'webpush' as const, label: env.native ? 'Web push' : 'Notifications on this device' }]
-      : []),
-    ...phone,
-  ];
-}
-
-/**
- * The channels after ticking (`checked`) or unticking `channel`: Discord DM or web push drop `mobile`, the phone
- * alone replaces the others, and unticking the phone gives `restore`.
- */
-export function toggledChannels(
-  channels: readonly ReminderChannel[],
-  channel: ReminderChannel,
-  checked: boolean,
-  restore: ReminderChannel[],
-): ReminderChannel[] {
-  if (channel === 'mobile') return checked ? ['mobile'] : restore;
-  const others = channels.filter((c) => c !== channel);
-  return checked ? [...others.filter((c) => c !== 'mobile'), channel] : others;
-}
-
-/** The labelled checkbox group for {@link channelOptions}. */
+/** The labelled checkbox group of reminder channels (no-account mode: "Remind me on this phone"). */
 export function ChannelChoices({
   options,
   current,
@@ -259,60 +224,61 @@ export function ChannelChoices({
   );
 }
 
-export interface ChannelsSectionProps {
+/** The one channel choice without an account: the phone, in the app. */
+export const phoneChoice = [{ channel: 'mobile' as const, label: 'Remind me on this phone' }];
+
+/** What {@link RemindersSection} saves: the phone's channel without an account, else the skipped destinations. */
+export type ReminderChoice = { reminderChannels: ReminderChannel[] } | { reminderExclusions: string[] };
+
+export interface RemindersSectionProps {
   /** What the reminders belong to, in the copy: "this habit" or "this routine". */
   subject: 'habit' | 'routine';
+  /** The item's reminder channels; only read without an account. */
   channels: ReminderChannel[];
-  /** Device key for the channels to restore when "Remind me on this phone" is turned off. */
-  memoryKey: string;
+  /** The destination ids the item skips (v1.14). */
+  exclusions: string[];
   hasReminderTime: boolean;
-  /** Saves the channels and hands the server's answer to the page. */
-  save: (next: ReminderChannel[]) => Promise<void>;
+  /** Saves the choice and hands the server's answer to the page. */
+  save: (choice: ReminderChoice) => Promise<void>;
 }
 
-/** {@link ChannelsSection} for a habit, saving through `PATCH /api/habits/{id}`. */
-export function HabitChannelsSection({ habit, channels, onChange }: SectionProps & { channels: ReminderChannel[] }) {
+/** {@link RemindersSection} for a habit, saving through `PATCH /api/habits/{id}`. */
+export function HabitRemindersSection({ habit, onChange }: SectionProps) {
   return (
-    <ChannelsSection
+    <RemindersSection
       subject="habit"
-      channels={channels}
-      memoryKey={`ember.channelsBeforePhone.${habit.id}`}
+      channels={habit.reminderChannels ?? []}
+      exclusions={habit.reminderExclusions ?? []}
       hasReminderTime={habit.reminderTime !== null}
-      save={async (next) => onChange(await api.updateHabit(habit.id, { reminderChannels: next }))}
+      save={async (choice) => onChange(await api.updateHabit(habit.id, choice))}
     />
   );
 }
 
 /**
- * "Where reminders go". Adding Discord DM or Web push drops `mobile`; native "Remind me on this phone" sets the
- * channels to `mobile` only, and turning it off restores the channels remembered on this device under
- * `memoryKey`, else `discord` when Discord is linked, else `webpush`.
+ * Where an item's reminders go. With an account, "Remind me on": every destination from Settings, ticked unless the
+ * item skips it; one switched off in Settings shows unticked and disabled. Without an account, "Remind me on this
+ * phone" in the app (the `mobile` channel), and on the web a note that reminders need the app or an account.
  */
-export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime, save }: ChannelsSectionProps) {
-  const me = useStore(auth.me);
-  const pushAvailable = useStore(push.available);
-  const local = useStore(localMode.mode) === 'local';
-  const [shown, setShown] = useState<{ base: ReminderChannel[]; next: ReminderChannel[] } | null>(null);
+export function RemindersSection(props: RemindersSectionProps) {
+  return useStore(localMode.mode) === 'local' ? <PhoneReminders {...props} /> : <RemindOn {...props} />;
+}
+
+function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersSectionProps) {
+  const [shown, setShown] = useState<{ base: string; next: ReminderChannel[] } | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [deviceOff, setDeviceOff] = useState(false);
 
-  useEffect(() => {
-    if (!env.native && !local) void push.check();
-  }, []);
-
   const change = useMutation({
-    mutationFn: async ({ next, ask }: ChannelChange) => {
-      const allowed = ask ? await allowDeviceReminders() : true;
-      await save(next);
+    mutationFn: async (next: ReminderChannel[]) => {
+      const allowed = next.length ? await allowDeviceReminders() : true;
+      await save({ reminderChannels: next });
       return allowed;
     },
-    onSuccess: (allowed, { phone, before }) => {
-      setShown(null);
-      if (phone === true) localStorage.setItem(memoryKey, JSON.stringify(before ?? []));
-      else if (phone === false) localStorage.removeItem(memoryKey);
+    onSuccess: (allowed, next) => {
       setDeviceOff(!allowed);
       setFeedback(
-        allowed ? { tone: 'success', text: phone ? 'This phone will remind you.' : 'Reminder channels saved.' } : null,
+        allowed ? { tone: 'success', text: next.length ? 'This phone will remind you.' : 'Reminder channels saved.' } : null,
       );
     },
     onError: (error) => {
@@ -322,78 +288,218 @@ export function ChannelsSection({ subject, channels, memoryKey, hasReminderTime,
     },
   });
 
-  const busy = shown !== null && shown.base === channels;
-  const current = busy ? shown.next : channels;
+  const current = shown?.base === channels.join() ? shown.next : channels;
 
-  function send(request: ChannelChange): void {
-    setShown({ base: channels, next: request.next });
+  function toggle(checked: boolean): void {
+    if (change.isPending) return;
+    const next: ReminderChannel[] = checked ? ['mobile'] : [];
+    setShown({ base: channels.join(), next });
     setFeedback(null);
     setDeviceOff(false);
-    change.mutate(request);
+    change.mutate(next);
   }
-
-  function toggleChannel(channel: ReminderChannel, checked: boolean): void {
-    if (busy) return;
-    if (channel === 'mobile') {
-      togglePhone(checked);
-      return;
-    }
-    send({
-      next: toggledChannels(channels, channel, checked, []),
-      ask: checked && channel === deviceChannel() && hasReminderTime && canAskDevice(),
-    });
-  }
-
-  function togglePhone(checked: boolean): void {
-    if (checked) {
-      send({ next: ['mobile'], phone: true, ask: true, before: channels.filter((c) => c !== 'mobile') });
-      return;
-    }
-    let previous: ReminderChannel[] | null = null;
-    try {
-      previous = JSON.parse(localStorage.getItem(memoryKey) ?? 'null') as ReminderChannel[] | null;
-    } catch {
-      previous = null;
-    }
-    const fallback: ReminderChannel[] = me?.discord.linked ? ['discord'] : ['webpush'];
-    send({ next: toggledChannels(channels, 'mobile', false, local ? [] : (previous ?? fallback)), phone: false });
-  }
-
-  const options = channelOptions(current, { discordLinked: !!me?.discord.linked, local, pushAvailable });
 
   return (
     <section aria-labelledby="channels-heading" className={cardVariants()}>
       <h2 id="channels-heading" className="text-[22px]">
         Where reminders go
       </h2>
-      {local && !env.native ? (
+      {env.native ? (
+        <>
+          <ChannelChoices options={phoneChoice} current={current} onToggle={(_, checked) => toggle(checked)} />
+          {channels.length === 0 ? (
+            <p className="text-[14px] text-muted-foreground">
+              No reminders will go out for this {subject}. That's fine too.
+            </p>
+          ) : (
+            !hasReminderTime && (
+              <p className="text-[14px] text-muted-foreground">
+                Set a reminder time above so these have a moment to arrive.
+              </p>
+            )
+          )}
+        </>
+      ) : (
         <p className="text-muted-foreground">Reminders need the Ember app or an account.</p>
-      ) : (
-        <ChannelChoices options={options} current={current} onToggle={toggleChannel} />
-      )}
-      {channels.includes('mobile') && !local && (
-        <p className="text-[14px] text-muted-foreground">
-          Reminders for this {subject} come to your phone only, not Discord or web push, so you get each one once.
-        </p>
-      )}
-      {local && !env.native ? null : channels.length === 0 ? (
-        <p className="text-[14px] text-muted-foreground">No reminders will go out for this {subject}. That's fine too.</p>
-      ) : (
-        !hasReminderTime && (
-          <p className="text-[14px] text-muted-foreground">
-            Set a reminder time above so these have a moment to arrive.
-          </p>
-        )
-      )}
-      {pushAvailable && !local && (
-        <p className="text-[14px] text-muted-foreground">
-          {env.native ? 'Web push also needs' : 'Notifications on this device also need'} this browser turned on for
-          notifications in{' '}
-          <Link to={{ pathname: '/settings', hash: 'push' }}>Settings</Link>.
-        </p>
       )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       {deviceOff && <DeviceRemindersOff />}
+    </section>
+  );
+}
+
+function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSectionProps) {
+  const destinations = useReminderDestinations();
+  const pushAvailable = useStore(push.available);
+  const [shown, setShown] = useState<{ base: string; next: string[] } | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!env.native) void push.check();
+  }, []);
+
+  const change = useMutation({
+    mutationFn: ({ next }: { next: string[]; destination: ReminderDestination; checked: boolean }) =>
+      save({ reminderExclusions: next }),
+    onSuccess: () => {
+      setSaved(true);
+    },
+    onError: (error, { destination, checked }) => {
+      setShown(null);
+      if (failure(error)) {
+        const kept = checked ? 'off' : 'on';
+        setFeedback({
+          tone: 'notice',
+          text: `That didn't save, so ${destination.label} is still ${kept}. Try again in a moment.`,
+        });
+      }
+    },
+  });
+
+  const skipped = shown?.base === exclusions.join() ? shown.next : exclusions;
+  const list = destinations.data ?? [];
+  const reaching = list.filter((d) => d.enabled && !skipped.includes(d.id)).length;
+  const loadProblem = destinations.isError && !destinations.data ? failure(destinations.error) : null;
+
+  function toggle(destination: ReminderDestination, checked: boolean): void {
+    if (change.isPending) return;
+    const { id } = destination;
+    const next = checked ? exclusions.filter((x) => x !== id) : [...exclusions, id];
+    setShown({ base: exclusions.join(), next });
+    setFeedback(null);
+    setSaved(false);
+    change.mutate({ next, destination, checked });
+  }
+
+  let content: ReactNode;
+  if (destinations.data) {
+    content =
+      list.length === 0 ? (
+        <p className="text-muted-foreground">
+          Nothing can remind you yet. You can turn reminders on in{' '}
+          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+            Settings
+          </Link>
+          .
+        </p>
+      ) : (
+        <div
+          role="group"
+          aria-labelledby="channels-heading"
+          aria-describedby="channels-hint"
+          aria-busy={change.isPending || undefined}
+          className="flex flex-col gap-1"
+        >
+          {list.map((destination) => {
+            const id = `destination-${destination.id}`;
+            const locked = change.isPending && change.variables.destination.id !== destination.id;
+            return (
+              <div key={destination.id} className="flex min-h-[44px] items-center gap-3 py-1">
+                <Checkbox
+                  id={id}
+                  checked={destination.enabled && !skipped.includes(destination.id)}
+                  disabled={!destination.enabled || locked}
+                  aria-describedby={destination.enabled ? undefined : `${id}-off`}
+                  onCheckedChange={(checked) => toggle(destination, checked === true)}
+                />
+                <div className="flex min-w-0 flex-col">
+                  <Label
+                    htmlFor={id}
+                    className={cn(
+                      'flex flex-wrap items-center gap-x-2 gap-y-1 font-normal',
+                      destination.enabled ? 'cursor-pointer' : 'text-muted-foreground',
+                    )}
+                  >
+                    <DestinationName destination={destination} />
+                  </Label>
+                  {!destination.enabled && (
+                    <p id={`${id}-off`} className="text-[14px] text-muted-foreground">
+                      Turned off in{' '}
+                      <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+                        Settings
+                      </Link>
+                      .
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+  } else if (destinations.isError) {
+    content = loadProblem && (
+      <Notice tone="notice">
+        <p>{loadProblem.message}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          aria-disabled={destinations.isFetching || undefined}
+          onClick={() => void destinations.refetch()}
+        >
+          Try again
+        </Button>
+      </Notice>
+    );
+  } else {
+    content = (
+      <>
+        <p role="status" className="sr-only">
+          Loading where Ember can remind you…
+        </p>
+        <Skeleton className="h-[6rem] rounded-md" />
+      </>
+    );
+  }
+
+  const thisDevice = env.native ? 'phone' : 'browser';
+  const missingHere =
+    !!destinations.data && (env.native || pushAvailable) && !list.some((d) => d.current && d.kind === thisDevice);
+
+  return (
+    <section aria-labelledby="channels-heading" className={cardVariants()}>
+      <h2 id="channels-heading" className="text-[22px]">
+        Remind me on
+      </h2>
+      {list.length > 0 && (
+        <p id="channels-hint" className="text-[14px] text-muted-foreground">
+          Untick a place to skip it for this {subject}.
+        </p>
+      )}
+      {content}
+      {list.length > 0 &&
+        (reaching === 0 ? (
+          <p className="text-[14px] text-muted-foreground">
+            No reminders will go out for this {subject}. That's fine too.
+          </p>
+        ) : (
+          !hasReminderTime && (
+            <p className="text-[14px] text-muted-foreground">
+              Set a reminder time above so these have a moment to arrive.
+            </p>
+          )
+        ))}
+      {missingHere && (
+        <p className="text-[14px] text-muted-foreground">
+          To be reminded on this {thisDevice} too, turn it on in{' '}
+          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
+            Settings
+          </Link>
+          .
+        </p>
+      )}
+      {list.length > 0 && (
+        <p role="status" className="inline-flex items-center gap-1.5 font-medium text-foreground">
+          {saved && (
+            <>
+              <Check aria-hidden className="size-[18px] text-primary" />
+              Saved.
+            </>
+          )}
+        </p>
+      )}
+      {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
     </section>
   );
 }
