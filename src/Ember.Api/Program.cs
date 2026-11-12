@@ -14,6 +14,8 @@ if (args is ["--healthcheck"])
     }
 }
 
+if (FeedbackCli.Handles(args)) return await FeedbackCli.RunAsync(args);
+
 var app = ApiApp.Build(ApiApp.CreateBuilder(args));
 app.Run();
 return 0;

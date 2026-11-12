@@ -24,6 +24,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<ReminderActionToken> ReminderActionTokens => Set<ReminderActionToken>();
     public DbSet<Feedback> Feedback => Set<Feedback>();
+    public DbSet<FeedbackImage> FeedbackImages => Set<FeedbackImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -201,12 +202,25 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasKey(f => f.Id);
             entity.Property(f => f.Platform).HasMaxLength(16).IsRequired();
             entity.Property(f => f.Version).HasMaxLength(32);
+            entity.Property(f => f.Title).HasMaxLength(100).IsRequired();
             entity.Property(f => f.Text).HasMaxLength(2000).IsRequired();
             entity.HasIndex(f => f.CreatedAt);
             entity.HasOne<User>()
                   .WithMany()
                   .HasForeignKey(f => f.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(f => f.Images)
+                  .WithOne()
+                  .HasForeignKey(i => i.FeedbackId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FeedbackImage>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Id).ValueGeneratedNever();
+            entity.Property(i => i.ContentType).HasMaxLength(16).IsRequired();
+            entity.Property(i => i.Data).IsRequired();
         });
     }
 }

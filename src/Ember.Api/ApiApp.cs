@@ -23,7 +23,7 @@ namespace Ember.Api;
 /// </summary>
 public static class ApiApp
 {
-    private const string ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
+    private const string ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; frame-ancestors 'none'";
 
     public static WebApplicationBuilder CreateBuilder(string[] args)
     {
@@ -163,6 +163,7 @@ public static class ApiApp
         app.UseAuthentication();
         app.Use(AuthSessions.RejectEndedBearer);
         app.Use(AuthEndpoints.EnforceAntiforgery);
+        app.Use(FeedbackEndpoints.RaiseBodyLimit);
         app.UseAuthorization();
 
         app.MapHealthChecks("/health");

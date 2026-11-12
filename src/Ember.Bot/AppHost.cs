@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Jobs;
+using Ember.Bot.Modules;
 using Ember.Bot.Services;
 using Ember.Core.Data;
 using Ember.Core.Services;
@@ -86,6 +87,9 @@ public static class AppHost
                 services.AddSingleton<IReminderChannel, DiscordDmReminderChannel>();
                 services.AddSingleton<ReminderRetries>();
                 services.AddSingleton<FeedbackCooldown>();
+                services.AddHttpClient(FeedbackModule.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15))
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+                    .RemoveAllLoggers();
                 services.AddHttpClient(WebPushReminderChannel.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
                     .RemoveAllLoggers();

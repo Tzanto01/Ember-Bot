@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
+using Ember.Core.Services;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -26,7 +27,7 @@ internal sealed class RateLimitSettings
 /// Per client IP on the credential endpoints of <c>/api/auth</c> (the strict <see cref="AuthPolicy"/> policy) and on every
 /// other <c>/api/auth</c> request (the loose <see cref="AuthOtherPolicy"/> policy, and the same limit as a global limiter on
 /// the Discord OAuth callback, which the authentication handler answers before any endpoint runs), and on the mail-sending
-/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day, and <c>POST /api/feedback</c> per user, or per client IP and in total per
+/// endpoints per endpoint, normalized email and client IP, per email, per client IP and in total per day, and <c>POST /api/feedback</c> per user (with a daily picture byte budget), or per client IP and in total per
 /// day for anonymous senders (the singleton <see cref="PartitionedRateLimiter{TResource}"/> of <see cref="string"/>, keyed by <see cref="MailKeys"/> and
 /// <see cref="FeedbackKeys"/>, which never share a partition).
 /// </summary>
@@ -43,6 +44,7 @@ internal static class RateLimits
     private const string FeedbackUserPrefix = "fb-user:";
     private const string FeedbackIpPrefix = "fb-ip:";
     private const string FeedbackDayKey = "fb-day";
+    private const string FeedbackBytesPrefix = "fb-bytes:";
 
     public static IServiceCollection AddEmberRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
@@ -53,6 +55,8 @@ internal static class RateLimits
             return PartitionedRateLimiter.Create<string, string>(key => RateLimitPartition.GetFixedWindowLimiter(key, _ => key switch
             {
                 FeedbackDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.FeedbackPerDay, Window = MailDayWindow },
+                _ when key.StartsWith(FeedbackBytesPrefix, StringComparison.Ordinal)
+                    => new FixedWindowRateLimiterOptions { PermitLimit = (int)HabitService.MaxFeedbackImageBytesPerUserPerDay, Window = MailDayWindow },
                 _ when key.StartsWith(FeedbackUserPrefix, StringComparison.Ordinal) || key.StartsWith(FeedbackIpPrefix, StringComparison.Ordinal)
                     => new FixedWindowRateLimiterOptions { PermitLimit = settings.FeedbackPerHour, Window = MailWindow },
                 MailDayKey => new FixedWindowRateLimiterOptions { PermitLimit = settings.MailPerDay, Window = MailDayWindow },
@@ -100,6 +104,12 @@ internal static class RateLimits
     /// </summary>
     internal static string[] FeedbackKeys(Guid? userId, IPAddress? address)
         => userId is { } id ? [FeedbackUserPrefix + id.ToString("N")] : [FeedbackIpPrefix + ClientKey(address), FeedbackDayKey];
+
+    /// <summary>
+    /// The limiter key of a signed-in user's picture bytes, one permit per decoded byte, at most
+    /// <see cref="HabitService.MaxFeedbackImageBytesPerUserPerDay"/> per day; taken after <see cref="FeedbackKeys"/>.
+    /// </summary>
+    internal static string FeedbackBytesKey(Guid userId) => FeedbackBytesPrefix + userId.ToString("N");
 
     /// <summary>The per-IP partition: an IPv4 address (also when IPv4-mapped), or the /64 network of an IPv6 address.</summary>
     internal static string ClientKey(IPAddress? address)
