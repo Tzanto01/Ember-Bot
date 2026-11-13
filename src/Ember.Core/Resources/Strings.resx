@@ -12,4 +12,32 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="weekly.tone.quiet.headline" xml:space="preserve">
+    <value>It's been a quiet week, and that's okay. 💙
+Whenever you're ready, your habits are here waiting.</value>
+  </data>
+  <data name="weekly.tone.quiet.footer" xml:space="preserve">
+    <value>No pressure. Progress happens at its own pace.</value>
+  </data>
+  <data name="weekly.tone.all.headline" xml:space="preserve">
+    <value>You nailed every single check-in this week 🔥 That's {0}. Incredible.</value>
+  </data>
+  <data name="weekly.tone.all.footer" xml:space="preserve">
+    <value>You're on fire. Keep going.</value>
+  </data>
+  <data name="weekly.tone.some.headline" xml:space="preserve">
+    <value>This week you showed up for **{0}**. Every one of those counts. 💪</value>
+  </data>
+  <data name="weekly.tone.half.footer" xml:space="preserve">
+    <value>More than half, that's a win. Keep it up.</value>
+  </data>
+  <data name="weekly.tone.small.footer" xml:space="preserve">
+    <value>Small steps still move forward. You've got this.</value>
+  </data>
+  <data name="weekly.checkins.one" xml:space="preserve">
+    <value>{0} check-in</value>
+  </data>
+  <data name="weekly.checkins.other" xml:space="preserve">
+    <value>{0} check-ins</value>
+  </data>
 </root>

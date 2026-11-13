@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ember.Bot.Jobs;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Lib.Net.Http.WebPush;
@@ -33,17 +34,11 @@ public sealed class WebPushReminderChannel : IReminderChannel
 
     private static readonly JsonSerializerOptions PayloadJson = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
-    /// <summary>The Angular service worker notification payload.</summary>
-    public static readonly string Payload = BuildPayload(FirstBody);
+    /// <summary>The Angular service worker notification payload, in English.</summary>
+    public static readonly string Payload = BuildPayload(BotTexts.English.Get("push.reminder.first"));
 
-    /// <summary>The payload of a second reminder: the same notification with its own body.</summary>
-    public static readonly string SecondPayload = BuildPayload(SecondBody);
-
-    private const string FirstBody = "A gentle nudge from Ember";
-    private const string SecondBody = "One more nudge, in case the first one got buried.";
-
-    /// <summary>The body of the notification the clear push shows (and the service worker closes again).</summary>
-    public const string LoggedBody = "Logged. Nice work. ✅";
+    /// <summary>The payload of a second reminder, in English: the same notification with its own body.</summary>
+    public static readonly string SecondPayload = BuildPayload(BotTexts.English.Get("push.reminder.second"));
 
     /// <summary>The notification tag of a habit's reminders.</summary>
     public static string HabitTag(int habitId) => $"habit-{habitId}";
@@ -53,31 +48,31 @@ public sealed class WebPushReminderChannel : IReminderChannel
 
     /// <summary>
     /// The clear payload for <paramref name="tag"/>: a v1.14 service worker closes the notifications with that tag; an older one
-    /// shows the "Logged" notification.
+    /// shows the "Logged" notification in <paramref name="t"/> (English when null).
     /// </summary>
-    public static string ClearPayload(string tag) => JsonSerializer.Serialize(new
+    public static string ClearPayload(string tag, Texts? t = null) => JsonSerializer.Serialize(new
     {
         clear = new { tag },
         notification = new
         {
             title = "Ember",
-            body = LoggedBody,
+            body = (t ?? BotTexts.English).Get("push.logged"),
             data = new { onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/today" } } },
         },
     }, PayloadJson);
 
     /// <summary>
-    /// The notification payload with <paramref name="body"/>, plus the "Done" action when <paramref name="doneToken"/> is set and the
-    /// <paramref name="tag"/> when set.
+    /// The notification payload with <paramref name="body"/>, plus the "Done" action (labelled in <paramref name="t"/>, English when null)
+    /// when <paramref name="doneToken"/> is set and the <paramref name="tag"/> when set.
     /// </summary>
-    internal static string BuildPayload(string body, string? doneToken = null, string? tag = null) => JsonSerializer.Serialize(new
+    internal static string BuildPayload(string body, string? doneToken = null, string? tag = null, Texts? t = null) => JsonSerializer.Serialize(new
     {
         notification = new
         {
             title = "Ember",
             body,
             tag,
-            actions = doneToken is null ? null : new[] { new { action = "done", title = "Done ✅" } },
+            actions = doneToken is null ? null : new[] { new { action = "done", title = (t ?? BotTexts.English).Get("reminder.done") } },
             data = new
             {
                 onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/today" } },
@@ -141,7 +136,8 @@ public sealed class WebPushReminderChannel : IReminderChannel
     {
         List<Core.Models.PushSubscription> subscriptions;
         HashSet<Guid> liveSessions;
-        var body = reminder.Second ? SecondBody : FirstBody;
+        var t = BotTexts.For(reminder.Language);
+        var body = t.Get(reminder.Second ? "push.reminder.second" : "push.reminder.first");
         string? donePayload = null;
         var tag = reminder.PendingHabits is null ? HabitTag(reminder.HabitId) : RoutineTag(reminder.HabitId);
         var allowed = reminder.PushSubscriptionIds ?? [];
@@ -155,7 +151,7 @@ public sealed class WebPushReminderChannel : IReminderChannel
             liveSessions = await habits.GetLiveSessionIdsAsync(reminder.UserId, cancellationToken);
             if (reminder.PendingHabits is null && subscriptions.Any(s => s.SessionId is { } id && liveSessions.Contains(id)))
                 donePayload = BuildPayload(body, await habits.CreateReminderActionTokenAsync(reminder.UserId, reminder.HabitId, reminder.Day,
-                    reminder.Day.AddDays(1).ToDateTime(new TimeOnly(MissedDayReflectionJob.LocalSendHour, 0)), cancellationToken), tag);
+                    reminder.Day.AddDays(1).ToDateTime(new TimeOnly(MissedDayReflectionJob.LocalSendHour, 0)), cancellationToken), tag, t);
         }
         var plainPayload = BuildPayload(body, tag: tag);
 
@@ -178,14 +174,18 @@ public sealed class WebPushReminderChannel : IReminderChannel
         return DeliveryOutcome.Delivered;
     }
 
-    /// <summary>Sends the clear payload (<see cref="ClearPayload"/>) for <paramref name="tag"/> to the user's push subscriptions in <paramref name="subscriptionIds"/>.</summary>
-    public async Task SendClearAsync(Guid userId, IReadOnlyCollection<int> subscriptionIds, string tag, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Sends the clear payload (<see cref="ClearPayload"/>) for <paramref name="tag"/> in <paramref name="language"/> to the user's push
+    /// subscriptions in <paramref name="subscriptionIds"/>.
+    /// </summary>
+    public async Task SendClearAsync(Guid userId, IReadOnlyCollection<int> subscriptionIds, string tag, string language,
+        CancellationToken cancellationToken = default)
     {
         List<Core.Models.PushSubscription> subscriptions;
         using (var scope = _scopes.CreateScope())
             subscriptions = (await scope.ServiceProvider.GetRequiredService<HabitService>().GetPushSubscriptionsAsync(userId, cancellationToken))
                 .Where(s => subscriptionIds.Contains(s.Id)).ToList();
-        var payload = ClearPayload(tag);
+        var payload = ClearPayload(tag, BotTexts.For(language));
         await SendAsync(userId, subscriptions, _ => payload, cancellationToken);
     }
 

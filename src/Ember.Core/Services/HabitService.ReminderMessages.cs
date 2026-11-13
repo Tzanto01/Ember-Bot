@@ -22,10 +22,10 @@ public partial class HabitService
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// Every open reminder message (untracked) with its user's timezone id and, for a habit's message, whether that habit is done on the
-    /// message's day (always false for a routine's message), in one query.
+    /// Every open reminder message (untracked) with its user's timezone id, whether that habit is done on the message's day for a
+    /// habit's message (always false for a routine's message) and the user's language, in one query.
     /// </summary>
-    public async Task<List<(ReminderMessage Message, string Timezone, bool HabitDone)>> GetOpenReminderMessagesAsync(
+    public async Task<List<(ReminderMessage Message, string Timezone, bool HabitDone, string Language)>> GetOpenReminderMessagesAsync(
         CancellationToken cancellationToken = default)
     {
         var rows = await _db.ReminderMessages
@@ -35,9 +35,10 @@ public partial class HabitService
                 Message = m,
                 u.Timezone,
                 HabitDone = m.HabitId != null && _db.HabitLogs.Any(l => l.HabitId == m.HabitId && l.Date == m.Date && l.Completed),
+                u.Language,
             })
             .ToListAsync(cancellationToken);
-        return rows.Select(r => (r.Message, r.Timezone, r.HabitDone)).ToList();
+        return rows.Select(r => (r.Message, r.Timezone, r.HabitDone, r.Language)).ToList();
     }
 
     /// <summary>Forgets the reminder message with the database id <paramref name="id"/>.</summary>

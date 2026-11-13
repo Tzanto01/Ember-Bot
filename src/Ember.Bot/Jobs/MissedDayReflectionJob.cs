@@ -27,6 +27,9 @@ public class MissedDayReflectionJob : IJob
     /// <summary>Local hour at which each user receives the reflection.</summary>
     public const int LocalSendHour = 10;
 
+    /// <summary>How many <c>missedday.closing.N</c> lines the reflection rotates through, one per day.</summary>
+    private const int ClosingLineCount = 5;
+
     private readonly IServiceProvider _services;
     private readonly IDiscordDmSender _discord;
     private readonly ILogger<MissedDayReflectionJob> _logger;
@@ -109,41 +112,34 @@ public class MissedDayReflectionJob : IJob
 
         if (open.Count == 0 && weekly.Count == 0) return;
 
+        var t = BotTexts.For(user.Language);
         var parts = new List<string>();
         if (open.Count == 1)
-            parts.Add($"Yesterday is still open: want to log **{open[0]}**?");
+            parts.Add(t.Format("missedday.open.one", open[0]));
         else if (open.Count > 1)
-            parts.Add("Yesterday is still open: want to log any of these?\n" + string.Join("\n", open.Select(m => $"• **{m}**")));
+            parts.Add(t.Format("missedday.open.many", string.Join("\n", open.Select(m => $"• **{m}**"))));
         if (weekly.Count == 1)
-            parts.Add($"You're at {weekly[0].Progress} for **{weekly[0].Name}** this week.");
+            parts.Add(t.Format("missedday.weekly.one", weekly[0].Progress, weekly[0].Name));
         else if (weekly.Count > 1)
-            parts.Add("Where your weekly habits stand:\n" + string.Join("\n", weekly.Select(w => $"• **{w.Name}**: {w.Progress} this week")));
+            parts.Add(t.Format("missedday.weekly.many", string.Join("\n", weekly.Select(w => t.Format("missedday.weekly.line", w.Name, w.Progress)))));
         var opening = string.Join("\n\n", parts);
 
-        var closingLines = new[]
-        {
-            "No pressure, and no reply needed.",
-            "Life happens. You're still here, and that matters.",
-            "A quiet day doesn't undo the work you've put in.",
-            "Rest is part of it too. Go easy on yourself.",
-            "If it was a rough day, you can mark it as a low day.",
-        };
-        var closing = closingLines[yesterday.DayNumber % closingLines.Length];
+        var closing = t.Get($"missedday.closing.{yesterday.DayNumber % ClosingLineCount}");
 
         var embed = new EmbedBuilder()
             .WithColor(0x5865F2) // soft indigo — calm, not alarm
-            .WithTitle("💙 A gentle check-in")
+            .WithTitle(t.Get("missedday.title"))
             .WithDescription($"{opening}\n\n{closing}")
-            .WithFooter(open.Count > 0 ? "Log it, mark a low day, or just move on." : "Mark a low day, or just move on.")
+            .WithFooter(t.Get(open.Count > 0 ? "missedday.footer.open" : "missedday.footer"))
             .Build();
 
         var date = yesterday.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
         var components = new ComponentBuilder();
         if (open.Count > 0)
-            components.WithButton("Log yesterday", $"reflect:log:{discordId}:{date}", ButtonStyle.Success, new Emoji("✅"));
+            components.WithButton(t.Get("missedday.log"), $"reflect:log:{discordId}:{date}", ButtonStyle.Success, new Emoji("✅"));
         components
-            .WithButton("It was a low day", $"reflect:low:{discordId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))
-            .WithButton("That's ok, move on", $"reflect:dismiss:{discordId}", ButtonStyle.Secondary);
+            .WithButton(t.Get("missedday.low"), $"reflect:low:{discordId}:{date}", ButtonStyle.Secondary, new Emoji("🌙"))
+            .WithButton(t.Get("missedday.dismiss"), $"reflect:dismiss:{discordId}", ButtonStyle.Secondary);
 
         await _discord.SendMessageAsync(discordId, embed: embed, components: components.Build());
     }

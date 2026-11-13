@@ -44,9 +44,10 @@ public class ConsentPromptNotifier
 
         try
         {
+            var t = await BotTexts.ForAsync(habits, context.Interaction);
             await context.Interaction.FollowupAsync(
-                embed: ConsentModule.PromptEmbed(BotTexts.English, scope.ServiceProvider.GetRequiredService<IConfiguration>()),
-                components: ConsentModule.PromptButtons(BotTexts.English, context.User.Id),
+                embed: ConsentModule.PromptEmbed(t, scope.ServiceProvider.GetRequiredService<IConfiguration>()),
+                components: ConsentModule.PromptButtons(t, context.User.Id),
                 ephemeral: true);
         }
         catch (Exception ex)
