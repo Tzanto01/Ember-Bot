@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Ember.Api.Email;
 using Ember.Core.Data;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -218,7 +219,8 @@ internal static class AuthEndpoints
                 existing = await users.FindByEmailAsync(email);
             }
 
-            await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(existing?.Email ?? email);
+            await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(existing?.Email ?? email,
+                existing?.Language ?? Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
             return TypedResults.Ok();
         }
 

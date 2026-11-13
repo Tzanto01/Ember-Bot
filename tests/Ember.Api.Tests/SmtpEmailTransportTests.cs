@@ -63,7 +63,7 @@ public class EmberEmailSenderTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Ember:WebOrigin"] = "https://ember.example" }).Build();
         var sender = new EmberEmailSender(transport, configuration, time, null!, null!, NullLogger<EmberEmailSender>.Instance);
 
-        await sender.SendAlreadyRegisteredAsync("someone@example.test");
+        await sender.SendAlreadyRegisteredAsync("someone@example.test", "en");
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (Volatile.Read(ref transport.Attempts) == 0 && DateTime.UtcNow < deadline) await Task.Delay(10);
         await Task.Delay(100);
