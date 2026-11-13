@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import {
   type FormEvent,
   type MouseEvent,
@@ -635,6 +635,25 @@ export default function SettingsPage() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                to="/whats-new"
+                aria-labelledby="whats-new-name"
+                aria-describedby="whats-new-summary"
+                className="flex min-h-[64px] items-center gap-4 px-4 py-3 text-card-foreground no-underline hover:bg-accent hover:text-accent-foreground focus-visible:-outline-offset-3"
+              >
+                <Sparkles aria-hidden className="size-[22px] shrink-0 text-primary" />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span id="whats-new-name" className="font-semibold">
+                    What's new
+                  </span>
+                  <span id="whats-new-summary" className="text-[14px] text-muted-foreground">
+                    What changed in each version
+                  </span>
+                </span>
+                <ChevronRight aria-hidden className="size-[18px] shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
@@ -668,6 +687,15 @@ export default function SettingsPage() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                to="/whats-new"
+                className="flex min-h-[44px] items-center gap-3 rounded-md px-3 text-muted-foreground no-underline hover:bg-accent hover:text-accent-foreground"
+              >
+                <Sparkles aria-hidden className="size-[18px] shrink-0" />
+                What's new
+              </Link>
+            </li>
           </ul>
         </nav>
       )}

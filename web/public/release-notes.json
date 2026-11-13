@@ -1,0 +1,31 @@
+[
+  {
+    "version": "0.9.0-beta.6",
+    "date": "2026-11-14",
+    "notes": [
+      "After you send feedback, Ember says thank you and offers Send more feedback, so you can add another note right away.",
+      "The tables in the privacy policy are easier to read on phones.",
+      "This What's new page lists the changes in every version. After an update, Today shows a short note once, and the Android app shows the notes before you update."
+    ]
+  },
+  {
+    "version": "0.9.0-beta.5",
+    "date": "2026-11-12",
+    "notes": [
+      "Reminders reach every device you allow, not just one.",
+      "Pick which devices get reminders in Settings under Reminders, and choose for each habit where its reminders go.",
+      "Add up to 5 pictures to your feedback.",
+      "Give your feedback a title, or send it anonymously."
+    ]
+  },
+  {
+    "version": "0.9.0-beta.4",
+    "date": "2026-11-12",
+    "notes": [
+      "Send feedback from Settings. It works without an account too.",
+      "History has a Year view next to the Month view, so you can see the last 12 months at a glance.",
+      "Today's ember now sits under the date.",
+      "Using the Discord bot? You can send feedback there with /feedback."
+    ]
+  }
+]

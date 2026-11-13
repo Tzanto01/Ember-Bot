@@ -17,6 +17,7 @@ import { HabitRow } from '@/components/today/habit-row';
 import { HearthIllustration } from '@/components/today/hearth-illustration';
 import { readReward, type RewardKeyword } from '@/components/today/reward';
 import { TodaysEmber } from '@/components/today/todays-ember';
+import { WhatsNewCard } from '@/components/today/whats-new-card';
 import { Button } from '@/components/ui/button';
 import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
@@ -481,6 +482,7 @@ export default function TodayPage() {
         </Notice>
       )}
       <DeviceNotices />
+      <WhatsNewCard />
       {body}
     </div>
   );

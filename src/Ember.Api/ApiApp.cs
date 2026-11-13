@@ -155,6 +155,7 @@ public static class ApiApp
                     context.Context.Request.Path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable" : "no-cache",
             }
             : null;
+        app.UseWhen(static http => http.Request.Path == "/release-notes.json", static branch => branch.UseCors());
         if (webRoot is not null) app.UseStaticFiles(webRoot);
 
         app.UseRouting();

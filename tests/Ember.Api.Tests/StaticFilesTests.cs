@@ -21,7 +21,25 @@ public class StaticFilesTests(PostgresFixture postgres) : ApiTestBase(postgres),
         Directory.CreateDirectory(Path.Combine(root, "assets"));
         File.WriteAllText(Path.Combine(root, "assets", "index-abc123.js"), "console.log(1)");
         File.WriteAllText(Path.Combine(root, "sw.js"), "self");
+        File.WriteAllText(Path.Combine(root, "release-notes.json"), "[]");
         return root;
+    }
+
+    [DockerFact]
+    public async Task The_app_reads_release_notes_cross_origin_but_no_other_static_file()
+    {
+        var client = Host.NewClient();
+
+        foreach (var (path, allowed) in new (string, string?)[] { ("/release-notes.json", "https://localhost"), ("/legal/privacy.md", null) })
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.Add("Origin", "https://localhost");
+
+            var response = await client.Http.SendAsync(request);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK, path);
+            (response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values) ? values.Single() : null).Should().Be(allowed, path);
+        }
     }
 
     [DockerFact]

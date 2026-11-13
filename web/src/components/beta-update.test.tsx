@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { env } from '@/lib/env';
@@ -36,6 +36,7 @@ vi.mock('@/lib/env', () => ({
 }));
 
 const manifestUrl = 'https://beta.example.test/download/latest.json';
+const notesUrl = 'https://beta.example.test/release-notes.json';
 const manifest = {
   versionCode: 4,
   versionName: '0.9.0-beta.3',
@@ -80,6 +81,41 @@ describe('BetaUpdateBanner', () => {
       size: 1234,
     });
     expect(native.updater.openInstallSettings).not.toHaveBeenCalled();
+  });
+
+  it("lists the new version's notes from the server before downloading", async () => {
+    const f = await renderWith(200, manifest);
+    await act(async () =>
+      (await f.next('GET', notesUrl)).respond(200, [
+        { version: '0.9.0-beta.4', date: '2026-11-14', notes: ['Not this one.'] },
+        { version: '0.9.0-beta.3', date: '2026-11-12', notes: ['A new thing.', 'Another one.'] },
+      ]),
+    );
+
+    const list = screen.getByRole('list', { name: "What's new in 0.9.0-beta.3" });
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['A new thing.', 'Another one.']);
+    await userEvent.click(screen.getByRole('button', { name: 'Update' }));
+    expect(native.updater.downloadAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['fails', 503, undefined],
+    [
+      'has no entry for the version',
+      200,
+      [{ version: '0.9.0-beta.2', date: '2026-11-01', notes: ['Old.'] }],
+    ],
+  ])('offers the update as before when the notes request %s', async (_name, status, body) => {
+    const f = await renderWith(200, manifest);
+    await act(async () => (await f.next('GET', notesUrl)).respond(status, body));
+
+    expect(screen.queryByRole('list')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Update' }));
+    expect(native.updater.downloadAndInstall).toHaveBeenCalledTimes(1);
   });
 
   it('stays quiet when the installed build is the same or newer', async () => {

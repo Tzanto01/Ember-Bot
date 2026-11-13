@@ -85,6 +85,7 @@ export default defineConfig(({ mode }) => {
             'assets/nunito-*.woff2',
             'assets/*-latin-wght-normal-*.woff2',
             'legal/*.md',
+            'release-notes.json',
           ],
           globIgnores: ['og/**'],
         },

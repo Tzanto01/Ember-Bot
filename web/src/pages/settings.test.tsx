@@ -160,6 +160,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       expect.stringContaining('Appearance'),
       expect.stringContaining('Privacy & data'),
       expect.stringContaining('Send feedback'),
+      expect.stringContaining("What's new"),
     ]);
     const reminders = list.getByRole('link', { name: 'Reminders' });
     expect(reminders).toHaveAccessibleDescription('Where Ember reminds you, Second reminder');
@@ -200,6 +201,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       'Appearance',
       'Privacy & data',
       'Send feedback',
+      "What's new",
     ]);
     expect(rail.getByRole('link', { name: 'Account & security' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('region', { name: 'Account' })).toBeInTheDocument();
@@ -228,6 +230,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       '/settings/appearance',
       '/settings/privacy',
       '/settings/feedback',
+      '/whats-new',
     ]);
     expect(list.getByRole('link', { name: 'Account & security' })).toHaveAccessibleDescription('On this device');
 
