@@ -135,7 +135,7 @@ describe('crisis-lines.json', () => {
 
   it('has the contract shape and every region', () => {
     expect([...new Set(lines.map((line) => line.region))].sort()).toEqual(
-      ['AT', 'CH', 'DE', 'EU', 'GB', 'INTL', 'US'].sort(),
+      ['AT', 'CH', 'DE', 'EU', 'GB', 'IE', 'INTL', 'US'].sort(),
     );
     for (const line of lines) {
       expect(line.name).not.toBe('');

@@ -96,6 +96,7 @@ export default function SignupPage() {
         <BusyButton type="submit" block busy={register.isPending} busyLabel="Creating your account…">
           Create account
         </BusyButton>
+        <p className="text-center text-[14px] text-muted-foreground">Ember is for people 16 and older.</p>
       </form>
       <DiscordButton>Continue with Discord</DiscordButton>
       <p className="text-center text-muted-foreground">

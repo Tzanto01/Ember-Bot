@@ -25,7 +25,7 @@ export const momentCopy = {
   tiles: {
     rejected: 'Rejected / not enough',
     overloaded: 'Too much / overloaded',
-    racing: 'Racing / panicky',
+    racing: 'Racing / on edge',
     replaying: "Can't stop replaying",
     unsure: 'Not sure',
   } satisfies Record<MomentState, string>,

@@ -35,7 +35,7 @@ describe('linesForRegion', () => {
 
   it('shows only the own lines outside the EU', () => {
     expect(numbers('CH')).toEqual(['143']);
-    expect(numbers('US')).toEqual(['988']);
+    expect(numbers('US')).toEqual(['988', '911']);
     expect(linesForRegion('INTL').map((line) => line.region)).toEqual(['INTL']);
   });
 });

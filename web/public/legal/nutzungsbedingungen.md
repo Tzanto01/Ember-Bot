@@ -1,10 +1,10 @@
 # Nutzungsbedingungen für Ember
 
-> **English summary (not binding; the German text below is the binding version).** Ember is free and offered as is, with no promise that it is always available. Use it fairly: no abuse, spam, illegal content, attempts to break it or to get at other people's data, and follow Discord's rules. Your data stays yours; you can export or delete it at any time. Keep your password safe. If you use the private journal, keep your passphrase and recovery code: without them nobody can read the encrypted entries, including us. Ember is not a medical product, so don't rely on it alone for medication or anything health-critical. It is a wellness tool: no diagnosis or treatment, and no replacement for professional help. In an emergency, call 112. Liability is limited as far as German law allows. German law applies. We tell you in Ember before major changes.
+> **English summary (not binding; the German text below is the binding version).** Ember is free and offered as is, with no promise that it is always available. It is a beta: features, content and data can change, and the beta can end at any time. Ember is for people 16 and older. Use it fairly: no abuse, spam, illegal content, attempts to break it or to get at other people's data, and follow Discord's rules. Your data stays yours; you can export or delete it at any time. Keep your password safe. If you use the private journal, keep your passphrase and recovery code: without them nobody can read the encrypted entries, including us. Ember is not a medical product, so don't rely on it alone for medication or anything health-critical. It is a wellness tool: no diagnosis or treatment, and no replacement for professional help. In an emergency, call 112 in the EU or your local emergency number. Liability is limited as far as German law allows. German law applies. We tell you in Ember before major changes.
 
 ---
 
-**Stand:** 11. November 2026 [PRÜFEN: Stand-Datum auf das Veröffentlichungsdatum setzen, wenn die Ergänzung zu Momenten live geht.]
+**Stand:** 14. November 2026
 
 Schön, dass du Ember nutzt. Diese Bedingungen regeln, wie das zwischen dir und uns läuft. Wir haben sie kurz gehalten.
 
@@ -14,12 +14,13 @@ Ember wird von Nico Pauly Wöllnitz privat und nicht kommerziell betrieben (Kont
 
 ## 2. Was ist Ember?
 
-Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App [PRÜFEN: Android-App ist noch nicht veröffentlicht; Satz ab Veröffentlichung gültig]. Du kannst Habits anlegen, einchecken, Statistiken ansehen, Streaks ansehen (wenn du sie eingeschaltet hast), Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck. Dazu kommt der Ablauf „Ich brauche einen Moment“ für schwierige Momente. Er ist ein Wellness-Angebot und kein Medizinprodukt (Abschnitt 6).
+Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App. Du kannst Habits anlegen, einchecken, Statistiken ansehen, Streaks ansehen (wenn du sie eingeschaltet hast), Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck. Dazu kommt der Ablauf „Ich brauche einen Moment“ für schwierige Momente. Er ist ein Wellness-Angebot und kein Medizinprodukt (Abschnitt 6).
 
 Mit der ersten Nutzung von Ember oder mit der Anlage eines Kontos akzeptierst du diese Bedingungen. Für die Nutzung von Discord selbst gelten zusätzlich die Bedingungen von Discord.
 
 ## 3. Konto und Zugang
 
+- Ember ist für Menschen ab 16 Jahren. Ember kann das Alter nicht prüfen.
 - Du kannst Ember mit einem Konto nutzen (E-Mail-Adresse und Passwort oder Anmeldung mit Discord) oder ohne Konto. Ohne Konto bleiben deine Daten auf deinem Gerät.
 - Dein Passwort und deine Zugangsdaten gibst du nicht weiter. Du bist für alles verantwortlich, was über dein Konto passiert. Bei Verdacht auf Missbrauch sag uns Bescheid.
 - Die Zwei-Faktor-Anmeldung ist freiwillig. Bewahre die Wiederherstellungscodes sicher auf.
@@ -31,6 +32,7 @@ Mit dem privaten Tagebuch verschlüsselt Ember deine Tagesnotizen und Stimmungen
 
 ## 5. Kostenlos und ohne Garantie
 
+- Ember befindet sich in einer Beta-Phase. Funktionen, Inhalte und Daten können sich ändern, Fehler sind möglich, und die Beta kann jederzeit beendet werden. Ember ist kostenlos und ohne Zusicherung der Verfügbarkeit.
 - Ember ist kostenlos.
 - Wir bemühen uns, dass Ember zuverlässig läuft, können das aber nicht versprechen. Ember kann zeitweise nicht erreichbar sein, zum Beispiel wegen Wartung, technischer Probleme oder Störungen bei Discord oder bei den Push-Diensten der Browser. Erinnerungen können sich verspäten oder ausfallen.
 - Wir dürfen Funktionen ändern, ergänzen oder entfernen. Grundfunktionen wie Export und Löschung deiner Daten bleiben immer kostenlos.
@@ -39,11 +41,11 @@ Mit dem privaten Tagebuch verschlüsselt Ember deine Tagesnotizen und Stimmungen
 
 Ember ist kein Medizinprodukt und ersetzt keine ärztliche oder therapeutische Beratung. Verlass dich bei Medikamenten oder anderen gesundheitlich wichtigen Dingen **nicht allein** auf Erinnerungen von Ember.
 
-Ember ist ein Wellness-Angebot. Es stellt keine Diagnose und bietet keine Behandlung an. Die Übungen im Ablauf „Ich brauche einen Moment“ sind einfache Übungen zum Atmen, zum Ankommen im Moment und zum Abwarten. Sie ersetzen keine professionelle Hilfe. [PRÜFEN: Wortlaut dieses Abschnitts, Zweckbestimmung nach EU-MDR und Abgrenzung zu HWG und UWG prüfen, siehe docs/legal/README.md, Fragen 24, 25 und 32.]
+Ember ist ein Wellness-Angebot. Es stellt keine Diagnose und bietet keine Behandlung an. Die Übungen im Ablauf „Ich brauche einen Moment“ sind einfache Übungen zum Atmen, zum Ankommen im Moment und zum Abwarten. Sie ersetzen keine professionelle Hilfe.
 
-Wenn sich eine Übung nicht gut anfühlt, hör auf. Du kannst eine Übung jederzeit mit „Leave“ verlassen oder mit „Skip to the end“ ans Ende springen. Wird dir bei einer Atemübung schwindelig, atme einfach normal weiter. [PRÜFEN: Sicherheit der Übungsinhalte durch eine qualifizierte Person prüfen lassen, siehe docs/legal/README.md, Frage 30.]
+Wenn sich eine Übung nicht gut anfühlt, hör auf. Du kannst eine Übung jederzeit mit „Leave“ verlassen oder mit „Skip to the end“ ans Ende springen. Wird dir bei einer Atemübung schwindelig, atme einfach normal weiter. Hast du gesundheitliche Bedenken bei Atem- oder Kälteübungen, sprich vorher mit deiner Ärztin oder deinem Arzt.
 
-Bei einem Notfall oder bei akuter Gefahr rufe sofort die **112** an. Ember ist kein Krisendienst. Die Krisennummern im Ablauf und auf der Seite „Help right now“ sind Hinweise zum Nachschlagen. Ember kann nicht garantieren, dass eine Nummer erreichbar oder aktuell ist. [PRÜFEN: Krisenrufnummern je Land gegen amtliche Quellen prüfen und einen Prüfturnus festlegen, siehe docs/legal/README.md, Frage 29.]
+Bei einem Notfall oder bei akuter Gefahr rufe sofort die **112** (EU) beziehungsweise den Notruf deines Landes an. Bei Gedanken, dir etwas anzutun, ist Ember keine ausreichende Hilfe: Wende dich sofort an eine der Krisennummern in der App oder an den Notruf. Ember ist kein Krisendienst. Die Krisennummern im Ablauf und auf der Seite „Help right now“ sind Hinweise zum Nachschlagen. Ember kann nicht garantieren, dass eine Nummer erreichbar oder aktuell ist.
 
 ## 7. Faire Nutzung
 
@@ -65,7 +67,7 @@ Du kannst deine Daten jederzeit exportieren: vollständig unter „Your data“ 
 ## 9. Ende der Nutzung
 
 - **Durch dich:** Du kannst jederzeit aufhören. Mit „Delete your account“ in den Einstellungen der Web-App oder der App, oder mit `/privacy delete` im Discord-Bot, löschst du sofort alle deine Daten. Damit endet auch die Vereinbarung zwischen uns.
-- **Durch uns:** Wir können Ember ganz einstellen. Wenn möglich, kündigen wir das mindestens **[PRÜFEN: Frist festlegen, Vorschlag 30]** Tage vorher in Ember an, damit du deine Daten exportieren kannst. Danach löschen wir alle Daten.
+- **Durch uns:** Wir können Ember ganz einstellen. Wenn möglich, kündigen wir das mindestens **30** Tage vorher in Ember an, damit du deine Daten exportieren kannst. Danach löschen wir alle Daten.
 - **Bei Verstößen:** Wenn jemand gegen Abschnitt 7 verstößt, können wir diese Person von Ember ausschließen und ihre Daten löschen. Bei schweren Verstößen auch ohne Vorwarnung.
 
 ## 10. Haftung

@@ -53,8 +53,10 @@ export default function ConsentPage() {
           Ember asks before saving it.
         </p>
         <p>
-          Ember stores it only to run your habit tracker for you. It's never shared or sold. You can change your mind
-          any time by deleting your account in Settings, which removes everything.
+          Ember stores it only to run your habit tracker for you. It's never sold or used for ads. It reaches only the
+          services that run Ember (for example Discord, if you use it for reminders, and our hosting and email
+          providers). The privacy policy lists them. You can change your mind any time by deleting your account in
+          Settings, which removes everything.
         </p>
         <p>
           <TapLink to="/legal/privacy">Read the privacy policy</TapLink>
@@ -64,6 +66,7 @@ export default function ConsentPage() {
       {problem && <Notice tone="notice">{problem}</Notice>}
 
       <div className="flex flex-col gap-3">
+        <p className="text-center text-[14px] text-muted-foreground">Ember is for people 16 and older.</p>
         <BusyButton type="button" block busy={agree.isPending} busyLabel="Saving…" onClick={give}>
           I agree
         </BusyButton>
