@@ -10,7 +10,7 @@ Schön, dass du Ember nutzt. Diese Bedingungen regeln, wie das zwischen dir und 
 
 ## 1. Wer bietet Ember an?
 
-Ember wird von Nico Pauly Wöllnitz privat und nicht kommerziell betrieben (Kontaktdaten im Impressum). „Wir“ meint in diesen Bedingungen den Betreiber.
+Ember wird von Nico Pauly Wöllnitz betrieben (Kontaktdaten im Impressum). „Wir“ meint in diesen Bedingungen den Betreiber.
 
 ## 2. Was ist Ember?
 

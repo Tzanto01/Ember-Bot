@@ -93,15 +93,14 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 | Privacy policy, section 4 | Withdrawal without deleting the account | 3 |
 | Privacy policy, section 5 | Routines, renames and push subscriptions | 12 |
 | Privacy policy, section 6.1 | Discord as controller, EU entity, transfer basis | 5 |
-| Privacy policy, section 6.2 | Cloudflare: DPF, DPA, start date | 6 |
-| Privacy policy, section 6.3 | Resend: DPA, region, DPF, retention, tracking | 7 |
+| Privacy policy, section 6.2 | Cloudflare: DPF and SCC fallback (DPA accepted) | 6 |
+| Privacy policy, section 6.3 | Resend: transfer basis and retention (DPA, EU region and tracking confirmed) | 7 |
 | Privacy policy, section 6.4 | Push services: transfers, own controllers | 33 |
-| Privacy policy, section 7 | Backups and Proton Drive | 9 |
+| Privacy policy, section 7 | Proton Drive as a processor (backup cycle confirmed) | 9 |
 | Privacy policy, section 7 | Feedback digest emails in the mailbox | 23 |
 | Privacy policy, section 9 | Export gaps (sessions, lockout, reminder entries) | 16 |
 | Privacy policy, section 9 | Supervisory authority address and website | 35 |
 | Privacy policy, section 10 | Minimum age, and minimum age for moments | 4, 28 |
-| Terms and privacy policy, section 1 | "Privat und nicht kommerziell" next to the Kleinunternehmer line | 37 |
 | Terms, section 2 | Android app named before release | 34 |
 | Terms, section 3 | Minimum age 16 | 4 |
 | Terms, section 6 | Wording: EU MDR, HWG, UWG | 24, 25, 32 |
@@ -109,7 +108,6 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 | Terms, section 6 | Crisis numbers per country | 29 |
 | Terms, section 9 | Notice period (now 30 days) | 14 |
 | Impressum | Consumer dispute resolution sentence | 36 |
-| Impressum | Kleinunternehmer line (§ 19 UStG) | 37 |
 
 ## Checks before publishing: code must match the texts
 
@@ -125,7 +123,7 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 | No analytics, no ads, no external scripts or fonts | Done. Fonts are self-hosted and precached (`v2/fix-platform`) |
 | Habit names stay out of logs | Done for the bot and API log calls. Logs do contain Discord user IDs, push subscription IDs and stack traces (section 3.7). Checked by search, not line by line for every service |
 | Logs deleted after 30 days | Open. Logs rotate by size only (3 x 10 MB per service, `docker-compose.yml`). Question 8 |
-| Backups daily, kept 30 days | Open. No backup job is defined in this repository (`docs/v2-plan.md`, Phase 8.3). Question 9 |
+| Backups nightly, 7 daily plus 4 weekly, encrypted copy on Proton Drive | Confirmed by Nico on 2026-11-13. Not defined in this repository. Question 9 |
 | Policy link in the consent prompt | Partly. `docker-compose.yml` passes `Ember__PrivacyPolicyUrl` from `PRIVACY_POLICY_URL`. The value must be set (question 19) |
 | Imprint link in `/help` | Done on `v2/fix-bot`, when the privacy URL ends with `/legal/privacy` (the imprint URL is derived from it). The bot profile link is open (question 19) |
 | Android app sends no Google push | Verified for now. No Firebase messaging dependency; the Google services plugin applies only with `google-services.json`. Recheck before release |
@@ -134,7 +132,7 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 | Sessions end as described (logout, sign out everywhere, reset, 2FA, merge) | Done on `v2/fix-api` (`SessionTests.cs`). Expired sessions are purged only at the next sign-in (question 17) |
 | Signup address is kept on the device only until confirmation | Done on `v2/fix-account` (`ember.signupEmail`). Not cleared if the account is never confirmed (question 17) |
 | Offline copy of the account and habits only with "Stay signed in" | Done on `v2/fix-platform` (`ember.offlineMe`, IndexedDB `cache`). Confirmation signs the user in with "Stay signed in" on (question 18) |
-| Mail tracking off at Resend; Resend agreement; Proton Drive; Cloudflare DPA | Not in the repository. Check by hand (questions 6, 7, 9) |
+| Mail tracking off at Resend; Resend agreement and EU region; Proton Drive; Cloudflare DPA | Confirmed by Nico on 2026-11-13, not in the repository (questions 6, 7, 9) |
 | Moment flow stores and sends nothing: no API call, no Local Storage, IndexedDB or query cache | Done by search of `web/src/components/moment`, `web/src/lib/moment` and `web/src/pages/moment.tsx` on `v2/companion-web`. Not yet run with the network off |
 | Moment reflections need the private journal on, unlocked, and consent | Done (`reflect.tsx`, `appendPrivate` in `web/src/lib/journal/journal.ts`) |
 | Turning off the private journal re-uploads moment notes as plain text | Done (copy in `journal-settings.tsx`) |
@@ -150,10 +148,10 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 3. **Withdrawal equals deletion.** The only way to withdraw consent is to delete the account. Accept this, or add a withdraw-only action?
 4. **Minimum age.** The default in the texts is 16: Terms section 3, privacy section 10, and "Ember is for people 16 and older." on the signup and consent pages. Confirm it. Ember cannot verify age.
 5. **Discord's role.** The drafts treat Discord as an independent controller. Check whether a joint-controllership argument applies to a bot, which Discord entity to name for EEA users, and the transfer basis (DPF or SCCs). Section 6.1 depends on this answer. Push services in section 6.4 are question 33.
-6. **Cloudflare (before launch).** Accept Cloudflare's DPA in the Cloudflare dashboard before the public launch. At launch, confirm the Data Privacy Framework certification and the SCC fallback, and confirm section 6.2. Cloudflare ends TLS, so it can read request content.
-7. **Resend.** Check the processing agreement (AVV) and its transfer basis (SCCs, DPF), the processing region chosen for ember-glow.app, Resend's retention period, and that click and open tracking are off for the domain. Otherwise links are rewritten and codes pass through a redirect. Section 6.3.
+6. **Cloudflare.** The DPA is accepted (Nico, 2026-11-13), and section 6.2 says so. Still to check: confirm the Data Privacy Framework certification and the SCC fallback, and confirm section 6.2. Cloudflare ends TLS, so it can read request content.
+7. **Resend.** Confirmed by Nico on 2026-11-13 and stated in section 6.3: open and click tracking are off (no tracking subdomain), the ember-glow.app sending domain is in Resend's EU region (Ireland), and the DPA applies through Resend's terms (resend.com/legal/dpa asks for no signature). Still to check: the transfer basis (SCCs, DPF) and Resend's retention period.
 8. **Logs and retention.** Logs rotate by size only, with no time limit. Decide: add a cleanup that keeps the 30-day promise, or change section 3.7 to the period you choose. The same goes for reverse-proxy and Cloudflare access logs, which can hold IP addresses.
-9. **Backups.** The repository defines no backup job. Confirm the cycle (the draft says daily, 7 days plus 4 weekly), where the off-site copy lives (Proton Drive is named), the encryption, and whether a cloud provider is involved (that would make it a processor). Publish only what actually runs.
+9. **Backups.** Confirmed by Nico on 2026-11-13: a nightly dump, 7 daily and 4 weekly copies, an encrypted copy synced to Proton Drive, and pre-deploy dumps deleted after 5 weeks. Section 7 matches. The backup job is not in this repository. Still to check: whether Proton Drive makes Proton a processor that needs a DPA.
 10. **Backups after deletion.** Deleted accounts stay in backups until they rotate out. A restored backup brings them back. Decide whether a re-deletion process is needed, and how to do it without keeping a list of deleted Discord IDs.
 11. **Inactive accounts.** Data stays until the user deletes it. Check whether storage limitation (Art. 5(1)(e)) requires an automatic deletion after long inactivity.
 12. **Routines, habit renames and push subscriptions.** Not gated by consent. Routine names can say something about health. Decide: gate them (code change in routine create and edit, habit rename and push subscribe), or accept and justify it in the text. The text currently says they need no consent.
@@ -181,7 +179,7 @@ The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Fi
 34. **Android app before release (privacy section 3.5, Terms section 2).** The app is not published yet, so the Terms sentence that names it holds only from release. Before release, confirm that no Google push is active for Ember. The build includes the Google services plugin, but the app uses no Firebase messaging.
 35. **Supervisory authority (privacy section 9).** Check the address and the website of the Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen (www.ldi.nrw.de) before publishing.
 36. **Consumer dispute resolution (Impressum).** The Impressum says the operator is not willing or obliged to take part in a consumer arbitration procedure. Confirm that sentence, or delete it.
-37. **"Privat und nicht kommerziell" versus the Kleinunternehmer line.** Terms section 1 and privacy section 1 say Ember is run "privat und nicht kommerziell". The Impressum names the operator as Kleinunternehmer under § 19 UStG. Nico confirms which of the two is accurate; then align the other.
+37. **Operator status.** Resolved (Nico, 2026-11-13): the Impressum keeps the Kleinunternehmer line (§ 19 UStG), and "privat und nicht kommerziell" is gone from Terms section 1 and privacy section 1 (and "privately" from the privacy summary).
 38. **Stand date on publish.** The Stand dates in the privacy policy and the Terms are 14 November 2026. Set both to the real publish date when the moments and streaks changes go live.
 
 ## What changed on 2026-11-13
@@ -200,3 +198,4 @@ Companion drafts, from `v2/companion-web` and `docs/contracts/companion-v1.md`:
 - Beta wording in Terms section 5, the Terms summary and the privacy policy.
 - Terms section 6: 112 (EU) or the local emergency number, a sentence that Ember does not help with thoughts of harming yourself, and a note to ask a doctor before breathing or cold exercises.
 - Minimum age 16 (Terms section 3, privacy section 10) and notice period 30 days (Terms section 9). Questions 4 and 14 hold the decisions.
+- Facts confirmed by Nico on 2026-11-13: Cloudflare DPA accepted (6.2); Resend tracking off, EU region (Ireland) and DPA through its terms (6.3); backup cycle (7); operator wording without "privat und nicht kommerziell" (Terms and privacy section 1). Questions 6, 7, 9 and 37 updated.

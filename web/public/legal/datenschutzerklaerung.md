@@ -1,7 +1,7 @@
 # Datenschutzerklärung für Ember
 
 > **English summary (not binding; the German text below is the binding version).**
-> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it privately, on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet (open point). The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. The "I need a moment" flow stores and sends nothing; only a reflection you choose to save goes into your private journal. Discord carries your messages as the platform. You can export your data and delete everything at once.
+> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet (open point). The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. The "I need a moment" flow stores and sends nothing; only a reflection you choose to save goes into your private journal. Discord carries your messages as the platform. You can export your data and delete everything at once.
 
 ---
 
@@ -22,7 +22,7 @@ Deutschland
 
 E-Mail: contact@nicowoellnitz.de
 
-Ember wird privat und nicht kommerziell betrieben. Einen Datenschutzbeauftragten gibt es nicht, weil dafür keine gesetzliche Pflicht besteht. Bei allen Fragen zum Datenschutz schreib an die E-Mail-Adresse oben.
+Einen Datenschutzbeauftragten gibt es nicht, weil dafür keine gesetzliche Pflicht besteht. Bei allen Fragen zum Datenschutz schreib an die E-Mail-Adresse oben.
 
 ## 2. Das Wichtigste in Kürze
 
@@ -256,12 +256,12 @@ Die Web-App und die API sind öffentlich über einen Cloudflare Tunnel erreichba
 
 - **Cloudflare, Inc.**, USA, ist Auftragsverarbeiter nach Art. 28 DSGVO. Cloudflare nimmt die Verbindungen aus dem Internet entgegen und leitet sie über den Tunnel an unseren Server weiter.
 - Cloudflare beendet die TLS-Verschlüsselung. Dadurch kann Cloudflare die Inhalte der Anfragen sehen, die über den Tunnel laufen, also auch deine Eingaben in der Web-App. Cloudflare sieht außerdem deine IP-Adresse und technische Verbindungsdaten.
-- Cloudflare verarbeitet Daten auch in den USA. Die Übermittlung stützt sich auf das EU-US Data Privacy Framework und, soweit es nicht greift, auf Standardvertragsklauseln. Der Auftragsverarbeitungsvertrag (DPA) von Cloudflare wird vor dem Start im Cloudflare-Dashboard akzeptiert.
+- Cloudflare verarbeitet Daten auch in den USA. Die Übermittlung stützt sich auf das EU-US Data Privacy Framework und, soweit es nicht greift, auf Standardvertragsklauseln. Mit Cloudflare besteht ein Auftragsverarbeitungsvertrag (DPA).
 - Die Datenbank, Discord-Bot und Ember selbst bleiben auf dem eigenen Server.
 
 ### 6.3 E-Mail-Versand
 
-Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Code und einen Link für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind für diese Mails ausgeschaltet. Außerdem schickt Ember einmal am Tag eine E-Mail mit dem neuen Feedback (Abschnitt 3.10) über Resend an den Betreiber; darin steht der Text des Feedbacks. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend.
+Bestätigungs- und Passwort-E-Mails verschickt Ember über den Dienst **Resend** (Resend, Inc., USA) als Auftragsverarbeiter nach Art. 28 DSGVO. Mit Resend besteht über die Nutzungsbedingungen von Resend ein Auftragsverarbeitungsvertrag (DPA). Ember verschickt die E-Mails für die Domain ember-glow.app über die EU-Region von Resend (Irland). Übermittelt werden die Empfängeradresse, der Betreff und der Text. Der Text enthält einen Code und einen Link für die Bestätigung oder das Zurücksetzen des Passworts. Öffnungs- und Klickverfolgung sind bei Resend für alle E-Mails von Ember ausgeschaltet. Außerdem schickt Ember einmal am Tag eine E-Mail mit dem neuen Feedback (Abschnitt 3.10) über Resend an den Betreiber; darin steht der Text des Feedbacks. Resend verarbeitet Daten auch in den USA; die Übermittlung stützt sich auf Standardvertragsklauseln im Auftragsverarbeitungsvertrag von Resend.
 
 ### 6.4 Push-Dienste der Browser
 
