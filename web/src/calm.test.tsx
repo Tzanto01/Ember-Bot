@@ -20,9 +20,10 @@ describe('calm mode', () => {
     expect(css).toMatch(/:root\[data-calm\] \*,[\s\S]*?animation[\s\S]*?\}/);
   });
 
-  it('marks the ember summary as something calm mode hides', () => {
+  it("hides the ember summary's flame in calm mode but keeps its line of text", () => {
     const { container } = render(<TodaysEmber count={2} lowDay={false} stepping={false} />);
-    expect(container.firstElementChild).toHaveAttribute('data-calm-hide');
+    expect(container.querySelector('svg')).toHaveAttribute('data-calm-hide');
+    expect(screen.getByText('2 checked in today').closest('[data-calm-hide]')).toBeNull();
   });
 
   it("marks Today's What's new card as something calm mode hides", async () => {

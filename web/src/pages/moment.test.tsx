@@ -78,7 +78,7 @@ describe('MomentPage', () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: "Name what's happening" }));
     await heading("What's happening?");
-    await user.click(screen.getByRole('button', { name: 'Too much / overloaded' }));
+    await user.click(screen.getByRole('button', { name: 'Too much, overloaded' }));
     await heading('How strong is it?');
     await user.click(screen.getByRole('radio', { name: 'Strong' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
@@ -224,7 +224,7 @@ describe('MomentPage', () => {
 
     await user.click(screen.getByRole('button', { name: "Name what's happening" }));
     await heading("What's happening?");
-    await user.click(screen.getByRole('button', { name: 'Too much / overloaded' }));
+    await user.click(screen.getByRole('button', { name: 'Too much, overloaded' }));
     await heading('How strong is it?');
     await user.click(screen.getByRole('radio', { name: 'Strong' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));

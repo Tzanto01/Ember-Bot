@@ -29,7 +29,7 @@ export async function saveMomentReflection(page: Page, trigger = reflectionTrigg
   await openPage(page, 'Today');
   await page.getByRole('link', { name: 'I need a moment' }).click();
   await page.getByRole('button', { name: "Name what's happening" }).click();
-  await page.getByRole('button', { name: 'Too much / overloaded' }).click();
+  await page.getByRole('button', { name: 'Too much, overloaded' }).click();
   await page.getByRole('radio', { name: 'Strong' }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Skip to the end' }).click();

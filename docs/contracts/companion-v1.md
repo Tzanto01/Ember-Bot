@@ -88,4 +88,4 @@ type PracticeStep =
 
 ### Calm mode
 
-- One switch in Settings → Appearance ("Calm mode"), on the account (`Me.calmMode`) or on the device without an account. When on: no motion anywhere (as with reduced motion, including the breathing circle, which shows text only), softer contrast-safe colours from a calm token set (still WCAG AA), decorative illustrations and embers hidden, fewer elements on Today (no What's new card, no stats tiles), the moment flow without the campfire. The system's reduced-motion setting still applies on its own.
+- One switch in Settings → Appearance ("Calm mode"), on the account (`Me.calmMode`) or on the device without an account. When on: no motion anywhere (as with reduced motion, including the breathing circle, which shows text only), softer contrast-safe colours from a calm token set (still WCAG AA), decorative illustrations and embers hidden, no What's new card on Today (the check-in summary and the weekly card stay, without the flame), the moment flow without the campfire. The system's reduced-motion setting still applies on its own.

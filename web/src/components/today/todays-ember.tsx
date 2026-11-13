@@ -27,8 +27,8 @@ export function TodaysEmber({ count, lowDay, allDone = false, stepping, classNam
   const glow = Math.min(0.08 + 0.06 * count, 0.4);
   const transition = { duration: stepping && !reduce ? themeSeconds('--ember-dur-slow', 0.42) : 0 };
   return (
-    <div data-calm-hide className={cn('flex items-center gap-3', className)}>
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" className="size-[56px] shrink-0 overflow-visible">
+    <div className={cn('flex items-center gap-3', className)}>
+      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" data-calm-hide className="size-[56px] shrink-0 overflow-visible">
         <motion.circle
           cx="32"
           cy="40"

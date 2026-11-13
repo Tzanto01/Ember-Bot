@@ -76,14 +76,14 @@ describe('TodayPage', () => {
     localMode.mode.set('account');
   });
 
-  it('marks both ember summaries as hidden in calm mode', async () => {
+  it('keeps both ember summaries and the weekly card in calm mode', async () => {
     renderToday();
     await answerLoad(f, [habit]);
     await checkButton();
 
     const summaries = screen.getAllByText('Nothing checked in yet today');
     expect(summaries.length).toBeGreaterThan(0);
-    for (const summary of summaries) expect(summary.closest('[data-calm-hide]')).not.toBeNull();
+    for (const summary of summaries) expect(summary.closest('[data-calm-hide]')).toBeNull();
   });
 
   it('looks up low days for the local day reloaded from the server, not the stale cached one', async () => {
@@ -366,13 +366,13 @@ describe('TodayPage', () => {
     expect((await screen.findAllByText(/That's everything for today/)).length).toBeGreaterThan(0);
   });
 
-  it('titles the weekly card "Last 7 days" and gives the count without a percentage', async () => {
+  it('titles the weekly card "Last 7 days", keeps it in calm mode and gives the count without a percentage', async () => {
     renderToday();
     await answerLoad(f, [habit], {
       stats: { totalDone: 5, totalPossible: 7, headline: 'This week you completed 5/7 check-ins (71%).', footer: 'Keep it up.', habits: [] },
     });
 
-    expect(await screen.findByRole('heading', { name: 'Last 7 days' })).toBeInTheDocument();
+    expect((await screen.findByRole('heading', { name: 'Last 7 days' })).closest('[data-calm-hide]')).toBeNull();
     expect(screen.getByText('5 check-ins in the last 7 days. Every one of those counts.')).toBeInTheDocument();
     expect(screen.queryByText(/71%/)).toBeNull();
     expect(screen.queryByText('Keep it up.')).toBeNull();

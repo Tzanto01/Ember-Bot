@@ -162,7 +162,7 @@ for (const { code, locale, strings } of languages) {
       await click(tr('moment.catch.name'));
       await expect(heading(tr('moment.name.heading'))).toBeVisible();
       await check(page, '/moment name', code, found);
-      await click(tr('moment.tile.overloaded'));
+      await click(tr('moment.tile.overloaded').replace(' / ', ', '));
       await expect(heading(tr('moment.intensity.heading'))).toBeVisible();
       await page.getByRole('radio', { name: tr('moment.intensity.4'), exact: true }).check();
       await check(page, '/moment intensity', code, found);

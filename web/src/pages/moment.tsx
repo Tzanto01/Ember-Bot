@@ -203,6 +203,7 @@ export default function MomentPage() {
                   variant="outline"
                   block
                   className="min-h-[56px] justify-start text-left text-[18px]"
+                  aria-label={momentCopy.tiles[state].replace(' / ', ', ')}
                   onClick={() => pickTile(state)}
                 >
                   {momentCopy.tiles[state]}

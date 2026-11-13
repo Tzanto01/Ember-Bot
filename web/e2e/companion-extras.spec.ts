@@ -149,7 +149,7 @@ async function expectCalmStill(page: Page): Promise<void> {
   expect(moving).toEqual([]);
 }
 
-test('calm mode: no motion, no What is new card, ember summary or campfire; it persists, and turning it off restores them', async ({
+test('calm mode: no motion, no What is new card or campfire, the ember summary stays; it persists, and turning it off restores them', async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -183,7 +183,7 @@ test('calm mode: no motion, no What is new card, ember summary or campfire; it p
   await openPage(page, 'Today');
   await expect(page.getByRole('heading', { name: 'Stretch', exact: true })).toBeVisible();
   await expect(whatsNew).toBeHidden();
-  await expect(summary).toBeHidden();
+  await expect(summary).toBeVisible();
   await expectCalmStill(page);
 
   await page.getByRole('link', { name: 'I need a moment' }).click();
