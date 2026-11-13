@@ -20,4 +20,12 @@ describe('renderLegal', () => {
     const { html } = renderLegal('| a"<b> | x |\n| --- | --- |\n| 1 | 2 |\n');
     expect(html).toContain('data-label="a&quot;&lt;b&gt;"');
   });
+
+  it('marks only the English summary quote as English and still escapes markup in it', () => {
+    const { html } = renderLegal('> **English summary** <img src=x onerror=alert(1)>\n\n> Ein Zitat\n');
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const quotes = [...doc.querySelectorAll('blockquote')];
+    expect(quotes.map((quote) => quote.getAttribute('lang'))).toEqual(['en', null]);
+    expect(doc.querySelector('img')).toBeNull();
+  });
 });
