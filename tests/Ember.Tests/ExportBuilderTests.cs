@@ -254,7 +254,7 @@ public class ExportBuilderTests
         rows.Should().ContainSingle(r => r["record_type"] == "journal_key" && r["version"] == "3" && r["turning_off"] == "true"
             && r["passphrase_salt"] == "cHM=" && r["passphrase_iterations"] == "600000" && r["passphrase_iv"] == "cGl2"
             && r["passphrase_wrapped"] == "cHc=" && r["recovery_salt"] == "cnM=" && r["recovery_iv"] == "cml2" && r["recovery_wrapped"] == "cnc=");
-        rows.Should().ContainSingle(r => r["record_type"] == "helps" && r["helps_encrypted"] == "'+aGVscHM=");
+        rows.Should().ContainSingle(r => r["record_type"] == "helps" && r["helps_encrypted"] == "+aGVscHM=");
     }
 
     [Fact]

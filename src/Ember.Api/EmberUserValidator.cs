@@ -15,7 +15,7 @@ internal sealed class EmberUserValidator(IdentityErrorDescriber errors, IHttpCon
     public override async Task<IdentityResult> ValidateAsync(UserManager<User> manager, User user)
     {
         if (http.HttpContext?.Request is { } request && HttpMethods.IsPost(request.Method)
-            && request.Path.Value?.EndsWith("/register", StringComparison.OrdinalIgnoreCase) == true)
+            && request.Path.Value?.TrimEnd('/').EndsWith("/register", StringComparison.OrdinalIgnoreCase) == true)
             user.Language = Languages.FromAcceptLanguage(request.Headers.AcceptLanguage);
 
         var result = await base.ValidateAsync(manager, user);

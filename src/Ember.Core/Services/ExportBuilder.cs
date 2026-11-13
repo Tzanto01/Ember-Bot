@@ -287,7 +287,7 @@ public static class ExportBuilder
     }
 
     private static bool IsBase64Column(string column)
-        => column is "cipher_iv" or "cipher_text" || column.StartsWith("passphrase_", StringComparison.Ordinal)
+        => column is "cipher_iv" or "cipher_text" or "helps_encrypted" || column.StartsWith("passphrase_", StringComparison.Ordinal)
            || column.StartsWith("recovery_", StringComparison.Ordinal);
 
     private static string Cell(string value, bool formulaGuard)
