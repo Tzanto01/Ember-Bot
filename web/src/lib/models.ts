@@ -38,6 +38,8 @@ export interface Me {
    * `plaintextLeft` / `encryptedLeft` entries and moods still to encrypt / decrypt.
    */
   journal: { encrypted: boolean; turningOff: boolean; plaintextLeft: number; encryptedLeft: number };
+  /** v1.16: whether the app shows streaks; false for accounts created from v1.16 on. */
+  showStreaks: boolean;
 }
 
 /** `PATCH /api/me` body. */
@@ -47,6 +49,8 @@ export interface MePatch {
   graceDaysPerWeek?: number;
   theme?: ThemeId;
   secondReminderMinutes?: SecondReminderMinutes;
+  /** v1.16. */
+  showStreaks?: boolean;
 }
 
 /** The `secondReminderMinutes` choices; 0 is off. */

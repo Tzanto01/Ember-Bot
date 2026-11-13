@@ -2,6 +2,7 @@ import { Download, ExternalLink } from 'lucide-react';
 import { TapLink } from '@/components/auth/busy-button';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { pitch } from '@/content/pitch';
 import { downloads } from '@/lib/downloads';
 import { env } from '@/lib/env';
 
@@ -80,7 +81,10 @@ export default function DownloadPage() {
   const androidBrowser = !native && navigator.userAgent.includes('Android');
   return (
     <div className="flex w-full flex-col gap-8">
-      <PageHeader title="Get Ember" lede="Ember is in beta, so a few things may still change. Thanks for trying it early." />
+      <PageHeader
+        title="Get Ember"
+        lede={`${pitch.description} Ember is in beta, so a few things may still change. Thanks for trying it early.`}
+      />
       {androidBrowser && <AndroidSection />}
       <BrowserSection />
       {!native && !androidBrowser && <AndroidSection />}

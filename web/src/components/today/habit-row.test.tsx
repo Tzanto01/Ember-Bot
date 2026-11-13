@@ -5,11 +5,11 @@ import type { Habit } from '@/lib/models';
 import { habit } from '@/lib/test-support';
 import { HabitRow } from './habit-row';
 
-function show(overrides: Partial<Habit>) {
+function show(overrides: Partial<Habit>, showStreaks = true) {
   const subject: Habit = { ...habit, ...overrides };
   const { container } = render(
     <MemoryRouter>
-      <HabitRow habit={subject} busy={false} reward={null} onToggle={() => {}} onRewardEnd={() => {}} />
+      <HabitRow habit={subject} busy={false} reward={null} onToggle={() => {}} onRewardEnd={() => {}} showStreaks={showStreaks} />
     </MemoryRouter>,
   );
   return container;
@@ -23,6 +23,13 @@ describe('HabitRow meta line', () => {
 
     expect(row).toHaveTextContent('4-day streak');
     expect(checkButton()).not.toBeNull();
+  });
+
+  it('shows the cadence instead of the streak when streaks are off', () => {
+    const row = show({ stats: { ...habit.stats, streak: 4 } }, false);
+
+    expect(row).toHaveTextContent('Every day');
+    expect(row).not.toHaveTextContent('streak');
   });
 
   it('says "Every day" for a daily habit without a streak', () => {

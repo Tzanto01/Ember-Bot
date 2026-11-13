@@ -188,6 +188,31 @@ describe('LocalBackend through ApiClient', () => {
     expect((await rejection(api.saveDayNote('2026-11-02', { text: 'Tomorrow' }))).type).toBe('in_future');
   });
 
+  it('saves a note for today without habits, while other days still need a habit and a low day stays refused', async () => {
+    await store.replace(seed());
+
+    const saved = await api.saveDayNote(today, { text: 'Rough morning.' });
+
+    expect(saved.note).toEqual({ date: today, text: 'Rough morning.', mood: null });
+    expect((await rejection(api.saveDayNote('2026-10-31', { text: 'Yesterday' }))).type).toBe('before_habit_start');
+    expect((await rejection(api.markLowDay(today))).type).toBe('before_habit_start');
+  });
+
+  it('writes showStreaks false for a new profile, reads a missing one as true and saves the switch', async () => {
+    await store.replace(seed());
+    expect((await api.getMe()).showStreaks).toBe(false);
+
+    const older = seed();
+    delete older.profile.showStreaks;
+    await store.replace(older);
+    expect((await api.getMe()).showStreaks).toBe(true);
+
+    expect((await api.updateMe({ showStreaks: false })).showStreaks).toBe(false);
+    expect((await store.load())?.profile.showStreaks).toBe(false);
+    const error = await rejection(api.updateMe({ showStreaks: 'no' as unknown as boolean }));
+    expect(error.problem?.errors).toEqual({ showStreaks: ['Must be true or false.'] });
+  });
+
   it('caps active moods at 20 with conflict', async () => {
     await store.replace(seed());
     for (let i = 0; i < 20; i++) await api.createMood({ label: `Mood ${i}` });

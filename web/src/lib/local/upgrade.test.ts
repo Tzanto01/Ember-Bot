@@ -307,16 +307,19 @@ describe('UpgradeService', () => {
   it('sends the device settings to the account before the import, leaving the theme out when unset', async () => {
     await upgrade.run();
 
-    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 1 }]);
+    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 1, showStreaks: false }]);
     expect(callIndex('PATCH /api/me')).toBeLessThan(callIndex('POST /api/me/import'));
   });
 
-  it('sends the chosen theme with the device settings', async () => {
-    await store.update((d) => ({ ...d, profile: { ...d.profile, theme: 'tidepool', graceDaysPerWeek: 2 } }));
+  it('sends the chosen theme with the device settings, and shown streaks of an older profile', async () => {
+    await store.update((d) => {
+      const { showStreaks: _, ...older } = d.profile;
+      return { ...d, profile: { ...older, theme: 'tidepool', graceDaysPerWeek: 2 } };
+    });
 
     await upgrade.run();
 
-    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 2, theme: 'tidepool' }]);
+    expect(server.patches).toEqual([{ timezone: 'Europe/Berlin', graceDaysPerWeek: 2, showStreaks: true, theme: 'tidepool' }]);
   });
 
   it('keeps the device data when the account got other habits after a send that never landed', async () => {

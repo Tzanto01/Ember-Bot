@@ -110,7 +110,9 @@ export default function TodayPage() {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: todayKey, queryFn: loadToday, structuralSharing: false });
   const { data, refetch } = query;
-  const today: LocalDateString | null = useStore(auth.me)?.localToday ?? null;
+  const me = useStore(auth.me);
+  const today: LocalDateString | null = me?.localToday ?? null;
+  const showStreaks = me?.showStreaks !== false;
   const synced = useStore(deviceSync.synced);
   const firstSynced = useRef(synced);
   const reduceMotion = useReducedMotion();
@@ -303,6 +305,7 @@ export default function TodayPage() {
           key={habit.id}
           habit={habit}
           headingLevel={headingLevel}
+          showStreaks={showStreaks}
           busy={busy.has(habit.id)}
           reward={rewards.get(habit.id) ?? null}
           onToggle={() => void toggle(habit)}

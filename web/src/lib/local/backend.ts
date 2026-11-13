@@ -336,8 +336,9 @@ export function earliestStart(data: LocalData): string | null {
   return starts[0] ?? null;
 }
 
-function journalDayCheck(data: LocalData, date: string, today: string): void {
+function journalDayCheck(data: LocalData, date: string, today: string, todayWithoutHabits = false): void {
   if (date > today) throw new Problem(422, 'in_future');
+  if (todayWithoutHabits && date === today && data.habits.length === 0) return;
   const start = earliestStart(data);
   if (start === null || date < start) throw new Problem(422, 'before_habit_start');
 }
@@ -451,6 +452,7 @@ export class LocalBackend {
       consent: { given: true, policyVersion: devicePolicyVersion, currentPolicyVersion: devicePolicyVersion },
       dmReminders: { paused: false },
       journal: { encrypted: false, turningOff: false, plaintextLeft: 0, encryptedLeft: 0 },
+      showStreaks: profile.showStreaks ?? true,
     };
   }
 
@@ -467,12 +469,15 @@ export class LocalBackend {
     const second = b['secondReminderMinutes'];
     if (second !== null && second !== undefined && !(secondReminderChoices as readonly unknown[]).includes(second))
       errors['secondReminderMinutes'] = ['Must be 0, 15, 30, 60 or 120.'];
+    const showStreaks = b['showStreaks'];
+    if (showStreaks !== undefined && typeof showStreaks !== 'boolean') errors['showStreaks'] = ['Must be true or false.'];
     if (Object.keys(errors).length) throw invalid(errors);
     const data = await this.update((d) => {
       if (typeof timezone === 'string') d.profile.timezone = timezone;
       if (typeof grace === 'number') d.profile.graceDaysPerWeek = grace;
       if (typeof theme === 'string') d.profile.theme = theme as LocalData['profile']['theme'];
       if (typeof second === 'number') d.profile.secondReminderMinutes = second as SecondReminderMinutes;
+      if (typeof showStreaks === 'boolean') d.profile.showStreaks = showStreaks;
       return d;
     });
     return json(200, this.me(data));
@@ -809,7 +814,7 @@ export class LocalBackend {
     if (!isDate(date)) throw invalidField('date', dateMessage);
     let note: DayNote = { date, text: null, mood: null };
     await this.update((d) => {
-      journalDayCheck(d, date, this.today(d));
+      journalDayCheck(d, date, this.today(d), true);
       const errors: Errors = {};
       if (b['encrypted'] !== null && b['encrypted'] !== undefined)
         errors['encrypted'] = ['The private journal is off. Send this as plaintext.'];
@@ -938,6 +943,7 @@ export function newLocalData(profile: Pick<LocalData['profile'], 'timezone' | 't
       timezone: profile.timezone,
       graceDaysPerWeek: 1,
       theme: profile.theme,
+      showStreaks: false,
       createdAt: now.toISOString(),
       lastBackupAt: null,
       backupReminderSnoozedUntil: null,

@@ -16,6 +16,7 @@ import { useField, type Validator, validateAll } from '@/components/auth/use-fie
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { DestinationName, reminderDestinationsKey } from '@/components/habits/device-reminders';
 import { MoodManager } from '@/components/journal/mood-manager';
+import { CrisisLines } from '@/components/moment/crisis-lines';
 import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
@@ -55,6 +56,7 @@ import { cn } from '@/lib/utils';
 type Section =
   | 'timezone'
   | 'grace'
+  | 'streaks'
   | 'second'
   | 'discord'
   | 'dm'
@@ -194,6 +196,7 @@ export default function SettingsPage() {
   const busyRef = useRef<Section | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
+  const streaksRef = useRef<boolean | null>(null);
   const secondRef = useRef<SecondReminderMinutes | null>(null);
   const scrolled = useRef<string | null>(null);
   const tzForm = useRef<HTMLFormElement>(null);
@@ -208,6 +211,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<(Message & { section: Section }) | null>(null);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
+  const [streaks, setStreaks] = useState<boolean | null>(null);
   const [second, setSecond] = useState<SecondReminderMinutes | null>(null);
   const [zone, setZone] = useState<string | null>(null);
   const [zoneTouched, setZoneTouched] = useState(false);
@@ -309,6 +313,17 @@ export default function SettingsPage() {
       graceRef.current = null;
       setGrace(null);
       if (error) fail('grace', error);
+    });
+  }
+
+  function changeStreaks(value: boolean): void {
+    streaksRef.current = value;
+    setStreaks(value);
+    void patch('streaks', { showStreaks: value }).then((error) => {
+      if (streaksRef.current !== value) return;
+      streaksRef.current = null;
+      setStreaks(null);
+      if (error) fail('streaks', error);
     });
   }
 
@@ -522,6 +537,7 @@ export default function SettingsPage() {
 
   const showDm = !local && !!me && (me.dmReminders.paused || message?.section === 'dm');
   const showSecond = !local || env.native;
+  const streaksShown = streaks ?? me?.showStreaks !== false;
   const sections = [
     ...(local ? [{ id: 'device', title: 'On this device' }] : [{ id: 'account', title: 'Account' }]),
     { id: 'appearance', title: 'Appearance' },
@@ -530,7 +546,8 @@ export default function SettingsPage() {
     ...(env.native ? [{ id: 'phone-reminders', title: 'Reminders on this phone' }] : []),
     ...(showSecond ? [{ id: 'second-reminder', title: 'Second reminder' }] : []),
     { id: 'routines', title: 'Routines' },
-    { id: 'grace', title: 'Grace days' },
+    { id: 'streaks', title: 'Streaks' },
+    ...(streaksShown ? [{ id: 'grace', title: 'Grace days' }] : []),
     { id: 'timezone', title: 'Timezone' },
     { id: 'moods', title: 'Moods' },
     ...(local
@@ -543,6 +560,7 @@ export default function SettingsPage() {
         ]),
     { id: 'delete', title: local ? 'Delete everything on this device' : 'Delete your account' },
     { id: 'feedback', title: 'Send feedback' },
+    { id: 'help', title: 'Crisis lines' },
   ];
   const title = (id: string) => sections.find((section) => section.id === id)?.title ?? '';
   const groups = settingsGroups
@@ -1024,6 +1042,28 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
+            {shown('streaks') && (
+              <SettingsCard id="streaks" title={title('streaks')}>
+                <div className="flex min-h-[44px] items-center justify-between gap-4">
+                  <Label htmlFor="show-streaks" className="font-normal">
+                    Show streaks
+                  </Label>
+                  <Switch
+                    id="show-streaks"
+                    aria-describedby="show-streaks-hint"
+                    checked={streaksShown}
+                    onCheckedChange={changeStreaks}
+                  />
+                </div>
+                <p id="show-streaks-hint" className="text-[14px] text-muted-foreground">
+                  Counts the days in a row you kept a habit, on Today and in History. Off, Ember shows your check-ins
+                  without counting.
+                </p>
+                {savedStatus('streaks')}
+                {outcome('streaks')}
+              </SettingsCard>
+            )}
+
             {shown('grace') && (
               <SettingsCard id="grace" title={title('grace')}>
                 <FormField
@@ -1292,6 +1332,12 @@ export default function SettingsPage() {
             {shown('feedback') && (
               <SettingsCard id="feedback" title={title('feedback')}>
                 <FeedbackForm />
+              </SettingsCard>
+            )}
+
+            {shown('help') && (
+              <SettingsCard id="help" title={title('help')}>
+                <CrisisLines />
               </SettingsCard>
             )}
           </>

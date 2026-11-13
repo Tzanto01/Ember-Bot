@@ -1,11 +1,11 @@
 # Datenschutzerklärung für Ember
 
 > **English summary (not binding; the German text below is the binding version).**
-> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it privately, on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet (open point). The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. Discord carries your messages as the platform. You can export your data and delete everything at once.
+> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it privately, on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet (open point). The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. The "I need a moment" flow stores and sends nothing; only a reflection you choose to save goes into your private journal. Discord carries your messages as the platform. You can export your data and delete everything at once.
 
 ---
 
-**Stand:** 11. November 2026
+**Stand:** 11. November 2026 [PRÜFEN: Stand-Datum auf das Veröffentlichungsdatum setzen, wenn die Ergänzung zu Momenten und Streaks live geht.]
 
 Ember ist ein kostenloser Habit Tracker. Diese Erklärung sagt dir, welche Daten Ember verarbeitet, warum, wie lange und welche Rechte du hast.
 
@@ -27,6 +27,7 @@ Ember wird privat und nicht kommerziell betrieben. Einen Datenschutzbeauftragten
 - Ember speichert nur, was die Funktionen brauchen: dein Konto, deine Habits, Check-ins, Tagesnotizen und Erinnerungen.
 - Habit-Namen, Check-ins, Tiefs, Tagesnotizen und Stimmungen können etwas über deine Gesundheit verraten. Ember speichert sie nur mit deiner ausdrücklichen Einwilligung. Routinen-Namen brauchen bisher keine Einwilligung. [PRÜFEN: Entscheidung offen, siehe Abschnitt 4.]
 - Das private Tagebuch kannst du Ende-zu-Ende verschlüsseln. Dann liegen Tagesnotizen und eigene Stimmungen auf dem Server nur verschlüsselt.
+- Der Ablauf „Ich brauche einen Moment“ speichert und sendet nichts. Nur eine Reflexion, die du bewusst speicherst, landet im privaten Tagebuch (Abschnitt 3.12).
 - Keine Werbung, kein Tracking, keine Analyse-Dienste, keine KI. Wir verkaufen keine Daten.
 - Du kannst deine Daten jederzeit exportieren und alles auf einmal löschen.
 
@@ -43,7 +44,7 @@ Ember legt Daten nur an, wenn du eine Funktion nutzt, die sie braucht. Du kannst
 | Discord-Nutzer-ID, wenn du Discord verbunden hast | Damit du dich mit Discord anmelden kannst und der Discord-Bot dich deinem Konto zuordnet. Ember fragt bei Discord die Berechtigung „identify“ an. Discord liefert dabei auch Name und Profilbild. Ember übernimmt davon nur die Nutzer-ID und verwirft den Rest. |
 | Zwei-Faktor-Anmeldung: geheimer Schlüssel für deine Authenticator-App und Wiederherstellungscodes. Ein Wiederherstellungscode gilt nur einmal und wird nach der Benutzung entwertet. | Damit der Anmeldecode geprüft und die Anmeldung zusätzlich geschützt werden kann. |
 | Anmeldesitzungen: eine Sitzungs-ID pro Anmeldung auf einem Gerät, Zeitpunkt der Anmeldung, Ablaufzeit und letzte Nutzung. Keine IP-Adresse. | Damit du dich auf einem Gerät oder auf allen Geräten abmelden kannst (Abschnitt 8). |
-| Zeitzone, Design, Gnadentage, Einstellung für die zweite Erinnerung | Damit „heute“, Streaks und Erinnerungen nach deiner Uhrzeit laufen. Hast du keine Zeitzone gewählt, übernimmt die App die Zeitzone deines Geräts. |
+| Zeitzone, Design, Gnadentage, Einstellung für die zweite Erinnerung, Anzeige der Streaks ein oder aus | Damit „heute“, Streaks und Erinnerungen nach deiner Uhrzeit laufen. Hast du keine Zeitzone gewählt, übernimmt die App die Zeitzone deines Geräts. Die Anzeige der Streaks schaltest du unter „Habits & days“ in den Einstellungen. Für neue Konten ist sie aus. |
 | Einwilligungsnachweis: Zeitpunkt, Version der Datenschutzerklärung und der Tag der letzten Abfrage. Hast du „No thanks“ gewählt, steht dort das Ende der 30-Tage-Pause. | Damit wir nachweisen können, dass du eingewilligt hast (Art. 7 Abs. 1 DSGVO), und dich bei einer neuen Version erneut fragen können. |
 | Erstellungszeitpunkt des Kontos | Steckt in der Konto-ID (UUIDv7). Ember speichert ihn nicht als eigenes Feld. Damit werden nie bestätigte Konten nach 7 Tagen gelöscht (Abschnitt 7). |
 
@@ -72,6 +73,8 @@ Gesundheitsbezogene Daten, siehe Abschnitt 4.
 | Eigene Stimmungen: Bezeichnung (höchstens 24 Zeichen), optional ein Emoji, ob sie archiviert ist, und Erstellungszeitpunkt | Damit du eigene Stimmungen auswählen kannst. Archivierte Stimmungen bleiben an den Tagen sichtbar, an denen du sie gesetzt hast. |
 
 Tagesnotizen und Stimmungen liegen **im Klartext** auf dem Server, solange du das private Tagebuch (3.4) nicht einschaltest.
+
+Eine Tagesnotiz kann auch Reflexionen aus dem Ablauf „Ich brauche einen Moment“ enthalten (Abschnitt 3.12).
 
 ### 3.4 Privates Tagebuch (optional, Ende-zu-Ende verschlüsselt)
 
@@ -169,6 +172,22 @@ Wir nutzen das Feedback nur, um Ember zu verbessern. Einmal am Tag schickt Ember
 - Standortdaten, Kontakte, Telefonnummern und Zahlungsdaten. Ember hat keine Bezahlfunktion.
 - Werbe-Kennungen und Geräte-Fingerabdrücke.
 
+### 3.12 Momente („Ich brauche einen Moment“)
+
+Der Ablauf „Ich brauche einen Moment“ begleitet dich durch einen schwierigen Moment: innehalten, benennen, eine kurze Übung machen und danach optional etwas festhalten. Er läuft auf deinem Gerät:
+
+- **Auf dem Gerät.** Was du auswählst (Gefühl, Stärke, Übung und Schritte) bleibt im Arbeitsspeicher deines Geräts. Ember sendet es nicht an den Server, schreibt es nicht in den Browser oder die App (weder in den Local Storage noch in IndexedDB) und legt dafür keinen Eintrag an. Verlässt du den Ablauf oder lädst du die Seite neu, ist es weg.
+- **Ohne Konto.** Der Ablauf braucht kein Konto und keine Verbindung zum Server, sobald die App geladen ist.
+- **Krisennummern.** Die Nummern sind fest in der App eingebaut. Ember fragt sie nicht ab. Welche Nummern erscheinen, richtet sich nach dem Land, das du auswählst, oder nach Sprache und Zeitzone deines Geräts. Deine Auswahl gilt nur für diese Sitzung und wird nicht gespeichert.
+- **Anrufen.** Ein Tipp auf eine Nummer öffnet die Telefon-App deines Geräts. Das Gespräch läuft zwischen dir und dem Dienst beziehungsweise deinem Telefonanbieter. Ember stellt die Verbindung nicht her und bekommt davon nichts mit.
+- **Android-Verknüpfungen.** Das Momente-Widget und die Verknüpfung auf dem Startbildschirm enthalten keine Daten. Das Widget zeigt nur seine Beschriftung und öffnet den Ablauf. Für das Heute-Widget gilt weiter Abschnitt 3.8.
+- **Reflexion.** Eine Reflexion ist optional. Ember speichert sie nur, wenn das private Tagebuch eingeschaltet und entsperrt ist und du der Datenschutzerklärung zugestimmt hast (Abschnitt 4). Dann landet sie im privaten Tagebuch, als Teil der Tagesnotiz für diesen Tag. Dein Gerät verschlüsselt sie, bevor sie zum Server geht. Der Server sieht nur die verschlüsselte Tagesnotiz. Ohne eingeschaltetes privates Tagebuch speichert Ember keine Reflexion. Sie bleibt dann nur auf dem Bildschirm.
+- **Tagebuch ausschalten.** Schaltest du das private Tagebuch aus, lädt dein Gerät auch die Reflexionen im Klartext hoch, wie alle anderen Einträge (Abschnitt 3.4).
+
+Ember wertet nicht aus, was du schreibst. Es gibt keine automatische Auswertung von Texten, keine Erkennung von Krisen und keine KI. Die Übung richtet sich nach dem Gefühl, das du angibst, nicht nach dem, was du schreibst.
+
+Eine Reflexion kann Angaben zu deiner Gesundheit enthalten, zum Beispiel wie es dir gerade geht. Dafür gelten die Regeln für Tagesnotizen in Abschnitt 4. Der Ablauf selbst speichert nichts und braucht deshalb keine eigene Einwilligung. [PRÜFEN: Reicht die Einwilligung für Tagesnotizen auch für Reflexionen aus Momenten, oder braucht es einen eigenen Hinweis? Muss die Version 2026-11 steigen? Siehe docs/legal/README.md, Frage 26.] [PRÜFEN: Datenschutz-Folgenabschätzung für den Ablauf Momente prüfen, siehe docs/legal/README.md, Frage 27.]
+
 ## 4. Gesundheitsdaten (Art. 9 DSGVO)
 
 Viele Habits haben mit Gesundheit zu tun, zum Beispiel „Medikamente nehmen“, „Schlafen“ oder „Sport“. Ember bietet einige davon sogar als Vorlage an. Aus Habit-Namen, Check-ins, Tiefs, Tagesnotizen und Stimmungen lässt sich deshalb unter Umständen etwas über deine Gesundheit ablesen. Solche Daten sind nach Art. 9 DSGVO besonders geschützt.
@@ -180,7 +199,7 @@ Wir behandeln deshalb **alle** Habit-Namen, Check-ins, Tiefs, Tagesnotizen und S
 - **Neue Nutzer:** Bevor du dein erstes Habit anlegst (auch aus einer Vorlage), ein Tief, eine Tagesnotiz oder eine eigene Stimmung speicherst oder Daten importierst, fragt Ember dich, ob das für dich in Ordnung ist. Im Discord-Bot antwortest du mit den Schaltflächen „I agree“ oder „No thanks“. In der Web-App und der App ist es eine eigene Seite mit „I agree“ und „Not now“. Die Texte dieser Abfrage sind derzeit englisch. [PRÜFEN: deutsche Fassung, siehe docs/legal/README.md.] Erst nach deiner Zustimmung speichert Ember diese Daten.
 - **Bestehende Nutzer:** Wenn du Ember schon vor der Einwilligung genutzt hast, fragt die Web-App dich einmal pro Sitzung und der Discord-Bot höchstens einmal am Tag. Bis du antwortest, bleiben deine vorhandenen Habits und Check-ins nutzbar und die Erinnerungen laufen weiter. Neue Habits, Tiefs, Tagesnotizen und Stimmungen gehen erst nach deiner Zustimmung. [PRÜFEN: Darf Ember bestehende Gesundheitsdaten ohne Einwilligung weiter verarbeiten, solange du nicht geantwortet hast? Entscheidung offen, siehe docs/legal/README.md.]
 - **Wenn du „No thanks“ wählst:** Ember speichert keine Einwilligung und legt nichts Neues an, wofür sie fehlt. Der Discord-Bot fragt dich 30 Tage lang nicht von sich aus. Die Web-App kennt diese Pause nicht und fragt bei der nächsten Sitzung wieder. Was schon da ist, bleibt, bis du entscheidest. Der Bot bietet dir dann an, deine Daten zu löschen.
-- **Wenn sich diese Erklärung ändert:** Mit Version 2026-11 fragt Ember alle Nutzer noch einmal, auch wenn sie vorher zugestimmt haben. Bei einer weiteren neuen Version geschieht das auf dieselbe Weise.
+- **Wenn sich diese Erklärung ändert:** Mit Version 2026-11 fragt Ember alle Nutzer noch einmal, auch wenn sie vorher zugestimmt haben. Bei einer weiteren neuen Version geschieht das auf dieselbe Weise. [PRÜFEN: Gilt Version 2026-11 auch für den Abschnitt Momente (3.12), oder muss die Version steigen und alle fragen? Siehe docs/legal/README.md, Frage 26.]
 
 Wenn du zustimmst, speichert Ember den Zeitpunkt und die Version dieser Erklärung (Abschnitt 3.1).
 
@@ -199,6 +218,7 @@ Du kannst deine Einwilligung jederzeit widerrufen (Art. 7 Abs. 3 DSGVO). Ohne Ha
 | Konto, Anmeldung, Sitzungen, Sperre nach Fehlversuchen, Bestätigung der E-Mail-Adresse, Zurücksetzen des Passworts, Zwei-Faktor-Anmeldung, Verknüpfung mit Discord | Art. 6 Abs. 1 lit. b DSGVO (Nutzungsvertrag, siehe Nutzungsbedingungen). Für die Sicherheit des Kontos zusätzlich Art. 6 Abs. 1 lit. f DSGVO. |
 | Habits, Check-ins, Tiefs, Gnadentage, Streaks, Statistiken, Erinnerungen, Wochenübersicht, Export und Löschung | Art. 6 Abs. 1 lit. b DSGVO. Für Habit-Namen, Check-ins und Tiefs zusätzlich Art. 9 Abs. 2 lit. a DSGVO (Einwilligung). |
 | Tagesnotizen und Stimmungen | Art. 6 Abs. 1 lit. b DSGVO und Art. 9 Abs. 2 lit. a DSGVO (Einwilligung). |
+| Momente: Ablauf auf dem Gerät | Keine Verarbeitung durch Ember. Eine gespeicherte Reflexion landet als Teil der Tagesnotiz und folgt den Regeln für Tagesnotizen (Abschnitt 3.12). |
 | Routinen, Umbenennen von Habits, Push-Abos | Art. 6 Abs. 1 lit. b DSGVO. Keine Einwilligung bisher. [PRÜFEN: siehe Abschnitt 4.] |
 | Erinnerungen über Discord, Web-Push und lokal in der App, Erinnerungsziele | Art. 6 Abs. 1 lit. b DSGVO. Jedes Ziel schaltest du selbst ein oder aus. |
 | E-Mails zur Bestätigung und zum Zurücksetzen des Passworts | Art. 6 Abs. 1 lit. b DSGVO |

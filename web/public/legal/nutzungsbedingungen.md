@@ -1,10 +1,10 @@
 # Nutzungsbedingungen für Ember
 
-> **English summary (not binding; the German text below is the binding version).** Ember is free and offered as is, with no promise that it is always available. Use it fairly: no abuse, spam, illegal content, attempts to break it or to get at other people's data, and follow Discord's rules. Your data stays yours; you can export or delete it at any time. Keep your password safe. If you use the private journal, keep your passphrase and recovery code: without them nobody can read the encrypted entries, including us. Ember is not a medical product, so don't rely on it alone for medication or anything health-critical. Liability is limited as far as German law allows. German law applies. We tell you in Ember before major changes.
+> **English summary (not binding; the German text below is the binding version).** Ember is free and offered as is, with no promise that it is always available. Use it fairly: no abuse, spam, illegal content, attempts to break it or to get at other people's data, and follow Discord's rules. Your data stays yours; you can export or delete it at any time. Keep your password safe. If you use the private journal, keep your passphrase and recovery code: without them nobody can read the encrypted entries, including us. Ember is not a medical product, so don't rely on it alone for medication or anything health-critical. It is a wellness tool: no diagnosis or treatment, and no replacement for professional help. In an emergency, call 112. Liability is limited as far as German law allows. German law applies. We tell you in Ember before major changes.
 
 ---
 
-**Stand:** 11. November 2026
+**Stand:** 11. November 2026 [PRÜFEN: Stand-Datum auf das Veröffentlichungsdatum setzen, wenn die Ergänzung zu Momenten live geht.]
 
 Schön, dass du Ember nutzt. Diese Bedingungen regeln, wie das zwischen dir und uns läuft. Wir haben sie kurz gehalten.
 
@@ -14,7 +14,7 @@ Ember wird von Nico Pauly Wöllnitz privat und nicht kommerziell betrieben (Kont
 
 ## 2. Was ist Ember?
 
-Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App [PRÜFEN: Android-App ist noch nicht veröffentlicht; Satz ab Veröffentlichung gültig]. Du kannst Habits anlegen, einchecken, Streaks und Statistiken ansehen, Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck.
+Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App [PRÜFEN: Android-App ist noch nicht veröffentlicht; Satz ab Veröffentlichung gültig]. Du kannst Habits anlegen, einchecken, Statistiken ansehen, Streaks ansehen (wenn du sie eingeschaltet hast), Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck. Dazu kommt der Ablauf „Ich brauche einen Moment“ für schwierige Momente. Er ist ein Wellness-Angebot und kein Medizinprodukt (Abschnitt 6).
 
 Mit der ersten Nutzung von Ember oder mit der Anlage eines Kontos akzeptierst du diese Bedingungen. Für die Nutzung von Discord selbst gelten zusätzlich die Bedingungen von Discord.
 
@@ -38,6 +38,12 @@ Mit dem privaten Tagebuch verschlüsselt Ember deine Tagesnotizen und Stimmungen
 ## 6. Kein Medizinprodukt
 
 Ember ist kein Medizinprodukt und ersetzt keine ärztliche oder therapeutische Beratung. Verlass dich bei Medikamenten oder anderen gesundheitlich wichtigen Dingen **nicht allein** auf Erinnerungen von Ember.
+
+Ember ist ein Wellness-Angebot. Es stellt keine Diagnose und bietet keine Behandlung an. Die Übungen im Ablauf „Ich brauche einen Moment“ sind einfache Übungen zum Atmen, zum Ankommen im Moment und zum Abwarten. Sie ersetzen keine professionelle Hilfe. [PRÜFEN: Wortlaut dieses Abschnitts, Zweckbestimmung nach EU-MDR und Abgrenzung zu HWG und UWG prüfen, siehe docs/legal/README.md, Fragen 24, 25 und 32.]
+
+Wenn sich eine Übung nicht gut anfühlt, hör auf. Du kannst eine Übung jederzeit mit „Leave“ verlassen oder mit „Skip to the end“ ans Ende springen. Wird dir bei einer Atemübung schwindelig, atme einfach normal weiter. [PRÜFEN: Sicherheit der Übungsinhalte durch eine qualifizierte Person prüfen lassen, siehe docs/legal/README.md, Frage 30.]
+
+Bei einem Notfall oder bei akuter Gefahr rufe sofort die **112** an. Ember ist kein Krisendienst. Die Krisennummern im Ablauf und auf der Seite „Help right now“ sind Hinweise zum Nachschlagen. Ember kann nicht garantieren, dass eine Nummer erreichbar oder aktuell ist. [PRÜFEN: Krisenrufnummern je Land gegen amtliche Quellen prüfen und einen Prüfturnus festlegen, siehe docs/legal/README.md, Frage 29.]
 
 ## 7. Faire Nutzung
 

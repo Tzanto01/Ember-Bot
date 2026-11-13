@@ -15,6 +15,8 @@ export interface StatTilesProps {
   last7Days?: KeptDays | null;
   /** Kept days of the last 30 days (daily and weekdays habits); null while not loaded. */
   last30Days?: KeptDays | null;
+  /** The account's `showStreaks`: false leaves the Current streak and Best tiles out. */
+  showStreaks: boolean;
 }
 
 interface Tile {
@@ -24,16 +26,16 @@ interface Tile {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** "At a glance" for the History habit: two to five compact tiles that lead with what is there, never with gaps. */
-export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7Days, last30Days }: StatTilesProps) {
+/** "At a glance" for the History habit: up to five compact tiles that lead with what is there, never with gaps. */
+export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7Days, last30Days, showStreaks }: StatTilesProps) {
   const { streak, bestStreak, last7, week } = habit.stats;
   const tiles: Tile[] = [];
   if (week) {
     tiles.push({ label: 'This week', value: week.done > 0 ? `${week.done} of ${week.target}` : `${week.target} a week` });
     if (last7 > 0) tiles.push({ label: 'Last 7 days', value: `${last7} done` });
   } else {
-    tiles.push({ label: 'Current streak', value: streak ? plural(streak, 'day') : 'Fresh start' });
-    if (bestStreak) tiles.push({ label: 'Best', value: plural(bestStreak, 'day') });
+    if (showStreaks) tiles.push({ label: 'Current streak', value: streak ? plural(streak, 'day') : 'Fresh start' });
+    if (showStreaks && bestStreak) tiles.push({ label: 'Best', value: plural(bestStreak, 'day') });
     for (const [window, days] of [[7, last7Days], [30, last30Days]] as const) {
       if (!days?.kept || (window === 30 && days.span <= 7)) continue;
       tiles.push({
@@ -48,6 +50,8 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7
       value: `${doneInMonth} done${lowDaysInMonth > 0 ? ` · ${plural(lowDaysInMonth, 'low day')}` : ''}`,
     });
   }
+
+  if (tiles.length === 0) return null;
 
   return (
     <dl className={cn('grid gap-2', tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>

@@ -95,6 +95,12 @@ The markers are inline. Each category has a question below.
 | Einstufung nach § 25 TDDDG | Privacy policy, section 3.8 | 15 |
 | Aufsichtsbehörde | Privacy policy, section 9 | (check address) |
 | Verbraucherstreitbeilegung | Impressum | (confirm or delete) |
+| Stand-Datum | Privacy policy and terms, top | (set on publish) |
+| Momente: Reflexion und Einwilligungsversion | Privacy policy, sections 3.12 and 4 | 26 |
+| Momente: Datenschutz-Folgenabschätzung | Privacy policy, section 3.12 | 27 |
+| Medizinprodukt, Zweckbestimmung, Werbung | Terms, section 6 | 24, 25, 32 |
+| Krisenrufnummern je Land | Terms, section 6 | 29 |
+| Sicherheit der Übungsinhalte | Terms, section 6 | 30 |
 
 ## Checks before publishing: code must match the texts
 
@@ -120,6 +126,13 @@ The markers are inline. Each category has a question below.
 | Signup address is kept on the device only until confirmation | Done on `v2/fix-account` (`ember.signupEmail`). Not cleared if the account is never confirmed (question 17) |
 | Offline copy of the account and habits only with "Stay signed in" | Done on `v2/fix-platform` (`ember.offlineMe`, IndexedDB `cache`). Confirmation signs the user in with "Stay signed in" on (question 18) |
 | Mail tracking off at Resend; Resend agreement; Proton Drive; Cloudflare DPA | Not in the repository. Check by hand (questions 6, 7, 9) |
+| Moment flow stores and sends nothing: no API call, no Local Storage, IndexedDB or query cache | Done by search of `web/src/components/moment`, `web/src/lib/moment` and `web/src/pages/moment.tsx` on `v2/companion-web`. Not yet run with the network off |
+| Moment reflections need the private journal on, unlocked, and consent | Done (`reflect.tsx`, `appendPrivate` in `web/src/lib/journal/journal.ts`) |
+| Turning off the private journal re-uploads moment notes as plain text | Done (copy in `journal-settings.tsx`) |
+| Android moment widget holds no data | Done in commit `06d3890` (in `v2/companion-server`). Not yet on `v2/companion-web`. Recheck on merge |
+| "Show streaks" setting, off for new accounts | Open. Web switch is uncommitted in the worktree (`settings.tsx`, `settings-groups.ts`) at drafting time. Server side is in commit `dd4a3a2` (`v2/companion-server`). Recheck on merge |
+| Help right now: `/help` and the footer link | Done (`web/src/pages/help.tsx`, `legal-links.tsx`). The Settings group is uncommitted in the worktree (`settings-groups.ts`) at drafting time |
+| Crisis lines `checked` date | Open. The field holds the compile date, 2026-11-13, which is not an official-source check (question 29) |
 
 ## Open questions
 
@@ -146,3 +159,21 @@ The markers are inline. Each category has a question below.
 21. **Recovery codes stored unhashed.** Whoever can read the database can read the recovery codes and the authenticator secret. Accept and say so, or hash the recovery codes. The authenticator secret has to stay readable either way.
 22. **Free service.** The terms say Ember is free. If a paid tier (Ember+, plan D5) is ever added, the terms and the policy must change first.
 23. **Feedback (v1.13).** Feedback text, platform, app version, time and the account link (when signed in) are stored for 12 months and mailed once a day to the operator through Resend, without account ID or email address. Decide: (a) is the hint "don't include health details" enough under Art. 9, or is consent needed; (b) add feedback to the export (question 16) or answer requests by hand; (c) does the consent policy version (`2026-11`) need a bump for section 3.10; (d) delete the digest emails in the operator's mailbox after 12 months. Resend now also carries feedback text (question 7). **Pictures and anonymous feedback (v1.14):** a report also has a title, up to 5 pictures (signed in or from Discord, metadata stripped on the server) and an anonymous option that stores no account link. Pictures are kept until the operator marks the report handled plus 30 days, at most 12 months, and are not mailed (the digest names only their opaque ids). Decide: (e) is a hint enough for screenshots that can show health data or other people, or is consent needed; (f) is "handled plus 30 days, at most 12 months" an acceptable retention; (g) anonymous feedback can no longer be deleted with the account or found for an access request.
+24. **EU MDR: intended purpose and claims.** Ember is written as a wellness tool, not a medical device. The moment flow (catch, name, ride it out, reflect) and the practice content are the parts most likely to be read as medical. Check the intended purpose in Terms sections 2 and 6 against Regulation (EU) 2017/745, and review every claim in the README, the release notes, the pitch and the store copy. Decide the final wording, and whether a classification assessment is needed before launch.
+25. **HWG and UWG: health advertising.** The pitch ("A small campfire for big moments.", "A calm companion for hard moments and gentle days.") and the README talk about hard moments. Check them against the HWG (health claims, references to diseases) and the UWG (unproven claims). The README intro no longer names ADHD, autism or executive dysfunction, as the old one did. Confirm that is the safer line, and whether the store copy needs the same change.
+26. **Art. 9 consent and moments.** Section 3.12 says a saved reflection becomes part of that day's note. The day-note consent (policy version `2026-11`) then covers it, and the flow itself needs no consent because it stores nothing. Get a ruling. Decide: does the current consent cover reflections, or is a separate notice or consent step needed? If the consent text changes, the version must go up and every user is asked again (section 4 of the policy).
+27. **DPIA for moments.** The flow adds free text about hard moments, which can be health data. It is encrypted before it reaches the server when the private journal is on. Check whether the DPIA question in question 13 becomes mandatory, and whether that changes the answer.
+28. **Minimum age for moments.** Question 4 sets the minimum age for consenting to health data. The moment flow is aimed at people in distress, so decide whether the same age applies, or whether a higher age or a note for parents is needed. Ember cannot verify age.
+29. **Crisis numbers, per locale.** `web/src/content/crisis-lines.json` lists DE, AT, CH, GB, US, EU and INTL. Its `checked` field says 2026-11-13, the day the list was compiled. The numbers, hours and links have not been checked against official sources. Before launch: check each one against the official source, set `checked` to the real check date, and set a recheck schedule (for example every six months and before each release). Decide the schedule and who owns it.
+30. **Safety review of practice content.** `web/src/content/practices.json` holds six practices: breathing, a grounding exercise, a cool-water or cool-object step, a timed urge-surfing practice and two short reframes. Have a qualified person review each step for safety, including breathing steps, dizziness and cold water. Decide whether any warning is needed, and who signs off. The `basis` field is the public technique, kept for this review and never shown in the app.
+31. **Play health-apps declaration and Data Safety form.** The Android app is an APK today, not a Google Play app (see the README). Before any Play release, answer Play's health apps declaration and the Data Safety form so they match section 3.12 of the policy and the store copy in `mobile/STORE.md`. Decide the answers with a lawyer before publishing.
+32. **Terms disclaimer wording.** Section 6 of the terms says Ember is a wellness tool, not a medical device. It makes no diagnosis or treatment, does not replace professional help, asks people to call 112 in an emergency, and asks them to stop any exercise that does not feel right. Check the wording. Check also how the liability in section 10 and the rules for standard terms (§ 309 BGB) apply to free exercises.
+
+## What changed on 2026-11-13
+
+Companion drafts, from `v2/companion-web` and `docs/contracts/companion-v1.md`:
+
+- **Privacy policy:** new section 3.12 (moments), a line in the summary and in section 2, a moments row in section 5, the streak setting in the account settings row (3.1), and three storage rows that were missing from 3.8 (`ember.seenReleaseNotes`, `ember.tzClaimed.<account id>`, `ember.exactAlarmAsked`).
+- **Terms:** section 2 (streaks are shown only when turned on, and the moment flow is named), section 6 (wellness tool, no diagnosis or treatment, call 112, stop any exercise that does not feel right, crisis numbers are not guaranteed).
+- **Questions 24 to 32** added.
+- **Release notes:** `0.9.0-beta.7` added with a placeholder date (2026-11-20). Not published.

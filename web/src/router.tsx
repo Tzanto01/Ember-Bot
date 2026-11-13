@@ -13,6 +13,7 @@ import { AppShell } from '@/components/app-shell';
 import { CenteredShell } from '@/components/centered-shell';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
+import { pitch } from '@/content/pitch';
 import { env } from '@/lib/env';
 import { guest, signedIn } from '@/lib/guards';
 import { setNavigator } from '@/lib/navigation';
@@ -138,7 +139,7 @@ export const routes: RouteObject[] = [
       {
         index: true,
         loader: landingOrToday,
-        ...page('A calm place for your habits', () => import('./pages/landing')),
+        ...page(pitch.title, () => import('./pages/landing')),
       },
       {
         element: <CenteredShell variant="auth" />,

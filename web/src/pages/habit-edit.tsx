@@ -18,12 +18,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Habit } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth } from '@/lib/services';
+import { useStore } from '@/lib/store';
 
 function Summary({ habit }: { habit: Habit }) {
   const { streak, week } = habit.stats;
+  const showStreaks = useStore(auth.me)?.showStreaks !== false;
   return (
     <Card className="hidden lg:flex">
-      {streak !== null && streak > 0 && <p className="font-semibold">{streak}-day streak</p>}
+      {showStreaks && streak !== null && streak > 0 && <p className="font-semibold">{streak}-day streak</p>}
       {week && week.done > 0 && (
         <p className="font-semibold">
           {week.done} of {week.target} this week

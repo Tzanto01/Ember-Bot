@@ -4,9 +4,13 @@ import type { Habit, HabitStats } from '@/lib/models';
 import { habit } from '@/lib/test-support';
 import { StatTiles } from './stat-tiles';
 
-function show(stats: Partial<HabitStats>, month: { doneInMonth: number | null; lowDaysInMonth: number } = { doneInMonth: null, lowDaysInMonth: 0 }) {
+function show(
+  stats: Partial<HabitStats>,
+  month: { doneInMonth: number | null; lowDaysInMonth: number } = { doneInMonth: null, lowDaysInMonth: 0 },
+  showStreaks = true,
+) {
   const subject: Habit = { ...habit, stats: { ...habit.stats, ...stats } };
-  render(<StatTiles habit={subject} monthName="October" {...month} />);
+  return render(<StatTiles habit={subject} monthName="October" {...month} showStreaks={showStreaks} />);
 }
 
 describe('StatTiles', () => {
@@ -33,6 +37,20 @@ describe('StatTiles', () => {
 
     expect(screen.getByText('Best')).toBeInTheDocument();
     expect(screen.getByText('9 days')).toBeInTheDocument();
+  });
+
+  it('leaves the streak tiles out when streaks are off and keeps the others', () => {
+    show({ streak: 4, bestStreak: 9 }, { doneInMonth: 6, lowDaysInMonth: 0 }, false);
+
+    expect(screen.queryByText('Current streak')).toBeNull();
+    expect(screen.queryByText('Best')).toBeNull();
+    expect(screen.getByText('In October')).toBeInTheDocument();
+  });
+
+  it('renders no empty list when streaks are off and nothing else is there yet', () => {
+    const { container } = show({ streak: 0, bestStreak: 0 }, undefined, false);
+
+    expect(container.querySelector('dl')).toBeNull();
   });
 
   it('leaves the month tile out at 0 done', () => {
@@ -65,7 +83,7 @@ describe('StatTiles', () => {
 
 describe('StatTiles kept days', () => {
   const render7And30 = (last7Days: { kept: number; span: number }, last30Days: { kept: number; span: number }) =>
-    render(<StatTiles habit={habit} monthName="October" doneInMonth={null} lowDaysInMonth={0} last7Days={last7Days} last30Days={last30Days} />);
+    render(<StatTiles habit={habit} monthName="October" doneInMonth={null} lowDaysInMonth={0} last7Days={last7Days} last30Days={last30Days} showStreaks />);
 
   it('shows the kept days of the last 7 and 30 days', () => {
     render7And30({ kept: 6, span: 7 }, { kept: 24, span: 30 });

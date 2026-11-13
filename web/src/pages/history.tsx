@@ -42,7 +42,8 @@ const idFrom = (raw: string | undefined) => (raw === undefined ? null : Number(r
 export default function HistoryPage() {
   const queryClient = useQueryClient();
   const routeParam = useParams()['habitId'];
-  const today = useStore(auth.me)?.localToday ?? null;
+  const me = useStore(auth.me);
+  const today = me?.localToday ?? null;
   const reduceMotion = useReducedMotion();
 
   const habitsQuery = useQuery({ queryKey: habitsKey, queryFn: loadHabits });
@@ -352,6 +353,7 @@ export default function HistoryPage() {
             lowDaysInMonth={inMonth.filter((d) => d.lowDay).length}
             last7Days={kept(7)}
             last30Days={kept(30)}
+            showStreaks={me?.showStreaks !== false}
           />
         </div>
       </div>

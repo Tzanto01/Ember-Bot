@@ -54,6 +54,53 @@ for (const { name, width, height } of viewports) {
         expect(found).toEqual([]);
       });
 
+      test('the moment flow and help page have no WCAG A/AA violations', async ({ page }) => {
+        const found: string[] = [];
+        const heading = (name: RegExp | string) => page.getByRole('heading', { name }).first();
+        const click = (name: string) => page.getByRole('button', { name, exact: true }).click();
+
+        await visit(page, '/help', 'Help right now', found);
+        await page.goto('/moment');
+        await expect(heading("You're here. That's enough for now.")).toBeVisible();
+        await scan(page, '/moment catch', found);
+        await click('Urgent help');
+        await expect(page.getByRole('list', { name: 'Crisis lines' })).toBeVisible();
+        await scan(page, '/moment catch (urgent help open)', found);
+        await click('Urgent help');
+
+        await click("Name what's happening");
+        await expect(heading("What's happening?")).toBeVisible();
+        await scan(page, '/moment name', found);
+        await click('Too much / overloaded');
+        await expect(heading('How strong is it?')).toBeVisible();
+        await page.getByRole('radio', { name: 'Strong' }).check();
+        await scan(page, '/moment intensity', found);
+        await click('Continue');
+        await expect(heading(/Sit or stand/)).toBeVisible();
+        await scan(page, '/moment practice step', found);
+        await click('Next');
+        await click('Next');
+        await expect(heading('Breathe along. Start when you are ready.')).toBeVisible();
+        await scan(page, '/moment breathing player', found);
+        await click('Start');
+        await expect(page.getByText('Breathe in, 4').first()).toBeVisible();
+        await scan(page, '/moment breathing player (running)', found);
+        await click('Pause');
+        await click('Skip to the end');
+        await expect(heading('How is it now?')).toBeVisible();
+        await scan(page, '/moment after', found);
+        await click('Skip');
+        await expect(heading("That's it for now.")).toBeVisible();
+        await scan(page, '/moment end', found);
+        await click('Reflect on it');
+        await expect(heading('Reflect, if you like')).toBeVisible();
+        await scan(page, '/moment reflect', found);
+        await click('Urgent help');
+        await expect(page.getByRole('list', { name: 'Crisis lines' })).toBeVisible();
+        await scan(page, '/moment reflect (urgent help open)', found);
+        expect(found).toEqual([]);
+      });
+
       test('no-account mode Today has no WCAG A/AA violations', async ({ page }) => {
         const found: string[] = [];
         await page.goto('/local');

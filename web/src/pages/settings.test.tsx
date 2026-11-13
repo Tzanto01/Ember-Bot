@@ -160,6 +160,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       expect.stringContaining('Appearance'),
       expect.stringContaining('Privacy & data'),
       expect.stringContaining('Send feedback'),
+      expect.stringContaining('Help right now'),
       expect.stringContaining("What's new"),
     ]);
     const reminders = list.getByRole('link', { name: 'Reminders' });
@@ -201,6 +202,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       'Appearance',
       'Privacy & data',
       'Send feedback',
+      'Help right now',
       "What's new",
     ]);
     expect(rail.getByRole('link', { name: 'Account & security' })).toHaveAttribute('aria-current', 'page');
@@ -230,6 +232,7 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
       '/settings/appearance',
       '/settings/privacy',
       '/settings/feedback',
+      '/settings/help',
       '/whats-new',
     ]);
     expect(list.getByRole('link', { name: 'Account & security' })).toHaveAccessibleDescription('On this device');
@@ -313,6 +316,57 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
 
     await waitFor(() => expect(select).toHaveDisplayValue('3 days a week'));
     expect(screen.getByText('Saved.')).toBeInTheDocument();
+  });
+
+  it('turns streaks off through PATCH /api/me, hiding the grace days at once and keeping them hidden once saved', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/habits');
+    const toggle = screen.getByRole('switch', { name: 'Show streaks' });
+    expect(toggle).toBeChecked();
+    expect(screen.getByRole('heading', { name: 'Grace days' })).toBeInTheDocument();
+
+    await user.click(toggle);
+
+    const sent = await fetch.next('PATCH', '/api/me');
+    expect(sent.body).toEqual({ showStreaks: false });
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
+    sent.respond(200, { ...me, showStreaks: false });
+
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByLabelText('Grace days per week')).toBeNull();
+  });
+
+  it('puts the switch back when turning streaks on fails', async () => {
+    const off = { ...me, showStreaks: false };
+    const user = userEvent.setup();
+    auth.setMe(off);
+    const fetch = mockFetch();
+    renderPage('/settings/:group?', SettingsPage, '/settings/habits');
+    (await fetch.next('GET', '/api/me')).respond(200, off);
+    const toggle = await screen.findByRole('switch', { name: 'Show streaks' });
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
+
+    await user.click(toggle);
+    const sent = await fetch.next('PATCH', '/api/me');
+    expect(sent.body).toEqual({ showStreaks: true });
+    sent.respond(500, { type: 'internal', title: 'Server error', status: 500 });
+
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
+  });
+
+  it('Help right now shows the crisis lines and sends nothing', async () => {
+    const { fetch } = await open('/settings/help');
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Help right now');
+    const lines = within(screen.getByRole('region', { name: 'Crisis lines' }));
+    expect(lines.getByRole('list', { name: 'Crisis lines' })).toBeInTheDocument();
+    expect(lines.getAllByRole('link').some((link) => link.getAttribute('href')?.startsWith('tel:'))).toBe(true);
+    expect(lines.getByText("Ember isn't a crisis service and doesn't read what you write.")).toBeInTheDocument();
+    await settle();
+    expect(fetch.pending).toHaveLength(0);
   });
 
   describe('where Ember reminds you', () => {

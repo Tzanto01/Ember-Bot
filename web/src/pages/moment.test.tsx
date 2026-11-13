@@ -1,10 +1,10 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { fakeJournal } from '@/components/journal/fake-journal';
 import { JournalContext } from '@/components/journal/journal-context';
 import type { JournalState } from '@/lib/journal/types';
-import { auth } from '@/lib/services';
+import { auth, localMode } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { renderPage } from '@/test-utils';
 import MomentPage from './moment';
@@ -51,7 +51,11 @@ async function quickToReflect() {
 }
 
 describe('MomentPage', () => {
-  afterEach(() => auth.me.set(null));
+  afterEach(() => {
+    auth.me.set(null);
+    localMode.mode.set('account');
+    vi.restoreAllMocks();
+  });
 
   it('walks Catch, Name, intensity and every practice step, saves the reflection and leaves', async () => {
     auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
@@ -136,6 +140,98 @@ describe('MomentPage', () => {
     expect(screen.getByText('Nothing from this moment was saved.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
+
+  it('shows the unlock form for a locked private journal and offers Save after unlocking', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    const { journal } = open('locked');
+    (journal.unlock as Mock).mockImplementation(async () => {
+      journal.state.set('unlocked');
+      return { needsNewPassphrase: false };
+    });
+    const user = await quickToReflect();
+
+    expect(screen.getByLabelText('Journal passphrase')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Journal passphrase'), 'correct horse battery');
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    await user.type(await screen.findByRole('textbox', { name: /What set it off/ }), 'Noise');
+    await user.click(await screen.findByRole('button', { name: 'Save' }));
+
+    expect(journal.unlock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Saved to today's private note.")).toBeInTheDocument();
+    expect(journal.appendPrivate).toHaveBeenCalledTimes(1);
+    expect(journal.appendPrivate.mock.calls[0]![1]).toContain('What set it off: Noise');
+  }, 15_000);
+
+  it.each([
+    ['consent not given', { given: false, policyVersion: null, currentPolicyVersion: '1' }],
+    ['an outdated policy version', { given: true, policyVersion: '0', currentPolicyVersion: '1' }],
+  ])('offers no Save and explains consent when %s', async (_name, consent) => {
+    auth.me.set({
+      ...me,
+      journal: { ...me.journal, encrypted: true },
+      consent: consent as typeof me.consent,
+    });
+    const { journal } = open('unlocked');
+    await quickToReflect();
+    expect(screen.getByText(/needs your consent to the privacy policy/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Review consent' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(journal.appendPrivate).not.toHaveBeenCalled();
+  });
+
+  it('offers no Save while the private journal is turning off', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    const { journal } = open('unlocked');
+    journal.turningOff.set(true);
+    await quickToReflect();
+    expect(screen.getByRole('link', { name: 'Open Privacy & data' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(journal.appendPrivate).not.toHaveBeenCalled();
+  });
+
+  it('offers no Save without an account', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    localMode.mode.set('local');
+    const { journal } = open('unlocked');
+    await quickToReflect();
+    expect(screen.getByText('Nothing from this moment was saved.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(journal.appendPrivate).not.toHaveBeenCalled();
+  });
+
+  it('makes no network call and writes no storage across a full run until Save', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    const idb = globalThis.indexedDB ? vi.spyOn(globalThis.indexedDB, 'open') : undefined;
+    const { journal } = open('unlocked');
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: "Name what's happening" }));
+    await heading("What's happening?");
+    await user.click(screen.getByRole('button', { name: 'Too much / overloaded' }));
+    await heading('How strong is it?');
+    await user.click(screen.getByRole('radio', { name: 'Strong' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    for (let step = 1; step <= 5; step++) {
+      await heading(new RegExp(`^Slow breathing, step ${step} of 5`));
+      await user.click(screen.getByRole('button', { name: step === 5 ? 'Finish' : 'Next' }));
+    }
+    await heading('How is it now?');
+    await user.click(screen.getByRole('button', { name: 'Skip' }));
+    await heading("That's it for now.");
+    await user.click(screen.getByRole('button', { name: 'Reflect on it' }));
+    await heading('Reflect, if you like');
+    await user.type(screen.getByRole('textbox', { name: /What set it off/ }), 'Unsent words');
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(journal.appendPrivate).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+    if (idb) expect(idb).not.toHaveBeenCalled();
+  }, 15_000);
 
   it('opens the crisis lines in place and keeps the flow where it was', async () => {
     open('off');

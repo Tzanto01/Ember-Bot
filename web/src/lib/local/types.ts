@@ -72,6 +72,8 @@ export interface LocalProfile {
   theme: ThemeId | null;
   /** Minutes after a local reminder for one more nudge; missing or 0 is off. */
   secondReminderMinutes?: SecondReminderMinutes;
+  /** Whether the app shows streaks; missing reads as true (profiles made before v1.16), new profiles write false. */
+  showStreaks?: boolean;
   /** ISO instant the local profile was made. */
   createdAt: string;
   /** ISO instant of the last successful backup export, or null. */

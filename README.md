@@ -17,7 +17,9 @@
 
 ## What is Ember?
 
-Ember is a habit tracker for people who find consistency hard, for example with ADHD, autism or executive dysfunction. Missing a day doesn't wipe out your progress, and Ember never scolds you for it.
+**A small campfire for big moments.**
+
+A calm companion for hard moments and gentle days. When a moment gets too big, tap **I need a moment**. On the other days, Ember is a habit tracker for people who find consistency hard. Missing a day doesn't wipe out your progress, and Ember never scolds you for it.
 
 Ember is a web app and an Android app. If you use Discord, you can add the Ember bot too. Use the same account everywhere and your habits and check-ins stay in sync, so a check-in on your phone shows up in the web app (and in Discord, if you use it).
 
@@ -57,7 +59,19 @@ You can also use the web app and the Android app without an account. Your data t
 
 ## What makes it gentle
 
-- 🔥 **Flexible streaks.** Pick how many unlogged days a week a streak can carry before it resets, from 0 to 3. Set it with `/habit grace` in Discord or in Settings on the web.
+Hard moments come first. Tap **I need a moment** on Today or on the sign-in page. Ember walks you through it in four steps:
+
+1. **Catch it.** A dim campfire screen and room to pause. Or go straight to a breathing practice.
+2. **Name it.** Pick what it feels like, such as too much or racing, and how strong it is. You can skip this.
+3. **Ride it out.** Follow a short practice one step at a time. You can skip any step, or skip to the end.
+4. **Reflect, if you want.** Write what set it off and what helped. Saving is optional.
+
+- 🕯️ **Works without an account.** The moment works offline and without an account. Your choices stay on your device. A reflection is saved only to your private, end-to-end encrypted journal, and only when that journal is turned on and unlocked.
+- 🆘 **Crisis lines.** Every step has an Urgent help button with crisis lines for your region. Ember isn't a crisis service, and it doesn't read what you write.
+
+And on the other days: gentle habits.
+
+- 🔥 **Optional streaks.** New accounts start with streaks off. Turn them on in Settings under Habits & days, with Show streaks. Existing accounts keep theirs on. With streaks on, pick how many unlogged days a week a streak can carry before it resets, from 0 to 3. Set it with `/habit grace` in Discord or in Settings on the web.
 - 🌙 **Low days.** Mark a day as a low day. It covers all your habits: the streak neither breaks nor grows, and the day counts as kept in the 7 and 30 day views.
 - ✏️ **Open days and backfill.** Today and yesterday stay open. Older days can be filled in later: the last 14 days in Discord, and back to the habit's start on the web.
 - 📅 **Flexible schedules.** Daily, a weekly target of 1 to 6 times, specific weekdays, or up to 10 times a day for daily and weekday habits.

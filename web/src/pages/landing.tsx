@@ -1,10 +1,13 @@
 import { BellRing, LockKeyhole, MessageCircle, Moon, NotebookPen, Palette, Smartphone } from 'lucide-react';
 import { Link } from 'react-router';
+import { TapLink } from '@/components/auth/busy-button';
 import { BetaBadge } from '@/components/beta-badge';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
+import { MomentDoor } from '@/components/moment/moment-door';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { pitch } from '@/content/pitch';
 
 const features = [
   {
@@ -19,8 +22,8 @@ const features = [
   },
   {
     icon: Moon,
-    title: 'Streaks that bend',
-    text: 'Daily, weekdays, a few times a week or several times a day. Call a hard day a low day and your streak stays safe.',
+    title: 'Habits that bend',
+    text: 'Daily, weekdays, a few times a week or several times a day. Call a hard day a low day. Streaks stay off unless you want them.',
   },
   {
     icon: LockKeyhole,
@@ -48,8 +51,8 @@ const extras = [
 ];
 
 /**
- * `/` for signed-out visitors on the web: what Ember is, a real Today screenshot (light or dark with the system),
- * the highlights, and the ways in.
+ * `/` for signed-out visitors on the web: the companion pitch with the moment door first, the ways in, a real Today
+ * screenshot (light or dark with the system), then the habits.
  */
 export default function LandingPage() {
   return (
@@ -70,15 +73,22 @@ export default function LandingPage() {
           <div className="flex flex-col gap-6 lg:col-span-7">
             <div className="flex flex-col gap-3">
               <h1 tabIndex={-1} className="text-[36px] focus:outline-none md:text-[48px]">
-                A calm place for your habits.
+                {pitch.hero}
               </h1>
               <p className="max-w-[36rem] text-[18px] text-muted-foreground">
-                Ember reminds you kindly, counts what you did, and never makes you feel bad about a
-                hard day. No streak is worth burning yourself out for.
+                {pitch.description} When it gets loud, Ember stays with you for a few steady minutes: name what's
+                happening, breathe, ride it out. No account needed, and nothing from a moment is kept unless you
+                choose to save it.
+              </p>
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <MomentDoor variant="hero" />
+              <p className="text-muted-foreground">
+                Need someone to talk to right now? <TapLink to="/help">Find a crisis line</TapLink>
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button asChild>
+              <Button asChild variant="secondary">
                 <Link to="/signup">Create account</Link>
               </Button>
               <Button asChild variant="secondary">
@@ -108,7 +118,7 @@ export default function LandingPage() {
         </section>
         <section aria-labelledby="landing-features" className="flex flex-col gap-6">
           <h2 id="landing-features" className="text-[24px] md:text-[28px]">
-            What Ember does
+            {pitch.habitsLine}
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {features.map(({ icon: Icon, title, text }) => (

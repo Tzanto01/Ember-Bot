@@ -25,9 +25,11 @@ export interface HabitRowProps {
   onUndoOne?: () => void;
   /** `h3` when the row sits under a routine heading. */
   headingLevel?: 'h2' | 'h3';
+  /** The account's `showStreaks`: false leaves the streak chip out. */
+  showStreaks: boolean;
 }
 
-function Progress({ habit, roll }: { habit: Habit; roll: boolean }) {
+function Progress({ habit, roll, showStreaks }: { habit: Habit; roll: boolean; showStreaks: boolean }) {
   const week = habit.stats.week;
   if (week) {
     return (
@@ -49,7 +51,7 @@ function Progress({ habit, roll }: { habit: Habit; roll: boolean }) {
       </span>
     );
   }
-  const streak = habit.stats.streak ?? 0;
+  const streak = showStreaks ? (habit.stats.streak ?? 0) : 0;
   if (streak === 0) return <span>{habitCadence(habit)}</span>;
   return (
     <Badge>
@@ -74,6 +76,7 @@ export function HabitRow({
   onRewardEnd,
   onUndoOne,
   headingLevel: Heading = 'h2',
+  showStreaks,
 }: HabitRowProps) {
   const state = habit.today.state;
   const paused = state === 'paused' || habit.pausedToday;
@@ -119,7 +122,7 @@ export function HabitRow({
         ) : (
           multi && count > 0 && <span className="font-medium text-foreground">{count} of {target} today</span>
         )}
-        <Progress habit={habit} roll={roll} />
+        <Progress habit={habit} roll={roll} showStreaks={showStreaks} />
       </>
     );
   }

@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, type LucideIcon, Lock, MessageSquare, Palette, ShieldCheck } from 'lucide-react';
+import { Bell, CalendarDays, LifeBuoy, type LucideIcon, Lock, MessageSquare, Palette, ShieldCheck } from 'lucide-react';
 
 /**
  * One entry of the Settings group list: its `/settings/<slug>` route, its name and the card ids it holds, in order.
@@ -33,7 +33,7 @@ export const settingsGroups: SettingsGroup[] = [
     slug: 'habits',
     name: 'Habits & days',
     icon: CalendarDays,
-    cards: ['routines', 'grace', 'timezone', 'moods'],
+    cards: ['routines', 'streaks', 'grace', 'timezone', 'moods'],
   },
   {
     slug: 'appearance',
@@ -49,6 +49,13 @@ export const settingsGroups: SettingsGroup[] = [
     icon: MessageSquare,
     cards: ['feedback'],
     summary: 'Tell us what would make Ember better',
+  },
+  {
+    slug: 'help',
+    name: 'Help right now',
+    icon: LifeBuoy,
+    cards: ['help'],
+    summary: 'Crisis lines, any time of day',
   },
 ];
 

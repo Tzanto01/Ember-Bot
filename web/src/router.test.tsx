@@ -67,8 +67,9 @@ describe('router guards', () => {
     (await mock.next('GET', '/api/me')).respond(401);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'A calm place for your habits.' }),
+      await screen.findByRole('heading', { level: 1, name: 'A small campfire for big moments.' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'I need a moment' })).toHaveAttribute('href', '/moment');
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signup');
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
     expect(screen.getByRole('link', { name: 'Try without an account' })).toHaveAttribute(

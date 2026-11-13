@@ -154,6 +154,7 @@ export class UpgradeService implements UpgradeApi {
           await this.api.updateMe({
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
+            showStreaks: profile.showStreaks ?? true,
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
           await save({ importSent: true, journalOmitted: omit });

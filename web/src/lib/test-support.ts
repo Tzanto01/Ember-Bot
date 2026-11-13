@@ -115,6 +115,7 @@ export const me: Me = {
   consent: { given: true, policyVersion: '1', currentPolicyVersion: '1' },
   dmReminders: { paused: false },
   journal: { encrypted: false, turningOff: false, plaintextLeft: 0, encryptedLeft: 0 },
+  showStreaks: true,
 };
 
 /** Synthetic habit, pending today (2026-11-01). */

@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.9.0-beta.7",
+    "date": "2026-11-20",
+    "notes": [
+      "Hard moment? Tap I need a moment on Today or on the sign-in page. Ember walks you through catching the moment, naming what it feels like and riding it out with a short practice. Reflecting afterwards is optional.",
+      "The moment works offline and without an account. Nothing from it is saved unless you choose to add a reflection to your private journal, and that needs the private journal turned on and unlocked.",
+      "Crisis help is one tap away. Every step has an Urgent help button, and the footer links to Help right now.",
+      "Streaks are optional now. New accounts start with them off. To turn them on, go to Settings, then Habits & days, and switch on Show streaks. Existing accounts keep their streaks on."
+    ]
+  },
+  {
     "version": "0.9.0-beta.6",
     "date": "2026-11-14",
     "notes": [
