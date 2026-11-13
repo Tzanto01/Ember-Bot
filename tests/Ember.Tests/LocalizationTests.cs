@@ -17,15 +17,18 @@ public class LocalizationTests
     public static TheoryData<string> ResourceFiles()
     {
         var data = new TheoryData<string>();
-        foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src"), "*.resx", SearchOption.AllDirectories)
-                     .Where(f => !f.EndsWith(".de.resx", StringComparison.Ordinal) && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-                     .Order())
-            data.Add(Path.GetRelativePath(RepoRoot(), file));
+        foreach (var file in BaseFiles()) data.Add(file);
         return data;
     }
 
+    private static IEnumerable<string> BaseFiles()
+        => Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src"), "*.resx", SearchOption.AllDirectories)
+            .Where(f => !f.EndsWith(".de.resx", StringComparison.Ordinal) && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .Order()
+            .Select(f => Path.GetRelativePath(RepoRoot(), f));
+
     [Fact]
-    public void EveryResourceFileIsFound() => ResourceFiles().Should().HaveCountGreaterThanOrEqualTo(4);
+    public void EveryResourceFileIsFound() => BaseFiles().Should().HaveCountGreaterThanOrEqualTo(4);
 
     [Theory]
     [MemberData(nameof(ResourceFiles))]
@@ -46,7 +49,7 @@ public class LocalizationTests
     [Fact]
     public void NoKeyIsInTwoResourceFiles()
     {
-        var owners = ResourceFiles().Select(row => (string)row[0])
+        var owners = BaseFiles()
             .SelectMany(file => Entries(Path.Combine(RepoRoot(), file)).Keys.Select(key => (key, file)));
         owners.GroupBy(o => o.key).Where(g => g.Count() > 1).Select(g => g.Key).Should().BeEmpty();
     }
