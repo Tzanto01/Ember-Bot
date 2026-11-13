@@ -27,6 +27,7 @@ internal static class DiscordEndpoints
     private const string LinkFlow = "link";
     private const string NativeFlow = "native";
     private const string ChallengeKey = "ember.challenge";
+    private const string LanguageKey = "ember.language";
 
     private const string LoginError = "/login?discord=error";
     private const string LinkError = "/settings?discord=error";
@@ -81,15 +82,15 @@ internal static class DiscordEndpoints
 
     public static RouteGroupBuilder MapDiscord(this RouteGroupBuilder auth)
     {
-        auth.MapGet("/discord/login", (string? returnUrl, string? client, string? challenge, SignInManager<User> signIn) =>
+        auth.MapGet("/discord/login", (string? returnUrl, string? client, string? challenge, string? language, SignInManager<User> signIn) =>
         {
             if (client != NativeFlow)
                 return Results.Challenge(
-                    Properties(signIn, LoginFlow, $"/api/auth/discord/login/complete?returnUrl={Uri.EscapeDataString(LocalOrToday(returnUrl))}"),
+                    Properties(signIn, LoginFlow, $"/api/auth/discord/login/complete?returnUrl={Uri.EscapeDataString(LocalOrToday(returnUrl))}", language: language),
                     [DiscordLogin.Provider]);
 
             if (!IsChallenge(challenge)) return Results.Redirect(NativeError);
-            var properties = Properties(signIn, NativeFlow, "/api/auth/discord/native/complete");
+            var properties = Properties(signIn, NativeFlow, "/api/auth/discord/native/complete", language: language);
             properties.Items[ChallengeKey] = challenge;
             return Results.Challenge(properties, [DiscordLogin.Provider]);
         });
@@ -103,7 +104,7 @@ internal static class DiscordEndpoints
                 || !info!.AuthenticationProperties!.Items.TryGetValue(ChallengeKey, out var challenge) || !IsChallenge(challenge))
                 return Results.Redirect(NativeError);
 
-            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
+            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, SignUpLanguage(info!, http));
             if (await users.FindByIdAsync(userId.ToString()) is null) return Results.Redirect(NativeError);
 
             var code = Base64Url(RandomNumberGenerator.GetBytes(32));
@@ -163,7 +164,7 @@ internal static class DiscordEndpoints
             await http.SignOutAsync(IdentityConstants.ExternalScheme);
             if (DiscordId(info, LoginFlow) is not { } discordId) return Results.Redirect(LoginError);
 
-            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
+            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, SignUpLanguage(info!, http));
             var user = await users.FindByIdAsync(userId.ToString());
             if (user is null) return Results.Redirect(LoginError);
 
@@ -389,12 +390,20 @@ internal static class DiscordEndpoints
         }
     }
 
-    private static AuthenticationProperties Properties(SignInManager<User> signIn, string flow, string redirectUrl, string? userId = null)
+    private static AuthenticationProperties Properties(SignInManager<User> signIn, string flow, string redirectUrl, string? userId = null,
+        string? language = null)
     {
         var properties = signIn.ConfigureExternalAuthenticationProperties(DiscordLogin.Provider, redirectUrl, userId);
         properties.Items[FlowKey] = flow;
+        if (language is not null && Languages.All.Contains(language)) properties.Items[LanguageKey] = language;
         return properties;
     }
+
+    /// <summary>The language for an account created by this sign-in: the one the sign-in started with, else the request's <c>Accept-Language</c>.</summary>
+    private static string SignUpLanguage(ExternalLoginInfo info, HttpContext http)
+        => info.AuthenticationProperties?.Items.TryGetValue(LanguageKey, out var language) == true && language is not null && Languages.All.Contains(language)
+            ? language
+            : Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage);
 
     private static ulong? DiscordId(ExternalLoginInfo? info, string flow)
         => info is not null

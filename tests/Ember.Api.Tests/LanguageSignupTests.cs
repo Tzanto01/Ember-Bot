@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Api.Tests;
 
-/// <summary>A new account's language comes from the sign-up request's <c>Accept-Language</c>, and its emails use it.</summary>
+/// <summary>A new account's language comes from the sign-up request's <c>language</c>, else its <c>Accept-Language</c>, and its emails use it.</summary>
 [Collection("Postgres")]
 public class LanguageSignupTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
@@ -41,6 +41,21 @@ public class LanguageSignupTests(PostgresFixture postgres) : ApiTestBase(postgre
             var (_, email) = await RegisterAsync(header);
             (await LanguageOf(email)).Should().Be(expected, $"Accept-Language: {header ?? "(none)"}");
         }
+    }
+
+    [DockerFact]
+    public async Task Email_sign_up_takes_a_valid_body_language_over_Accept_Language_and_falls_back_on_an_invalid_one()
+    {
+        foreach (var (language, header, expected) in new (object, string, string)[] { ("de", "en-US", "de"), ("en", "de-DE", "en"), ("fr", "de-DE", "de"), (42, "de", "de") })
+        {
+            var email = ApiHost.NewEmail();
+            await (await Client(header).Post("/api/auth/register", new { email, password = ApiClient.Passphrase, language })).Expect(HttpStatusCode.OK);
+            (await LanguageOf(email)).Should().Be(expected, $"language: {language}, Accept-Language: {header}");
+        }
+
+        var german = ApiHost.NewEmail();
+        await (await Client("en").Post("/api/auth/register", new { email = german, password = ApiClient.Passphrase, language = "de" })).Expect(HttpStatusCode.OK);
+        (await Host.Mail.WaitForAsync(german, 1)).Single().Subject.Should().Be("Bestätige deine E-Mail-Adresse für Ember");
     }
 
     [DockerFact]
@@ -104,6 +119,34 @@ public class LanguageSignupTests(PostgresFixture postgres) : ApiTestBase(postgre
         var english = ApiHost.NewDiscordId();
         await Host.DiscordAsync(Client(null), DiscordLoginUrl, english);
         (await DiscordLanguageOf(english)).Should().Be("en");
+    }
+
+    [DockerFact]
+    public async Task Discord_sign_in_with_a_language_creates_the_account_in_it_over_Accept_Language_and_a_later_sign_in_keeps_it()
+    {
+        var discordId = ApiHost.NewDiscordId();
+
+        (await Host.DiscordAsync(Client("en-US"), $"{DiscordLoginUrl}?language=de", discordId)).Should().Be("/today");
+        (await DiscordLanguageOf(discordId)).Should().Be("de");
+
+        await Host.DiscordAsync(Client("en-US"), $"{DiscordLoginUrl}?language=en", discordId);
+        (await DiscordLanguageOf(discordId)).Should().Be("de");
+
+        var invalid = ApiHost.NewDiscordId();
+        await Host.DiscordAsync(Client("de"), $"{DiscordLoginUrl}?language=fr", invalid);
+        (await DiscordLanguageOf(invalid)).Should().Be("de");
+    }
+
+    [DockerFact]
+    public async Task Native_Discord_sign_in_with_a_language_creates_the_account_in_it()
+    {
+        var discordId = ApiHost.NewDiscordId();
+        var challenge = WebEncoders.Base64UrlEncode(System.Security.Cryptography.SHA256.HashData("a-verifier-that-is-long-enough-for-pkce-43ch"u8));
+
+        var target = await Host.DiscordAsync(Client("en"), $"{DiscordLoginUrl}?client=native&challenge={challenge}&language=de", discordId);
+
+        target.Should().Contain("?code=");
+        (await DiscordLanguageOf(discordId)).Should().Be("de");
     }
 
     [DockerFact]
