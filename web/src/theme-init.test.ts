@@ -17,6 +17,7 @@ describe('/theme-init.js', () => {
     vi.unstubAllGlobals();
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-calm');
     document.documentElement.classList.remove('dark');
   });
 
@@ -36,6 +37,12 @@ describe('/theme-init.js', () => {
     expect(runThemeInit('tidepool', false).classList.contains('dark')).toBe(true);
     localStorage.setItem('ember.colorScheme', 'light');
     expect(runThemeInit('tidepool', true).classList.contains('dark')).toBe(false);
+  });
+
+  it('turns calm mode on only when this device remembers it', () => {
+    expect(runThemeInit('tidepool').dataset['calm']).toBeUndefined();
+    localStorage.setItem('ember.calm', '1');
+    expect(runThemeInit('tidepool').dataset['calm']).toBe('');
   });
 
   it('sets dark from the colour-scheme preference', () => {

@@ -2,7 +2,7 @@
 export function NotebookIllustration() {
   const cells = Array.from({ length: 21 }, (_, i) => ({ x: 26 + (i % 7) * 8, y: 34 + Math.floor(i / 7) * 8, i }));
   return (
-    <svg viewBox="0 0 112 96" aria-hidden="true" focusable="false" className="h-[96px] w-[112px]">
+    <svg viewBox="0 0 112 96" aria-hidden="true" focusable="false" data-calm-hide className="h-[96px] w-[112px]">
       <path d="M8 22 Q32 14 56 22 L56 82 Q32 74 8 82 Z" className="fill-[color-mix(in_oklch,var(--muted-foreground)_35%,transparent)]" />
       <path d="M104 22 Q80 14 56 22 L56 82 Q80 74 104 82 Z" className="fill-[color-mix(in_oklch,var(--muted-foreground)_35%,transparent)]" />
       <path d="M56 22 L56 82" className="stroke-muted-foreground" strokeWidth="1.5" />
@@ -33,7 +33,7 @@ export function NotebookIllustration() {
 /** The quiet desktop placeholder beside the calendar: a small calendar page. */
 export function CalendarIllustration() {
   return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false" className="size-[48px]">
+    <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false" data-calm-hide className="size-[48px]">
       <rect x="6" y="10" width="36" height="32" rx="6" className="fill-muted" />
       <rect x="6" y="10" width="36" height="9" rx="4" className="fill-muted-foreground" opacity="0.35" />
       <path d="M16 6 L16 14 M32 6 L32 14" className="stroke-muted-foreground" strokeWidth="3" strokeLinecap="round" />

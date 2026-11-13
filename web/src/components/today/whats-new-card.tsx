@@ -33,7 +33,7 @@ export function WhatsNewCard() {
   }
 
   return (
-    <Notice tone="info" heading={t('whatsNew.card.heading', { version: latest })}>
+    <Notice tone="info" heading={t('whatsNew.card.heading', { version: latest })} data-calm-hide>
       <div className="-my-1 flex flex-wrap items-center gap-x-4">
         <TapLink to="/whats-new">{t('whatsNew.card.link')}</TapLink>
         <Button type="button" variant="ghost" className="-ml-2 px-2" onClick={dismiss}>
