@@ -43,6 +43,14 @@ public class LocalizationTests
         }
     }
 
+    [Fact]
+    public void NoKeyIsInTwoResourceFiles()
+    {
+        var owners = ResourceFiles().Select(row => (string)row[0])
+            .SelectMany(file => Entries(Path.Combine(RepoRoot(), file)).Keys.Select(key => (key, file)));
+        owners.GroupBy(o => o.key).Where(g => g.Count() > 1).Select(g => g.Key).Should().BeEmpty();
+    }
+
     [Theory]
     [MemberData(nameof(ResourceFiles))]
     public void GermanKeepsTheTone(string file)
