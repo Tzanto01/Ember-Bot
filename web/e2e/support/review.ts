@@ -8,6 +8,8 @@ import type { Page } from '@playwright/test';
  * (or by their own SVG viewport) and truncated text. An inline link that wraps over several lines is measured per line
  * (its bounding box would cover the text next to it). Not reported as overlap: an absolutely positioned button that
  * sits on a picture it shares a parent with (the remove badge on a thumbnail), and a text field with an overlaid control.
+ * Not reported as sideways overflow: content inside a scroll container (it scrolls), and a box whose only overflow is
+ * a pseudo-element (no child box or line of text leaves it, e.g. the History day-run connector).
  *
  * By default a state is measured at 360 and 1280 px in light mode. `REVIEW_FULL=1` measures the whole matrix (eight
  * widths, light and dark, calm mode on and off, 200 percent root text at 360 and 1280, the other three themes at
@@ -378,6 +380,20 @@ function sidewaysMeasure(): string[] {
       spilling.every((child) => ['absolute', 'fixed'].includes(getComputedStyle(child).position))
     )
       continue;
+    let scroller = false;
+    for (let node = element.parentElement; node && !scroller; node = node.parentElement) {
+      const x = getComputedStyle(node).overflowX;
+      scroller = x === 'auto' || x === 'scroll';
+    }
+    if (scroller) continue;
+    if (spilling.length === 0) {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const textSpills = Array.from(range.getClientRects()).some(
+        (rect) => rect.width > 0 && (rect.right > box.right + 1 || rect.left < box.left - 1),
+      );
+      if (!textSpills) continue;
+    }
     const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
     found.push(
       `text-overflow: ${element.tagName.toLowerCase()}.${Array.from(element.classList).slice(0, 2).join('.')} (scrollWidth ${element.scrollWidth} > ${element.clientWidth}) "${text}"`,

@@ -33,7 +33,7 @@ test.describe('signed out with a German browser', () => {
 
     await click('Benennen, was gerade los ist');
     await expect(heading('Was ist gerade los?')).toBeVisible();
-    await click('Zu viel / überfordert');
+    await click('Zu viel, überfordert');
     await expect(heading('Wie stark ist es?')).toBeVisible();
     await page.getByRole('radio', { name: 'Stark', exact: true }).check();
     await click('Weiter');
@@ -43,8 +43,8 @@ test.describe('signed out with a German browser', () => {
     await click('Überspringen');
     await expect(heading('Das war’s fürs Erste.').or(heading("Das war's fürs Erste."))).toBeVisible();
 
-    await click('Verarbeiten');
-    await expect(heading('Verarbeiten, wenn du magst')).toBeVisible();
+    await click('Darüber nachdenken');
+    await expect(heading('Darüber nachdenken, wenn du magst')).toBeVisible();
     await expect(page.getByText('Nichts aus diesem Moment wurde gespeichert.')).toBeVisible();
     await click('Dringende Hilfe');
     await expect(lines).toBeVisible();
