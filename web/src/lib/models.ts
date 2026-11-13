@@ -1,6 +1,7 @@
 /** Typed shapes of the Ember API contract v1 (`docs/contracts/api-v1.md`). Dates are `yyyy-MM-dd`, times `HH:mm`. */
 
 import type { ThemeId } from './theme';
+import type { Language } from './i18n';
 
 /** A local calendar day, `yyyy-MM-dd`. */
 export type LocalDateString = string;
@@ -40,6 +41,8 @@ export interface Me {
   journal: { encrypted: boolean; turningOff: boolean; plaintextLeft: number; encryptedLeft: number };
   /** v1.16: whether the app shows streaks; false for accounts created from v1.16 on. */
   showStreaks: boolean;
+  /** v1.17: the account's language; missing from servers before v1.17. */
+  language?: Language;
 }
 
 /** `PATCH /api/me` body. */
@@ -51,6 +54,8 @@ export interface MePatch {
   secondReminderMinutes?: SecondReminderMinutes;
   /** v1.16. */
   showStreaks?: boolean;
+  /** v1.17. */
+  language?: Language;
 }
 
 /** The `secondReminderMinutes` choices; 0 is off. */

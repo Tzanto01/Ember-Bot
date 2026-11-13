@@ -8,6 +8,7 @@ import { earliestStart, exportDocument } from './backend';
 import type { LocalMode } from './mode';
 import type { LocalStore } from './store';
 import type { LocalData, LocalMood, LocalNote, UpgradeApi, UpgradeProgress, UpgradeResult, UpgradeSummary } from './types';
+import { currentLanguage } from '../i18n';
 
 const conflictCopy = 'This account already has habits, so nothing was moved. Your device data is still here.';
 
@@ -155,6 +156,7 @@ export class UpgradeService implements UpgradeApi {
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
             showStreaks: profile.showStreaks ?? true,
+            language: currentLanguage(),
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
           await save({ importSent: true, journalOmitted: omit });

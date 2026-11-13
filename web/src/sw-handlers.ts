@@ -3,8 +3,27 @@ import { safeReturnUrl } from './lib/return-url';
 /** Title shown when a push payload is missing or malformed: a push must always show a notification. */
 export const fallbackTitle = 'Ember';
 
+/**
+ * The texts the worker writes itself, per language; the page keeps its language in the `ember-language` cache
+ * (`lib/startup.ts`). The worker can't load the app's locale files.
+ */
+export const workerCopy = {
+  en: { nudge: 'A gentle nudge from Ember', logged: 'Logged. Nice work. ✅' },
+  de: { nudge: 'Ein sanfter Stupser von Ember', logged: 'Eingetragen. Schön gemacht. ✅' },
+} as const;
+
 /** The body of the notification shown after "Done" logged the check-in; names no habit. */
-export const loggedBody = 'Logged. Nice work. ✅';
+export const loggedBody = workerCopy.en.logged;
+
+/** The worker's texts in the language the page last stored, English when none is stored or the cache fails. */
+export async function workerTexts(): Promise<(typeof workerCopy)['en' | 'de']> {
+  try {
+    const stored = await (await caches.match('/language', { cacheName: 'ember-language' }))?.text();
+    return stored === 'de' ? workerCopy.de : workerCopy.en;
+  } catch {
+    return workerCopy.en;
+  }
+}
 
 /** A notification button; the DOM typings no longer declare `NotificationOptions.actions`. */
 interface Action {
@@ -38,7 +57,7 @@ export async function handlePush(
   }
   const clearTag = typeof payload?.clear === 'object' ? payload.clear?.tag : undefined;
   if (typeof clearTag === 'string' && clearTag) {
-    await registration.showNotification(fallbackTitle, { tag: clearTag, body: loggedBody, silent: true });
+    await registration.showNotification(fallbackTitle, { tag: clearTag, body: (await workerTexts()).logged, silent: true });
     for (const shown of await registration.getNotifications({ tag: clearTag })) shown.close();
     return;
   }
@@ -47,7 +66,7 @@ export async function handlePush(
   const body = notification?.body;
   const tag = notification?.tag;
   const options: NotificationOptions = {
-    body: typeof body === 'string' && body ? body : 'A gentle nudge from Ember',
+    body: typeof body === 'string' && body ? body : (await workerTexts()).nudge,
   };
   if (notification?.data !== undefined) options.data = notification.data;
   const actions = Array.isArray(notification?.actions)
@@ -121,7 +140,7 @@ export async function handleDoneAction(
       credentials: 'omit',
     }).catch(() => null);
     if (response?.ok) {
-      await registration.showNotification(fallbackTitle, { body: loggedBody });
+      await registration.showNotification(fallbackTitle, { body: (await workerTexts()).logged });
       return;
     }
   }

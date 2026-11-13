@@ -1,4 +1,5 @@
 import { type PluginListenerHandle, registerPlugin } from '@capacitor/core';
+import type { Language } from '../i18n';
 import type { Habit, LocalDateString } from '../models';
 import { scheduledOn } from './reminder-plan';
 
@@ -35,6 +36,8 @@ export interface EmberWidgetPlugin {
   addListener(event: 'openMoment', listener: () => void): Promise<PluginListenerHandle>;
   /** Returns and clears the pending launch action (cold start from a moment door); missing on older native builds. */
   takeLaunchAction?(): Promise<{ action: 'moment' | null }>;
+  /** Tells the native side the app's language (i18n-v1); missing on older native builds. */
+  setLanguage?(options: { language: Language }): Promise<void>;
 }
 
 /** Rows the widget shows before "+N more". */

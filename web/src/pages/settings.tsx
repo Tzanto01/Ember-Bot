@@ -20,6 +20,7 @@ import { CrisisLines } from '@/components/moment/crisis-lines';
 import { DeleteDeviceData, DeviceDataSettings } from '@/components/local/device-data-settings';
 import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
+import { LanguagePicker } from '@/components/settings/language-picker';
 import { FeedbackForm } from '@/components/settings/feedback-form';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
@@ -50,6 +51,7 @@ import { loadPage } from '@/lib/navigation';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, deviceSync, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
+import { applyLanguage, currentLanguage, type Language, rememberDeviceLanguage, t } from '@/lib/i18n';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
@@ -343,6 +345,18 @@ export default function SettingsPage() {
     void patch('appearance', { theme }).then((error) => {
       if (!error) rememberAccountTheme(theme);
       else if (!error.handled) show('appearance', { tone: 'info', text: themeNotSavedText });
+    });
+  }
+
+  function saveLanguage(language: Language): void {
+    const before = currentLanguage();
+    rememberDeviceLanguage(language);
+    applyLanguage(language);
+    void patch('appearance', { language }).then((error) => {
+      if (!error) return;
+      rememberDeviceLanguage(before);
+      applyLanguage(before);
+      if (!error.handled) show('appearance', { tone: 'info', text: t('language.notSaved') });
     });
   }
 
@@ -817,6 +831,7 @@ export default function SettingsPage() {
                 <p id="appearance-hint">
                   {local ? 'Choose how Ember looks.' : 'Choose how Ember looks. Your theme follows you to your other devices.'}
                 </p>
+                <LanguagePicker local={local} onChoose={saveLanguage} />
                 <ColorSchemePicker />
                 <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
                 {outcome('appearance')}

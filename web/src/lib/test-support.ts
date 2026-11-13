@@ -116,6 +116,7 @@ export const me: Me = {
   dmReminders: { paused: false },
   journal: { encrypted: false, turningOff: false, plaintextLeft: 0, encryptedLeft: 0 },
   showStreaks: true,
+  language: 'en',
 };
 
 /** Synthetic habit, pending today (2026-11-01). */

@@ -5,6 +5,8 @@ import { deviceToday, forgetUnreachable, rememberMe } from './guards';
 import type { OfflineCache } from './http';
 import type { Habit, Me } from './models';
 import { listenForMoment, takeMomentLaunch } from './native/moment-launch';
+import { capacitorWidget } from './native/widget';
+import { applyLanguage, currentLanguage, deviceLanguage, isLanguage, type Language, onLanguageChange } from './i18n';
 import { navigate } from './navigation';
 import { auth, deviceStore, deviceSync, http, localMode, push } from './services';
 import { Store } from './store';
@@ -80,6 +82,42 @@ function registerServiceWorker(): void {
   });
 }
 
+/** The cache the service worker reads the app's language from (`sw-handlers.ts`). */
+export const languageCache = 'ember-language';
+
+/** Tells the Android plugin (missing on older native builds) and the service worker which language the app shows. */
+function shareLanguage(language: Language): void {
+  if (env.native) {
+    void capacitorWidget()
+      .then(({ EmberWidget }) => EmberWidget.setLanguage?.({ language }))
+      .catch(() => undefined);
+    return;
+  }
+  if (typeof caches === 'undefined') return;
+  void caches
+    .open(languageCache)
+    .then((cache) => cache.put('/language', new Response(language)))
+    .catch(() => undefined);
+}
+
+/**
+ * Shows the account's language when signed in (`Me.language`), else the device's, and follows every change of `me`.
+ * A change rebuilds the phone's reminders so their texts follow.
+ */
+function followLanguage(): void {
+  const show = () => {
+    const account = auth.me.get()?.language;
+    applyLanguage(isLanguage(account) ? account : deviceLanguage());
+  };
+  auth.me.subscribe(show);
+  show();
+  shareLanguage(currentLanguage());
+  onLanguageChange((language) => {
+    shareLanguage(language);
+    if (env.native) deviceSync.rebuildReminders();
+  });
+}
+
 /**
  * App start, called once by `main.tsx` before the first render: restores no-account mode, asks for the antiforgery
  * token without waiting for it (web, not in no-account mode; `Http` refreshes and retries on a 403 `antiforgery`),
@@ -92,6 +130,7 @@ function registerServiceWorker(): void {
  */
 export async function startApp(): Promise<void> {
   await localMode.init();
+  followLanguage();
   if (localMode.mode.get() !== 'local') void auth.refreshAntiforgery();
   deviceSync.start();
   await takeMomentLaunch(env.native);

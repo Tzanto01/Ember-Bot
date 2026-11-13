@@ -13,28 +13,31 @@ import { AppShell } from '@/components/app-shell';
 import { CenteredShell } from '@/components/centered-shell';
 import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
-import { pitch } from '@/content/pitch';
 import { env } from '@/lib/env';
 import { guest, signedIn } from '@/lib/guards';
+import type { en } from '@/lib/i18n';
 import { setNavigator } from '@/lib/navigation';
+import { useTranslation } from 'react-i18next';
+
+type TitleKey = Extract<keyof typeof en, `title.${string}`> | 'pitch.title';
 
 interface RouteHandle {
-  title?: string;
+  title?: TitleKey;
 }
 
 type LegalDoc = 'privacy' | 'terms' | 'imprint';
 
-function page(title: string, load: () => Promise<{ default: ComponentType }>) {
+function page(title: TitleKey, load: () => Promise<{ default: ComponentType }>) {
   return {
-    handle: { title: `${title} · Ember` } satisfies RouteHandle,
+    handle: { title } satisfies RouteHandle,
     lazy: { Component: async () => (await load()).default },
   };
 }
 
-function legal(doc: LegalDoc, title: string): RouteObject {
+function legal(doc: LegalDoc, title: TitleKey): RouteObject {
   return {
     path: `legal/${doc}`,
-    handle: { title: `${title} · Ember` } satisfies RouteHandle,
+    handle: { title } satisfies RouteHandle,
     lazy: {
       element: async () => {
         const { default: LegalPage } = await import('./pages/legal');
@@ -74,6 +77,7 @@ function skipToMain(event: MouseEvent<HTMLAnchorElement>): void {
 
 /** Root: skip link, scroll restoration, the page title, and focus on the page `h1` after each route change. */
 function Root() {
+  const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const title = useMatches()
     .map((match) => (match.handle as RouteHandle | undefined)?.title)
@@ -82,8 +86,8 @@ function Root() {
   const previousPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (title) document.title = title;
-  }, [title]);
+    if (title) document.title = t('app.titleSuffix', { title: t(title) });
+  }, [title, t, i18n.language]);
 
   useEffect(() => {
     if (previousPath.current !== null && previousPath.current !== pathname) focusPageHeading();
@@ -97,7 +101,7 @@ function Root() {
         onClick={skipToMain}
         className="sr-only z-50 rounded-md bg-background px-4 py-3 font-medium text-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
-        Skip to content
+        {t('app.skipToContent')}
       </a>
       <ScrollRestoration />
       <Outlet />
@@ -106,22 +110,24 @@ function Root() {
 }
 
 function StartingUp() {
+  const { t } = useTranslation();
   return (
     <div role="status" className="grid min-h-dvh place-items-center text-muted-foreground">
       <Spinner className="size-[28px]" />
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{t('app.loading')}</span>
     </div>
   );
 }
 
 function RouteError() {
+  const { t } = useTranslation();
   return (
     <main id="main" className="grid min-h-dvh place-items-center p-6 text-center">
       <div className="flex max-w-[28rem] flex-col items-center gap-4">
-        <h1 className="text-[28px]">Something went wrong</h1>
-        <p className="text-muted-foreground">Ember hit a snag on this page. Nothing you saved is lost.</p>
+        <h1 className="text-[28px]">{t('app.error.title')}</h1>
+        <p className="text-muted-foreground">{t('app.error.body')}</p>
         <Button asChild>
-          <a href="/today">Go to Today</a>
+          <a href="/today">{t('app.error.today')}</a>
         </Button>
       </div>
     </main>
@@ -139,63 +145,63 @@ export const routes: RouteObject[] = [
       {
         index: true,
         loader: landingOrToday,
-        ...page(pitch.title, () => import('./pages/landing')),
+        ...page('pitch.title', () => import('./pages/landing')),
       },
       {
         element: <CenteredShell variant="auth" />,
         children: [
-          { path: 'signup', loader: requireGuest, ...page('Create your account', () => import('./pages/signup')) },
-          { path: 'login', loader: requireGuest, ...page('Sign in', () => import('./pages/login')) },
+          { path: 'signup', loader: requireGuest, ...page('title.signup', () => import('./pages/signup')) },
+          { path: 'login', loader: requireGuest, ...page('title.login', () => import('./pages/login')) },
           {
             path: 'forgot-password',
             loader: requireGuest,
-            ...page('Reset your password', () => import('./pages/forgot-password')),
+            ...page('title.forgotPassword', () => import('./pages/forgot-password')),
           },
-          { path: 'confirm-email', ...page('Confirm your email', () => import('./pages/confirm-email')) },
-          { path: 'reset-password', ...page('Choose a new password', () => import('./pages/reset-password')) },
-          { path: 'consent', loader: requireSignedIn, ...page('One quick question', () => import('./pages/consent')) },
+          { path: 'confirm-email', ...page('title.confirmEmail', () => import('./pages/confirm-email')) },
+          { path: 'reset-password', ...page('title.resetPassword', () => import('./pages/reset-password')) },
+          { path: 'consent', loader: requireSignedIn, ...page('title.consent', () => import('./pages/consent')) },
           {
             path: 'local',
             loader: requireGuest,
-            ...page('Use Ember without an account', () => import('./pages/local-start')),
+            ...page('title.local', () => import('./pages/local-start')),
           },
-          { path: 'keep-data', loader: requireSignedIn, ...page('Keep your data', () => import('./pages/keep-data')) },
+          { path: 'keep-data', loader: requireSignedIn, ...page('title.keepData', () => import('./pages/keep-data')) },
         ],
       },
       {
         element: <CenteredShell />,
         children: [
-          legal('privacy', 'Privacy'),
-          legal('terms', 'Terms'),
-          legal('imprint', 'Imprint'),
-          { path: 'download', ...page('Get Ember', () => import('./pages/download')) },
-          { path: 'feedback', ...page('Send feedback', () => import('./pages/feedback')) },
-          { path: 'moment', ...page('A moment', () => import('./pages/moment')) },
-          { path: 'help', ...page('Help right now', () => import('./pages/help')) },
+          legal('privacy', 'title.privacy'),
+          legal('terms', 'title.terms'),
+          legal('imprint', 'title.imprint'),
+          { path: 'download', ...page('title.download', () => import('./pages/download')) },
+          { path: 'feedback', ...page('title.feedback', () => import('./pages/feedback')) },
+          { path: 'moment', ...page('title.moment', () => import('./pages/moment')) },
+          { path: 'help', ...page('title.help', () => import('./pages/help')) },
         ],
       },
       {
         Component: AppShell,
         loader: requireSignedIn,
         children: [
-          { path: 'today', ...page('Today', () => import('./pages/today')) },
-          { path: 'history', ...page('History', () => import('./pages/history')) },
-          { path: 'history/:habitId', ...page('History', () => import('./pages/history')) },
-          { path: 'habits/new', ...page('New habit', () => import('./pages/habit-new')) },
-          { path: 'habits/:id/edit', ...page('Edit habit', () => import('./pages/habit-edit')) },
-          { path: 'history/year', ...page('Your year', () => import('./pages/year')) },
+          { path: 'today', ...page('title.today', () => import('./pages/today')) },
+          { path: 'history', ...page('title.history', () => import('./pages/history')) },
+          { path: 'history/:habitId', ...page('title.history', () => import('./pages/history')) },
+          { path: 'habits/new', ...page('title.habitNew', () => import('./pages/habit-new')) },
+          { path: 'habits/:id/edit', ...page('title.habitEdit', () => import('./pages/habit-edit')) },
+          { path: 'history/year', ...page('title.year', () => import('./pages/year')) },
           { path: 'year', loader: () => redirect('/history/year') },
-          { path: 'routines', ...page('Routines', () => import('./pages/routines')) },
-          { path: 'routines/new', ...page('New routine', () => import('./pages/routine-edit')) },
-          { path: 'routines/:id/edit', ...page('Edit routine', () => import('./pages/routine-edit')) },
-          { path: 'settings/:group?', ...page('Settings', () => import('./pages/settings')) },
-          { path: 'whats-new', ...page("What's new", () => import('./pages/whats-new')) },
-          { path: 'link/merge', ...page('Bring your Discord habits over', () => import('./pages/link-merge')) },
+          { path: 'routines', ...page('title.routines', () => import('./pages/routines')) },
+          { path: 'routines/new', ...page('title.routineNew', () => import('./pages/routine-edit')) },
+          { path: 'routines/:id/edit', ...page('title.routineEdit', () => import('./pages/routine-edit')) },
+          { path: 'settings/:group?', ...page('title.settings', () => import('./pages/settings')) },
+          { path: 'whats-new', ...page('title.whatsNew', () => import('./pages/whats-new')) },
+          { path: 'link/merge', ...page('title.linkMerge', () => import('./pages/link-merge')) },
         ],
       },
       {
         element: <CenteredShell />,
-        children: [{ path: '*', ...page('Page not found', () => import('./pages/not-found')) }],
+        children: [{ path: '*', ...page('title.notFound', () => import('./pages/not-found')) }],
       },
     ],
   },

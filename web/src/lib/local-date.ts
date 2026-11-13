@@ -1,4 +1,5 @@
 import type { LocalDateString } from './models';
+import { currentLanguage } from './i18n';
 
 /*
  * Calendar maths on `yyyy-MM-dd` strings. Everything runs in UTC on purpose, so the browser's
@@ -107,13 +108,13 @@ export function monthWeeks(date: LocalDateString): LocalDateString[][] {
 export function formatDate(
   date: LocalDateString,
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' },
-  locale?: string,
+  locale: string = currentLanguage(),
 ): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(toUtc(date));
 }
 
 /** Formats an `HH:MM` wall-clock time for display in the user's locale, for example "1:00 PM" or "13:00". */
-export function formatTime(time: string, locale?: string): string {
+export function formatTime(time: string, locale: string = currentLanguage()): string {
   const [hours, minutes] = time.split(':').map(Number);
   return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(
     Date.UTC(2026, 0, 1, hours, minutes),
