@@ -136,7 +136,7 @@ test('the moment flow works offline, signed out, without any API call or stored 
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByText('Breathe in, 4').first()).toBeVisible();
   await page.getByRole('button', { name: 'Pause' }).click();
-  await expect(page.getByText('Paused')).toBeVisible();
+  await expect(page.getByText('Paused').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Next' }).click();
