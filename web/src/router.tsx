@@ -178,6 +178,7 @@ export const routes: RouteObject[] = [
           { path: 'feedback', ...page('title.feedback', () => import('./pages/feedback')) },
           { path: 'moment', ...page('title.moment', () => import('./pages/moment')) },
           { path: 'help', ...page('title.help', () => import('./pages/help')) },
+          { path: 'about', ...page('title.about', () => import('./pages/about')) },
         ],
       },
       {
@@ -196,6 +197,7 @@ export const routes: RouteObject[] = [
           { path: 'routines/:id/edit', ...page('title.routineEdit', () => import('./pages/routine-edit')) },
           { path: 'settings/:group?', ...page('title.settings', () => import('./pages/settings')) },
           { path: 'whats-new', ...page('title.whatsNew', () => import('./pages/whats-new')) },
+          { path: 'moments', ...page('title.moments', () => import('./pages/moments')) },
           { path: 'link/merge', ...page('title.linkMerge', () => import('./pages/link-merge')) },
         ],
       },

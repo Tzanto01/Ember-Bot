@@ -12,7 +12,7 @@ import {
 import { flushSync } from 'react-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { BusyButton } from '@/components/auth/busy-button';
+import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { DestinationName, reminderDestinationsKey } from '@/components/habits/device-reminders';
@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
 import { LanguagePicker } from '@/components/settings/language-picker';
 import { FeedbackForm } from '@/components/settings/feedback-form';
+import { HelpsSettings } from '@/components/settings/helps-settings';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
 import { settingsGroupOf, settingsGroups } from '@/components/settings/settings-groups';
@@ -53,13 +54,14 @@ import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, deviceSync, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { applyLanguage, currentLanguage, heldLanguage, holdLanguage, type Language, rememberDeviceLanguage, storedLanguage, t } from '@/lib/i18n';
-import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
+import { applyCalm, calmMode, rememberAccountTheme, type ThemeId } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 type Section =
   | 'timezone'
   | 'grace'
   | 'streaks'
+  | 'calm'
   | 'second'
   | 'discord'
   | 'dm'
@@ -195,6 +197,7 @@ export default function SettingsPage() {
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
   const streaksRef = useRef<boolean | null>(null);
+  const calmRef = useRef<boolean | null>(null);
   const secondRef = useRef<SecondReminderMinutes | null>(null);
   const scrolled = useRef<string | null>(null);
   const tzForm = useRef<HTMLFormElement>(null);
@@ -210,6 +213,7 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
   const [streaks, setStreaks] = useState<boolean | null>(null);
+  const [calm, setCalm] = useState<boolean | null>(null);
   const [second, setSecond] = useState<SecondReminderMinutes | null>(null);
   const [zone, setZone] = useState<string | null>(null);
   const [zoneTouched, setZoneTouched] = useState(false);
@@ -323,6 +327,21 @@ export default function SettingsPage() {
       streaksRef.current = null;
       setStreaks(null);
       if (error) fail('streaks', error);
+    });
+  }
+
+  function changeCalm(value: boolean): void {
+    const before = calmMode.get();
+    calmRef.current = value;
+    setCalm(value);
+    applyCalm(value);
+    void patch('calm', { calmMode: value }).then((error) => {
+      if (calmRef.current !== value) return;
+      calmRef.current = null;
+      setCalm(null);
+      if (!error) return;
+      applyCalm(before);
+      fail('calm', error);
     });
   }
 
@@ -578,8 +597,10 @@ export default function SettingsPage() {
           { id: 'two-factor', title: t('settings.card.twoFactor') },
           { id: 'discord', title: 'Discord' },
           { id: 'journal', title: t('settings.card.journal') },
-          { id: 'export', title: t('settings.card.export') },
+          { id: 'moments', title: t('settings.card.moments') },
         ]),
+    { id: 'helps', title: t('settings.card.helps') },
+    ...(local ? [] : [{ id: 'export', title: t('settings.card.export') }]),
     { id: 'delete', title: local ? t('settings.card.deleteDevice') : t('settings.card.deleteAccount') },
     { id: 'feedback', title: t('settings.card.feedback') },
     { id: 'help', title: t('settings.card.help') },
@@ -845,6 +866,22 @@ export default function SettingsPage() {
                 <ColorSchemePicker />
                 <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
                 {outcome('appearance')}
+                <div className="flex min-h-[44px] items-center justify-between gap-4">
+                  <Label htmlFor="calm-mode" className="min-w-0 font-normal">
+                    {t('settings.calm.label')}
+                  </Label>
+                  <Switch
+                    id="calm-mode"
+                    aria-describedby="calm-mode-hint"
+                    checked={calm ?? me?.calmMode === true}
+                    onCheckedChange={changeCalm}
+                  />
+                </div>
+                <p id="calm-mode-hint" className="text-[14px] text-muted-foreground">
+                  {t('settings.calm.hint')}
+                </p>
+                {savedStatus('calm')}
+                {outcome('calm')}
               </SettingsCard>
             )}
 
@@ -1255,6 +1292,21 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
+            {shown('moments') && (
+              <SettingsCard id="moments" title={title('moments')}>
+                <p>{t('settings.moments.intro')}</p>
+                <div>
+                  <TapLink to="/moments">{t('settings.moments.open')}</TapLink>
+                </div>
+              </SettingsCard>
+            )}
+
+            {shown('helps') && (
+              <SettingsCard id="helps" title={title('helps')}>
+                <HelpsSettings />
+              </SettingsCard>
+            )}
+
             {shown('export') && (
               <SettingsCard id="export" title={title('export')}>
                 <p>{t('export.intro')}</p>
@@ -1355,6 +1407,9 @@ export default function SettingsPage() {
             {shown('help') && (
               <SettingsCard id="help" title={title('help')}>
                 <CrisisLines />
+                <p>
+                  <TapLink to="/about">{t('about.link')}</TapLink>
+                </p>
               </SettingsCard>
             )}
           </>

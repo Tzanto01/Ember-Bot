@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyLanguage, deviceLanguage } from '@/lib/i18n';
-import { renderPage } from '@/test-utils';
+import { inGerman, renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { ApiError } from '@/lib/problem';
 import { api, auth, localMode } from '@/lib/services';
@@ -116,6 +116,19 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
     localStorage.clear();
+  });
+
+  it('introduces Ember and links to About Ember, in German too', async () => {
+    const router = renderPage('/login', LoginPage, '/login');
+    expect(screen.getByText(/Ember is a calm companion/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('link', { name: 'About Ember' }));
+    expect(router.state.location.pathname).toBe('/about');
+    cleanup();
+
+    await inGerman();
+    renderPage('/login', LoginPage, '/login');
+    expect(screen.getByText(/Ember ist ein ruhiger Begleiter/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Über Ember' })).toBeInTheDocument();
   });
 
   it('puts email sign-in first and Discord after it as the secondary option', () => {
@@ -233,7 +246,7 @@ describe('LoginPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continue with Discord' }));
     await waitFor(() => expect(native.opened).toHaveLength(1));
-    expect(native.opened[0]).toMatch(/^\/api\/auth\/discord\/login\?client=native&challenge=[A-Za-z0-9_-]{43}$/);
+    expect(native.opened[0]).toMatch(/^\/api\/auth\/discord\/login\?client=native&challenge=[A-Za-z0-9_-]{43}&language=en$/);
     await waitFor(() => expect(native.appUrlOpen).not.toBeNull());
     const code = 'C'.repeat(43);
     native.appUrlOpen!({ url: `app.ember.habits://auth/discord?code=${code}` });

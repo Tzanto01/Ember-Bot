@@ -74,6 +74,8 @@ export interface LocalProfile {
   secondReminderMinutes?: SecondReminderMinutes;
   /** Whether the app shows streaks; missing reads as true (profiles made before v1.16), new profiles write false. */
   showStreaks?: boolean;
+  /** Calm mode; missing reads as false. */
+  calmMode?: boolean;
   /** ISO instant the local profile was made. */
   createdAt: string;
   /** ISO instant of the last successful backup export, or null. */

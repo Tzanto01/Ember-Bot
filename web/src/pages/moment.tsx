@@ -12,9 +12,13 @@ import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
 import { breathingPractice, practices, practicesFor } from '@/lib/moment/practices';
 import type { Intensity, MomentState, Practice } from '@/lib/moment/types';
+import type { HelpItem } from '@/lib/helps/types';
+import { helps } from '@/lib/services';
+import { useStore } from '@/lib/store';
 
 type Step =
   | { kind: 'catch' }
+  | { kind: 'reminder'; text: string }
   | { kind: 'name' }
   | { kind: 'intensity' }
   | { kind: 'practice'; index: number }
@@ -41,7 +45,7 @@ function Heading({
         <span className="font-sans text-base font-normal text-muted-foreground">{eyebrow}</span>
       )}
       <span
-        className={large ? 'text-[26px] leading-snug md:text-[32px]' : 'text-[28px] md:text-[36px]'}
+        className={large ? 'text-[26px] leading-snug [overflow-wrap:anywhere] md:text-[32px]' : 'text-[28px] md:text-[36px]'}
       >
         {children}
       </span>
@@ -63,6 +67,7 @@ export default function MomentPage() {
   const [tried, setTried] = useState<Practice[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState(false);
+  const helped = useStore(helps.items)?.slice(0, 3) ?? [];
 
   useFocusHeadingOnChange(
     step.kind === 'practice' ? `practice:${practice.id}:${step.index}` : step.kind,
@@ -99,6 +104,12 @@ export default function MomentPage() {
     setStep({ kind: 'intensity' });
   }
 
+  function remind(item: HelpItem): void {
+    const known = item.practiceId && practices().find((p) => p.id === item.practiceId);
+    if (known) begin(known);
+    else setStep({ kind: 'reminder', text: item.text });
+  }
+
   function rideItOut(): void {
     begin(named ? practicesFor(named)[0]! : breathingPractice());
   }
@@ -108,7 +119,7 @@ export default function MomentPage() {
     case 'catch':
       body = (
         <div className="flex flex-col items-center gap-8 text-center">
-          <div className="opacity-80">
+          <div className="opacity-80" data-calm-hide>
             <HearthIllustration />
           </div>
           <Heading>{momentCopy.catchHeading}</Heading>
@@ -129,6 +140,49 @@ export default function MomentPage() {
               onClick={() => begin(breathingPractice())}
             >
               {momentCopy.catchBreathe}
+            </Button>
+          </div>
+          {helped.length > 0 && (
+            <section aria-labelledby="moment-helped" className="flex w-full flex-col items-center gap-3">
+              <h2 id="moment-helped" className="font-sans text-base font-normal text-muted-foreground">
+                {momentCopy.helpedBefore}
+              </h2>
+              <ul className="flex flex-wrap justify-center gap-2">
+                {helped.map((item) => (
+                  <li key={item.id}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-auto min-h-[44px] rounded-full px-4 py-2 [overflow-wrap:anywhere]"
+                      onClick={() => remind(item)}
+                    >
+                      {item.text}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      );
+      break;
+    case 'reminder':
+      body = (
+        <div className="flex flex-col gap-8">
+          <Heading eyebrow={momentCopy.reminderEyebrow} large>
+            {step.text}
+          </Heading>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setStep({ kind: 'catch' })}
+            >
+              {momentCopy.back}
+            </Button>
+            <Button type="button" className="flex-1" onClick={() => setStep({ kind: 'name' })}>
+              {momentCopy.continue}
             </Button>
           </div>
         </div>

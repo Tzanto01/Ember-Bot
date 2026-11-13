@@ -29,7 +29,7 @@ export default function NotFoundPage() {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-6 text-center">
-      <div aria-hidden="true">
+      <div aria-hidden="true" data-calm-hide>
         <StraySpark />
       </div>
       <PageHeader

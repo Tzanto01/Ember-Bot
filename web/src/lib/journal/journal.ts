@@ -17,9 +17,12 @@ import type {
 import type { DroppedNote, ResealResult } from '../offline-queue';
 import { ApiError, asApiError } from '../problem';
 import { Store } from '../store';
+import type { HelpsList } from '../helps/types';
 import {
+  decryptHelps,
   decryptMood,
   decryptNote,
+  encryptHelps,
   encryptMood,
   encryptNote,
   importJournalKey,
@@ -56,6 +59,7 @@ export type JournalSource = Pick<
   | 'deleteJournalKey'
   | 'turnOffJournal'
   | 'listHabits'
+  | 'getHelps'
 >;
 
 /** The signed-in user, as `AuthService` provides it. */
@@ -233,6 +237,20 @@ export class JournalService implements JournalApi {
     return this.readMood(stored, key);
   }
 
+  /**
+   * The "What helps me" list sealed as the API's `encrypted` string (the day-note envelope as JSON text). Throws
+   * `JournalLockedError` unless the private journal is on, not turning off, and unlocked.
+   */
+  async sealHelps(list: HelpsList): Promise<string> {
+    return JSON.stringify(await encryptHelps(this.helpsKey(), list));
+  }
+
+  /** The "What helps me" list from the API's `encrypted` string. Same conditions as {@link sealHelps}. */
+  openHelps(encrypted: string): Promise<HelpsList> {
+    const key = this.helpsKey();
+    return decryptHelps(key, JSON.parse(encrypted) as EncryptedBlob);
+  }
+
   restore(): Promise<void> {
     this.restoring ??= this.runRestore().finally(() => (this.restoring = null));
     return this.restoring;
@@ -406,7 +424,9 @@ export class JournalService implements JournalApi {
       );
       return false;
     });
-    const file = { exportedAt: new Date().toISOString(), entries, moods };
+    const sealedHelps = me.journal.encrypted && !me.journal.turningOff ? await this.api.getHelps() : null;
+    const helps = sealedHelps ? await this.openHelps(sealedHelps.encrypted).then((list) => list.items, () => []) : [];
+    const file = { exportedAt: new Date().toISOString(), entries, moods, helps };
     return {
       blob: new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),
       fileName: `ember-journal-${me.localToday}.json`,
@@ -651,6 +671,12 @@ export class JournalService implements JournalApi {
     const me = this.session.me.get();
     if (!me) throw new Error('Not signed in.');
     return me;
+  }
+
+  private helpsKey(): CryptoKey {
+    const me = this.session.me.get();
+    if (!me?.journal.encrypted || me.journal.turningOff) throw new JournalLockedError();
+    return this.requireKey();
   }
 
   private requireKey(): CryptoKey {

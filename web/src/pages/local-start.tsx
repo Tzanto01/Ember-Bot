@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
+import { AboutIntro } from '@/components/about-intro';
 import { BusyButton } from '@/components/auth/busy-button';
 import { DeviceWarning } from '@/components/local/device-warning';
 import { MomentDoor } from '@/components/moment/moment-door';
@@ -48,6 +49,7 @@ export default function LocalStartPage() {
           <Link to="/login">{t('local.start.back')}</Link>
         </Button>
       </div>
+      <AboutIntro />
       <p className="text-center">
         <MomentDoor variant="quiet" />
       </p>

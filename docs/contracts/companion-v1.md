@@ -84,6 +84,7 @@ type PracticeStep =
 - An end-to-end encrypted list (plaintext `{ "v": 1, "items": [{ "id", "text", "practiceId"?, "addedAt" }] }`, at most 20 items, text at most 80 characters) stored through `/api/me/helps`. Items come from "Add to What helps me" (from a reflection: the practice, or the user's own "what helped" words) or are added by hand in Settings → "What helps me" (add, edit, remove, reorder).
 - In the moment flow, Catch shows up to 3 items as quiet chips under the two buttons ("What helped before"); one with a `practiceId` opens that practice, one without shows its text as a gentle reminder step. **Loading rule:** the list is loaded and decrypted only when the app starts signed in with the journal unlocked (with the rest of the account data), kept in memory, never written to device storage in plaintext. The moment flow only reads memory and makes no request for it; after a cold start into `/moment` it simply shows no chips.
 - No account or no private journal: Settings explains that the list needs the private journal.
+- Envelope: the API's `encrypted` string is the day-note envelope `{ "v": 1, "iv", "ct" }` as JSON text, AES-GCM with the journal key and its own AAD `ember:helps:v1`, so a helps blob can't pass for a day note or a mood. Web: `encryptHelps`/`decryptHelps` in `web/src/lib/journal/crypto.ts`, `HelpsService` in `web/src/lib/helps/helps.ts` (memory only).
 
 ### Calm mode
 

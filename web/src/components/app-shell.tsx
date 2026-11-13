@@ -1,5 +1,5 @@
 import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
@@ -10,7 +10,7 @@ import { NativeConfirmation } from '@/components/native-confirmation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { formatDate } from '@/lib/local-date';
-import { auth, deviceSync, localMode, offlineQueue } from '@/lib/services';
+import { auth, deviceSync, helps, journal, localMode, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px
 /**
  * Signed-in shell: sticky header with the brand, the main nav (top pills from `md`, a fixed bottom tab bar below)
  * and "Sign out" from `md` (Settings has it on phones); the offline-queue and dropped-edit notices above the page; legal footer.
+ * Loads "What helps me" into memory once the account's private journal is unlocked.
  */
 export function AppShell() {
   const { t } = useTranslation();
@@ -32,9 +33,17 @@ export function AppShell() {
   const dropped = useStore(deviceSync.dropped);
   const droppedNotes = useStore(offlineQueue.droppedNotes);
   const local = useStore(localMode.mode) === 'local';
+  const userId = useStore(auth.me)?.id;
+  const journalState = useStore(journal.state);
+  const turningOff = useStore(journal.turningOff);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
   const busy = useRef(false);
+
+  useEffect(() => {
+    if (local || !userId || journalState !== 'unlocked' || turningOff) return;
+    void helps.ensureLoaded().catch(() => undefined);
+  }, [local, userId, journalState, turningOff]);
 
   async function signOut() {
     if (busy.current) return;

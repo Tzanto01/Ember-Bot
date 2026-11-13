@@ -447,9 +447,11 @@ export default function TodayPage() {
           </div>
         </div>
         <div className="flex flex-col gap-6">
-          <Card className="hidden lg:flex">{ember('')}</Card>
+          <Card data-calm-hide className="hidden lg:flex">
+            {ember('')}
+          </Card>
           {showWeekly && data.weekly && (
-            <section aria-labelledby="weekly-heading" className={cardVariants()}>
+            <section aria-labelledby="weekly-heading" data-calm-hide className={cardVariants()}>
               <h2 id="weekly-heading" className="text-[22px]">
                 {t('weekly.heading')}
               </h2>

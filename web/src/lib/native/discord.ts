@@ -1,3 +1,4 @@
+import { currentLanguage } from '../i18n';
 import { openOnWeb } from './browser';
 
 /** A finished browser step of the native Discord sign-in: the one-time code and the PKCE verifier it needs. */
@@ -28,7 +29,7 @@ export async function startDiscordSignIn(): Promise<void> {
     new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))),
   );
   pendingVerifier = verifier;
-  await openOnWeb(`/api/auth/discord/login?client=native&challenge=${challenge}`);
+  await openOnWeb(`/api/auth/discord/login?client=native&challenge=${challenge}&language=${currentLanguage()}`);
 }
 
 /**

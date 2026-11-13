@@ -10,6 +10,10 @@ test.describe('signed out with a German browser', () => {
     await expect(
       page.getByRole('heading', { name: 'Ein kleines Lagerfeuer für große Momente.' }),
     ).toBeVisible();
+    const shot = page.getByRole('img', { name: /Heute-Bildschirm|Today screen/ });
+    await shot.scrollIntoViewIfNeeded();
+    await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toContain('today-light.de.webp');
+    await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(780);
 
     await page.goto('/login');
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
@@ -39,8 +43,8 @@ test.describe('signed out with a German browser', () => {
     await click('Überspringen');
     await expect(heading('Das war’s fürs Erste.').or(heading("Das war's fürs Erste."))).toBeVisible();
 
-    await click('Zurückschauen');
-    await expect(heading('Zurückschauen, wenn du magst')).toBeVisible();
+    await click('Verarbeiten');
+    await expect(heading('Verarbeiten, wenn du magst')).toBeVisible();
     await expect(page.getByText('Nichts aus diesem Moment wurde gespeichert.')).toBeVisible();
     await click('Dringende Hilfe');
     await expect(lines).toBeVisible();

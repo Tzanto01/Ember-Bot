@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createHabit, createWebUser, localToday, setAccountLanguage } from './support/accounts';
+import { enableRememberedJournal, reflectionTrigger, saveMomentReflection, signUpAndConfirmLocalized } from './support/extras';
 import { languages, translator } from './support/locales';
 
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
@@ -59,8 +60,12 @@ for (const { code, locale, strings } of languages) {
           const found: string[] = [];
           await visitPage(page, '/', /./, found);
           await visitPage(page, '/login', tr('login.title'), found);
+          await expect(page.getByText(tr('about.intro'))).toBeVisible();
           await visitPage(page, '/signup', tr('signup.title'), found);
           await visitPage(page, '/forgot-password', /./, found);
+          await visitPage(page, '/local', tr('local.start.title'), found);
+          await expect(page.getByText(tr('about.intro'))).toBeVisible();
+          await visitPage(page, '/about', tr('title.about'), found);
           await visitPage(page, '/feedback', tr('title.feedback'), found);
           await visitPage(page, '/download', /./, found);
           await visitPage(page, '/legal/privacy', /./, found);
@@ -128,6 +133,33 @@ for (const { code, locale, strings } of languages) {
           expect(found).toEqual([]);
         });
 
+
+        if (code === 'de') {
+          test('the consent page has no WCAG A/AA violations for a German account before consent', async ({ page }) => {
+            const found: string[] = [];
+            await signUpAndConfirmLocalized(page, tr);
+            await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+            await scan(page, '/consent (German, before consent)', found);
+            expect(found).toEqual([]);
+          });
+        }
+
+        test('calm mode has no WCAG A/AA violations in no-account mode', async ({ page }) => {
+          const found: string[] = [];
+          await page.goto('/local');
+          await page.getByRole('button', { name: tr('local.start.button') }).click();
+          await expect(page.getByRole('heading', { name: tr('today.title'), exact: true })).toBeVisible();
+          await page.goto('/settings/appearance');
+          await page.getByRole('switch', { name: tr('settings.calm.label') }).click();
+          await expect(page.locator('html')).toHaveAttribute('data-calm', '');
+          await scan(page, '/settings/appearance (no account, calm on)', found);
+          await visitPage(page, '/today', tr('today.title'), found);
+          await page.getByRole('link', { name: tr('moment.door.label') }).click();
+          await expect(page.getByRole('heading', { name: tr('moment.catch.heading') })).toBeVisible();
+          await scan(page, '/moment catch (no account, calm on)', found);
+          expect(found).toEqual([]);
+        });
+
         test.describe('signed in', () => {
           test.use({ locale: 'en-US' });
 
@@ -180,6 +212,60 @@ for (const { code, locale, strings } of languages) {
             await visitPage(page, '/feedback', tr('title.feedback'), found);
             for (const group of settingsGroups) await visitPage(page, `/settings/${group}`, /./, found);
             await visitPage(page, '/whats-new', /./, found);
+            expect(found).toEqual([]);
+          });
+
+          test('Your moments, What helps me and calm mode have no WCAG A/AA violations', async ({ page }) => {
+            test.setTimeout(240_000);
+            const found: string[] = [];
+            await createWebUser(page);
+            await setAccountLanguage(page, code);
+            await visitPage(page, '/moments', tr('title.moments'), found);
+            await expect(page.getByText(tr('moments.needsPrivate'))).toBeVisible();
+            await scan(page, '/moments (no private journal)', found);
+            await visitPage(page, '/settings/privacy', /./, found);
+            await expect(page.getByText(tr('helps.needsPrivate'))).toBeVisible();
+            await scan(page, '/settings/privacy (What helps me needs the journal)', found);
+
+            await setAccountLanguage(page, 'en');
+            await enableRememberedJournal(page);
+            await saveMomentReflection(page);
+            await page.getByRole('link', { name: 'See your moments' }).click();
+            await page.getByRole('button', { name: 'Add to What helps me: “Slow breathing”' }).click();
+            await expect(page.getByText('In What helps me')).toBeVisible();
+            await setAccountLanguage(page, code);
+
+            await visitPage(page, '/moments', tr('title.moments'), found);
+            await expect(page.getByText(reflectionTrigger)).toBeVisible();
+            await scan(page, '/moments (one moment)', found);
+            await visitPage(page, '/settings/privacy', /./, found);
+            const card = page.getByRole('region', { name: tr('settings.card.helps') });
+            await card.getByRole('button', { name: tr('helps.editLabel', { text: 'Slow breathing' }) }).click();
+            await scan(page, '/settings/privacy (What helps me editing)', found);
+
+            await visitPage(page, '/today', tr('today.title'), found);
+            await page.getByRole('link', { name: tr('moment.door.label') }).click();
+            await expect(page.getByRole('heading', { name: tr('moment.catch.heading') })).toBeVisible();
+            await expect(page.getByRole('button', { name: 'Slow breathing' })).toBeVisible();
+            await scan(page, '/moment catch (with What helped before chips)', found);
+
+            await visitPage(page, '/settings/appearance', /./, found);
+            await page.getByRole('switch', { name: tr('settings.calm.label') }).click();
+            await expect(page.locator('html')).toHaveAttribute('data-calm', '');
+            await scan(page, '/settings/appearance (calm on)', found);
+            await visitPage(page, '/today', tr('today.title'), found);
+            await scan(page, '/today (calm on)', found);
+            await page.getByRole('link', { name: tr('moment.door.label') }).click();
+            await expect(page.getByRole('heading', { name: tr('moment.catch.heading') })).toBeVisible();
+            await scan(page, '/moment catch (calm on, chips)', found);
+            await page.getByRole('button', { name: tr('moment.catch.breathe') }).click();
+            await scan(page, '/moment practice (calm on)', found);
+
+            await visitPage(page, '/settings/privacy', /./, found);
+            await page.getByRole('button', { name: tr('journalSettings.lock') }).click();
+            await visitPage(page, '/moments', tr('title.moments'), found);
+            await expect(page.getByText(tr('moments.locked'))).toBeVisible();
+            await scan(page, '/moments (locked, calm on)', found);
             expect(found).toEqual([]);
           });
         });

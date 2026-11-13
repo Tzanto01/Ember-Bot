@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Ember.Api.Email;
 using Ember.Core.Data;
@@ -8,6 +9,7 @@ using Ember.Core.Models;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.WebUtilities;
@@ -18,6 +20,9 @@ namespace Ember.Api;
 /// <summary>Identity's API endpoints with Ember's deviations, plus antiforgery and logout.</summary>
 internal static class AuthEndpoints
 {
+    /// <summary>The <see cref="HttpContext.Items"/> key of a registration's valid body <c>language</c>, set by <see cref="CaptureSignUpLanguage"/>.</summary>
+    public const string SignUpLanguageKey = "ember.signup-language";
+
     public const string XsrfCookieName = "XSRF-TOKEN";
 
     private static readonly PathString Register = "/api/auth/register";
@@ -143,6 +148,34 @@ internal static class AuthEndpoints
             : next(http);
 
     /// <summary>
+    /// Middleware: on Identity's register endpoint, reads the optional JSON body field <c>language</c> (which Identity's
+    /// <see cref="RegisterRequest"/> drops) and, when it is <c>en</c> or <c>de</c>, stores it under <see cref="SignUpLanguageKey"/>.
+    /// The body is rewound for Identity; a missing, invalid or unreadable value changes nothing.
+    /// </summary>
+    public static async Task CaptureSignUpLanguage(HttpContext http, RequestDelegate next)
+    {
+        if (HttpMethods.IsPost(http.Request.Method) && http.Request.HasJsonContentType()
+            && http.GetEndpoint()?.Metadata.GetMetadata<IAcceptsMetadata>()?.RequestType == typeof(RegisterRequest))
+        {
+            http.Request.EnableBuffering();
+            try
+            {
+                using var body = await JsonDocument.ParseAsync(http.Request.Body, cancellationToken: http.RequestAborted);
+                if (body.RootElement.ValueKind == JsonValueKind.Object
+                    && body.RootElement.TryGetProperty("language", out var language) && language.ValueKind == JsonValueKind.String
+                    && language.GetString() is { } value && Languages.All.Contains(value))
+                    http.Items[SignUpLanguageKey] = value;
+            }
+            catch (Exception e) when (e is JsonException or BadHttpRequestException)
+            {
+            }
+            http.Request.Body.Position = 0;
+        }
+
+        await next(http);
+    }
+
+    /// <summary>
     /// Middleware: every POST, PUT, PATCH and DELETE authenticated by the Identity cookie needs a valid <c>X-XSRF-TOKEN</c>,
     /// except the anonymous JSON auth endpoints. Bearer-authenticated and anonymous requests are exempt.
     /// </summary>
@@ -220,7 +253,7 @@ internal static class AuthEndpoints
             }
 
             await http.RequestServices.GetRequiredService<EmberEmailSender>().SendAlreadyRegisteredAsync(existing?.Email ?? email,
-                existing?.Language ?? Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
+                existing?.Language ?? http.Items[SignUpLanguageKey] as string ?? Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
             return TypedResults.Ok();
         }
 

@@ -164,6 +164,7 @@ public static class ApiApp
         app.UseAuthentication();
         app.Use(AuthSessions.RejectEndedBearer);
         app.Use(AuthEndpoints.EnforceAntiforgery);
+        app.Use(AuthEndpoints.CaptureSignUpLanguage);
         app.Use(FeedbackEndpoints.RaiseBodyLimit);
         app.UseAuthorization();
 

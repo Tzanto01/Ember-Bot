@@ -718,7 +718,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
 /** The not-found illustration: one spark drifting off a dotted path (token colours only). */
 export function DriftingSpark() {
   return (
-    <svg viewBox="0 0 96 64" focusable="false" className="h-[64px] w-[96px]">
+    <svg viewBox="0 0 96 64" focusable="false" data-calm-hide className="h-[64px] w-[96px]">
       <path
         d="M6 56C28 56 40 34 62 28"
         fill="none"

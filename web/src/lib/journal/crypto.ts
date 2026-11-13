@@ -1,4 +1,5 @@
 import type { EncryptedBlob, JournalKey, LocalDateString, MoodKey } from '../models';
+import { type HelpItem, type HelpsList, maxHelps, maxHelpText } from '../helps/types';
 import { WrongSecretError } from './types';
 import { t } from '../i18n';
 
@@ -9,6 +10,7 @@ export const maxCiphertextLength = 16 * 1024;
 
 const recoveryInfo = 'ember-journal-recovery-v1';
 const moodAad = 'ember-mood:v1';
+const helpsAad = 'ember:helps:v1';
 const crockford = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const maxIterations = 10_000_000;
 
@@ -274,4 +276,33 @@ export async function decryptMood(
   const { label, emoji } = await open(key, blob, utf8(moodAad));
   if (typeof label !== 'string' || !stringOrNull(emoji)) throw new Error('Unexpected payload.');
   return { label, emoji };
+}
+
+/** Encrypts the "What helps me" list. Throws `RangeError` when `ct` would exceed 16 KiB. */
+export function encryptHelps(key: CryptoKey, list: HelpsList): Promise<EncryptedBlob> {
+  return seal(key, { v: 1, items: list.items }, utf8(helpsAad));
+}
+
+function helpItem(value: unknown): HelpItem | null {
+  if (!value || typeof value !== 'object') return null;
+  const { id, text, practiceId, addedAt } = value as Record<string, unknown>;
+  if (typeof id !== 'string' || !id || typeof text !== 'string' || typeof addedAt !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > maxHelpText) return null;
+  if (practiceId !== undefined && typeof practiceId !== 'string') return null;
+  return { id, text: trimmed, ...(practiceId ? { practiceId } : {}), addedAt };
+}
+
+/**
+ * Decrypts the "What helps me" list. Rejects for another key or kind, or an unknown `v`; drops malformed items and
+ * repeated ids, and keeps at most 20.
+ */
+export async function decryptHelps(key: CryptoKey, blob: EncryptedBlob): Promise<HelpsList> {
+  const { v, items } = await open(key, blob, utf8(helpsAad));
+  if (v !== 1 || !Array.isArray(items)) throw new Error('Unexpected payload.');
+  const kept: HelpItem[] = [];
+  for (const item of items.map(helpItem)) {
+    if (item && !kept.some((other) => other.id === item.id)) kept.push(item);
+  }
+  return { v: 1, items: kept.slice(0, maxHelps) };
 }

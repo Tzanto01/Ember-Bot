@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { AboutIntro } from '@/components/about-intro';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { MomentDoor } from '@/components/moment/moment-door';
 import { DiscordButton } from '@/components/auth/discord-button';
@@ -363,6 +364,7 @@ export default function LoginPage() {
       <p className="text-center">
         <TapLink to="/feedback">{t('login.feedback')}</TapLink>
       </p>
+      <AboutIntro />
       <p className="flex flex-wrap justify-center gap-x-6 text-center">
         <MomentDoor variant="quiet" />
         <TapLink to="/help">{t('legalLinks.help')}</TapLink>

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { inGerman } from '@/test-utils';
 import { listenForDiscord, startDiscordSignIn, takeDiscordRedirect } from './discord';
 
 const native = vi.hoisted(() => ({
@@ -48,11 +49,19 @@ describe('native Discord sign-in', () => {
     const opened = new URL(native.opened[0], 'https://origin.test');
     expect(opened.pathname).toBe('/api/auth/discord/login');
     expect(opened.searchParams.get('client')).toBe('native');
+    expect(opened.searchParams.get('language')).toBe('en');
     const result = takeDiscordRedirect(`app.ember.habits://auth/discord?code=${code}`);
     if (!result || result === 'error') throw new Error('expected a code');
     expect(result.code).toBe(code);
     expect(result.verifier).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(opened.searchParams.get('challenge')).toBe(await sha256Url(result.verifier));
+  });
+
+  it('carries the German app language to the sign-in URL', async () => {
+    await inGerman();
+    await startDiscordSignIn();
+
+    expect(new URL(native.opened[0], 'https://origin.test').searchParams.get('language')).toBe('de');
   });
 
   it('passes on the app URL with the code once, closes the browser and ignores foreign URLs', async () => {

@@ -1,11 +1,12 @@
-import { act, screen } from '@testing-library/react';
+import { act, cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { fakeJournal } from '@/components/journal/fake-journal';
 import { JournalContext } from '@/components/journal/journal-context';
 import type { JournalState } from '@/lib/journal/types';
 import { deviceToday } from '@/lib/guards';
-import { auth, deviceSync, localMode, offlineQueue } from '@/lib/services';
+import type { HelpItem } from '@/lib/helps/types';
+import { api, auth, deviceSync, helps, localMode, offlineQueue } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { renderPage } from '@/test-utils';
 import MomentPage from './moment';
@@ -60,6 +61,7 @@ async function quickToReflect() {
 describe('MomentPage', () => {
   afterEach(() => {
     auth.me.set(null);
+    helps.items.set(null);
     localMode.mode.set('account');
     offlineQueue.pending.set(0);
     vi.useRealTimers();
@@ -349,5 +351,71 @@ describe('MomentPage', () => {
     ).toBeInTheDocument();
     expect(announced()).toContain('Round 1 of 6. Breathe in, 4');
     expect(announced()).not.toContain('Paused');
+  });
+
+  describe('what helped before', () => {
+    const help = (id: string, text: string, practiceId?: string): HelpItem => ({
+      id,
+      text,
+      ...(practiceId ? { practiceId } : {}),
+      addedAt: '2026-11-01T10:00:00.000Z',
+    });
+
+    it('offers at most three chips from the list in memory, and reads nothing from the server', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const getHelps = vi.spyOn(api, 'getHelps');
+      helps.items.set([help('1', 'Cold water'), help('2', 'Call Sam'), help('3', 'Stretch'), help('4', 'Fourth one')]);
+      open('off');
+
+      const section = screen.getByRole('region', { name: 'What helped before' });
+      expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual([
+        'Cold water',
+        'Call Sam',
+        'Stretch',
+      ]);
+      expect(getHelps).not.toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('shows no chips and no heading while the list is not in memory or is empty', () => {
+      open('off');
+      expect(screen.queryByText('What has helped before')).toBeNull();
+      cleanup();
+
+      helps.items.set([]);
+      open('off');
+      expect(screen.queryByText('What has helped before')).toBeNull();
+    });
+
+    it('opens the practice for a chip that has one', async () => {
+      helps.items.set([help('1', 'My breathing', 'paced-breathing')]);
+      open('off');
+
+      await userEvent.setup().click(screen.getByRole('button', { name: 'My breathing' }));
+
+      await heading(/Slow breathing, step 1 of 5/);
+    });
+
+    it('shows the reminder text for a chip without a practice, and goes on to naming or back', async () => {
+      helps.items.set([help('1', 'Cold water on my wrists')]);
+      open('off');
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'Cold water on my wrists' }));
+      await heading(/Something that helped before.*Cold water on my wrists/);
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+      await heading(/./);
+      expect(screen.getByRole('button', { name: 'Cold water on my wrists' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Cold water on my wrists' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await heading("What's happening?");
+    });
+  });
+
+  it('marks the campfire on the first step to be hidden in calm mode', () => {
+    open('off');
+    const hidden = document.querySelector('[data-calm-hide]');
+    expect(hidden?.matches('svg') || hidden?.querySelector('svg')).toBeTruthy();
   });
 });

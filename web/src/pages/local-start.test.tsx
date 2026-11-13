@@ -11,6 +11,15 @@ vi.mock('@/lib/services', async () => {
 });
 
 describe('LocalStartPage', () => {
+  it('introduces Ember and links to About Ember', async () => {
+    const router = renderPage('/local', LocalStartPage, '/local');
+    expect(screen.getByText(/Ember is a calm companion/)).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('link', { name: 'About Ember' }));
+
+    expect(router.state.location.pathname).toBe('/about');
+  });
+
   it('warns that the data stays on this device, then starts no-account mode before going to Today', async () => {
     let finish = () => {};
     vi.mocked(localMode.start).mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));

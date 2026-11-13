@@ -16,7 +16,11 @@ export interface EmptyStateProps {
 export function EmptyState({ illustration, title, children, action, className }: EmptyStateProps) {
   return (
     <div className={cn('flex flex-col items-center gap-3 px-4 py-8 text-center', className)}>
-      {illustration && <div aria-hidden="true">{illustration}</div>}
+      {illustration && (
+        <div aria-hidden="true" data-calm-hide>
+          {illustration}
+        </div>
+      )}
       <h2 className="text-[22px] text-foreground">{title}</h2>
       {children && <div className="max-w-[38rem] text-muted-foreground">{children}</div>}
       {action && <div className="mt-2 flex w-full flex-col items-center gap-3">{action}</div>}

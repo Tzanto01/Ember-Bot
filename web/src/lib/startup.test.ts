@@ -106,6 +106,20 @@ describe('startApp on the web', () => {
     expect(JSON.parse(localStorage.getItem('ember.offlineMe') ?? 'null')).toEqual(me);
   });
 
+  it("follows the account's calm mode, remembers it for the next start and turns it off when the session ends", () => {
+    auth.setMe({ ...me, calmMode: true });
+    expect(document.documentElement.dataset['calm']).toBe('');
+    expect(localStorage.getItem('ember.calm')).toBe('1');
+
+    auth.setMe({ ...me, calmMode: false });
+    expect(document.documentElement.dataset['calm']).toBeUndefined();
+
+    auth.setMe({ ...me, calmMode: true });
+    auth.clearSession();
+    expect(document.documentElement.dataset['calm']).toBeUndefined();
+    expect(localStorage.getItem('ember.calm')).toBeNull();
+  });
+
   it("deletes the user's kept habit list and me when the session ends", async () => {
     auth.staySignedIn.set(me.id);
     auth.setMe(me);

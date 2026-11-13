@@ -156,11 +156,12 @@ export class UpgradeService implements UpgradeApi {
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
             showStreaks: profile.showStreaks ?? true,
+            calmMode: profile.calmMode ?? false,
             language: deviceLanguage(),
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
           const current = this.auth.me.get();
-          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language });
+          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language, calmMode: updated.calmMode });
           await save({ importSent: true, journalOmitted: omit });
           try {
             await this.api.importData(importDocument(data, !omit));

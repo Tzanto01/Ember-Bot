@@ -230,6 +230,16 @@ describe('LocalBackend through ApiClient', () => {
     expect(error.problem?.errors).toEqual({ showStreaks: ['Must be true or false.'] });
   });
 
+  it('reads a missing calm mode as off and saves the switch on the device', async () => {
+    await store.replace(seed());
+    expect((await api.getMe()).calmMode).toBe(false);
+
+    expect((await api.updateMe({ calmMode: true })).calmMode).toBe(true);
+    expect((await store.load())?.profile.calmMode).toBe(true);
+    const error = await rejection(api.updateMe({ calmMode: 'yes' as unknown as boolean }));
+    expect(error.problem?.errors).toEqual({ calmMode: ['Must be true or false.'] });
+  });
+
   it('caps active moods at 20 with conflict', async () => {
     await store.replace(seed());
     for (let i = 0; i < 20; i++) await api.createMood({ label: `Mood ${i}` });

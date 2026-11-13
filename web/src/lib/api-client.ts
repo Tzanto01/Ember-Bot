@@ -1,5 +1,6 @@
 import { type DayEdit, type NoteEdit, withDayEdit } from './device-store';
 import { type Http, longRequestTimeoutMs } from './http';
+import { currentLanguage } from './i18n';
 import type {
   Credentials,
   DayEntry,
@@ -148,9 +149,12 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/logout-everywhere');
   }
 
-  /** URL for a full-page navigation to Discord sign-in. `returnUrl` must already be a safe local path. */
+  /**
+   * URL for a full-page navigation to Discord sign-in, with the shown language for a new account. `returnUrl` must already
+   * be a safe local path.
+   */
   discordLoginUrl(returnUrl: string): string {
-    return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}`;
+    return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}&language=${currentLanguage()}`;
   }
 
   /** `POST /api/auth/discord/2fa`: finishes a Discord sign-in that ended on `/login?step=2fa`. */
@@ -406,6 +410,21 @@ export class ApiClient {
   /** `DELETE /api/me/journal-key`: 409 `conflict` while encrypted data remains, unless `discardEncrypted`. */
   deleteJournalKey(body: { password?: string; discardEncrypted: boolean }): Promise<void> {
     return this.http.request('DELETE', '/api/me/journal-key', { body });
+  }
+
+  /** `GET /api/me/helps` (v1.17): the encrypted "What helps me" list, or null when there is none (404). */
+  async getHelps(): Promise<{ encrypted: string; version: number } | null> {
+    try {
+      return await this.http.request<{ encrypted: string; version: number }>('GET', '/api/me/helps');
+    } catch (error) {
+      if (asApiError(error).status === 404) return null;
+      throw error;
+    }
+  }
+
+  /** `PUT /api/me/helps` (v1.17): `version` as last read (0 for none); 409 `conflict` on a mismatch or with the private journal off. */
+  putHelps(body: { encrypted: string; version: number }): Promise<{ version: number }> {
+    return this.http.request('PUT', '/api/me/helps', { body });
   }
 
   /** `GET /api/me/2fa`. */

@@ -3,6 +3,7 @@ import { AuthService } from './auth';
 import { DeviceStore } from './device-store';
 import { DeviceSync } from './device-sync';
 import { env } from './env';
+import { HelpsService } from './helps/helps';
 import { Http } from './http';
 import { JournalService } from './journal/journal';
 import { Keyring } from './journal/keyring';
@@ -43,6 +44,8 @@ export const journal = new JournalService(
 auth.journal = journal;
 offlineQueue.resealNote = (edit) => journal.resealNote(edit);
 journal.onDroppedNote = (note) => offlineQueue.droppedNotes.update((notes) => [...notes, note]);
+/** "What helps me", end-to-end encrypted, in memory only; the signed-in shell loads it. */
+export const helps = new HelpsService(api, journal, auth);
 export const deviceSync = new DeviceSync(auth, api, offlineQueue, reminders);
 
 http.session = auth;

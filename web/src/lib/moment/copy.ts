@@ -52,6 +52,12 @@ export const momentCopy = {
   get catchBreathe() {
     return t('moment.catch.breathe');
   },
+  get helpedBefore() {
+    return t('moment.catch.helpedBefore');
+  },
+  get reminderEyebrow() {
+    return t('moment.reminder.eyebrow');
+  },
   get nameHeading() {
     return t('moment.name.heading');
   },
@@ -221,6 +227,9 @@ export const momentCopy = {
   },
   get full() {
     return t('moment.reflect.full');
+  },
+  get yourMoments() {
+    return t('moment.reflect.yourMoments');
   },
   get saveFailed() {
     return t('moment.reflect.saveFailed');
