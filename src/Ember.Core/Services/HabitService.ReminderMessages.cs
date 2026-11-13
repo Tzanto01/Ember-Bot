@@ -84,4 +84,22 @@ public partial class HabitService
 
     public async Task SetSecondReminderMinutesAsync(ulong discordUserId, int minutes)
         => await SetSecondReminderMinutesAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), minutes);
+
+    /// <summary>The account's <see cref="User.ShowStreaks"/>; false when there is no account.</summary>
+    public async Task<bool> GetShowStreaksAsync(Guid userId)
+        => await _db.Users.Where(u => u.Id == userId).Select(u => u.ShowStreaks).FirstOrDefaultAsync();
+
+    public async Task<bool> GetShowStreaksAsync(ulong discordUserId)
+        => await GetShowStreaksAsync(await FindDiscordUserAsync(discordUserId));
+
+    /// <summary>Sets the account's <see cref="User.ShowStreaks"/>.</summary>
+    public async Task SetShowStreaksAsync(Guid userId, bool show)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.ShowStreaks, show));
+    }
+
+    public async Task SetShowStreaksAsync(ulong discordUserId, bool show)
+        => await SetShowStreaksAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), show);
 }

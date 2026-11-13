@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="moment"
+        android:shortcutLongLabel="@string/moment_label"
+        android:shortcutShortLabel="@string/moment_short_label">
+        <intent
+            android:action="app.ember.habits.OPEN_MOMENT"
+            android:targetClass="app.ember.habits.MainActivity"
+            android:targetPackage="app.ember.habits" />
+    </shortcut>
+</shortcuts>

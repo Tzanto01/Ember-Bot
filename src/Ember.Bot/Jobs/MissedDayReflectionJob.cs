@@ -125,8 +125,8 @@ public class MissedDayReflectionJob : IJob
             "No pressure, and no reply needed.",
             "Life happens. You're still here, and that matters.",
             "A quiet day doesn't undo the work you've put in.",
-            "There's no streak worth burning yourself out for.",
-            "If it was a rough day, a low day keeps your streaks safe.",
+            "Rest is part of it too. Go easy on yourself.",
+            "If it was a rough day, you can mark it as a low day.",
         };
         var closing = closingLines[yesterday.DayNumber % closingLines.Length];
 

@@ -112,7 +112,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
             return;
         }
 
-        await CloseAsync($"Marked {Label(date)} as a low day. Your streaks are safe. 💙");
+        await CloseAsync($"Marked {Label(date)} as a low day. Go easy on yourself. 💙");
     }
 
     /// <summary>The user's daily and weekdays habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>

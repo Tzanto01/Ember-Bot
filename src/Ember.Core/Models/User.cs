@@ -25,6 +25,12 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public int SecondReminderMinutes { get; set; }
 
+    /// <summary>
+    /// Whether streak counts are shown to the user (app and bot). False for new accounts; the migration that added it set it true
+    /// for every account that existed then.
+    /// </summary>
+    public bool ShowStreaks { get; set; }
+
     /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
     public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
 

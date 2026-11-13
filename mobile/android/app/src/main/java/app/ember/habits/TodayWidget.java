@@ -30,7 +30,7 @@ import org.json.JSONObject;
  * SharedPreferences), and only while that snapshot (or the next day it carries) is for today in the account's zone,
  * with as many rows as the widget's height fits. Rows open
  * {@link MainActivity} with an explicit, immutable intent carrying the habit, date, user and a per-snapshot
- * token; anywhere else opens Today.
+ * token; the "I need a moment" button opens the moment flow; anywhere else opens Today.
  */
 public class TodayWidget extends AppWidgetProvider {
 
@@ -45,7 +45,7 @@ public class TodayWidget extends AppWidgetProvider {
     private static final List<String> STATES = Arrays.asList("done", "partial", "open", "rest");
     private static final int MAX_NAME = 100;
     private static final int ROW_DP = 48;
-    private static final int CHROME_DP = 64;
+    private static final int CHROME_DP = 92;
 
     private static final int[] ROWS = {
         R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2, R.id.widget_row_3,
@@ -221,6 +221,8 @@ public class TodayWidget extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_today);
         Intent today = new Intent(context, MainActivity.class).setAction(ACTION_OPEN_TODAY);
         views.setOnClickPendingIntent(R.id.widget_root, open(context, 0, today));
+        Intent moment = new Intent(context, MainActivity.class).setAction(MainActivity.ACTION_OPEN_MOMENT);
+        views.setOnClickPendingIntent(R.id.widget_moment, open(context, MAX_ROWS + 1, moment));
         JSONArray habits = snapshot == null ? null : snapshot.optJSONArray("habits");
         int shown = habits == null ? 0 : Math.min(habits.length(), rows);
         int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more")) + (habits == null ? 0 : habits.length() - shown);
@@ -290,7 +292,7 @@ public class TodayWidget extends AppWidgetProvider {
         }
     }
 
-    private static PendingIntent open(Context context, int requestCode, Intent intent) {
+    static PendingIntent open(Context context, int requestCode, Intent intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return PendingIntent.getActivity(
             context,

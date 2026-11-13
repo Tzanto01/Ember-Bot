@@ -30,7 +30,7 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
             .WithTitle("Ember — Command Guide")
-            .WithDescription("Low-pressure habit tracking. No guilt, no punishment — just progress.")
+            .WithDescription("A calm companion for hard moments and gentle days.\nHabits are one part of it: no guilt, no pressure.")
             .AddField("Getting started",
                 "`/habit add` — create a new habit\n" +
                 "`/habit template` — pick from pre-built habits\n" +
@@ -46,13 +46,13 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("Managing habits",
                 "`/habit edit` — rename or change reminder time\n" +
                 "`/habit delete` — remove a habit\n" +
-                "`/habit pause` — pause temporarily (streak protected)\n" +
+                "`/habit pause` — pause temporarily, reminders rest too\n" +
                 "`/habit frequency` — daily, weekly or set weekdays, and times per day\n" +
                 "`/habit grace` — set how many flex days you get per week\n" +
                 "`/habit second-reminder` — get one more nudge if you haven't checked in yet",
                 inline: false)
             .AddField("Share",
-                "`/habit share` — post a streak card in this channel",
+                "`/habit share` — post a habit card in this channel",
                 inline: false)
             .AddField("Web app",
                 "`/link` — use Ember in your browser, or add Discord to an email account",
@@ -64,7 +64,7 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
             .AddField("Feedback",
                 "`/feedback` — tell the Ember team what would make Ember better",
                 inline: false)
-            .WithFooter("Progress over perfection. Every check-in counts.");
+            .WithFooter("Go at your own pace. Every small step counts.");
 
         if (config[ConsentModule.PolicyUrlKey] is { Length: > 0 } url)
         {

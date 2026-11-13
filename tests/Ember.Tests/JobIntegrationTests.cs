@@ -16,8 +16,10 @@ public class JobIntegrationTests
     private static readonly DateTimeOffset SundayMorningUtc = new(2026, 1, 18, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset ReflectionHourUtc = new(2026, 1, 14, 10, 0, 0, TimeSpan.Zero);
 
-    [Fact]
-    public async Task WeeklySummaryJob_Triggered_SendsSummaryWithCountStreakAndToneLine()
+    [Theory]
+    [InlineData(true, "⬜⬜⬜⬜✅⬜✅ **2/7** · Streak: **2** days _(+1 flex)_")]
+    [InlineData(false, "⬜⬜⬜⬜✅⬜✅ **2/7**")]
+    public async Task WeeklySummaryJob_Triggered_SendsSummaryWithCountStreakAndToneLine(bool showStreaks, string expectedLine)
     {
         await using var host = await IntegrationTestHost.CreateAsync(time: new FakeTimeProvider(SundayMorningUtc));
 
@@ -26,7 +28,7 @@ public class JobIntegrationTests
             var db = sp.GetRequiredService<EmberDbContext>();
             var today = DateOnly.FromDateTime(SundayMorningUtc.UtcDateTime);
 
-            var user = new User { Id = TestUsers.Id(55), Logins = TestUsers.Discord(55), Timezone = "UTC" };
+            var user = new User { Id = TestUsers.Id(55), Logins = TestUsers.Discord(55), Timezone = "UTC", ShowStreaks = showStreaks };
             var habit = new Habit { UserId = TestUsers.Id(55), Name = "Meditate", CreatedAt = SundayMorningUtc.UtcDateTime.AddDays(-8) };
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-1), Completed = true });
             habit.Logs.Add(new HabitLog { Date = today.AddDays(-3), Completed = true });
@@ -49,10 +51,10 @@ public class JobIntegrationTests
         message.Embed.Description.Should().Contain("**2 check-ins**").And.NotContain("%");
         message.Embed.Footer!.Value.Text.Should().Be("Small steps still move forward. You've got this.");
 
-        // Per-habit line: dot history (oldest→newest), count, and the *current* streak —
+        // Per-habit line: dot history (oldest→newest), count, and with streaks on the *current* streak —
         // logs at -1 and -3 with the default 1 grace day bridge to a streak of 2.
         var field = message.Embed.Fields.Should().ContainSingle(f => f.Name == "Meditate").Subject;
-        field.Value.Should().Be("⬜⬜⬜⬜✅⬜✅ **2/7** · Streak: **2** days _(+1 flex)_");
+        field.Value.Should().Be(expectedLine);
     }
 
     [Fact]

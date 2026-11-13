@@ -14,7 +14,7 @@ namespace Ember.Bot.Jobs;
 /// Runs every 15 minutes and sends to every user with at least one habit whose local time is in the first quarter hour of
 /// Sunday <see cref="LocalSendHour"/>:00, unless their DMs are paused.
 /// Sends a DM recapping the 7-day window ending the user's local yesterday (the last complete day):
-/// per-habit check-in counts, current streaks, a tone-appropriate line and, with <c>Ember:WebOrigin</c> set, a link to the web app.
+/// per-habit check-in counts, current streaks (only with <see cref="User.ShowStreaks"/>), a tone-appropriate line and, with <c>Ember:WebOrigin</c> set, a link to the web app.
 ///
 /// Users with zero check-ins in the window still get a DM (only the soft headline and footer, no per-habit numbers) — a gentle nudge, not
 /// silence: Ember's philosophy is soft re-engagement, and going quiet at exactly the
@@ -112,7 +112,7 @@ public class WeeklySummaryJob : IJob
             : 0;
 
         foreach (var h in habits.Take(overflow > 0 ? EmbedBuilder.MaxFieldCount - 1 : habits.Count))
-            embed.AddField(h.Habit.Name, FormatHabitLine(h), inline: false);
+            embed.AddField(h.Habit.Name, FormatHabitLine(h, user.ShowStreaks), inline: false);
 
         if (overflow > 0)
             embed.AddField("…and more", $"Plus **{overflow}** more habits — see them all with `/habit list`.", inline: false);
@@ -121,10 +121,12 @@ public class WeeklySummaryJob : IJob
         await _discord.SendMessageAsync(discordId, embed: embed.Build());
     }
 
-    private static string FormatHabitLine(WeeklySummaryService.HabitSummary h)
+    private static string FormatHabitLine(WeeklySummaryService.HabitSummary h, bool showStreaks)
     {
         if (h.Habit.FrequencyType == FrequencyType.Weekly)
             return $"{h.DotString} **{h.Done}/{h.Possible}** · Weekly goal: **{h.Habit.WeeklyTarget ?? 3}**/wk";
+        if (!showStreaks)
+            return $"{h.DotString} **{h.Done}/{h.Possible}**";
 
         var graceStr = h.GraceUsed > 0 ? $" _(+{h.GraceUsed} flex)_" : "";
         return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(h.CurrentStreak)}{graceStr}";

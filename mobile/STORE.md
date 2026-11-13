@@ -8,8 +8,11 @@ Marker: `TODO (Nico):` means the answer depends on a decision or fact that is no
 
 ## What the app does (for the store answers)
 
+A calm companion for hard moments and gentle days. And on the other days: gentle habits.
+
+- **"I need a moment".** A short guided flow (notice, name, ride it out, optionally reflect) that runs on the device, works signed out and offline, makes no API call and stores nothing. Crisis lines are one tap away inside the flow. Ember is not a crisis service. Doors on Android: a launcher shortcut, a 1x1 "I need a moment" widget that shows no user data, and a button in the "Today in Ember" widget.
 - **Two modes.** With an account (email and password, or Discord), data syncs with Ember's server. Without an account ("No account (device only)"), everything stays on the phone and nothing is sent to the server.
-- **Habits and check-ins**, routines, low days, pauses and grace days.
+- **Habits and check-ins**, routines, low days, pauses and grace days. Streaks are optional ("Show streaks", off for new accounts).
 - **Journal:** a day note (text) and a mood per day, with the user's own moods. Stored in plain text on the server, unless the user turns on the **private journal**: then notes and own moods are encrypted on the device (AES-GCM, key wrapped with a passphrase and a recovery code) and the server only holds ciphertext.
 - **Phone reminders** are local notifications planned on the device for the next 14 days (up to 400). The lock-screen text names no habit unless the user turns on "Show habit names in reminders".
 - **Home-screen widget** "Today in Ember": today's habits from app-private storage, tap a row to check in. Signing out clears it.
@@ -95,6 +98,25 @@ Play requires two things for apps where users create accounts:
 2. **A web link** for someone who no longer has the app. There is no public deletion page yet; `/settings` needs sign-in. Recommendation: a public page with the deletion steps, for example `{WebOrigin}/delete-account`.
 
 Deletion form answers. **Deleted:** everything in section 2.1, including the consent record and the Discord link. **Kept:** server logs (rotated by size) and database backups (up to about 5 weeks), as the policy says in sections 3.7 and 7.
+
+### 2.5 Listing text
+
+Provisional until Nico picks the pitch (`docs/contracts/companion-v1.md`, Copy deck). Wellness wording only: none of the words listed in `docs/contracts/companion-v1.md`, Ground rules.
+
+- **Short description** (Play limit 80 characters, this is 51): A calm companion for hard moments and gentle days.
+- **Full description** (Play limit 4000 characters):
+
+```text
+A calm companion for hard moments and gentle days.
+
+When it gets too much, tap "I need a moment". Ember walks you through a few quiet steps: notice what is happening, name it, breathe and ride it out, and reflect afterwards if you want to. It runs on your phone, works without an account and offline, and keeps nothing you write. Crisis lines are always one tap away. Ember is not a crisis service: if you are in danger, call your local emergency number.
+
+Reach the moment from a launcher shortcut, a small home-screen widget, or the Today widget.
+
+And on the other days: gentle habits. Check in on the habits you choose, plan low days and pauses, keep a day note and a mood. Streaks are optional and off unless you turn them on.
+
+Use Ember with an account to sync, or without one and keep everything on your phone. No ads, no analytics, no tracking.
+```
 
 ## 3. Apple App Store (parked)
 
