@@ -20,6 +20,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
     public DbSet<DayNote> DayNotes => Set<DayNote>();
     public DbSet<Mood> Moods => Set<Mood>();
     public DbSet<JournalKey> JournalKeys => Set<JournalKey>();
+    public DbSet<UserHelps> UserHelps => Set<UserHelps>();
     public DbSet<ReminderMessage> ReminderMessages => Set<ReminderMessage>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<ReminderActionToken> ReminderActionTokens => Set<ReminderActionToken>();
@@ -39,6 +40,7 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.Property(u => u.EmailCodeHash).HasMaxLength(64);
             entity.Property(u => u.EmailCodeKeyHash).HasMaxLength(64);
             entity.Property(u => u.Theme).HasMaxLength(32);
+            entity.Property(u => u.Language).HasMaxLength(8).IsRequired();
             entity.HasMany(u => u.Logins)
                   .WithOne()
                   .HasForeignKey(l => l.UserId)
@@ -132,6 +134,16 @@ public class EmberDbContext : IdentityUserContext<User, Guid>
             entity.HasOne(k => k.User)
                   .WithOne(u => u.JournalKey)
                   .HasForeignKey<JournalKey>(k => k.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserHelps>(entity =>
+        {
+            entity.HasKey(h => h.UserId);
+            entity.Property(h => h.Encrypted).HasMaxLength(Models.UserHelps.MaxEncryptedLength).IsRequired();
+            entity.HasOne(h => h.User)
+                  .WithOne(u => u.Helps)
+                  .HasForeignKey<UserHelps>(h => h.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

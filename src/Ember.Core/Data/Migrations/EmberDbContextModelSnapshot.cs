@@ -642,6 +642,9 @@ namespace Ember.Core.Data.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("CalmMode")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
@@ -694,6 +697,11 @@ namespace Ember.Core.Data.Migrations
 
                     b.Property<DateTime?>("HealthDataConsentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -753,6 +761,27 @@ namespace Ember.Core.Data.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("Ember.Core.Models.UserHelps", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Encrypted")
+                        .IsRequired()
+                        .HasMaxLength(16384)
+                        .HasColumnType("character varying(16384)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserHelps");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -1004,6 +1033,17 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ember.Core.Models.UserHelps", b =>
+                {
+                    b.HasOne("Ember.Core.Models.User", "User")
+                        .WithOne("Helps")
+                        .HasForeignKey("Ember.Core.Models.UserHelps", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.HasOne("Ember.Core.Models.User", null)
@@ -1053,6 +1093,8 @@ namespace Ember.Core.Data.Migrations
                     b.Navigation("DayNotes");
 
                     b.Navigation("Habits");
+
+                    b.Navigation("Helps");
 
                     b.Navigation("JournalKey");
 
