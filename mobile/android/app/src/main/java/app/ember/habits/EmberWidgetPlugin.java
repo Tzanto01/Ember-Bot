@@ -7,14 +7,18 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Bridge to the "Today in Ember" widget: {@code update} stores a validated snapshot of today's habits in
  * app-private storage and redraws, {@code clear} forgets it, and validated widget taps arrive as
- * {@code widgetTap} events (retained until JS listens, so a cold-start tap is not lost).
+ * {@code widgetTap} events (retained until JS listens, so a cold-start tap is not lost). The "I need a moment" door
+ * is a pending launch action on a cold start ({@code takeLaunchAction}) and an {@code openMoment} event on a warm one.
  */
 @CapacitorPlugin(name = "EmberWidget")
 public class EmberWidgetPlugin extends Plugin {
+
+    private String launchAction;
 
     @PluginMethod
     public void update(PluginCall call) {
@@ -44,7 +48,24 @@ public class EmberWidgetPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Resolves {@code { action: 'moment' }} or {@code { action: null }} and clears the pending launch action. */
+    @PluginMethod
+    public void takeLaunchAction(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("action", launchAction == null ? JSONObject.NULL : launchAction);
+        launchAction = null;
+        call.resolve(result);
+    }
+
     void tap(JSObject tap) {
         notifyListeners("widgetTap", tap, true);
+    }
+
+    void pendMoment() {
+        launchAction = "moment";
+    }
+
+    void openMoment() {
+        notifyListeners("openMoment", new JSObject(), true);
     }
 }
