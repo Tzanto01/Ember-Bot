@@ -42,7 +42,7 @@
   <data name="reminder.habit" xml:space="preserve">
     <value>{0}
 
-Hast du dieses Habit heute gemacht?</value>
+Hast du diesen Habit heute gemacht?</value>
   </data>
   <data name="reminder.second" xml:space="preserve">
     <value>🔔 Noch ein kleiner Schubs für **{0}**, falls der erste untergegangen ist. Bist du heute dazu gekommen?</value>

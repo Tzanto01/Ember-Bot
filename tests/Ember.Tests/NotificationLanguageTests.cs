@@ -78,7 +78,7 @@ public class NotificationLanguageTests
 
         var german = host.Discord.Messages.Single(m => m.UserId == 20);
         german.Text.Should().Be("Hey 👋 Wie steht's mit **Lesen**? Ist ein Weilchen her, und das ist okay. Heute ist ein neuer Anfang, " +
-            "wann immer du so weit bist.\n\nHast du dieses Habit heute gemacht?");
+            "wann immer du so weit bist.\n\nHast du diesen Habit heute gemacht?");
         ButtonLabels(german).Should().Equal("Erledigt ✅", "Heute auslassen", "1 Std. später ⏰");
     }
 

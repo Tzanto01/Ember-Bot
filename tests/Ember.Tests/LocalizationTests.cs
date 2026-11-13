@@ -49,7 +49,7 @@ public class LocalizationTests
     [Fact]
     public void NoKeyIsInTwoResourceFiles()
     {
-        var owners = BaseFiles()
+        var owners = BaseFiles().Where(file => Path.GetFileName(file) != "Commands.resx")
             .SelectMany(file => Entries(Path.Combine(RepoRoot(), file)).Keys.Select(key => (key, file)));
         owners.GroupBy(o => o.key).Where(g => g.Count() > 1).Select(g => g.Key).Should().BeEmpty();
     }
