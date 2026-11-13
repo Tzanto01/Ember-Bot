@@ -610,4 +610,125 @@ describe('JournalService', () => {
       ]);
     });
   });
+
+  describe('appendPrivate', () => {
+    const day = '2026-11-02';
+    const block = 'Moment note: breathing in the hallway.';
+    const dayPuts = () => mock.all.filter((c) => c.method === 'PUT' && c.url.startsWith('/api/day-notes/'));
+    const sealed = async (date: string) => {
+      const stored = server.notes.get(date) as unknown as { encrypted: EncryptedBlob };
+      return decryptNote(await importJournalKey(fromBase64(await rawKey())), date, stored.encrypted);
+    };
+
+    it('throws without any request while the private journal is off', async () => {
+      const { journal } = await device();
+      const before = mock.all.length;
+
+      await expect(journal.appendPrivate(day, block)).rejects.toThrow();
+
+      expect(mock.all.length).toBe(before);
+      expect(server.notes.size).toBe(0);
+    });
+
+    it('throws without a PUT while locked', async () => {
+      const first = await device();
+      await first.journal.enable(passphrase, false, loginPassword);
+      const { journal } = await device();
+
+      await expect(journal.appendPrivate(day, block)).rejects.toBeInstanceOf(JournalLockedError);
+
+      expect(dayPuts()).toHaveLength(0);
+    });
+
+    it('throws without a PUT while the journal is turning off', async () => {
+      const { journal, auth } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      server.turningOff = true;
+      await auth.loadMe(true);
+      expect(journal.turningOff.get()).toBe(true);
+
+      await expect(journal.appendPrivate(day, block)).rejects.toThrow();
+
+      expect(dayPuts()).toHaveLength(0);
+      expect(server.notes.size).toBe(0);
+    });
+
+    it('throws without a PUT while offline', async () => {
+      const { journal } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      try {
+        await expect(journal.appendPrivate(day, block)).rejects.toThrow();
+      } finally {
+        online.mockRestore();
+      }
+
+      expect(dayPuts()).toHaveLength(0);
+    });
+
+    it('throws without a PUT when the entry would pass 2000 characters', async () => {
+      const { journal } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      await journal.save(day, { text: 'a'.repeat(1990), mood: null });
+      const before = dayPuts().length;
+
+      await expect(journal.appendPrivate(day, 'b'.repeat(9))).rejects.toBeInstanceOf(RangeError);
+
+      expect(dayPuts()).toHaveLength(before);
+      expect((await sealed(day)).text).toBe('a'.repeat(1990));
+    });
+
+    it('sends one ciphertext-only PUT whose plaintext is the old entry, a blank line and the block, keeping the mood', async () => {
+      const { journal } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      await journal.save(day, { text: 'Rough start.', mood: 'meh' });
+      mock.all.length = 0;
+
+      await journal.appendPrivate(day, block);
+
+      const puts = dayPuts();
+      expect(puts).toHaveLength(1);
+      expect(puts[0].url).toBe(`/api/day-notes/${day}`);
+      expect(Object.keys(puts[0].body as object)).toEqual(['encrypted']);
+      const sent = JSON.stringify(mock.all.map((c) => [c.method, c.url, c.body]));
+      expect(sent).not.toContain('hallway');
+      expect(sent).not.toContain('Rough start');
+      expect(await sealed(day)).toEqual({ text: `Rough start.\n\n${block}`, mood: 'meh' });
+      expect((await journal.notes(day, day)).notes).toEqual([
+        { date: day, text: `Rough start.\n\n${block}`, mood: 'meh' },
+      ]);
+    });
+
+    it('uses just the block when the day has no entry yet', async () => {
+      const { journal } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      mock.all.length = 0;
+
+      await journal.appendPrivate(day, block);
+
+      const puts = dayPuts();
+      expect(puts).toHaveLength(1);
+      expect(Object.keys(puts[0].body as object)).toEqual(['encrypted']);
+      expect(JSON.stringify(mock.all.map((c) => [c.url, c.body]))).not.toContain('hallway');
+      expect(await sealed(day)).toEqual({ text: block, mood: null });
+    });
+
+    it('never queues: a lost network rejects and leaves nothing waiting', async () => {
+      const { journal, queue } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      server.stop();
+      const settled = journal.appendPrivate(day, block).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      const get = await mock.next('GET', `/api/day-notes?from=${day}&to=${day}`);
+      get.respond(200, []);
+      const put = await mock.next('PUT', `/api/day-notes/${day}`);
+      put.fail();
+
+      expect(await settled).toBeInstanceOf(Error);
+      expect(queue.pending.get()).toBe(0);
+      expect(await new DeviceStore().edits(baseMe.id)).toEqual([]);
+    });
+  });
 });

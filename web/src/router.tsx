@@ -169,6 +169,8 @@ export const routes: RouteObject[] = [
           legal('imprint', 'Imprint'),
           { path: 'download', ...page('Get Ember', () => import('./pages/download')) },
           { path: 'feedback', ...page('Send feedback', () => import('./pages/feedback')) },
+          { path: 'moment', ...page('A moment', () => import('./pages/moment')) },
+          { path: 'help', ...page('Help right now', () => import('./pages/help')) },
         ],
       },
       {

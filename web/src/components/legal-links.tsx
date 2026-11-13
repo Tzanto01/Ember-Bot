@@ -4,6 +4,7 @@ const links = [
   { to: '/legal/privacy', label: 'Privacy' },
   { to: '/legal/terms', label: 'Terms' },
   { to: '/legal/imprint', label: 'Imprint' },
+  { to: '/help', label: 'Help right now' },
 ];
 
 /** Footer navigation to the three legal pages. */

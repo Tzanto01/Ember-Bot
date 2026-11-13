@@ -1,0 +1,147 @@
+[
+  {
+    "id": "paced-breathing",
+    "version": 1,
+    "title": "Slow breathing",
+    "states": ["racing", "overloaded", "unsure"],
+    "type": "breathing",
+    "minutes": 2,
+    "steps": [
+      { "kind": "text", "text": "Sit or stand in a way that feels okay. Your eyes can stay open." },
+      {
+        "kind": "text",
+        "text": "We'll breathe in for 4 and out for 6, a little longer on the way out."
+      },
+      { "kind": "breath", "inhale": 4, "hold": 0, "exhale": 6, "rounds": 6 },
+      { "kind": "text", "text": "Notice how you feel now. Any change is fine, and so is none." },
+      { "kind": "text", "text": "If you feel dizzy, breathe normally." }
+    ],
+    "a11y": { "motion": "gentle", "languageLevel": "plain" },
+    "basis": "Paced breathing with a longer exhale (resonance-style slow breathing)"
+  },
+  {
+    "id": "kind-voice",
+    "version": 1,
+    "title": "A kind voice",
+    "states": ["rejected"],
+    "type": "reframe",
+    "minutes": 3,
+    "steps": [
+      { "kind": "text", "text": "If it feels okay, rest a hand on your chest or your arm." },
+      {
+        "kind": "text",
+        "text": "Say to yourself: this hurts right now. Feeling hurt is part of being human."
+      },
+      {
+        "kind": "text",
+        "text": "Ask yourself: is there another way to read what happened? People are often busy, tired or caught up in their own day."
+      },
+      {
+        "kind": "text",
+        "text": "What would you say to a good friend who felt this way? Say it to yourself, in the same warm voice."
+      },
+      { "kind": "text", "text": "Try these words: I'm allowed to feel this. I still matter." }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "Self-compassion break (Kristin Neff) with a perceived-rejection check (alternative explanations, the friend question)"
+  },
+  {
+    "id": "grounding-54321",
+    "version": 1,
+    "title": "5, 4, 3, 2, 1",
+    "states": ["overloaded", "racing", "replaying"],
+    "type": "grounding",
+    "minutes": 3,
+    "steps": [
+      { "kind": "text", "text": "Look around. Name 5 things you can see." },
+      {
+        "kind": "text",
+        "text": "Notice 4 things you can feel, like your feet on the floor or the fabric of your clothes."
+      },
+      { "kind": "text", "text": "Listen. Name 3 things you can hear." },
+      { "kind": "text", "text": "Find 2 things you can smell, or think of 2 smells you like." },
+      { "kind": "text", "text": "Name 1 thing you can taste, or take a sip of water." },
+      {
+        "kind": "text",
+        "text": "Notice where you are sitting or standing. You're here, right now."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "5-4-3-2-1 sensory grounding"
+  },
+  {
+    "id": "cool-and-here",
+    "version": 1,
+    "title": "Cool and here",
+    "states": ["racing", "overloaded"],
+    "type": "orientation",
+    "minutes": 2,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "If you can, run cool water over your hands, or hold something cool for a moment."
+      },
+      {
+        "kind": "text",
+        "text": "Notice the coolness on your skin. Stay with it for a little while."
+      },
+      { "kind": "text", "text": "Say where you are, out loud or in your head." },
+      { "kind": "text", "text": "Say what day it is today." },
+      { "kind": "text", "text": "Name three things you can see right now." },
+      { "kind": "text", "text": "You're here, in this place, on this day." }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "Temperature change (cool water) followed by orientation to place, day and surroundings"
+  },
+  {
+    "id": "ride-the-wave",
+    "version": 1,
+    "title": "Ride the wave",
+    "states": ["rejected", "replaying"],
+    "type": "urge-surfing",
+    "minutes": 3,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Strong feelings and urges rise like a wave, peak, and fall again. You don't have to act on this one."
+      },
+      {
+        "kind": "text",
+        "text": "Notice where you feel it in your body. Just notice it. There's nothing to change."
+      },
+      {
+        "kind": "timer",
+        "seconds": 90,
+        "text": "Stay with the wave for 90 seconds. Notice it rise and shift."
+      },
+      { "kind": "text", "text": "Notice how the wave is now. Whatever it's doing is okay." }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "Urge surfing (Marlatt), observing an urge rise and fall over about 90 seconds"
+  },
+  {
+    "id": "set-it-down",
+    "version": 1,
+    "title": "Set it down",
+    "states": ["replaying"],
+    "type": "reframe",
+    "minutes": 2,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Give the thought a short name, like \"the argument\" or \"that message\"."
+      },
+      {
+        "kind": "text",
+        "text": "Pick a time later today or tomorrow to think about it. Picture setting it on a shelf until then."
+      },
+      { "kind": "text", "text": "Take one slow breath in, and let a long breath out." },
+      {
+        "kind": "text",
+        "text": "It will keep until then. You can pick it up again at the time you chose."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "Labelling plus worry postponement (scheduled worry time) and one slow breath"
+  }
+]

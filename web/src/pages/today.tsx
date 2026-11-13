@@ -10,6 +10,7 @@ import { isPausedOn } from '@/components/history/kept-days';
 import { DayJournal } from '@/components/journal/day-journal';
 import { DeviceNotices } from '@/components/local/device-notices';
 import { LiveRegion } from '@/components/live-region';
+import { MomentDoor } from '@/components/moment/moment-door';
 import { PageHeader } from '@/components/page-header';
 import { routineTitle } from '@/components/routines/routine-title';
 import { checkButtonId } from '@/components/today/check-button';
@@ -336,22 +337,25 @@ export default function TodayPage() {
     );
   } else if (!hasHabits) {
     body = (
-      <Card className="items-center">
-        <EmptyState
-          illustration={<HearthIllustration />}
-          title="Ready when you are."
-          action={
-            <>
-              <Button asChild>
-                <Link to="/habits/new">Create your first habit</Link>
-              </Button>
-              <p className="text-[14px] text-muted-foreground">Low days and pauses never count against you.</p>
-            </>
-          }
-        >
-          <p>Start with one small habit. You can add more any time.</p>
-        </EmptyState>
-      </Card>
+      <>
+        <Card className="items-center">
+          <EmptyState
+            illustration={<HearthIllustration />}
+            title="Ready when you are."
+            action={
+              <>
+                <Button asChild>
+                  <Link to="/habits/new">Create your first habit</Link>
+                </Button>
+                <p className="text-[14px] text-muted-foreground">Low days and pauses never count against you.</p>
+              </>
+            }
+          >
+            <p>Start with one small habit. You can add more any time.</p>
+          </EmptyState>
+        </Card>
+        {today && <DayJournal date={today} />}
+      </>
     );
   } else {
     body = (
@@ -478,6 +482,7 @@ export default function TodayPage() {
           Mark today as a low day
         </Button>
       )}
+      <MomentDoor variant="today" />
       <LiveRegion message={announcement} />
       {problem && (
         <Notice tone="notice" heading={problem.heading}>

@@ -10,6 +10,12 @@
   "background_color": "#fbf5ec",
   "shortcuts": [
     {
+      "name": "I need a moment",
+      "short_name": "A moment",
+      "url": "/moment",
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
       "name": "Today",
       "url": "/today",
       "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" }]

@@ -265,7 +265,7 @@ export function JournalSettings({ me }: { me: Me }) {
           <>
             <p>
               Your entries and own moods are decrypted on this device and saved to your account
-              readable again, like before.
+              readable again, like before. Notes from "I need a moment" are re-uploaded as plain text too.
             </p>
             {decrypting}
             <ConfirmJournalForm

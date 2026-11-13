@@ -1,0 +1,56 @@
+[
+  {
+    "region": "DE",
+    "name": "TelefonSeelsorge",
+    "numbers": ["0800 111 0 111", "0800 111 0 222", "116 123"],
+    "hours": "Free, day and night",
+    "url": "https://www.telefonseelsorge.de",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "AT",
+    "name": "TelefonSeelsorge",
+    "numbers": ["142"],
+    "hours": "Free, day and night",
+    "url": "https://www.telefonseelsorge.at",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "CH",
+    "name": "Die Dargebotene Hand",
+    "numbers": ["143"],
+    "hours": "Day and night",
+    "url": "https://www.143.ch",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "GB",
+    "name": "Samaritans",
+    "numbers": ["116 123"],
+    "hours": "Free, day and night",
+    "url": "https://www.samaritans.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "US",
+    "name": "988 Suicide & Crisis Lifeline",
+    "numbers": ["988"],
+    "hours": "Call or text, day and night",
+    "url": "https://988lifeline.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "EU",
+    "name": "Emergency number",
+    "numbers": ["112"],
+    "hours": "Day and night",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "INTL",
+    "name": "Your local emergency number",
+    "numbers": ["112"],
+    "hours": "112 works across the EU. Elsewhere, call your local emergency number.",
+    "checked": "2026-11-13"
+  }
+]
