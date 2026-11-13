@@ -61,7 +61,7 @@
     <value>Change how often a habit needs to be done</value>
   </data>
   <data name="habit.pause.description" xml:space="preserve">
-    <value>Pause a habit temporarily — reminders stop while it's paused</value>
+    <value>Pause a habit temporarily, reminders stop while it's paused</value>
   </data>
   <data name="habit.grace.description" xml:space="preserve">
     <value>Set how many flex days per week you get before a streak breaks</value>

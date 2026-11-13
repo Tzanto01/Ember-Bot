@@ -34,10 +34,10 @@
     <value>Hey! Just a gentle nudge for **{0}**. You've been doing great 🔥</value>
   </data>
   <data name="reminder.intro.some" xml:space="preserve">
-    <value>Hey! Reminder for **{0}**. No pressure — just showing up counts 💙</value>
+    <value>Hey! Reminder for **{0}**. No pressure, just showing up counts 💙</value>
   </data>
   <data name="reminder.intro.fresh" xml:space="preserve">
-    <value>Hey 👋 Checking in on **{0}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.</value>
+    <value>Hey 👋 Checking in on **{0}**. It's been a little while, and that's okay. Today's a fresh start whenever you're ready.</value>
   </data>
   <data name="reminder.habit" xml:space="preserve">
     <value>{0}
@@ -82,7 +82,7 @@ Tap Done for each one you've done. No pressure 💙</value>
     <value>…and more</value>
   </data>
   <data name="weekly.overflow" xml:space="preserve">
-    <value>Plus **{0}** more habits — see them all with `/habit list`.</value>
+    <value>Plus **{0}** more habits. See them all with `/habit list`.</value>
   </data>
   <data name="weekly.goal" xml:space="preserve">
     <value>{0} **{1}/{2}** · Weekly goal: **{3}**/wk</value>

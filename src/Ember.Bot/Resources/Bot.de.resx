@@ -829,7 +829,7 @@ Vorschlag für die Erinnerung: **{3}**. Stell sie unten ein, wenn das für dich 
     <value>☀️ Morgenstart</value>
   </data>
   <data name="template.morning_routine.description" xml:space="preserve">
-    <value>Beginne den Tag bewusst</value>
+    <value>Beginn den Tag bewusst</value>
   </data>
   <data name="template.medication.name" xml:space="preserve">
     <value>💊 Medikamente</value>

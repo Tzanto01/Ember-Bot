@@ -76,7 +76,7 @@ Tipp bei allem, was du geschafft hast, auf Erledigt. Kein Druck 💙</value>
     <value>🗓️ Deine Woche mit deinen Habits</value>
   </data>
   <data name="weekly.link" xml:space="preserve">
-    <value>[Deine Woche in der Ember Web-App ansehen]({0})</value>
+    <value>[Deine Woche in der Ember-Web-App ansehen]({0})</value>
   </data>
   <data name="weekly.overflow.title" xml:space="preserve">
     <value>…und mehr</value>

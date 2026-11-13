@@ -62,7 +62,7 @@ This usually happens when DMs from server members are turned off (server menu �
     <value>Couldn't find that habit.</value>
   </data>
   <data name="common.retry.dash" xml:space="preserve">
-    <value>Something went wrong — please try again.</value>
+    <value>Something went wrong. Please try again.</value>
   </data>
   <data name="common.retry.comma" xml:space="preserve">
     <value>Something went wrong, please try again.</value>
@@ -89,7 +89,7 @@ This usually happens when DMs from server members are turned off (server menu �
     <value>Logged! Great work today. ✅</value>
   </data>
   <data name="common.skipped-today" xml:space="preserve">
-    <value>No worries — noted. Tomorrow's a fresh start. 💙</value>
+    <value>No worries, noted. Tomorrow's a fresh start. 💙</value>
   </data>
   <data name="error.generic" xml:space="preserve">
     <value>Something went wrong on my side. Please try again in a moment. 🌿</value>
@@ -173,7 +173,7 @@ This usually happens when DMs from server members are turned off (server menu �
     <value>Choose a template…</value>
   </data>
   <data name="habit.template.prompt" xml:space="preserve">
-    <value>Pick a template — you can customise the name and reminder after:</value>
+    <value>Pick a template. You can customise the name and reminder after:</value>
   </data>
   <data name="habit.none.start-both" xml:space="preserve">
     <value>You don't have any habits yet. Use `/habit add` or `/habit template` to get started!</value>
@@ -291,7 +291,7 @@ Best: **{4}** · Total: **{5}**</value>
     <value>Which habit do you want to pause?</value>
   </data>
   <data name="habit.grace.strict" xml:space="preserve">
-    <value>0 — strict</value>
+    <value>0 (strict)</value>
   </data>
   <data name="habit.grace.button.one" xml:space="preserve">
     <value>{0} flex day</value>
@@ -422,16 +422,16 @@ Set a reminder so I can nudge you at the right time.</value>
 Here's how to get started:
 • **Check in daily** with `/habit checkin`
 • **Set a reminder** so I nudge you at the right time
-• **No guilt** — missing days is fine, progress counts</value>
+• **No guilt**: missing days is fine, progress counts</value>
   </data>
   <data name="habit.welcome.footer" xml:space="preserve">
     <value>Progress over perfection. I'm rooting for you. 💙</value>
   </data>
   <data name="habit.delete.done" xml:space="preserve">
-    <value>Habit removed. No judgement — you can always start fresh with `/habit add`. 💙</value>
+    <value>Habit removed. No judgement. You can always start fresh with `/habit add`. 💙</value>
   </data>
   <data name="habit.delete.cancelled" xml:space="preserve">
-    <value>Cancelled — nothing was deleted.</value>
+    <value>Cancelled. Nothing was deleted.</value>
   </data>
   <data name="habit.rename.modal.title" xml:space="preserve">
     <value>Rename habit</value>
@@ -456,22 +456,22 @@ Here's how to get started:
 Reminders are off while it's paused. Rest well. 💙</value>
   </data>
   <data name="habit.frequency.daily-set" xml:space="preserve">
-    <value>**{0}** is now daily — check in every day.</value>
+    <value>**{0}** is now daily. Check in every day.</value>
   </data>
   <data name="habit.grace.invalid" xml:space="preserve">
     <value>Invalid value.</value>
   </data>
   <data name="habit.grace.desc.0" xml:space="preserve">
-    <value>Strict mode — streaks require a check-in every single day.</value>
+    <value>Strict mode: streaks require a check-in every single day.</value>
   </data>
   <data name="habit.grace.desc.1" xml:space="preserve">
-    <value>1 flex day per week — one unlogged day won't break your streak.</value>
+    <value>1 flex day per week: one unlogged day won't break your streak.</value>
   </data>
   <data name="habit.grace.desc.2" xml:space="preserve">
-    <value>2 flex days per week — two unlogged days won't break your streak.</value>
+    <value>2 flex days per week: two unlogged days won't break your streak.</value>
   </data>
   <data name="habit.grace.desc.3" xml:space="preserve">
-    <value>3 flex days per week — maximum flexibility.</value>
+    <value>3 flex days per week: maximum flexibility.</value>
   </data>
   <data name="habit.grace.set" xml:space="preserve">
     <value>Flex days set to **{0}/week**. {1}</value>
@@ -501,7 +501,7 @@ Reminders are off while it's paused. Rest well. 💙</value>
     <value>I can't snooze this one past its day. 💙 Tap Done or Skip whenever you're ready.</value>
   </data>
   <data name="checkin.snoozed" xml:space="preserve">
-    <value>Got it — I'll nudge you again in 1 hour. 💤</value>
+    <value>Got it, I'll nudge you again in 1 hour. 💤</value>
   </data>
   <data name="consent.agreed" xml:space="preserve">
     <value>Thank you, you're all set. 💙 If you were adding a habit, just run the command again.</value>
@@ -534,10 +534,10 @@ Reminders are off while it's paused. Rest well. 💙</value>
     <value>That worked! Your reminders are back on. 💙</value>
   </data>
   <data name="freq.retry" xml:space="preserve">
-    <value>Something went wrong — try `/habit frequency` again.</value>
+    <value>Something went wrong. Try `/habit frequency` again.</value>
   </data>
   <data name="freq.weekly-set" xml:space="preserve">
-    <value>**{0}** set to **{1}× per week** — check in any days you choose.</value>
+    <value>**{0}** set to **{1}× per week**. Check in any days you choose.</value>
   </data>
   <data name="freq.days.placeholder" xml:space="preserve">
     <value>Pick 1 to 6 days</value>
@@ -570,7 +570,7 @@ Reminders are off while it's paused. Rest well. 💙</value>
     <value>Times per day works for daily and weekday habits. Switch this one to daily or specific weekdays first.</value>
   </data>
   <data name="help.title" xml:space="preserve">
-    <value>Ember — Command Guide</value>
+    <value>Ember: Command Guide</value>
   </data>
   <data name="help.description" xml:space="preserve">
     <value>A calm companion for hard moments and gentle days.
@@ -580,55 +580,55 @@ Habits are one part of it: no guilt, no pressure.</value>
     <value>Getting started</value>
   </data>
   <data name="help.start.body" xml:space="preserve">
-    <value>`/habit add` — create a new habit
-`/habit template` — pick from pre-built habits
-`/timezone set` — set your local timezone (needed for reminders)
-`/timezone show` — see which timezone Ember uses for you</value>
+    <value>`/habit add`: create a new habit
+`/habit template`: pick from pre-built habits
+`/timezone set`: set your local timezone (needed for reminders)
+`/timezone show`: see which timezone Ember uses for you</value>
   </data>
   <data name="help.daily.title" xml:space="preserve">
     <value>Daily use</value>
   </data>
   <data name="help.daily.body" xml:space="preserve">
-    <value>`/habit checkin` — log today's check-in
-`/habit history` — fill in past days and mark low days
-`/habit list` — see all habits + recent progress
-`/habit streak` — view your personal stats</value>
+    <value>`/habit checkin`: log today's check-in
+`/habit history`: fill in past days and mark low days
+`/habit list`: see all habits + recent progress
+`/habit streak`: view your personal stats</value>
   </data>
   <data name="help.manage.title" xml:space="preserve">
     <value>Managing habits</value>
   </data>
   <data name="help.manage.body" xml:space="preserve">
-    <value>`/habit edit` — rename or change reminder time
-`/habit delete` — remove a habit
-`/habit pause` — pause temporarily, reminders rest too
-`/habit frequency` — daily, weekly or set weekdays, and times per day
-`/habit grace` — set how many flex days you get per week
-`/habit second-reminder` — get one more nudge if you haven't checked in yet</value>
+    <value>`/habit edit`: rename or change reminder time
+`/habit delete`: remove a habit
+`/habit pause`: pause temporarily, reminders rest too
+`/habit frequency`: daily, weekly or set weekdays, and times per day
+`/habit grace`: set how many flex days you get per week
+`/habit second-reminder`: get one more nudge if you haven't checked in yet</value>
   </data>
   <data name="help.share.title" xml:space="preserve">
     <value>Share</value>
   </data>
   <data name="help.share.body" xml:space="preserve">
-    <value>`/habit share` — post a habit card in this channel</value>
+    <value>`/habit share`: post a habit card in this channel</value>
   </data>
   <data name="help.web.title" xml:space="preserve">
     <value>Web app</value>
   </data>
   <data name="help.web.body" xml:space="preserve">
-    <value>`/link` — use Ember in your browser, or add Discord to an email account</value>
+    <value>`/link`: use Ember in your browser, or add Discord to an email account</value>
   </data>
   <data name="help.privacy.title" xml:space="preserve">
     <value>Privacy</value>
   </data>
   <data name="help.privacy.body" xml:space="preserve">
-    <value>`/export` — get your habits, check-ins and settings by DM
-`/privacy delete` — permanently delete all your Ember data</value>
+    <value>`/export`: get your habits, check-ins and settings by DM
+`/privacy delete`: permanently delete all your Ember data</value>
   </data>
   <data name="help.feedback.title" xml:space="preserve">
     <value>Feedback</value>
   </data>
   <data name="help.feedback.body" xml:space="preserve">
-    <value>`/feedback` — tell the Ember team what would make Ember better</value>
+    <value>`/feedback`: tell the Ember team what would make Ember better</value>
   </data>
   <data name="help.footer" xml:space="preserve">
     <value>Go at your own pace. Every small step counts.</value>
@@ -683,7 +683,7 @@ Today and yesterday stay open, and older days can be filled in any time.</value>
     <value>Which region are you in?</value>
   </data>
   <data name="onboard.region.unknown" xml:space="preserve">
-    <value>Unknown region — please try again.</value>
+    <value>Unknown region. Please try again.</value>
   </data>
   <data name="onboard.tz.placeholder" xml:space="preserve">
     <value>Pick your timezone…</value>
@@ -692,7 +692,7 @@ Today and yesterday stay open, and older days can be filled in any time.</value>
     <value>Which timezone?</value>
   </data>
   <data name="onboard.tz.unknown" xml:space="preserve">
-    <value>Couldn't resolve that timezone — please try again.</value>
+    <value>Couldn't resolve that timezone. Please try again.</value>
   </data>
   <data name="onboard.tz.saved.title" xml:space="preserve">
     <value>🌍 Timezone saved!</value>
@@ -754,7 +754,7 @@ Want me to nudge you at a set time each day?</value>
     <value>every day</value>
   </data>
   <data name="reminder.skipped" xml:space="preserve">
-    <value>No problem — you can always add one later with `/habit edit`. 💙</value>
+    <value>No problem, you can always add one later with `/habit edit`. 💙</value>
   </data>
   <data name="reminder.removed" xml:space="preserve">
     <value>Reminder removed from **{0}**. 💙</value>
@@ -799,7 +799,7 @@ Want me to nudge you at a set time each day?</value>
     <value>Marked {0} as a low day. Go easy on yourself. 💙</value>
   </data>
   <data name="template.unknown" xml:space="preserve">
-    <value>Unknown template — try `/habit template` again.</value>
+    <value>Unknown template. Try `/habit template` again.</value>
   </data>
   <data name="template.per-week" xml:space="preserve">
     <value>{0}× per week</value>
@@ -811,7 +811,7 @@ Want me to nudge you at a set time each day?</value>
     <value>**{0}** is now being tracked ({1}).
 _{2}_
 
-Suggested reminder: **{3}** — set it below if that works for you.</value>
+Suggested reminder: **{3}**. Set it below if that works for you.</value>
   </data>
   <data name="template.started.footer" xml:space="preserve">
     <value>You can rename it or change the frequency anytime with /habit edit or /habit frequency.</value>
@@ -932,10 +932,10 @@ Want to go ahead?</value>
     <value>**{0}** habits · **{1}** total log entries</value>
   </data>
   <data name="export.dm.footer" xml:space="preserve">
-    <value>This is your data — keep it, analyse it, do whatever you want with it.</value>
+    <value>This is your data: keep it, analyse it, do whatever you want with it.</value>
   </data>
   <data name="export.sent" xml:space="preserve">
-    <value>Done — check your DMs! 💙</value>
+    <value>Done, check your DMs! 💙</value>
   </data>
   <data name="export.no-dm" xml:space="preserve">
     <value>Couldn't send a DM (you may have DMs disabled). Here's the file directly:
@@ -1005,16 +1005,16 @@ Ember then offers to move your habits from here into that account. No codes need
     <value>Send anonymously</value>
   </data>
   <data name="onboard.tz.America/New_York" xml:space="preserve">
-    <value>Eastern Time — New York</value>
+    <value>Eastern Time (New York)</value>
   </data>
   <data name="onboard.tz.America/Chicago" xml:space="preserve">
-    <value>Central Time — Chicago</value>
+    <value>Central Time (Chicago)</value>
   </data>
   <data name="onboard.tz.America/Denver" xml:space="preserve">
-    <value>Mountain Time — Denver</value>
+    <value>Mountain Time (Denver)</value>
   </data>
   <data name="onboard.tz.America/Los_Angeles" xml:space="preserve">
-    <value>Pacific Time — Los Angeles</value>
+    <value>Pacific Time (Los Angeles)</value>
   </data>
   <data name="onboard.tz.America/Anchorage" xml:space="preserve">
     <value>Alaska Time</value>
@@ -1134,7 +1134,7 @@ Ember then offers to move your habits from here into that account. No codes need
     <value>Karachi</value>
   </data>
   <data name="onboard.tz.Asia/Kolkata" xml:space="preserve">
-    <value>India — IST</value>
+    <value>India (IST)</value>
   </data>
   <data name="onboard.tz.Asia/Kathmandu" xml:space="preserve">
     <value>Nepal</value>
@@ -1158,7 +1158,7 @@ Ember then offers to move your habits from here into that account. No codes need
     <value>Manila</value>
   </data>
   <data name="onboard.tz.Asia/Shanghai" xml:space="preserve">
-    <value>China — CST</value>
+    <value>China (CST)</value>
   </data>
   <data name="onboard.tz.Asia/Hong_Kong" xml:space="preserve">
     <value>Hong Kong</value>
@@ -1203,7 +1203,7 @@ Ember then offers to move your habits from here into that account. No codes need
     <value>Casablanca</value>
   </data>
   <data name="onboard.tz.Africa/Accra" xml:space="preserve">
-    <value>Accra — UTC+0</value>
+    <value>Accra (UTC+0)</value>
   </data>
   <data name="onboard.tz.Africa/Lagos" xml:space="preserve">
     <value>Lagos</value>
@@ -1221,7 +1221,7 @@ Ember then offers to move your habits from here into that account. No codes need
     <value>Mauritius</value>
   </data>
   <data name="onboard.tz.UTC" xml:space="preserve">
-    <value>UTC — Coordinated Universal Time</value>
+    <value>UTC (Coordinated Universal Time)</value>
   </data>
   <data name="onboard.tz.Etc/GMT+12" xml:space="preserve">
     <value>UTC−12</value>

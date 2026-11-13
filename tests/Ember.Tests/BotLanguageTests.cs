@@ -74,7 +74,7 @@ public class BotLanguageTests
 
     [Theory]
     [InlineData("de", "en-US", "Ember: alle Befehle", "Erste Schritte")]
-    [InlineData("en", "de", "Ember — Command Guide", "Getting started")]
+    [InlineData("en", "de", "Ember: Command Guide", "Getting started")]
     public async Task Help_follows_the_account_language_over_the_Discord_locale(string accountLanguage, string locale, string title, string firstSection)
     {
         await using var host = await IntegrationTestHost.CreateAsync(start: false);
