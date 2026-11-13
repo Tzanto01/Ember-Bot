@@ -88,8 +88,8 @@ public partial class HabitService
     public async Task<bool> HasHealthDataConsentAsync(ulong discordUserId)
         => await HasHealthDataConsentAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task GiveHealthDataConsentAsync(ulong discordUserId)
-        => await GiveHealthDataConsentAsync(await ResolveOrCreateDiscordUserAsync(discordUserId));
+    public async Task GiveHealthDataConsentAsync(ulong discordUserId, string? language = null)
+        => await GiveHealthDataConsentAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language));
 
     public async Task<bool> ClaimConsentPromptAsync(ulong discordUserId)
         => await ClaimConsentPromptAsync(await FindDiscordUserAsync(discordUserId));
@@ -166,8 +166,8 @@ public partial class HabitService
     public async Task<int> GetGraceDaysAsync(ulong discordUserId)
         => await GetGraceDaysAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays)
-        => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), graceDays);
+    public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays, string? language = null)
+        => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), graceDays);
 
     public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
         => await GetUserTzAsync(await FindDiscordUserAsync(discordUserId));
@@ -178,8 +178,8 @@ public partial class HabitService
     public async Task<bool> HasTimezoneSetAsync(ulong discordUserId)
         => await HasTimezoneSetAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task SetTimezoneAsync(ulong discordUserId, string timezoneId)
-        => await SetTimezoneAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), timezoneId);
+    public async Task SetTimezoneAsync(ulong discordUserId, string timezoneId, string? language = null)
+        => await SetTimezoneAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), timezoneId);
 
     public async Task<User?> GetUserForExportAsync(ulong discordUserId)
         => await GetUserForExportAsync(await FindDiscordUserAsync(discordUserId));
