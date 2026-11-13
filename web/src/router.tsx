@@ -178,6 +178,7 @@ export const routes: RouteObject[] = [
           { path: 'feedback', ...page('title.feedback', () => import('./pages/feedback')) },
           { path: 'moment', ...page('title.moment', () => import('./pages/moment')) },
           { path: 'help', ...page('title.help', () => import('./pages/help')) },
+          { path: 'about', ...page('title.about', () => import('./pages/about')) },
         ],
       },
       {
