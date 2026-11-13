@@ -308,7 +308,7 @@ export function HabitFields({
               <Label
                 key={day}
                 htmlFor={`${id}-day-${day}`}
-                className={`${optionClass} min-h-[48px] flex-wrap content-center justify-center gap-2 gap-y-1 px-2`}
+                className={`${optionClass} min-h-[48px] flex-col justify-center gap-1 px-2`}
               >
                 <Checkbox
                   id={`${id}-day-${day}`}

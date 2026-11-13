@@ -188,19 +188,21 @@ function MoodRow({
         {mood.emoji && <span aria-hidden="true">{mood.emoji}</span>}
         <span className="[overflow-wrap:anywhere]">{mood.label}</span>
       </span>
-      <Button ref={changeRef} variant="ghost" onClick={() => setEditing(true)} aria-label={t('moods.changeLabel', { label: mood.label })}>
-        {t('moods.change')}
-      </Button>
-      <BusyButton
-        id={`mood-${mood.id}-archive`}
-        variant="secondary"
-        busy={busy}
-        busyLabel={mood.archived ? t('moods.bringingBack') : t('moods.archiving')}
-        onClick={() => void toggleArchive()}
-        aria-label={t(mood.archived ? 'moods.unarchiveLabel' : 'moods.archiveLabel', { label: mood.label })}
-      >
-        {mood.archived ? t('moods.unarchive') : t('moods.archive')}
-      </BusyButton>
+      <span className="flex gap-x-3">
+        <Button ref={changeRef} variant="ghost" onClick={() => setEditing(true)} aria-label={t('moods.changeLabel', { label: mood.label })}>
+          {t('moods.change')}
+        </Button>
+        <BusyButton
+          id={`mood-${mood.id}-archive`}
+          variant="secondary"
+          busy={busy}
+          busyLabel={mood.archived ? t('moods.bringingBack') : t('moods.archiving')}
+          onClick={() => void toggleArchive()}
+          aria-label={t(mood.archived ? 'moods.unarchiveLabel' : 'moods.archiveLabel', { label: mood.label })}
+        >
+          {mood.archived ? t('moods.unarchive') : t('moods.archive')}
+        </BusyButton>
+      </span>
     </li>
   );
 }

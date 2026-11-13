@@ -657,7 +657,7 @@
   "habitNew.cadenceReminder": "{{cadence}} · Erinnerung um {{time}}",
   "habitNew.ready": "Dein Habit ist bereit.",
   "habitNew.goToday": "Zu Heute",
-  "habitNew.reachNote": "Erinnerungen erreichen dich über Benachrichtigungen auf diesem Gerät oder über Discord, wenn du es nutzt. <anchor>Schalte eins in den Einstellungen ein.</anchor>",
+  "habitNew.reachNote": "Erinnerungen erreichen dich über Benachrichtigungen auf diesem Gerät oder über Discord, wenn du es nutzt. <anchor>Schalte eine Möglichkeit in den Einstellungen ein.</anchor>",
   "habitNew.howReminds": "Wie dieser Habit dich erinnert",
   "habitNew.creating": "Dein Habit wird erstellt…",
   "habitNew.create": "Habit erstellen",
