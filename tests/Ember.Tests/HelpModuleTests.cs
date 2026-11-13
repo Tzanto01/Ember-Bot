@@ -14,7 +14,7 @@ public class HelpModuleTests
     [Fact]
     public void Help_links_the_privacy_policy_and_imprint_of_the_web_app()
     {
-        var embed = HelpModule.HelpEmbed(Config(("Ember:PrivacyPolicyUrl", "https://ember.example/legal/privacy")));
+        var embed = HelpModule.HelpEmbed(Ember.Bot.BotTexts.English, Config(("Ember:PrivacyPolicyUrl", "https://ember.example/legal/privacy")));
 
         embed.Fields.Should().ContainSingle(f => f.Name == "Legal").Which.Value.Should()
             .Be("[Privacy policy](https://ember.example/legal/privacy) · [Imprint](https://ember.example/legal/imprint)");
@@ -23,7 +23,7 @@ public class HelpModuleTests
     [Fact]
     public void Help_links_only_the_privacy_policy_when_it_is_hosted_elsewhere()
     {
-        var embed = HelpModule.HelpEmbed(Config(("Ember:PrivacyPolicyUrl", "https://policies.example/ember")));
+        var embed = HelpModule.HelpEmbed(Ember.Bot.BotTexts.English, Config(("Ember:PrivacyPolicyUrl", "https://policies.example/ember")));
 
         embed.Fields.Should().ContainSingle(f => f.Name == "Legal").Which.Value.Should()
             .Be("[Privacy policy](https://policies.example/ember)");
@@ -32,7 +32,7 @@ public class HelpModuleTests
     [Fact]
     public void Help_shows_no_legal_links_without_a_privacy_policy_url()
     {
-        var embed = HelpModule.HelpEmbed(Config());
+        var embed = HelpModule.HelpEmbed(Ember.Bot.BotTexts.English, Config());
 
         embed.Fields.Should().NotContain(f => f.Name == "Legal");
         embed.Fields.Select(f => f.Value).Should().NotContain(v => v.Contains("Privacy policy"));
@@ -49,7 +49,7 @@ public class HelpModuleTests
             .Where(c => c != "/help")
             .ToList();
 
-        var text = string.Join("\n", HelpModule.HelpEmbed(Config()).Fields.Select(f => f.Value));
+        var text = string.Join("\n", HelpModule.HelpEmbed(Ember.Bot.BotTexts.English, Config()).Fields.Select(f => f.Value));
 
         commands.Should().HaveCountGreaterThan(15);
         commands.Should().OnlyContain(c => text.Contains($"`{c}`"));

@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
@@ -21,21 +22,28 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
         _config = config;
     }
 
+    /// <summary>The template's name with its emoji (<c>☀️ Morning start</c>) in the user's language.</summary>
+    internal static string Name(Texts t, HabitTemplates.Template template) => t.Get($"template.{template.Key}.name");
+
+    /// <summary>The template's one-line description in the user's language.</summary>
+    internal static string Description(Texts t, HabitTemplates.Template template) => t.Get($"template.{template.Key}.description");
+
     [ComponentInteraction("habit:template:select")]
     public async Task HandleTemplateSelectAsync(string[] selected)
     {
         var key      = selected[0];
         var template = HabitTemplates.Find(key);
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
 
         if (template is null)
         {
-            await RespondAsync("Unknown template — try `/habit template` again.", ephemeral: true);
+            await RespondAsync(t.Get("template.unknown"), ephemeral: true);
             return;
         }
 
         // Strip leading emoji + space. Emoji are multi-char in UTF-16 so we can't
         // use char literals — find the first space and take everything after it.
-        var rawName   = template.DisplayName;
+        var rawName   = Name(t, template);
         var spaceIdx  = rawName.IndexOf(' ');
         var cleanName = spaceIdx >= 0 ? rawName[(spaceIdx + 1)..].Trim() : rawName;
 
@@ -58,26 +66,24 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
             await ConsentModule.RespondWithPromptAsync(Context, _config, _habits);
             return;
         }
-        catch (HabitLimitReachedException ex)
+        catch (HabitLimitReachedException)
         {
-            await RespondAsync(ex.Message, ephemeral: true);
+            await RespondAsync(t.Format("habit.limit", HabitService.MaxHabitsPerUser), ephemeral: true);
             return;
         }
 
         var hasTimezone = await _habits.HasTimezoneSetAsync(Context.User.Id);
 
         var freqLabel = frequency == FrequencyType.Weekly
-            ? $"{template.WeeklyTarget}× per week"
-            : "daily";
+            ? t.Format("template.per-week", template.WeeklyTarget)
+            : t.Get("habit.freq.daily");
+        var reminderLabel = template.SuggestedReminderTime.ToString(t.Get("time.suggested"), t.Culture);
 
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle($"🔥 {template.DisplayName} started!")
-            .WithDescription(
-                $"**{habit.Name}** is now being tracked ({freqLabel}).\n" +
-                $"_{template.Description}_\n\n" +
-                $"Suggested reminder: **{template.SuggestedReminderLabel}** — set it below if that works for you.")
-            .WithFooter("You can rename it or change the frequency anytime with /habit edit or /habit frequency.")
+            .WithTitle(t.Format("template.started.title", rawName))
+            .WithDescription(t.Format("template.started.body", habit.Name, freqLabel, Description(t, template), reminderLabel))
+            .WithFooter(t.Get("template.started.footer"))
             .Build();
 
         ComponentBuilder components;
@@ -85,18 +91,18 @@ public class TemplateSelectModule : InteractionModuleBase<SocketInteractionConte
         if (!hasTimezone)
         {
             components = new ComponentBuilder()
-                .WithButton("Set my timezone first", $"onboard:timezone:{habit.Id}", ButtonStyle.Primary, new Emoji("🌍"))
-                .WithButton("Skip for now", $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
+                .WithButton(t.Get("common.timezone-first"), $"onboard:timezone:{habit.Id}", ButtonStyle.Primary, new Emoji("🌍"))
+                .WithButton(t.Get("common.skip-for-now"), $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
         }
         else
         {
             components = new ComponentBuilder()
-                .WithButton($"Remind me at {template.SuggestedReminderLabel}", $"reminder:preset:{habit.Id}:{template.SuggestedReminderTime:HH\\:mm}", ButtonStyle.Primary, new Emoji("⏰"))
-                .WithButton("Set a different time", $"reminder:set:{habit.Id}", ButtonStyle.Secondary)
-                .WithButton("No reminder", $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
+                .WithButton(t.Format("template.remind-at", reminderLabel), $"reminder:preset:{habit.Id}:{template.SuggestedReminderTime:HH\\:mm}", ButtonStyle.Primary, new Emoji("⏰"))
+                .WithButton(t.Get("template.other-time"), $"reminder:set:{habit.Id}", ButtonStyle.Secondary)
+                .WithButton(t.Get("template.no-reminder"), $"reminder:skip:{habit.Id}", ButtonStyle.Secondary);
         }
 
-        components.WithButton("Days & times per day", $"freq:menu:{habit.Id}", ButtonStyle.Secondary, new Emoji("📅"), row: 1);
+        components.WithButton(t.Get("common.days-and-times"), $"freq:menu:{habit.Id}", ButtonStyle.Secondary, new Emoji("📅"), row: 1);
         await RespondAsync(embed: embed, components: components.Build(), ephemeral: true);
     }
 }

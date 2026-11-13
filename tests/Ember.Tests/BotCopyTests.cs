@@ -31,9 +31,9 @@ public class BotCopyTests
     {
         var weekdays = new Habit { FrequencyType = FrequencyType.Weekdays, Days = ScheduleDays.Mon | ScheduleDays.Wed };
 
-        ReminderSetupModule.ScheduleText(weekdays).Should().Be("on Mon, Wed");
-        ReminderSetupModule.ScheduleText(new Habit()).Should().Be("every day");
-        ReminderSetupModule.ScheduleText(new Habit { FrequencyType = FrequencyType.Weekly, WeeklyTarget = 3 })
+        ReminderSetupModule.ScheduleText(Ember.Bot.BotTexts.English, weekdays).Should().Be("on Mon, Wed");
+        ReminderSetupModule.ScheduleText(Ember.Bot.BotTexts.English, new Habit()).Should().Be("every day");
+        ReminderSetupModule.ScheduleText(Ember.Bot.BotTexts.English, new Habit { FrequencyType = FrequencyType.Weekly, WeeklyTarget = 3 })
             .Should().Be("on days you haven't checked in yet, until you've done it 3 times this week,");
     }
 

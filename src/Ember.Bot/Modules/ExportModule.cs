@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Ember.Core.Localization;
 using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 using System.Text;
@@ -37,10 +38,11 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: true);
 
         var user = await _habits.GetUserForExportAsync(Context.User.Id);
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
 
         if (user is null)
         {
-            await FollowupAsync("There's nothing stored about you yet, so there's nothing to export. 🌿", ephemeral: true);
+            await FollowupAsync(t.Get("export.nothing"), ephemeral: true);
             return;
         }
 
@@ -50,7 +52,7 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
         var filename = $"ember-export-{DateTime.UtcNow:yyyy-MM-dd}.{extension}";
-        var attachment = new FileAttachment(stream, filename, "Your Ember data");
+        var attachment = new FileAttachment(stream, filename, t.Get("export.attachment"));
         var habitCount = user.Habits.Count;
 
         try
@@ -59,32 +61,31 @@ public class ExportModule : InteractionModuleBase<SocketInteractionContext>
 
             var embed = new EmbedBuilder()
                 .WithColor(0xF4845F)
-                .WithTitle("📊 Your Ember data")
+                .WithTitle(t.Get("export.dm.title"))
                 .WithDescription(
-                    $"Your settings, habits and logs exported as {extension.ToUpperInvariant()}.\n\n" +
-                    $"**{habitCount}** habit{(habitCount != 1 ? "s" : "")} · " +
-                    $"**{user.Habits.Sum(h => h.Logs.Count)}** total log entries\n\n" +
-                    FullExportLine(_config))
-                .WithFooter("This is your data — keep it, analyse it, do whatever you want with it.")
+                    t.Format("export.dm.intro", extension.ToUpperInvariant()) + "\n\n" +
+                    t.Plural("export.dm.counts", habitCount, user.Habits.Sum(h => h.Logs.Count)) + "\n\n" +
+                    FullExportLine(t, _config))
+                .WithFooter(t.Get("export.dm.footer"))
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 .Build();
 
             await dm.SendFileAsync(attachment, embed: embed);
-            await FollowupAsync("Done — check your DMs! 💙", ephemeral: true);
+            await FollowupAsync(t.Get("export.sent"), ephemeral: true);
         }
         catch
         {
             stream.Position = 0;
             await FollowupWithFileAsync(
                 attachment,
-                text: $"Couldn't send a DM (you may have DMs disabled). Here's the file directly:\n{FullExportLine(_config)}",
+                text: t.Format("export.no-dm", FullExportLine(t, _config)),
                 ephemeral: true);
         }
     }
 
     /// <summary>Where the full export (with day notes, moods and account details) lives: the web app's settings.</summary>
-    internal static string FullExportLine(IConfiguration config)
+    internal static string FullExportLine(Texts t, IConfiguration config)
         => config[LinkModule.WebOriginKey] is { Length: > 0 } origin
-            ? $"Your day notes, moods and account details stay out of Discord. The full export is in Settings: {origin.TrimEnd('/')}/settings"
-            : "Your day notes, moods and account details stay out of Discord. The full export is in Settings in the Ember web app.";
+            ? t.Format("export.full.link", origin.TrimEnd('/'))
+            : t.Get("export.full.app");
 }

@@ -34,7 +34,7 @@ public class HistoryTests
             new(new DateOnly(2027, 1, 11), DayState.Pending, null, 0),
         };
 
-        var buttons = Buttons(HistoryModule.BuildGrid(UserId, HabitId, days, new HashSet<DateOnly>()));
+        var buttons = Buttons(HistoryModule.BuildGrid(Ember.Bot.BotTexts.English, UserId, HabitId, days, new HashSet<DateOnly>()));
 
         buttons.Select(b => b.Label).Should().Equal(
             "Mon 4", "Tue 5 ✅", "Wed 6 ➖", "Thu 7 ▫️", "Fri 8 🌙", "Sat 9 🌙✅", "Sun 10 ⏸️", "Mon 11 ▫️");
@@ -51,7 +51,7 @@ public class HistoryTests
             .Select(i => new HabitDay(today.AddDays(i - HistoryModule.Days + 1), DayState.NotDone, null, 0))
             .ToList();
 
-        var grid = HistoryModule.BuildGrid(UserId, HabitId, days, new HashSet<DateOnly> { today.AddDays(-3) });
+        var grid = HistoryModule.BuildGrid(Ember.Bot.BotTexts.English, UserId, HabitId, days, new HashSet<DateOnly> { today.AddDays(-3) });
 
         Rows(grid).Should().HaveCount(4);
         Rows(grid).Should().OnlyContain(r => r.Components.Count <= 5);

@@ -52,4 +52,1253 @@ Das passiert meistens, wenn DMs von Servermitgliedern ausgeschaltet sind (Server
   <data name="habit.streak.other" xml:space="preserve">
     <value>Streak: **{0}** Tage</value>
   </data>
+  <data name="common.not-yours" xml:space="preserve">
+    <value>Dieser Button ist nicht für dich.</value>
+  </data>
+  <data name="common.cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="common.not-found" xml:space="preserve">
+    <value>Ich konnte diesen Habit nicht finden.</value>
+  </data>
+  <data name="common.retry.dash" xml:space="preserve">
+    <value>Da ist etwas schiefgelaufen. Versuch es bitte noch einmal.</value>
+  </data>
+  <data name="common.retry.comma" xml:space="preserve">
+    <value>Da ist etwas schiefgelaufen. Versuch es bitte noch einmal.</value>
+  </data>
+  <data name="common.retry.period" xml:space="preserve">
+    <value>Da ist etwas schiefgelaufen. Versuch es bitte noch einmal.</value>
+  </data>
+  <data name="common.skip-for-now" xml:space="preserve">
+    <value>Erst mal überspringen</value>
+  </data>
+  <data name="common.not-now" xml:space="preserve">
+    <value>Jetzt nicht</value>
+  </data>
+  <data name="common.set-reminder" xml:space="preserve">
+    <value>Erinnerung einstellen</value>
+  </data>
+  <data name="common.timezone-first" xml:space="preserve">
+    <value>Erst meine Zeitzone einstellen</value>
+  </data>
+  <data name="common.days-and-times" xml:space="preserve">
+    <value>Tage und Mal pro Tag</value>
+  </data>
+  <data name="common.logged-today" xml:space="preserve">
+    <value>Eingetragen! Super gemacht heute. ✅</value>
+  </data>
+  <data name="common.skipped-today" xml:space="preserve">
+    <value>Kein Problem, ist notiert. Morgen ist ein neuer Anfang. 💙</value>
+  </data>
+  <data name="error.generic" xml:space="preserve">
+    <value>Da ist bei mir etwas schiefgelaufen. Versuch es gleich noch einmal. 🌿</value>
+  </data>
+  <data name="weekday.mon" xml:space="preserve">
+    <value>Mo</value>
+  </data>
+  <data name="weekday.tue" xml:space="preserve">
+    <value>Di</value>
+  </data>
+  <data name="weekday.wed" xml:space="preserve">
+    <value>Mi</value>
+  </data>
+  <data name="weekday.thu" xml:space="preserve">
+    <value>Do</value>
+  </data>
+  <data name="weekday.fri" xml:space="preserve">
+    <value>Fr</value>
+  </data>
+  <data name="weekday.sat" xml:space="preserve">
+    <value>Sa</value>
+  </data>
+  <data name="weekday.sun" xml:space="preserve">
+    <value>So</value>
+  </data>
+  <data name="date.long" xml:space="preserve">
+    <value>dddd, d. MMMM</value>
+  </data>
+  <data name="date.short" xml:space="preserve">
+    <value>ddd, d. MMM</value>
+  </data>
+  <data name="date.button" xml:space="preserve">
+    <value>ddd d.</value>
+  </data>
+  <data name="duration.15m" xml:space="preserve">
+    <value>15 Minuten</value>
+  </data>
+  <data name="duration.30m" xml:space="preserve">
+    <value>30 Minuten</value>
+  </data>
+  <data name="duration.1h" xml:space="preserve">
+    <value>1 Stunde</value>
+  </data>
+  <data name="duration.2h" xml:space="preserve">
+    <value>2 Stunden</value>
+  </data>
+  <data name="habit.reminder.none" xml:space="preserve">
+    <value>Erinnerung: keine</value>
+  </data>
+  <data name="habit.reminder.single" xml:space="preserve">
+    <value>Erinnerung: {0} (deine Zeit)</value>
+  </data>
+  <data name="habit.reminder.several" xml:space="preserve">
+    <value>Erinnerungen: {0} (deine Zeit)</value>
+  </data>
+  <data name="habit.freq.per-day" xml:space="preserve">
+    <value>{0}×/Tag</value>
+  </data>
+  <data name="habit.freq.weekly" xml:space="preserve">
+    <value>{0}×/Woche</value>
+  </data>
+  <data name="habit.freq.daily" xml:space="preserve">
+    <value>täglich</value>
+  </data>
+  <data name="habit.checkin.count.today" xml:space="preserve">
+    <value>Heute **{0}** eingetragen. Jeder einzelne zählt. 🔸</value>
+  </data>
+  <data name="habit.checkin.count.day" xml:space="preserve">
+    <value>**{0}** für {1} eingetragen. Jeder einzelne zählt. 🔸</value>
+  </data>
+  <data name="habit.add.modal.title" xml:space="preserve">
+    <value>Neuer Habit</value>
+  </data>
+  <data name="habit.add.modal.label" xml:space="preserve">
+    <value>Welchen Habit möchtest du verfolgen?</value>
+  </data>
+  <data name="habit.add.modal.placeholder" xml:space="preserve">
+    <value>z. B. Morgenspaziergang, 10 Seiten lesen, Wasser trinken</value>
+  </data>
+  <data name="habit.template.placeholder" xml:space="preserve">
+    <value>Wähl eine Vorlage…</value>
+  </data>
+  <data name="habit.template.prompt" xml:space="preserve">
+    <value>Wähl eine Vorlage. Name und Erinnerung kannst du danach anpassen:</value>
+  </data>
+  <data name="habit.none.start-both" xml:space="preserve">
+    <value>Du hast noch keine Habits. Mit `/habit add` oder `/habit template` kannst du loslegen!</value>
+  </data>
+  <data name="habit.none.start" xml:space="preserve">
+    <value>Du hast noch keine Habits. Mit `/habit add` kannst du loslegen!</value>
+  </data>
+  <data name="habit.none" xml:space="preserve">
+    <value>Du hast noch keine Habits.</value>
+  </data>
+  <data name="habit.list.title" xml:space="preserve">
+    <value>Deine Habits</value>
+  </data>
+  <data name="habit.list.title.paged" xml:space="preserve">
+    <value>Deine Habits (Seite {0}/{1})</value>
+  </data>
+  <data name="habit.list.paused" xml:space="preserve">
+    <value>⏸️ pausiert bis {0}</value>
+  </data>
+  <data name="habit.list.footer" xml:space="preserve">
+    <value>Fortschritt statt Perfektion.</value>
+  </data>
+  <data name="habit.checkin.placeholder" xml:space="preserve">
+    <value>An welchem Habit hast du gearbeitet?</value>
+  </data>
+  <data name="habit.checkin.prompt" xml:space="preserve">
+    <value>Für welchen Habit checkst du ein?</value>
+  </data>
+  <data name="habit.history.placeholder" xml:space="preserve">
+    <value>Welchen Habit möchtest du dir ansehen?</value>
+  </data>
+  <data name="habit.history.prompt" xml:space="preserve">
+    <value>Von welchem Habit möchtest du den Verlauf sehen?</value>
+  </data>
+  <data name="habit.stats.none" xml:space="preserve">
+    <value>Noch keine Habits. Mit `/habit add` fängst du an!</value>
+  </data>
+  <data name="habit.stats.hide-streaks" xml:space="preserve">
+    <value>Streaks ausblenden</value>
+  </data>
+  <data name="habit.stats.show-streaks" xml:space="preserve">
+    <value>Streaks einblenden</value>
+  </data>
+  <data name="habit.stats.title" xml:space="preserve">
+    <value>Deine Habit-Statistik</value>
+  </data>
+  <data name="habit.stats.title.paged" xml:space="preserve">
+    <value>Deine Habit-Statistik (Seite {0}/{1})</value>
+  </data>
+  <data name="habit.stats.weekly" xml:space="preserve">
+    <value>Diese Woche: **{0}/{1}**
+Letzte 28 Tage: **{2}/28** · Gesamt: **{3}**</value>
+  </data>
+  <data name="habit.stats.flexible" xml:space="preserve">
+    <value>Letzte 7: **{0}/7** · Letzte 30: **{1}/30**
+Gesamt: **{2}**</value>
+  </data>
+  <data name="habit.stats.streak" xml:space="preserve">
+    <value>{0}{1}
+Letzte 7: **{2}/7** · Letzte 30: **{3}/30**
+Bestwert: **{4}** · Gesamt: **{5}**</value>
+  </data>
+  <data name="habit.stats.grace-used.one" xml:space="preserve">
+    <value>_({0} Gnadentag genutzt)_</value>
+  </data>
+  <data name="habit.stats.grace-used.other" xml:space="preserve">
+    <value>_({0} Gnadentage genutzt)_</value>
+  </data>
+  <data name="habit.stats.footer.grace" xml:space="preserve">
+    <value>Gnadentage: {0}/Woche · Jeder Check-in zählt, egal wie groß die Lücke ist.</value>
+  </data>
+  <data name="habit.stats.footer" xml:space="preserve">
+    <value>Jeder Check-in zählt, egal wie groß die Lücke ist.</value>
+  </data>
+  <data name="habit.progress.weekly" xml:space="preserve">
+    <value>Diese Woche: **{0}/{1}** · Letzte 4 Wochen: **{2}/28**</value>
+  </data>
+  <data name="habit.progress.last7" xml:space="preserve">
+    <value>Letzte 7: **{0}/7**</value>
+  </data>
+  <data name="habit.progress.grace.one" xml:space="preserve">
+    <value>_(+{0} Gnadentag)_</value>
+  </data>
+  <data name="habit.progress.grace.other" xml:space="preserve">
+    <value>_(+{0} Gnadentage)_</value>
+  </data>
+  <data name="habit.share.prompt" xml:space="preserve">
+    <value>Welchen Habit möchtest du teilen?</value>
+  </data>
+  <data name="habit.delete.none" xml:space="preserve">
+    <value>Du hast keine Habits zum Löschen.</value>
+  </data>
+  <data name="habit.delete.placeholder" xml:space="preserve">
+    <value>Welchen Habit möchtest du entfernen?</value>
+  </data>
+  <data name="habit.delete.prompt" xml:space="preserve">
+    <value>Welchen Habit möchtest du löschen?</value>
+  </data>
+  <data name="habit.edit.none" xml:space="preserve">
+    <value>Du hast keine Habits zum Bearbeiten.</value>
+  </data>
+  <data name="habit.edit.prompt" xml:space="preserve">
+    <value>Welchen Habit möchtest du bearbeiten?</value>
+  </data>
+  <data name="habit.frequency.placeholder" xml:space="preserve">
+    <value>Welchen Habit möchtest du ändern?</value>
+  </data>
+  <data name="habit.frequency.prompt" xml:space="preserve">
+    <value>Bei welchem Habit möchtest du ändern, wie oft er dran ist?</value>
+  </data>
+  <data name="habit.pause.none" xml:space="preserve">
+    <value>Du hast keine Habits zum Pausieren.</value>
+  </data>
+  <data name="habit.pause.prompt" xml:space="preserve">
+    <value>Welchen Habit möchtest du pausieren?</value>
+  </data>
+  <data name="habit.grace.strict" xml:space="preserve">
+    <value>0 (streng)</value>
+  </data>
+  <data name="habit.grace.button.one" xml:space="preserve">
+    <value>{0} Gnadentag</value>
+  </data>
+  <data name="habit.grace.button.other" xml:space="preserve">
+    <value>{0} Gnadentage</value>
+  </data>
+  <data name="habit.grace.current.one" xml:space="preserve">
+    <value>Deine aktuelle Einstellung: **{0} Gnadentag/Woche**
+Wie viele nicht eingetragene Tage pro Woche verkraftet eine Streak, bevor sie neu beginnt?</value>
+  </data>
+  <data name="habit.grace.current.other" xml:space="preserve">
+    <value>Deine aktuelle Einstellung: **{0} Gnadentage/Woche**
+Wie viele nicht eingetragene Tage pro Woche verkraftet eine Streak, bevor sie neu beginnt?</value>
+  </data>
+  <data name="habit.second-reminder.off" xml:space="preserve">
+    <value>Zweite Erinnerung aus. Dann bleibt es bei einer. 💙</value>
+  </data>
+  <data name="habit.second-reminder.on" xml:space="preserve">
+    <value>Alles klar. Wenn du noch nicht eingecheckt hast, stupse ich dich **{0}** nach einer Erinnerung noch einmal an. 💙</value>
+  </data>
+  <data name="habit.checkin.done-button" xml:space="preserve">
+    <value>✅ Erledigt!</value>
+  </data>
+  <data name="habit.checkin.question" xml:space="preserve">
+    <value>Wie lief **{0}** heute?</value>
+  </data>
+  <data name="habit.checkin.so-far" xml:space="preserve">
+    <value>Bisher: {0}</value>
+  </data>
+  <data name="habit.share.posted" xml:space="preserve">
+    <value>Habit-Karte gepostet! 🔥</value>
+  </data>
+  <data name="habit.share.failed" xml:space="preserve">
+    <value>Ich konnte die Karte hier nicht posten. 💙 Versuch es gleich noch einmal oder in einem anderen Kanal.</value>
+  </data>
+  <data name="habit.delete.confirm-button" xml:space="preserve">
+    <value>Ja, löschen</value>
+  </data>
+  <data name="habit.delete.confirm" xml:space="preserve">
+    <value>Möchtest du **{0}** wirklich löschen? Das lässt sich nicht rückgängig machen.</value>
+  </data>
+  <data name="habit.edit.rename" xml:space="preserve">
+    <value>Umbenennen</value>
+  </data>
+  <data name="habit.edit.change-reminder" xml:space="preserve">
+    <value>Erinnerung ändern</value>
+  </data>
+  <data name="habit.edit.remove-reminder" xml:space="preserve">
+    <value>Erinnerung entfernen</value>
+  </data>
+  <data name="habit.edit.question" xml:space="preserve">
+    <value>Was möchtest du an **{0}** ändern?</value>
+  </data>
+  <data name="habit.pause.today" xml:space="preserve">
+    <value>Nur heute</value>
+  </data>
+  <data name="habit.pause.3days" xml:space="preserve">
+    <value>3 Tage</value>
+  </data>
+  <data name="habit.pause.1week" xml:space="preserve">
+    <value>1 Woche</value>
+  </data>
+  <data name="habit.pause.resume-button" xml:space="preserve">
+    <value>Jetzt fortsetzen</value>
+  </data>
+  <data name="habit.pause.question" xml:space="preserve">
+    <value>Wie lange möchtest du **{0}** pausieren?</value>
+  </data>
+  <data name="habit.frequency.question" xml:space="preserve">
+    <value>Wie oft möchtest du **{0}** verfolgen?</value>
+  </data>
+  <data name="freq.button.daily" xml:space="preserve">
+    <value>Täglich</value>
+  </data>
+  <data name="freq.button.weekly" xml:space="preserve">
+    <value>{0}× / Woche</value>
+  </data>
+  <data name="freq.button.weekdays" xml:space="preserve">
+    <value>Bestimmte Wochentage</value>
+  </data>
+  <data name="freq.button.times" xml:space="preserve">
+    <value>Mal pro Tag</value>
+  </data>
+  <data name="habit.share.weekly.title" xml:space="preserve">
+    <value>**{0}/{1} diese Woche**</value>
+  </data>
+  <data name="habit.share.weekly.stats" xml:space="preserve">
+    <value>Letzte 28 Tage: **{0}/28** · Gesamt: **{1}**</value>
+  </data>
+  <data name="habit.share.flexible.title" xml:space="preserve">
+    <value>**{0} der letzten 30 Tage**</value>
+  </data>
+  <data name="habit.share.flexible.stats" xml:space="preserve">
+    <value>Letzte 30 Tage: **{0}/30** · Gesamt: **{1}**</value>
+  </data>
+  <data name="habit.share.streak" xml:space="preserve">
+    <value>**{0}-Tage-Streak**</value>
+  </data>
+  <data name="habit.share.streak.stats" xml:space="preserve">
+    <value>Letzte 30 Tage: **{0}/30** · Bestwert: **{1}** · Gesamt: **{2}**</value>
+  </data>
+  <data name="habit.share.footer" xml:space="preserve">
+    <value>Verfolgt von {0} mit Ember 🔥</value>
+  </data>
+  <data name="habit.add.empty" xml:space="preserve">
+    <value>Der Habit-Name darf nicht leer sein.</value>
+  </data>
+  <data name="habit.limit" xml:space="preserve">
+    <value>Du verfolgst schon {0} Habits, mehr kann Ember auf einmal nicht halten. Wenn du diesen hinzufügen möchtest, mach zuerst mit `/habit delete` etwas Platz. 💙</value>
+  </data>
+  <data name="habit.add.started.title" xml:space="preserve">
+    <value>Habit gestartet</value>
+  </data>
+  <data name="habit.add.started.body" xml:space="preserve">
+    <value>**{0}** wird jetzt verfolgt.
+Stell eine Erinnerung ein, damit ich dich zur richtigen Zeit anstupsen kann.</value>
+  </data>
+  <data name="habit.add.started.footer" xml:space="preserve">
+    <value>Du schaffst das.</value>
+  </data>
+  <data name="habit.welcome.title" xml:space="preserve">
+    <value>🔥 Willkommen bei Ember!</value>
+  </data>
+  <data name="habit.welcome.body" xml:space="preserve">
+    <value>Du verfolgst jetzt **{0}**.
+
+So legst du los:
+• **Check täglich ein** mit `/habit checkin`
+• **Stell eine Erinnerung ein**, damit ich dich zur richtigen Zeit anstupse
+• **Kein schlechtes Gewissen**: verpasste Tage sind okay, Fortschritt zählt</value>
+  </data>
+  <data name="habit.welcome.footer" xml:space="preserve">
+    <value>Fortschritt statt Perfektion. Ich drück dir die Daumen. 💙</value>
+  </data>
+  <data name="habit.delete.done" xml:space="preserve">
+    <value>Habit entfernt. Ganz ohne Urteil: Mit `/habit add` kannst du jederzeit neu anfangen. 💙</value>
+  </data>
+  <data name="habit.delete.cancelled" xml:space="preserve">
+    <value>Abgebrochen, nichts wurde gelöscht.</value>
+  </data>
+  <data name="habit.rename.modal.title" xml:space="preserve">
+    <value>Habit umbenennen</value>
+  </data>
+  <data name="habit.rename.modal.label" xml:space="preserve">
+    <value>Neuer Name</value>
+  </data>
+  <data name="habit.rename.empty" xml:space="preserve">
+    <value>Der Name darf nicht leer sein.</value>
+  </data>
+  <data name="habit.rename.done.title" xml:space="preserve">
+    <value>Habit umbenannt</value>
+  </data>
+  <data name="habit.rename.done.body" xml:space="preserve">
+    <value>Jetzt verfolgst du **{0}**.</value>
+  </data>
+  <data name="habit.pause.resumed" xml:space="preserve">
+    <value>**{0}** läuft wieder. Schön, dass du zurück bist! 🔥</value>
+  </data>
+  <data name="habit.pause.paused" xml:space="preserve">
+    <value>**{0}** ist pausiert bis **{1}**.
+So lange ruhen die Erinnerungen. Erhol dich gut. 💙</value>
+  </data>
+  <data name="habit.frequency.daily-set" xml:space="preserve">
+    <value>**{0}** ist jetzt täglich dran: Check jeden Tag ein.</value>
+  </data>
+  <data name="habit.grace.invalid" xml:space="preserve">
+    <value>Ungültiger Wert.</value>
+  </data>
+  <data name="habit.grace.desc.0" xml:space="preserve">
+    <value>Strenger Modus: Eine Streak braucht jeden Tag einen Check-in.</value>
+  </data>
+  <data name="habit.grace.desc.1" xml:space="preserve">
+    <value>1 Gnadentag pro Woche: Ein nicht eingetragener Tag beendet deine Streak nicht.</value>
+  </data>
+  <data name="habit.grace.desc.2" xml:space="preserve">
+    <value>2 Gnadentage pro Woche: Zwei nicht eingetragene Tage beenden deine Streak nicht.</value>
+  </data>
+  <data name="habit.grace.desc.3" xml:space="preserve">
+    <value>3 Gnadentage pro Woche: so flexibel wie möglich.</value>
+  </data>
+  <data name="habit.grace.set" xml:space="preserve">
+    <value>Gnadentage auf **{0}/Woche** gesetzt. {1}</value>
+  </data>
+  <data name="checkin.expired" xml:space="preserve">
+    <value>Diese Erinnerung ist geschlossen. Den Tag kannst du noch mit /habit history oder im Web eintragen. 💙</value>
+  </data>
+  <data name="checkin.button-error" xml:space="preserve">
+    <value>Mit diesem Button ist etwas schiefgelaufen.</value>
+  </data>
+  <data name="checkin.before-start" xml:space="preserve">
+    <value>Diese Erinnerung ist von vor dem Start des Habits, für den Tag gibt es also nichts einzutragen. 💙</value>
+  </data>
+  <data name="checkin.habit-gone" xml:space="preserve">
+    <value>Diesen Habit gibt es in Ember nicht mehr, also gibt es nichts einzutragen. 💙</value>
+  </data>
+  <data name="checkin.kept-done" xml:space="preserve">
+    <value>An dem Tag hast du schon eingecheckt, deshalb habe ich es so gelassen. ✅</value>
+  </data>
+  <data name="checkin.logged-day" xml:space="preserve">
+    <value>Eingetragen für {0}. Super gemacht. ✅</value>
+  </data>
+  <data name="checkin.skipped-day" xml:space="preserve">
+    <value>Kein Problem, für {0} notiert. 💙</value>
+  </data>
+  <data name="checkin.snooze-closed" xml:space="preserve">
+    <value>Über ihren Tag hinaus kann ich diese Erinnerung nicht verschieben. 💙 Tipp auf Erledigt oder Auslassen, wann immer du so weit bist.</value>
+  </data>
+  <data name="checkin.snoozed" xml:space="preserve">
+    <value>Alles klar, in 1 Stunde stupse ich dich noch einmal an. 💤</value>
+  </data>
+  <data name="consent.agreed" xml:space="preserve">
+    <value>Danke, alles bereit. 💙 Wenn du gerade einen Habit anlegen wolltest, führ den Befehl einfach noch einmal aus.</value>
+  </data>
+  <data name="consent.declined" xml:space="preserve">
+    <value>Kein Problem. 💙 Ember kann Habits nur mit deinem OK speichern, deshalb lege ich keine neuen an. Was du hier schon hast, bleibt so, bis du dich entscheidest. Du kannst jederzeit Ja sagen, indem du einen Habit anlegst, oder unten alles löschen, was Ember über dich speichert.</value>
+  </data>
+  <data name="consent.delete-button" xml:space="preserve">
+    <value>Meine Daten löschen</value>
+  </data>
+  <data name="discordreminders.off" xml:space="preserve">
+    <value>Discord-Erinnerungen sind bei dir aus, deshalb schicke ich diese nicht per DM. In Embers Einstellungen oder mit dem Button in meiner früheren Nachricht kannst du sie wieder einschalten.</value>
+  </data>
+  <data name="discordreminders.yes" xml:space="preserve">
+    <value>Schön, deine Erinnerungen kommen dann auch hierher. 💙 Wo Ember dich erinnert, kannst du jederzeit in den Einstellungen ändern.</value>
+  </data>
+  <data name="discordreminders.no" xml:space="preserve">
+    <value>Kein Problem, ich schicke dir deine Erinnerungen nicht per DM. 💙 Falls du es dir anders überlegst, tipp unten oder schalte Discord-DMs in den Einstellungen ein.</value>
+  </data>
+  <data name="discordreminders.turn-on" xml:space="preserve">
+    <value>Einschalten</value>
+  </data>
+  <data name="dmretry.check" xml:space="preserve">
+    <value>Hi! Hier ist Ember, ich schaue nur, ob ich dich erreiche. Deine Erinnerungen sind wieder an. 🔥</value>
+  </data>
+  <data name="dmretry.still-blocked" xml:space="preserve">
+    <value>Ich erreiche dich immer noch nicht per DM. Kein Stress: Sobald DMs an sind, tipp einfach auf **Nochmal versuchen**.</value>
+  </data>
+  <data name="dmretry.worked" xml:space="preserve">
+    <value>Hat geklappt! Deine Erinnerungen sind wieder an. 💙</value>
+  </data>
+  <data name="freq.retry" xml:space="preserve">
+    <value>Da ist etwas schiefgelaufen. Versuch `/habit frequency` noch einmal.</value>
+  </data>
+  <data name="freq.weekly-set" xml:space="preserve">
+    <value>**{0}** ist jetzt auf **{1}× pro Woche** gestellt. Check an beliebigen Tagen ein.</value>
+  </data>
+  <data name="freq.days.placeholder" xml:space="preserve">
+    <value>Wähl 1 bis 6 Tage</value>
+  </data>
+  <data name="freq.days.question" xml:space="preserve">
+    <value>An welchen Tagen ist **{0}** dran? Die anderen Tage sind Ruhetage.</value>
+  </data>
+  <data name="freq.days.set" xml:space="preserve">
+    <value>**{0}** ist jetzt für **{1}** eingeplant. Die anderen Tage sind Ruhetage. 💤</value>
+  </data>
+  <data name="freq.times.placeholder" xml:space="preserve">
+    <value>Mal pro Tag</value>
+  </data>
+  <data name="freq.times.once" xml:space="preserve">
+    <value>Einmal am Tag</value>
+  </data>
+  <data name="freq.times.option" xml:space="preserve">
+    <value>{0}× am Tag</value>
+  </data>
+  <data name="freq.times.question" xml:space="preserve">
+    <value>Wie oft am Tag möchtest du **{0}** machen?</value>
+  </data>
+  <data name="freq.times.once-set" xml:space="preserve">
+    <value>**{0}** ist wieder einmal am Tag dran.</value>
+  </data>
+  <data name="freq.times.set" xml:space="preserve">
+    <value>**{0}** ist jetzt **{1}× am Tag** dran. Jeder Check-in zählt dazu.</value>
+  </data>
+  <data name="freq.times.weekly" xml:space="preserve">
+    <value>Mal pro Tag gibt es für tägliche Habits und Habits an bestimmten Wochentagen. Stell diesen zuerst auf täglich oder bestimmte Wochentage um.</value>
+  </data>
+  <data name="help.title" xml:space="preserve">
+    <value>Ember: alle Befehle</value>
+  </data>
+  <data name="help.description" xml:space="preserve">
+    <value>Ein ruhiger Begleiter für schwere Momente und sanfte Tage.
+Habits sind ein Teil davon: ohne schlechtes Gewissen, ohne Druck.</value>
+  </data>
+  <data name="help.start.title" xml:space="preserve">
+    <value>Erste Schritte</value>
+  </data>
+  <data name="help.start.body" xml:space="preserve">
+    <value>`/habit add`: einen neuen Habit anlegen
+`/habit template`: aus fertigen Habits wählen
+`/timezone set`: deine Zeitzone einstellen (für Erinnerungen nötig)
+`/timezone show`: sehen, welche Zeitzone Ember für dich nutzt</value>
+  </data>
+  <data name="help.daily.title" xml:space="preserve">
+    <value>Im Alltag</value>
+  </data>
+  <data name="help.daily.body" xml:space="preserve">
+    <value>`/habit checkin`: den heutigen Check-in eintragen
+`/habit history`: vergangene Tage nachtragen und Tiefs markieren
+`/habit list`: alle Habits und deinen Fortschritt sehen
+`/habit streak`: deine Statistik ansehen</value>
+  </data>
+  <data name="help.manage.title" xml:space="preserve">
+    <value>Habits verwalten</value>
+  </data>
+  <data name="help.manage.body" xml:space="preserve">
+    <value>`/habit edit`: umbenennen oder die Erinnerungszeit ändern
+`/habit delete`: einen Habit entfernen
+`/habit pause`: eine Weile pausieren, die Erinnerungen ruhen mit
+`/habit frequency`: täglich, wöchentlich oder feste Wochentage, und wie oft am Tag
+`/habit grace`: festlegen, wie viele Gnadentage du pro Woche hast
+`/habit second-reminder`: noch ein Stupser, wenn du noch nicht eingecheckt hast</value>
+  </data>
+  <data name="help.share.title" xml:space="preserve">
+    <value>Teilen</value>
+  </data>
+  <data name="help.share.body" xml:space="preserve">
+    <value>`/habit share`: eine Habit-Karte in diesem Kanal posten</value>
+  </data>
+  <data name="help.web.title" xml:space="preserve">
+    <value>Web-App</value>
+  </data>
+  <data name="help.web.body" xml:space="preserve">
+    <value>`/link`: Ember im Browser nutzen oder Discord mit einem E-Mail-Konto verknüpfen</value>
+  </data>
+  <data name="help.privacy.title" xml:space="preserve">
+    <value>Privatsphäre</value>
+  </data>
+  <data name="help.privacy.body" xml:space="preserve">
+    <value>`/export`: deine Habits, Check-ins und Einstellungen per DM bekommen
+`/privacy delete`: alle deine Ember-Daten endgültig löschen</value>
+  </data>
+  <data name="help.feedback.title" xml:space="preserve">
+    <value>Feedback</value>
+  </data>
+  <data name="help.feedback.body" xml:space="preserve">
+    <value>`/feedback`: dem Ember-Team sagen, was Ember besser machen würde</value>
+  </data>
+  <data name="help.footer" xml:space="preserve">
+    <value>Geh in deinem Tempo. Jeder kleine Schritt zählt.</value>
+  </data>
+  <data name="help.legal.title" xml:space="preserve">
+    <value>Rechtliches</value>
+  </data>
+  <data name="help.legal.privacy" xml:space="preserve">
+    <value>[Datenschutzerklärung]({0})</value>
+  </data>
+  <data name="help.legal.imprint" xml:space="preserve">
+    <value>[Impressum]({0})</value>
+  </data>
+  <data name="history.before-start" xml:space="preserve">
+    <value>Dieser Tag liegt vor dem Start des Habits, es gibt also nichts einzutragen.</value>
+  </data>
+  <data name="history.in-future" xml:space="preserve">
+    <value>Dieser Tag ist noch nicht da.</value>
+  </data>
+  <data name="history.grid" xml:space="preserve">
+    <value>**{0}**, letzte {1} Tage. Tipp auf einen Tag, um ihn zu ändern: ✅ erledigt, 🔸 teilweise erledigt, ➖ nicht erledigt, ▫️ nicht eingetragen, 💤 Ruhetag.
+Heute und gestern bleiben offen, ältere Tage kannst du jederzeit nachtragen.</value>
+  </data>
+  <data name="history.low.placeholder" xml:space="preserve">
+    <value>🌙 Tief markieren oder entfernen</value>
+  </data>
+  <data name="history.low.marked" xml:space="preserve">
+    <value>🌙 Tief, zum Entfernen wählen</value>
+  </data>
+  <data name="onboard.region.americas" xml:space="preserve">
+    <value>Amerika</value>
+  </data>
+  <data name="onboard.region.europe" xml:space="preserve">
+    <value>Europa</value>
+  </data>
+  <data name="onboard.region.asia" xml:space="preserve">
+    <value>Asien</value>
+  </data>
+  <data name="onboard.region.pacific" xml:space="preserve">
+    <value>Pazifik &amp; Ozeanien</value>
+  </data>
+  <data name="onboard.region.africa" xml:space="preserve">
+    <value>Afrika &amp; Naher Osten</value>
+  </data>
+  <data name="onboard.region.utc" xml:space="preserve">
+    <value>UTC / feste Abweichung</value>
+  </data>
+  <data name="onboard.region.placeholder" xml:space="preserve">
+    <value>Wähl deine Region…</value>
+  </data>
+  <data name="onboard.region.question" xml:space="preserve">
+    <value>In welcher Region bist du?</value>
+  </data>
+  <data name="onboard.region.unknown" xml:space="preserve">
+    <value>Diese Region kenne ich nicht. Versuch es bitte noch einmal.</value>
+  </data>
+  <data name="onboard.tz.placeholder" xml:space="preserve">
+    <value>Wähl deine Zeitzone…</value>
+  </data>
+  <data name="onboard.tz.question" xml:space="preserve">
+    <value>Welche Zeitzone?</value>
+  </data>
+  <data name="onboard.tz.unknown" xml:space="preserve">
+    <value>Mit dieser Zeitzone kann ich nichts anfangen. Versuch es bitte noch einmal.</value>
+  </data>
+  <data name="onboard.tz.saved.title" xml:space="preserve">
+    <value>🌍 Zeitzone gespeichert!</value>
+  </data>
+  <data name="onboard.tz.saved.body" xml:space="preserve">
+    <value>Eingestellt auf **{0}**.
+
+Soll ich dich jeden Tag zu einer festen Zeit anstupsen?</value>
+  </data>
+  <data name="onboard.set-reminder" xml:space="preserve">
+    <value>⏰ Erinnerung einstellen</value>
+  </data>
+  <data name="reminder.need-timezone" xml:space="preserve">
+    <value>Erinnerungen richten sich nach deiner Ortszeit. In welcher Zeitzone bist du? 🌍</value>
+  </data>
+  <data name="reminder.set-timezone" xml:space="preserve">
+    <value>Meine Zeitzone einstellen</value>
+  </data>
+  <data name="reminder.on-utc" xml:space="preserve">
+    <value>Ich nutze UTC</value>
+  </data>
+  <data name="reminder.modal.title" xml:space="preserve">
+    <value>Tägliche Erinnerung einstellen</value>
+  </data>
+  <data name="reminder.modal.label" xml:space="preserve">
+    <value>Um wie viel Uhr? (deine Ortszeit)</value>
+  </data>
+  <data name="reminder.modal.placeholder" xml:space="preserve">
+    <value>z. B. 09:00, 21:30 oder 9pm</value>
+  </data>
+  <data name="reminder.not-found" xml:space="preserve">
+    <value>Ich konnte diesen Habit nicht finden. Vielleicht wurde er gelöscht.</value>
+  </data>
+  <data name="reminder.set.title" xml:space="preserve">
+    <value>⏰ Erinnerung eingestellt!</value>
+  </data>
+  <data name="reminder.set.line" xml:space="preserve">
+    <value>Ich erinnere dich {1} um **{2}** (deine Zeit) an **{0}**.</value>
+  </data>
+  <data name="reminder.set.got-this" xml:space="preserve">
+    <value>Du schaffst das.</value>
+  </data>
+  <data name="reminder.set.footer" xml:space="preserve">
+    <value>Du schaffst das. Ein Tag nach dem anderen.</value>
+  </data>
+  <data name="reminder.replaced" xml:space="preserve">
+    <value>Das ersetzt deine früheren Erinnerungen um {0}. Für mehrere Erinnerungen am Tag stell die Zeiten in der Ember-Web-App ein.</value>
+  </data>
+  <data name="reminder.schedule.weekdays" xml:space="preserve">
+    <value>am {0}</value>
+  </data>
+  <data name="reminder.schedule.weekly.one" xml:space="preserve">
+    <value>an Tagen ohne Check-in, bis du es diese Woche {0}-mal geschafft hast,</value>
+  </data>
+  <data name="reminder.schedule.weekly.other" xml:space="preserve">
+    <value>an Tagen ohne Check-in, bis du es diese Woche {0}-mal geschafft hast,</value>
+  </data>
+  <data name="reminder.schedule.daily" xml:space="preserve">
+    <value>jeden Tag</value>
+  </data>
+  <data name="reminder.skipped" xml:space="preserve">
+    <value>Kein Problem, mit `/habit edit` kannst du später jederzeit eine hinzufügen. 💙</value>
+  </data>
+  <data name="reminder.removed" xml:space="preserve">
+    <value>Erinnerung von **{0}** entfernt. 💙</value>
+  </data>
+  <data name="reminder.no-changes" xml:space="preserve">
+    <value>Nichts geändert.</value>
+  </data>
+  <data name="reminder.bad-time" xml:space="preserve">
+    <value>Diese Uhrzeit konnte ich nicht lesen. Versuch es zum Beispiel mit `09:00`, `21:30` oder `9pm`. 💙</value>
+  </data>
+  <data name="reminder.try-again" xml:space="preserve">
+    <value>Nochmal versuchen</value>
+  </data>
+  <data name="reflect.dismissed" xml:space="preserve">
+    <value>Notiert. Heute ist ein neuer Anfang. 💙</value>
+  </data>
+  <data name="reflect.already-logged" xml:space="preserve">
+    <value>Dieser Tag ist schon eingetragen. 💙</value>
+  </data>
+  <data name="reflect.logged-one" xml:space="preserve">
+    <value>**{0}** für {1} eingetragen. Schön. ✅</value>
+  </data>
+  <data name="reflect.pick.placeholder" xml:space="preserve">
+    <value>Welche hast du gemacht?</value>
+  </data>
+  <data name="reflect.low-button" xml:space="preserve">
+    <value>Es war ein Tief</value>
+  </data>
+  <data name="reflect.move-on" xml:space="preserve">
+    <value>Ist okay, weiter geht's</value>
+  </data>
+  <data name="reflect.pick.question" xml:space="preserve">
+    <value>Welche Habits hast du am {0} gemacht?</value>
+  </data>
+  <data name="reflect.logged.one" xml:space="preserve">
+    <value>{0} Habit für {1} eingetragen. Schön. ✅</value>
+  </data>
+  <data name="reflect.logged.other" xml:space="preserve">
+    <value>{0} Habits für {1} eingetragen. Schön. ✅</value>
+  </data>
+  <data name="reflect.low-marked" xml:space="preserve">
+    <value>{0} als Tief markiert. Sei sanft zu dir. 💙</value>
+  </data>
+  <data name="template.unknown" xml:space="preserve">
+    <value>Diese Vorlage kenne ich nicht. Versuch `/habit template` noch einmal.</value>
+  </data>
+  <data name="template.per-week" xml:space="preserve">
+    <value>{0}× pro Woche</value>
+  </data>
+  <data name="template.started.title" xml:space="preserve">
+    <value>🔥 {0} gestartet!</value>
+  </data>
+  <data name="template.started.body" xml:space="preserve">
+    <value>**{0}** wird jetzt verfolgt ({1}).
+_{2}_
+
+Vorschlag für die Erinnerung: **{3}**. Stell sie unten ein, wenn das für dich passt.</value>
+  </data>
+  <data name="template.started.footer" xml:space="preserve">
+    <value>Mit /habit edit oder /habit frequency kannst du ihn jederzeit umbenennen oder ändern, wie oft er dran ist.</value>
+  </data>
+  <data name="template.remind-at" xml:space="preserve">
+    <value>Erinnere mich um {0}</value>
+  </data>
+  <data name="template.other-time" xml:space="preserve">
+    <value>Andere Zeit einstellen</value>
+  </data>
+  <data name="template.no-reminder" xml:space="preserve">
+    <value>Keine Erinnerung</value>
+  </data>
+  <data name="template.morning_routine.name" xml:space="preserve">
+    <value>☀️ Guter Start</value>
+  </data>
+  <data name="template.morning_routine.description" xml:space="preserve">
+    <value>Beginne den Tag bewusst</value>
+  </data>
+  <data name="template.medication.name" xml:space="preserve">
+    <value>💊 Medikamente</value>
+  </data>
+  <data name="template.medication.description" xml:space="preserve">
+    <value>Nimm deine Medikamente nach Plan</value>
+  </data>
+  <data name="template.hydration.name" xml:space="preserve">
+    <value>💧 Trinken</value>
+  </data>
+  <data name="template.hydration.description" xml:space="preserve">
+    <value>Trink heute genug Wasser</value>
+  </data>
+  <data name="template.exercise.name" xml:space="preserve">
+    <value>🏃 Bewegung</value>
+  </data>
+  <data name="template.exercise.description" xml:space="preserve">
+    <value>Beweg dich, jedes bisschen zählt</value>
+  </data>
+  <data name="template.sleep.name" xml:space="preserve">
+    <value>😴 Schlaf</value>
+  </data>
+  <data name="template.sleep.description" xml:space="preserve">
+    <value>Komm zur Ruhe und geh rechtzeitig ins Bett</value>
+  </data>
+  <data name="template.journaling.name" xml:space="preserve">
+    <value>📓 Tagebuch</value>
+  </data>
+  <data name="template.journaling.description" xml:space="preserve">
+    <value>Schreib über deinen Tag</value>
+  </data>
+  <data name="template.reading.name" xml:space="preserve">
+    <value>📚 Lesen</value>
+  </data>
+  <data name="template.reading.description" xml:space="preserve">
+    <value>Lies mindestens 10 Minuten</value>
+  </data>
+  <data name="template.no_phone_morning.name" xml:space="preserve">
+    <value>📵 Handyfreier Morgen</value>
+  </data>
+  <data name="template.no_phone_morning.description" xml:space="preserve">
+    <value>Kein Handy in den ersten 30 Minuten</value>
+  </data>
+  <data name="template.outside.name" xml:space="preserve">
+    <value>🌿 Raus an die Luft</value>
+  </data>
+  <data name="template.outside.description" xml:space="preserve">
+    <value>Hol dir frische Luft und Tageslicht</value>
+  </data>
+  <data name="template.deep_work.name" xml:space="preserve">
+    <value>🧠 Fokuszeit</value>
+  </data>
+  <data name="template.deep_work.description" xml:space="preserve">
+    <value>Eine konzentrierte Arbeitsphase</value>
+  </data>
+  <data name="timezone.not-found" xml:space="preserve">
+    <value>Die Zeitzone `{0}` habe ich nicht gefunden.
+Nimm einen IANA-Zeitzonennamen, z. B. `Europe/Berlin`, `Europe/Vienna`, `Europe/Zurich`.
+Vollständige Liste: &lt;https://en.wikipedia.org/wiki/List_of_tz_database_time_zones&gt;</value>
+  </data>
+  <data name="timezone.set" xml:space="preserve">
+    <value>Zeitzone auf **{0}** gesetzt.</value>
+  </data>
+  <data name="timezone.rescheduled" xml:space="preserve">
+    <value>{0} Erinnerung(en) passend verschoben.</value>
+  </data>
+  <data name="timezone.show" xml:space="preserve">
+    <value>Deine Zeitzone ist gerade **{0}**.</value>
+  </data>
+  <data name="privacy.delete.button" xml:space="preserve">
+    <value>Alles löschen</value>
+  </data>
+  <data name="privacy.delete.confirm" xml:space="preserve">
+    <value>Damit löschst du endgültig alles, was Ember über dich weiß: alle Habits, jeden Check-in, deine Erinnerungen und Einstellungen. Das lässt sich nicht rückgängig machen.
+
+Möchtest du weitermachen?</value>
+  </data>
+  <data name="privacy.delete.done" xml:space="preserve">
+    <value>Erledigt. Alle deine Ember-Daten sind gelöscht. Wenn du irgendwann neu anfangen möchtest, bin ich da. 💙</value>
+  </data>
+  <data name="privacy.delete.cancelled" xml:space="preserve">
+    <value>Kein Problem, nichts wurde gelöscht.</value>
+  </data>
+  <data name="export.nothing" xml:space="preserve">
+    <value>Über dich ist noch nichts gespeichert, also gibt es nichts zu exportieren. 🌿</value>
+  </data>
+  <data name="export.attachment" xml:space="preserve">
+    <value>Deine Ember-Daten</value>
+  </data>
+  <data name="export.dm.title" xml:space="preserve">
+    <value>📊 Deine Ember-Daten</value>
+  </data>
+  <data name="export.dm.intro" xml:space="preserve">
+    <value>Deine Einstellungen, Habits und Einträge als {0} exportiert.</value>
+  </data>
+  <data name="export.dm.counts.one" xml:space="preserve">
+    <value>**{0}** Habit · **{1}** Einträge insgesamt</value>
+  </data>
+  <data name="export.dm.counts.other" xml:space="preserve">
+    <value>**{0}** Habits · **{1}** Einträge insgesamt</value>
+  </data>
+  <data name="export.dm.footer" xml:space="preserve">
+    <value>Das sind deine Daten: Behalte sie, werte sie aus, mach damit, was du möchtest.</value>
+  </data>
+  <data name="export.sent" xml:space="preserve">
+    <value>Erledigt, schau in deine DMs! 💙</value>
+  </data>
+  <data name="export.no-dm" xml:space="preserve">
+    <value>Ich konnte dir keine DM schicken (vielleicht sind DMs bei dir aus). Hier ist die Datei direkt:
+{0}</value>
+  </data>
+  <data name="export.full.link" xml:space="preserve">
+    <value>Deine Tagesnotizen, Stimmungen und Kontodaten bleiben aus Discord raus. Den vollständigen Export findest du in den Einstellungen: {0}/settings</value>
+  </data>
+  <data name="export.full.app" xml:space="preserve">
+    <value>Deine Tagesnotizen, Stimmungen und Kontodaten bleiben aus Discord raus. Den vollständigen Export findest du in den Einstellungen der Ember-Web-App.</value>
+  </data>
+  <data name="link.reply" xml:space="preserve">
+    <value>Deine Habits sind schon in der Ember-Web-App. 💙 Öffne {0} und wähl **Mit Discord anmelden**.
+
+Du möchtest dich auch mit E-Mail und Passwort anmelden oder hast schon ein Ember-Konto mit E-Mail? Melde dich mit diesem Konto an und verknüpfe Discord in den Einstellungen: {0}/settings
+Ember bietet dir dann an, deine Habits von hier in dieses Konto zu übernehmen. Ganz ohne Codes.</value>
+  </data>
+  <data name="link.not-available" xml:space="preserve">
+    <value>Die Verknüpfung mit der Ember-Web-App gibt es noch nicht. 💙 Deine Habits hier funktionieren ganz normal weiter.</value>
+  </data>
+  <data name="feedback.thanks" xml:space="preserve">
+    <value>Danke, das hilft wirklich. 💙 Dein Feedback ist auf dem Weg zum Ember-Team.</value>
+  </data>
+  <data name="feedback.cooldown" xml:space="preserve">
+    <value>Du hast in dieser Stunde schon viel Feedback geschickt. 💙 Versuch es etwas später noch einmal.</value>
+  </data>
+  <data name="feedback.daily-limit" xml:space="preserve">
+    <value>Ember hat heute schon viel Feedback bekommen. 💙 Versuch es morgen noch einmal.</value>
+  </data>
+  <data name="feedback.invalid" xml:space="preserve">
+    <value>Dieses Feedback kam leer an oder mit Zeichen, die Ember nicht speichern kann. 💙 Versuch es mit einfachem Text.</value>
+  </data>
+  <data name="feedback.too-many-pictures" xml:space="preserve">
+    <value>Das sind mehr Bilder, als Ember annehmen kann. 💙 Bis zu 5, zusammen 10 MB.</value>
+  </data>
+  <data name="feedback.picture" xml:space="preserve">
+    <value>Eines der Bilder hat bei Ember nicht geklappt. 💙 Ember nimmt Standbilder als JPEG, PNG oder WebP mit bis zu 4096 Pixeln pro Seite.</value>
+  </data>
+  <data name="feedback.fetch-failed" xml:space="preserve">
+    <value>Ember konnte deine Bilder nicht abrufen. 💙 Versuch es gleich noch einmal.</value>
+  </data>
+  <data name="feedback.picture-budget" xml:space="preserve">
+    <value>Du hast heute schon viele Bilder geschickt. 💙 Versuch es morgen noch einmal oder schick es ohne Bilder.</value>
+  </data>
+  <data name="feedback.modal.title" xml:space="preserve">
+    <value>Feedback senden</value>
+  </data>
+  <data name="feedback.modal.feedback-title" xml:space="preserve">
+    <value>Titel</value>
+  </data>
+  <data name="feedback.modal.text" xml:space="preserve">
+    <value>Was würde Ember besser machen?</value>
+  </data>
+  <data name="feedback.modal.pictures" xml:space="preserve">
+    <value>Bilder (optional)</value>
+  </data>
+  <data name="feedback.modal.pictures-hint" xml:space="preserve">
+    <value>Bis zu 5 Bilder als JPEG, PNG oder WebP, zusammen 10 MB</value>
+  </data>
+  <data name="feedback.modal.identity" xml:space="preserve">
+    <value>Senden als</value>
+  </data>
+  <data name="feedback.modal.account" xml:space="preserve">
+    <value>Mit meinem Ember-Konto senden</value>
+  </data>
+  <data name="feedback.modal.anonymous" xml:space="preserve">
+    <value>Anonym senden</value>
+  </data>
+  <data name="onboard.tz.America/New_York" xml:space="preserve">
+    <value>New York (US-Ostküste)</value>
+  </data>
+  <data name="onboard.tz.America/Chicago" xml:space="preserve">
+    <value>Chicago (US-Mitte)</value>
+  </data>
+  <data name="onboard.tz.America/Denver" xml:space="preserve">
+    <value>Denver (Rocky Mountains)</value>
+  </data>
+  <data name="onboard.tz.America/Los_Angeles" xml:space="preserve">
+    <value>Los Angeles (US-Westküste)</value>
+  </data>
+  <data name="onboard.tz.America/Anchorage" xml:space="preserve">
+    <value>Alaska</value>
+  </data>
+  <data name="onboard.tz.Pacific/Honolulu" xml:space="preserve">
+    <value>Hawaii</value>
+  </data>
+  <data name="onboard.tz.America/Toronto" xml:space="preserve">
+    <value>Toronto</value>
+  </data>
+  <data name="onboard.tz.America/Vancouver" xml:space="preserve">
+    <value>Vancouver</value>
+  </data>
+  <data name="onboard.tz.America/Mexico_City" xml:space="preserve">
+    <value>Mexiko-Stadt</value>
+  </data>
+  <data name="onboard.tz.America/Bogota" xml:space="preserve">
+    <value>Bogotá</value>
+  </data>
+  <data name="onboard.tz.America/Lima" xml:space="preserve">
+    <value>Lima</value>
+  </data>
+  <data name="onboard.tz.America/Caracas" xml:space="preserve">
+    <value>Caracas</value>
+  </data>
+  <data name="onboard.tz.America/Santiago" xml:space="preserve">
+    <value>Santiago</value>
+  </data>
+  <data name="onboard.tz.America/Sao_Paulo" xml:space="preserve">
+    <value>São Paulo</value>
+  </data>
+  <data name="onboard.tz.America/Argentina/Buenos_Aires" xml:space="preserve">
+    <value>Buenos Aires</value>
+  </data>
+  <data name="onboard.tz.Europe/London" xml:space="preserve">
+    <value>London</value>
+  </data>
+  <data name="onboard.tz.Europe/Dublin" xml:space="preserve">
+    <value>Dublin</value>
+  </data>
+  <data name="onboard.tz.Europe/Lisbon" xml:space="preserve">
+    <value>Lissabon</value>
+  </data>
+  <data name="onboard.tz.Europe/Paris" xml:space="preserve">
+    <value>Paris</value>
+  </data>
+  <data name="onboard.tz.Europe/Berlin" xml:space="preserve">
+    <value>Berlin</value>
+  </data>
+  <data name="onboard.tz.Europe/Amsterdam" xml:space="preserve">
+    <value>Amsterdam</value>
+  </data>
+  <data name="onboard.tz.Europe/Brussels" xml:space="preserve">
+    <value>Brüssel</value>
+  </data>
+  <data name="onboard.tz.Europe/Madrid" xml:space="preserve">
+    <value>Madrid</value>
+  </data>
+  <data name="onboard.tz.Europe/Rome" xml:space="preserve">
+    <value>Rom</value>
+  </data>
+  <data name="onboard.tz.Europe/Zurich" xml:space="preserve">
+    <value>Zürich</value>
+  </data>
+  <data name="onboard.tz.Europe/Stockholm" xml:space="preserve">
+    <value>Stockholm</value>
+  </data>
+  <data name="onboard.tz.Europe/Oslo" xml:space="preserve">
+    <value>Oslo</value>
+  </data>
+  <data name="onboard.tz.Europe/Copenhagen" xml:space="preserve">
+    <value>Kopenhagen</value>
+  </data>
+  <data name="onboard.tz.Europe/Helsinki" xml:space="preserve">
+    <value>Helsinki</value>
+  </data>
+  <data name="onboard.tz.Europe/Warsaw" xml:space="preserve">
+    <value>Warschau</value>
+  </data>
+  <data name="onboard.tz.Europe/Prague" xml:space="preserve">
+    <value>Prag</value>
+  </data>
+  <data name="onboard.tz.Europe/Vienna" xml:space="preserve">
+    <value>Wien</value>
+  </data>
+  <data name="onboard.tz.Europe/Athens" xml:space="preserve">
+    <value>Athen</value>
+  </data>
+  <data name="onboard.tz.Europe/Bucharest" xml:space="preserve">
+    <value>Bukarest</value>
+  </data>
+  <data name="onboard.tz.Europe/Kiev" xml:space="preserve">
+    <value>Kyjiw</value>
+  </data>
+  <data name="onboard.tz.Europe/Istanbul" xml:space="preserve">
+    <value>Istanbul</value>
+  </data>
+  <data name="onboard.tz.Europe/Moscow" xml:space="preserve">
+    <value>Moskau</value>
+  </data>
+  <data name="onboard.tz.Asia/Jerusalem" xml:space="preserve">
+    <value>Jerusalem</value>
+  </data>
+  <data name="onboard.tz.Asia/Beirut" xml:space="preserve">
+    <value>Beirut</value>
+  </data>
+  <data name="onboard.tz.Asia/Riyadh" xml:space="preserve">
+    <value>Riad</value>
+  </data>
+  <data name="onboard.tz.Asia/Dubai" xml:space="preserve">
+    <value>Dubai</value>
+  </data>
+  <data name="onboard.tz.Asia/Tehran" xml:space="preserve">
+    <value>Teheran</value>
+  </data>
+  <data name="onboard.tz.Asia/Karachi" xml:space="preserve">
+    <value>Karachi</value>
+  </data>
+  <data name="onboard.tz.Asia/Kolkata" xml:space="preserve">
+    <value>Indien (IST)</value>
+  </data>
+  <data name="onboard.tz.Asia/Kathmandu" xml:space="preserve">
+    <value>Nepal</value>
+  </data>
+  <data name="onboard.tz.Asia/Dhaka" xml:space="preserve">
+    <value>Bangladesch</value>
+  </data>
+  <data name="onboard.tz.Asia/Bangkok" xml:space="preserve">
+    <value>Bangkok</value>
+  </data>
+  <data name="onboard.tz.Asia/Jakarta" xml:space="preserve">
+    <value>Jakarta</value>
+  </data>
+  <data name="onboard.tz.Asia/Singapore" xml:space="preserve">
+    <value>Singapur</value>
+  </data>
+  <data name="onboard.tz.Asia/Kuala_Lumpur" xml:space="preserve">
+    <value>Kuala Lumpur</value>
+  </data>
+  <data name="onboard.tz.Asia/Manila" xml:space="preserve">
+    <value>Manila</value>
+  </data>
+  <data name="onboard.tz.Asia/Shanghai" xml:space="preserve">
+    <value>China (CST)</value>
+  </data>
+  <data name="onboard.tz.Asia/Hong_Kong" xml:space="preserve">
+    <value>Hong Kong</value>
+  </data>
+  <data name="onboard.tz.Asia/Taipei" xml:space="preserve">
+    <value>Taipei</value>
+  </data>
+  <data name="onboard.tz.Asia/Seoul" xml:space="preserve">
+    <value>Seoul</value>
+  </data>
+  <data name="onboard.tz.Asia/Tokyo" xml:space="preserve">
+    <value>Tokio</value>
+  </data>
+  <data name="onboard.tz.Asia/Vladivostok" xml:space="preserve">
+    <value>Wladiwostok</value>
+  </data>
+  <data name="onboard.tz.Australia/Perth" xml:space="preserve">
+    <value>Perth</value>
+  </data>
+  <data name="onboard.tz.Australia/Adelaide" xml:space="preserve">
+    <value>Adelaide</value>
+  </data>
+  <data name="onboard.tz.Australia/Brisbane" xml:space="preserve">
+    <value>Brisbane</value>
+  </data>
+  <data name="onboard.tz.Australia/Sydney" xml:space="preserve">
+    <value>Sydney</value>
+  </data>
+  <data name="onboard.tz.Australia/Melbourne" xml:space="preserve">
+    <value>Melbourne</value>
+  </data>
+  <data name="onboard.tz.Pacific/Auckland" xml:space="preserve">
+    <value>Auckland</value>
+  </data>
+  <data name="onboard.tz.Pacific/Fiji" xml:space="preserve">
+    <value>Fidschi</value>
+  </data>
+  <data name="onboard.tz.Pacific/Guam" xml:space="preserve">
+    <value>Guam</value>
+  </data>
+  <data name="onboard.tz.Africa/Casablanca" xml:space="preserve">
+    <value>Casablanca</value>
+  </data>
+  <data name="onboard.tz.Africa/Accra" xml:space="preserve">
+    <value>Accra (UTC+0)</value>
+  </data>
+  <data name="onboard.tz.Africa/Lagos" xml:space="preserve">
+    <value>Lagos</value>
+  </data>
+  <data name="onboard.tz.Africa/Cairo" xml:space="preserve">
+    <value>Kairo</value>
+  </data>
+  <data name="onboard.tz.Africa/Nairobi" xml:space="preserve">
+    <value>Nairobi</value>
+  </data>
+  <data name="onboard.tz.Africa/Johannesburg" xml:space="preserve">
+    <value>Johannesburg</value>
+  </data>
+  <data name="onboard.tz.Indian/Mauritius" xml:space="preserve">
+    <value>Mauritius</value>
+  </data>
+  <data name="onboard.tz.UTC" xml:space="preserve">
+    <value>UTC (koordinierte Weltzeit)</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+12" xml:space="preserve">
+    <value>UTC−12</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+11" xml:space="preserve">
+    <value>UTC−11</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+10" xml:space="preserve">
+    <value>UTC−10</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+9" xml:space="preserve">
+    <value>UTC−9</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+8" xml:space="preserve">
+    <value>UTC−8</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+7" xml:space="preserve">
+    <value>UTC−7</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+6" xml:space="preserve">
+    <value>UTC−6</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+5" xml:space="preserve">
+    <value>UTC−5</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+4" xml:space="preserve">
+    <value>UTC−4</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+3" xml:space="preserve">
+    <value>UTC−3</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+2" xml:space="preserve">
+    <value>UTC−2</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT+1" xml:space="preserve">
+    <value>UTC−1</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-1" xml:space="preserve">
+    <value>UTC+1</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-2" xml:space="preserve">
+    <value>UTC+2</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-3" xml:space="preserve">
+    <value>UTC+3</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-4" xml:space="preserve">
+    <value>UTC+4</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-5" xml:space="preserve">
+    <value>UTC+5</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-6" xml:space="preserve">
+    <value>UTC+6</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-7" xml:space="preserve">
+    <value>UTC+7</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-8" xml:space="preserve">
+    <value>UTC+8</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-9" xml:space="preserve">
+    <value>UTC+9</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-10" xml:space="preserve">
+    <value>UTC+10</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-11" xml:space="preserve">
+    <value>UTC+11</value>
+  </data>
+  <data name="onboard.tz.Etc/GMT-12" xml:space="preserve">
+    <value>UTC+12</value>
+  </data>
+  <data name="date.month-day" xml:space="preserve">
+    <value>d. MMM</value>
+  </data>
+  <data name="time.suggested" xml:space="preserve">
+    <value>HH:mm</value>
+  </data>
 </root>

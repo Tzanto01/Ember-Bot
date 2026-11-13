@@ -1,4 +1,6 @@
 using Discord.Interactions;
+using Ember.Core.Localization;
+using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
@@ -11,25 +13,21 @@ public class LinkModule : InteractionModuleBase<SocketInteractionContext>
 {
     internal const string WebOriginKey = "Ember:WebOrigin";
 
-    internal const string NotAvailableText =
-        "Linking with the Ember web app isn't available yet. 💙 Your habits here keep working just as they are.";
-
+    private readonly HabitService _habits;
     private readonly IConfiguration _config;
 
-    public LinkModule(IConfiguration config)
+    public LinkModule(HabitService habits, IConfiguration config)
     {
+        _habits = habits;
         _config = config;
     }
 
-    internal static string ReplyText(IConfiguration config)
+    internal static string ReplyText(Texts t, IConfiguration config)
         => config[WebOriginKey] is { Length: > 0 } origin
-            ? $"Your habits are already in the Ember web app. 💙 Open {origin.TrimEnd('/')} and choose **Sign in with Discord**.\n\n" +
-              "Want to sign in with email and password too, or already have an Ember account with an email? " +
-              $"Sign in with that account and link Discord in Settings: {origin.TrimEnd('/')}/settings\n" +
-              "Ember then offers to move your habits from here into that account. No codes needed."
-            : NotAvailableText;
+            ? t.Format("link.reply", origin.TrimEnd('/'))
+            : t.Get("link.not-available");
 
     [SlashCommand("link", "Use Ember in your browser, or link Discord to an email account")]
     public async Task LinkAsync()
-        => await RespondAsync(ReplyText(_config), ephemeral: true);
+        => await RespondAsync(ReplyText(await BotTexts.ForAsync(_habits, Context.Interaction), _config), ephemeral: true);
 }

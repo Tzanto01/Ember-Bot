@@ -8,8 +8,6 @@ namespace Ember.Bot.Modules;
 [Group("privacy", "Control your privacy settings")]
 public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private const string NotYourButton = "This button isn't for you.";
-
     private readonly HabitService _habits;
 
     public PrivacyModule(HabitService habits)
@@ -25,7 +23,7 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
     {
         if (!IsOwner(ownerIdStr, Context.User.Id))
         {
-            await RespondAsync(NotYourButton, ephemeral: true);
+            await RespondAsync((await BotTexts.ForAsync(_habits, Context.Interaction)).Get("common.not-yours"), ephemeral: true);
             return;
         }
 
@@ -35,14 +33,14 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
     private async Task RespondWithDeleteConfirmationAsync()
     {
         var userId = Context.User.Id;
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         var buttons = new ComponentBuilder()
-            .WithButton("Delete everything", $"privacy:delete:confirm:{userId}", ButtonStyle.Danger)
-            .WithButton("Cancel", $"privacy:delete:cancel:{userId}", ButtonStyle.Secondary)
+            .WithButton(t.Get("privacy.delete.button"), $"privacy:delete:confirm:{userId}", ButtonStyle.Danger)
+            .WithButton(t.Get("common.cancel"), $"privacy:delete:cancel:{userId}", ButtonStyle.Secondary)
             .Build();
 
         await RespondAsync(
-            "This permanently deletes everything Ember knows about you: all your habits, every check-in, " +
-            "your reminders and your settings. It can't be undone.\n\nWant to go ahead?",
+            t.Get("privacy.delete.confirm"),
             components: buttons,
             ephemeral: true);
     }
@@ -50,15 +48,16 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("privacy:delete:confirm:*", ignoreGroupNames: true)]
     public async Task OnConfirmDeleteAsync(string ownerIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!await TryDeleteAsync(_habits, ownerIdStr, Context.User.Id))
         {
-            await RespondAsync(NotYourButton, ephemeral: true);
+            await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = "Done. All your Ember data has been deleted. If you ever want to start fresh, I'll be here. 💙";
+            m.Content    = t.Get("privacy.delete.done");
             m.Components = new ComponentBuilder().Build();
         });
     }
@@ -66,15 +65,16 @@ public class PrivacyModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("privacy:delete:cancel:*", ignoreGroupNames: true)]
     public async Task OnCancelDeleteAsync(string ownerIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!IsOwner(ownerIdStr, Context.User.Id))
         {
-            await RespondAsync(NotYourButton, ephemeral: true);
+            await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = "No problem, nothing was deleted.";
+            m.Content    = t.Get("privacy.delete.cancelled");
             m.Components = new ComponentBuilder().Build();
         });
     }
