@@ -240,10 +240,10 @@ describe('TodayPage', () => {
     renderToday();
     await answerLoad(f, [water]);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Check in Water for today (1/3)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Check in Water for today, 1 of 3' }));
     const put = await f.next('PUT', '/api/habits/1/days/2026-11-01');
     expect(put.body).toEqual({ count: 2 });
-    expect(screen.getByRole('button', { name: 'Check in Water for today (2/3)' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Check in Water for today, 2 of 3' })).toHaveAttribute('aria-pressed', 'false');
 
     put.respond(200, { ...water, today: { ...water.today, count: 2 } });
     expect(await screen.findByText('Water: 2 of 3 for today.')).toBeInTheDocument();
@@ -341,7 +341,7 @@ describe('TodayPage', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Take one check-in off Water' }));
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Check in Water for today (0/3)' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Check in Water for today, 0 of 3' })).toHaveFocus());
   });
 
   it('says so when every habit is done for today', async () => {
