@@ -1,25 +1,14 @@
 import i18next, { type TFunction } from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import coreDe from '@/locales/parts/core.de.json';
-import coreEn from '@/locales/parts/core.en.json';
-import historyDe from '@/locales/parts/history.de.json';
-import historyEn from '@/locales/parts/history.en.json';
-import momentDe from '@/locales/parts/moment.de.json';
-import momentEn from '@/locales/parts/moment.en.json';
-import publicDe from '@/locales/parts/public.de.json';
-import publicEn from '@/locales/parts/public.en.json';
-import settingsDe from '@/locales/parts/settings.de.json';
-import settingsEn from '@/locales/parts/settings.en.json';
-import todayDe from '@/locales/parts/today.de.json';
-import todayEn from '@/locales/parts/today.en.json';
+import de from '@/locales/de.json';
+import en from '@/locales/en.json';
 
 /** The languages Ember shows (docs/contracts/i18n-v1.md). */
 export type Language = 'en' | 'de';
 
 export const languages: readonly Language[] = ['en', 'de'];
 
-export const en = { ...coreEn, ...momentEn, ...publicEn, ...todayEn, ...historyEn, ...settingsEn };
-export const de = { ...coreDe, ...momentDe, ...publicDe, ...todayDe, ...historyDe, ...settingsDe };
+export { de, en };
 
 const deviceKey = 'ember.language';
 

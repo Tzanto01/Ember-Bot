@@ -1,15 +1,18 @@
 import { Bell, CalendarDays, LifeBuoy, type LucideIcon, Lock, MessageSquare, Palette, ShieldCheck } from 'lucide-react';
+import type { en } from '@/lib/i18n';
+
+type SettingsKey = keyof typeof en;
 
 /**
- * One entry of the Settings group list: its `/settings/<slug>` route, its name and the card ids it holds, in order.
- * The list's one-line summary names the shown cards unless `summary` is set.
+ * One entry of the Settings group list: its `/settings/<slug>` route, its name's key and the card ids it holds, in
+ * order. The list's one-line summary names the shown cards unless `summaryKey` is set.
  */
 export interface SettingsGroup {
   slug: string;
-  name: string;
+  nameKey: SettingsKey;
   icon: LucideIcon;
   cards: string[];
-  summary?: string;
+  summaryKey?: SettingsKey;
 }
 
 /**
@@ -19,43 +22,43 @@ export interface SettingsGroup {
 export const settingsGroups: SettingsGroup[] = [
   {
     slug: 'account',
-    name: 'Account & security',
+    nameKey: 'settings.group.account',
     icon: ShieldCheck,
     cards: ['account', 'device', 'two-factor', 'discord'],
   },
   {
     slug: 'reminders',
-    name: 'Reminders',
+    nameKey: 'settings.group.reminders',
     icon: Bell,
     cards: ['push', 'dm-reminders', 'phone-reminders', 'second-reminder'],
   },
   {
     slug: 'habits',
-    name: 'Habits & days',
+    nameKey: 'settings.group.habits',
     icon: CalendarDays,
     cards: ['routines', 'streaks', 'grace', 'timezone', 'moods'],
   },
   {
     slug: 'appearance',
-    name: 'Appearance',
+    nameKey: 'settings.group.appearance',
     icon: Palette,
     cards: ['appearance'],
-    summary: 'Light or dark, and your theme',
+    summaryKey: 'settings.group.appearanceSummary',
   },
-  { slug: 'privacy', name: 'Privacy & data', icon: Lock, cards: ['journal', 'export', 'delete'] },
+  { slug: 'privacy', nameKey: 'settings.group.privacy', icon: Lock, cards: ['journal', 'export', 'delete'] },
   {
     slug: 'feedback',
-    name: 'Send feedback',
+    nameKey: 'settings.group.feedback',
     icon: MessageSquare,
     cards: ['feedback'],
-    summary: 'Tell us what would make Ember better',
+    summaryKey: 'settings.group.feedbackSummary',
   },
   {
     slug: 'help',
-    name: 'Help right now',
+    nameKey: 'settings.group.help',
     icon: LifeBuoy,
     cards: ['help'],
-    summary: 'Crisis lines, any time of day',
+    summaryKey: 'settings.group.helpSummary',
   },
 ];
 

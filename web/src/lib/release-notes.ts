@@ -1,15 +1,31 @@
+import type { Language } from './i18n';
+
 /** One version in `release-notes.json`. */
 export interface ReleaseNote {
   version: string;
   /** `YYYY-MM-DD`. */
   date: string;
-  notes: string[];
+  notes: LocalizedNotes;
+}
+
+/** The notes of one version: English always, German when translated. */
+export interface LocalizedNotes {
+  en: string[];
+  de?: string[];
 }
 
 const seenKey = 'ember.seenReleaseNotes';
 
 const text = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
+
+const list = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.length > 0 && value.every(text);
+
+/** The notes in `language`, falling back to English when they aren't translated. */
+export function notesIn(notes: LocalizedNotes, language: Language): string[] {
+  return notes[language] ?? notes.en;
+}
 
 /** The entries of a valid `release-notes.json` body (newest first), or null when its shape is wrong or it is empty. */
 export function parseReleaseNotes(body: unknown): ReleaseNote[] | null {
@@ -20,8 +36,10 @@ export function parseReleaseNotes(body: unknown): ReleaseNote[] | null {
     const { version, date, notes } = entry as Record<string, unknown>;
     if (!text(version) || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))
       return null;
-    if (!Array.isArray(notes) || notes.length === 0 || !notes.every(text)) return null;
-    entries.push({ version, date, notes });
+    if (!notes || typeof notes !== 'object') return null;
+    const { en, de } = notes as Record<string, unknown>;
+    if (!list(en) || (de !== undefined && !list(de))) return null;
+    entries.push({ version, date, notes: de === undefined ? { en } : { en, de } });
   }
   return entries;
 }

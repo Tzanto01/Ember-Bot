@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
 import { DriftingSpark, RemindersSection } from '@/components/habits/habit-edit-sections';
@@ -19,6 +20,7 @@ import { api } from '@/lib/services';
 
 /** `/routines/new` and `/routines/:id/edit`: the routine form; editing adds where reminders go and delete. */
 export default function RoutineEditPage() {
+  const { t } = useTranslation();
   const raw = useParams()['id'];
   const creating = raw === undefined;
   const id = Number(raw);
@@ -39,14 +41,14 @@ export default function RoutineEditPage() {
     content = (
       <EmptyState
         illustration={<DriftingSpark />}
-        title="This routine wandered off."
+        title={t('routine.notFound')}
         action={
           <Button asChild>
-            <Link to="/routines">Back to routines</Link>
+            <Link to="/routines">{t('routine.back')}</Link>
           </Button>
         }
       >
-        <p>It may have been removed, or the link is out of date.</p>
+        <p>{t('routine.notFoundBody')}</p>
       </EmptyState>
     );
   } else if (loaded && routines.data && habits.data) {
@@ -69,7 +71,7 @@ export default function RoutineEditPage() {
     );
   } else if (error) {
     content = error.handled ? null : (
-      <Notice tone="notice" heading="This routine didn't load">
+      <Notice tone="notice" heading={t('routine.loadFailed')}>
         <p>{problemToMessage(error).message}</p>
         <Button
           type="button"
@@ -79,7 +81,7 @@ export default function RoutineEditPage() {
             void habits.refetch();
           }}
         >
-          Try again
+          {t('routine.tryAgain')}
         </Button>
       </Notice>
     );
@@ -87,7 +89,7 @@ export default function RoutineEditPage() {
     content = (
       <div className="flex max-w-[40rem] flex-col gap-6">
         <p role="status" className="sr-only">
-          Loading your routine…
+          {t('routine.loading')}
         </p>
         <Skeleton className="h-[22rem] rounded-xl" />
       </div>
@@ -97,8 +99,8 @@ export default function RoutineEditPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={creating ? 'New routine' : 'Edit routine'}
-        lede={creating ? 'Pick the habits you do together and put them in order.' : routine?.name}
+        title={creating ? t('routine.newTitle') : t('routine.editTitle')}
+        lede={creating ? t('routine.newLede') : routine?.name}
       />
       {content}
     </div>

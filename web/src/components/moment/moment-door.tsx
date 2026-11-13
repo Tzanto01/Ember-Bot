@@ -1,16 +1,18 @@
 import { Flame } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-const label = 'I need a moment';
 
 /**
  * The "I need a moment" entry to `/moment`. `today`: a calm full-width card at the top of Today; `hero`: the large
  * primary call on the landing page; `quiet`: a link-sized door for sign-in and `/local`.
  */
 export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' }) {
+  const { t } = useTranslation();
+  const label = t('moment.door.label');
+
   if (variant === 'quiet') return <TapLink to="/moment">{label}</TapLink>;
 
   if (variant === 'hero') {
@@ -35,9 +37,7 @@ export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' })
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="font-semibold">{label}</span>
-        <span className="text-[14px] text-muted-foreground">
-          A few quiet minutes to settle, any time.
-        </span>
+        <span className="text-[14px] text-muted-foreground">{t('moment.door.lede')}</span>
       </span>
     </Link>
   );

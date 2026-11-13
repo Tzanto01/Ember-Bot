@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { continueAfterCode, EmailCodeForm } from '@/components/auth/email-code-form';
@@ -24,6 +25,7 @@ type ConfirmState = 'checking' | 'code' | 'password' | 'confirmed';
 
 /** "Email for a new link" form; replaced by a success notice once sent. */
 function ResendForm() {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const [problem, setProblem] = useState<string | null>(null);
@@ -41,11 +43,11 @@ function ResendForm() {
   }
 
   if (resend.isSuccess) {
-    return <Notice tone="success">If that address still needs confirming, a fresh link is on its way.</Notice>;
+    return <Notice tone="success">{t('auth.resendSent')}</Notice>;
   }
   return (
     <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
-      <FormField label="Email for a new link" error={email.error ?? problem}>
+      <FormField label={t('confirm.resendEmail')} error={email.error ?? problem}>
         {(field) => (
           <Input
             {...field}
@@ -62,9 +64,9 @@ function ResendForm() {
         variant="secondary"
         block
         busy={resend.isPending}
-        busyLabel="Sending…"
+        busyLabel={t('auth.sending')}
       >
-        Send me a new link
+        {t('auth.newLink')}
       </BusyButton>
     </form>
   );
@@ -82,6 +84,7 @@ function ResendForm() {
  * The link values are kept in memory and removed from the address bar on load.
  */
 export default function ConfirmEmailPage() {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -154,9 +157,9 @@ export default function ConfirmEmailPage() {
   if (state === 'confirmed') {
     return (
       <>
-        <PageHeader title="You're confirmed" lede="Welcome to Ember. Sign in whenever you're ready." />
+        <PageHeader title={t('confirm.done.title')} lede={t('confirm.done.lede')} />
         <Button asChild block>
-          <Link to="/login">Sign in</Link>
+          <Link to="/login">{t('auth.signIn')}</Link>
         </Button>
       </>
     );
@@ -165,10 +168,10 @@ export default function ConfirmEmailPage() {
   if (state === 'checking') {
     return (
       <>
-        <PageHeader title="Confirming your email" />
+        <PageHeader title={t('confirm.checking')} />
         <p role="status" className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          Signing you in…
+          {t('auth.signingYouIn')}
         </p>
       </>
     );
@@ -178,13 +181,13 @@ export default function ConfirmEmailPage() {
     return (
       <>
         {asApiError(codeError).type === 'password_required' ? (
-          <PageHeader title="One more step" lede="The code from your email is right." />
+          <PageHeader title={t('confirm.oneMore.title')} lede={t('confirm.oneMore.lede')} />
         ) : (
-          <PageHeader title="Enter your code" lede="Type the 6-digit code from the email we sent you." />
+          <PageHeader title={t('confirm.code.title')} lede={t('confirm.code.lede')} />
         )}
         <EmailCodeForm email={keptEmail} userId={link.user} code={link.code} initialError={codeError} />
         <Button asChild variant="ghost" block>
-          <Link to="/login">Back to sign in</Link>
+          <Link to="/login">{t('auth.backToSignIn')}</Link>
         </Button>
       </>
     );
@@ -192,21 +195,21 @@ export default function ConfirmEmailPage() {
 
   return (
     <>
-      <PageHeader title="Confirm your email" lede="Enter the password you chose when you signed up." />
+      <PageHeader title={t('confirm.password.title')} lede={t('confirm.password.lede')} />
       {problem && (
         <Notice tone="notice">
           <p>{problem}</p>
           <Link to="/forgot-password" className="inline-flex min-h-[44px] items-center font-medium underline underline-offset-4">
-            Reset your password
+            {t('confirm.resetPassword')}
           </Link>
         </Notice>
       )}
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
-        <FormField label="Password" error={password.error}>
+        <FormField label={t('auth.password')} error={password.error}>
           {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
-        <BusyButton type="submit" block busy={confirm.isPending} busyLabel="Confirming…">
-          Confirm email
+        <BusyButton type="submit" block busy={confirm.isPending} busyLabel={t('confirm.confirming')}>
+          {t('confirm.submit')}
         </BusyButton>
       </form>
       {problem && <ResendForm />}

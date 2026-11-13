@@ -1,21 +1,23 @@
 import { Copy, Download } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { saveFile } from '@/lib/api-client';
 import { env } from '@/lib/env';
 
 /** Copies `text` to the clipboard and says whether it worked, in a polite status next to the button. */
-export function CopyButton({ text, children = 'Copy' }: { text: string; children?: string }) {
-  const [status, setStatus] = useState('');
+export function CopyButton({ text, children }: { text: string; children?: string }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'copied' | 'failed' | null>(null);
 
   async function copy(): Promise<void> {
-    setStatus('');
+    setStatus(null);
     try {
       await navigator.clipboard.writeText(text);
-      setStatus('Copied.');
+      setStatus('copied');
     } catch {
-      setStatus("Copying didn't work here. Select the text and copy it instead.");
+      setStatus('failed');
     }
   }
 
@@ -23,10 +25,10 @@ export function CopyButton({ text, children = 'Copy' }: { text: string; children
     <div className="flex flex-wrap items-center gap-3">
       <Button type="button" variant="secondary" onClick={() => void copy()}>
         <Copy aria-hidden />
-        {children}
+        {children ?? t('twoFactor.copy')}
       </Button>
       <p role="status" className="text-[14px] text-muted-foreground">
-        {status}
+        {status === 'copied' ? t('twoFactor.copied') : status === 'failed' ? t('twoFactor.copyFailed') : ''}
       </p>
     </div>
   );
@@ -59,13 +61,14 @@ export function GroupedCode({ value, label }: { value: string; label: string }) 
  * calls `onDone` so the caller drops them.
  */
 export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const { t } = useTranslation();
   const text = codes.join('\n');
   const notice = useRef<HTMLDivElement>(null);
   useEffect(() => notice.current?.focus(), []);
 
   function download(): void {
     saveFile({
-      blob: new Blob([`Ember recovery codes. Each one works once.\n\n${text}\n`], {
+      blob: new Blob([`${t('twoFactor.codes.fileHeading')}\n\n${text}\n`], {
         type: 'text/plain',
       }),
       fileName: 'ember-recovery-codes.txt',
@@ -74,14 +77,11 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
 
   return (
     <div className="flex flex-col gap-4">
-      <Notice ref={notice} tabIndex={-1} tone="info" heading="Your recovery codes" className="focus:outline-none">
-        <p>
-          Keep these somewhere safe; each works once. If you lose your phone, a recovery code signs
-          you in instead of the authenticator code. You won't see them again here.
-        </p>
+      <Notice ref={notice} tabIndex={-1} tone="info" heading={t('twoFactor.codes.heading')} className="focus:outline-none">
+        <p>{t('twoFactor.codes.text')}</p>
       </Notice>
       <ol
-        aria-label="Recovery codes"
+        aria-label={t('twoFactor.codes.listLabel')}
         className="grid select-all grid-cols-1 gap-x-6 gap-y-1 rounded-md bg-muted px-4 py-3 font-mono text-[18px] text-foreground sm:grid-cols-2"
       >
         {codes.map((code) => (
@@ -89,17 +89,17 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
         ))}
       </ol>
       <div className="flex flex-wrap items-start gap-3">
-        <CopyButton text={text}>Copy codes</CopyButton>
+        <CopyButton text={text}>{t('twoFactor.codes.copy')}</CopyButton>
         {!env.native && (
           <Button type="button" variant="secondary" onClick={download}>
             <Download aria-hidden />
-            Download as a text file
+            {t('twoFactor.codes.download')}
           </Button>
         )}
       </div>
       <div>
         <Button type="button" onClick={onDone}>
-          I've saved them
+          {t('twoFactor.codes.saved')}
         </Button>
       </div>
     </div>

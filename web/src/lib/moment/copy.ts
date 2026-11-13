@@ -1,90 +1,228 @@
+import { t } from '@/lib/i18n';
 import type { Intensity, MomentState } from './types';
 
 /**
- * Every user-facing string of the "I need a moment" flow (practice texts live in `content/practices.json`, crisis lines
- * in `content/crisis-lines.json`). One module so the content test can scan it for claim words.
+ * Every user-facing string of the "I need a moment" flow, in the current language (practice texts live in
+ * `content/practices.{en,de}.json`, crisis lines in `content/crisis-lines.{en,de}.json`). One module so the content
+ * test can scan it for claim words.
  */
 export const momentCopy = {
-  leave: 'Leave',
-  leaveDraft: 'Leave without saving this note?',
-  keepWriting: 'Keep writing',
-  urgentHelp: 'Urgent help',
-  done: 'Done for now',
-  back: 'Back',
-  next: 'Next',
-  finish: 'Finish',
-  skip: 'Skip',
-  continue: 'Continue',
-  tryAnother: 'Try another',
-  skipPractice: 'Skip to the end',
-  catchHeading: "You're here. That's enough for now.",
-  catchName: "Name what's happening",
-  catchBreathe: 'Just breathe with me',
-  nameHeading: "What's happening?",
-  nameLede: 'Pick the one that fits best. Close enough is fine.',
+  get leave() {
+    return t('moment.leave');
+  },
+  get leaveDraft() {
+    return t('moment.leaveDraft');
+  },
+  get keepWriting() {
+    return t('moment.keepWriting');
+  },
+  get urgentHelp() {
+    return t('moment.urgentHelp');
+  },
+  get done() {
+    return t('moment.done');
+  },
+  get back() {
+    return t('moment.back');
+  },
+  get next() {
+    return t('moment.next');
+  },
+  get finish() {
+    return t('moment.finish');
+  },
+  get skip() {
+    return t('moment.skip');
+  },
+  get continue() {
+    return t('moment.continue');
+  },
+  get tryAnother() {
+    return t('moment.tryAnother');
+  },
+  get skipPractice() {
+    return t('moment.skipPractice');
+  },
+  get catchHeading() {
+    return t('moment.catch.heading');
+  },
+  get catchName() {
+    return t('moment.catch.name');
+  },
+  get catchBreathe() {
+    return t('moment.catch.breathe');
+  },
+  get nameHeading() {
+    return t('moment.name.heading');
+  },
+  get nameLede() {
+    return t('moment.name.lede');
+  },
   tiles: {
-    rejected: 'Rejected / not enough',
-    overloaded: 'Too much / overloaded',
-    racing: 'Racing / on edge',
-    replaying: "Can't stop replaying",
-    unsure: 'Not sure',
+    get rejected() {
+      return t('moment.tile.rejected');
+    },
+    get overloaded() {
+      return t('moment.tile.overloaded');
+    },
+    get racing() {
+      return t('moment.tile.racing');
+    },
+    get replaying() {
+      return t('moment.tile.replaying');
+    },
+    get unsure() {
+      return t('moment.tile.unsure');
+    },
   } satisfies Record<MomentState, string>,
-  intensityHeading: 'How strong is it?',
-  intensityLede: 'Only if you want to say.',
+  get intensityHeading() {
+    return t('moment.intensity.heading');
+  },
+  get intensityLede() {
+    return t('moment.intensity.lede');
+  },
   intensity: {
-    1: 'A little',
-    2: 'Some',
-    3: 'Quite a bit',
-    4: 'Strong',
-    5: 'A lot',
+    get 1() {
+      return t('moment.intensity.1');
+    },
+    get 2() {
+      return t('moment.intensity.2');
+    },
+    get 3() {
+      return t('moment.intensity.3');
+    },
+    get 4() {
+      return t('moment.intensity.4');
+    },
+    get 5() {
+      return t('moment.intensity.5');
+    },
   } satisfies Record<Intensity, string>,
-  stepOf: (title: string, step: number, total: number) => `${title}, step ${step} of ${total}`,
-  breathHeading: 'Breathe along. Start when you are ready.',
-  start: 'Start',
-  pause: 'Pause',
-  resume: 'Resume',
-  startAgain: 'Start again',
-  breatheIn: 'Breathe in',
-  hold: 'Hold',
-  breatheOut: 'Breathe out',
-  round: (round: number, rounds: number) => `Round ${round} of ${rounds}`,
-  breathPaused: 'Paused',
-  breathDone: 'All rounds done.',
-  timerStarted: (time: string) => `Timer started, ${time}.`,
-  timerDone: 'Time is up. Take your time.',
-  afterHeading: 'How is it now?',
-  afterLede: 'Only if you want to say.',
-  endHeading: "That's it for now.",
-  endLede:
-    'Thank you for taking this moment. You can write a few words about it, or leave whenever you like.',
-  reflect: 'Reflect on it',
-  reflectHeading: 'Reflect, if you like',
-  setItOff: 'What set it off',
-  setItOffHint: 'A few words are plenty.',
-  charactersLeft: (left: number) => `${left} characters left`,
-  timerLabel: 'Time left',
-  timerResumed: 'Resumed',
-  limitReached: 'Limit reached',
-  helped: 'What helped',
-  nothingHelped: 'Nothing really',
-  howNow: 'How it is now',
-  save: 'Save',
-  saving: 'Saving…',
-  saved: "Saved to today's private note.",
-  savesPrivate: "Saving adds this to today's private note. Only you can read it.",
-  savesAfterUnlock:
-    "Your private journal is locked on this device. Unlock it to save this to today's private note.",
-  showingLines: (place: string) => `Showing crisis lines for ${place}`,
-  newPassphraseLater: 'You can set a new passphrase later in Settings, Privacy & data.',
-  needsPrivate:
-    'Saving a reflection needs the private journal. Nothing from this moment was saved.',
-  openPrivacy: 'Open Privacy & data',
-  needsConsent:
-    'Saving needs your consent to the privacy policy first. Nothing from this moment was saved, and you can still reflect here.',
-  openConsent: 'Review consent',
-  notSaved: 'Nothing from this moment was saved.',
-  checking: 'Checking whether this can be saved…',
-  offline: "You're offline, so nothing was saved. Your words are still here.",
-  full: "Today's note is full, so nothing was saved. Shorten what you wrote, or leave it here.",
-  saveFailed: "That didn't save. Your words are still here, so you can try again.",
-} as const;
+  stepOf: (title: string, step: number, total: number) =>
+    t('moment.stepOf', { title, step, total }),
+  get breathHeading() {
+    return t('moment.breath.heading');
+  },
+  get start() {
+    return t('moment.start');
+  },
+  get pause() {
+    return t('moment.pause');
+  },
+  get resume() {
+    return t('moment.resume');
+  },
+  get startAgain() {
+    return t('moment.startAgain');
+  },
+  get breatheIn() {
+    return t('moment.breath.in');
+  },
+  get hold() {
+    return t('moment.breath.hold');
+  },
+  get breatheOut() {
+    return t('moment.breath.out');
+  },
+  round: (round: number, rounds: number) => t('moment.breath.round', { round, rounds }),
+  get breathPaused() {
+    return t('moment.breath.paused');
+  },
+  get breathDone() {
+    return t('moment.breath.done');
+  },
+  timerStarted: (time: string) => t('moment.timer.started', { time }),
+  seconds: (count: number) => t('moment.timer.seconds', { count }),
+  get timerDone() {
+    return t('moment.timer.done');
+  },
+  get afterHeading() {
+    return t('moment.after.heading');
+  },
+  get afterLede() {
+    return t('moment.after.lede');
+  },
+  get endHeading() {
+    return t('moment.end.heading');
+  },
+  get endLede() {
+    return t('moment.end.lede');
+  },
+  get reflect() {
+    return t('moment.reflect');
+  },
+  get reflectHeading() {
+    return t('moment.reflect.heading');
+  },
+  get setItOff() {
+    return t('moment.reflect.setItOff');
+  },
+  get setItOffHint() {
+    return t('moment.reflect.setItOffHint');
+  },
+  charactersLeft: (left: number) => t('moment.reflect.charactersLeft', { left }),
+  get timerLabel() {
+    return t('moment.timer.label');
+  },
+  get timerResumed() {
+    return t('moment.timer.resumed');
+  },
+  get limitReached() {
+    return t('moment.reflect.limitReached');
+  },
+  get helped() {
+    return t('moment.reflect.helped');
+  },
+  get nothingHelped() {
+    return t('moment.reflect.nothingHelped');
+  },
+  get howNow() {
+    return t('moment.reflect.howNow');
+  },
+  get save() {
+    return t('moment.reflect.save');
+  },
+  get saving() {
+    return t('moment.reflect.saving');
+  },
+  get saved() {
+    return t('moment.reflect.saved');
+  },
+  get savesPrivate() {
+    return t('moment.reflect.savesPrivate');
+  },
+  get savesAfterUnlock() {
+    return t('moment.reflect.savesAfterUnlock');
+  },
+  showingLines: (place: string) => t('crisis.showing', { place }),
+  get newPassphraseLater() {
+    return t('moment.reflect.newPassphraseLater');
+  },
+  get needsPrivate() {
+    return t('moment.reflect.needsPrivate');
+  },
+  get openPrivacy() {
+    return t('moment.reflect.openPrivacy');
+  },
+  get needsConsent() {
+    return t('moment.reflect.needsConsent');
+  },
+  get openConsent() {
+    return t('moment.reflect.openConsent');
+  },
+  get notSaved() {
+    return t('moment.reflect.notSaved');
+  },
+  get checking() {
+    return t('moment.reflect.checking');
+  },
+  get offline() {
+    return t('moment.reflect.offline');
+  },
+  get full() {
+    return t('moment.reflect.full');
+  },
+  get saveFailed() {
+    return t('moment.reflect.saveFailed');
+  },
+};

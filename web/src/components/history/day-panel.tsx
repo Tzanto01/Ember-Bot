@@ -1,6 +1,7 @@
 import { Minus, Moon, Plus } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/spinner';
 import { themeSeconds } from '@/components/today/reward';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ export function DayPanel({
   onClose,
   className,
 }: DayPanelProps) {
+  const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
   const reduce = useReducedMotion();
   const text = dayLabel(day, timesPerDay);
@@ -77,25 +79,25 @@ export function DayPanel({
       {timesPerDay > 1 && onSetCount && (
         <div className="flex flex-col gap-2">
           <p id="day-count-label" className="font-medium">
-            Check-ins
+            {t('day.checkIns')}
           </p>
           <div role="group" aria-labelledby="day-count-label" className="flex items-center gap-3">
             <Button
               variant="secondary"
               size="icon"
-              aria-label="One check-in fewer"
+              aria-label={t('day.fewer')}
               aria-disabled={busy || count <= 0 || undefined}
               onClick={() => step(count - 1)}
             >
               <Minus aria-hidden />
             </Button>
             <span className="min-w-[4.5rem] text-center text-[18px] font-semibold tabular-nums">
-              {count} of {timesPerDay}
+              {t('day.count', { count, total: timesPerDay })}
             </span>
             <Button
               variant="secondary"
               size="icon"
-              aria-label="One more check-in"
+              aria-label={t('day.more')}
               aria-disabled={busy || count >= timesPerDay || undefined}
               onClick={() => step(count + 1)}
             >
@@ -107,7 +109,7 @@ export function DayPanel({
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
           <Button aria-disabled={busy || undefined} onClick={() => onEdit('done')}>
-            Done
+            {t('day.done')}
           </Button>
           <Button
             variant="secondary"
@@ -115,7 +117,7 @@ export function DayPanel({
             aria-describedby="day-panel-choices"
             onClick={() => onEdit('notdone')}
           >
-            Not done
+            {t('day.notDone')}
           </Button>
           <Button
             variant="secondary"
@@ -123,30 +125,30 @@ export function DayPanel({
             aria-describedby="day-panel-choices"
             onClick={() => onEdit('clear')}
           >
-            Clear
+            {t('day.clear')}
           </Button>
         </div>
         <p id="day-panel-choices" className="text-[14px] text-muted-foreground">
-          Not done notes that you let this day go. Clear leaves it empty, as if nothing was entered.
+          {t('day.choices')}
         </p>
       </div>
       <div className="flex flex-col items-start gap-1">
         <Button variant="ghost" className="-ms-2" aria-disabled={busy || undefined} onClick={onToggleLowDay}>
           <Moon aria-hidden />
-          {day.lowDay ? 'Clear low day' : 'Mark as a low day'}
+          {day.lowDay ? t('day.lowDayOff') : t('day.lowDayOn')}
         </Button>
-        <p className="text-[14px] text-muted-foreground">Low days apply to all your habits.</p>
+        <p className="text-[14px] text-muted-foreground">{t('day.lowDayAll')}</p>
       </div>
       {busy && (
         <p className="flex items-center gap-2 text-[14px] text-muted-foreground">
           <Spinner />
-          Saving…
+          {t('day.saving')}
         </p>
       )}
       {problem && <Notice tone="notice">{problem}</Notice>}
       <div>
         <Button variant="ghost" className="-ms-2" onClick={onClose}>
-          Close
+          {t('day.close')}
         </Button>
       </div>
     </motion.section>

@@ -1,23 +1,25 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 const links = [
-  { to: '/legal/privacy', label: 'Privacy' },
-  { to: '/legal/terms', label: 'Terms' },
-  { to: '/legal/imprint', label: 'Imprint' },
-  { to: '/help', label: 'Help right now' },
-];
+  { to: '/legal/privacy', label: 'legalLinks.privacy' },
+  { to: '/legal/terms', label: 'legalLinks.terms' },
+  { to: '/legal/imprint', label: 'legalLinks.imprint' },
+  { to: '/help', label: 'legalLinks.help' },
+] as const;
 
 /** Footer navigation to the three legal pages and the crisis lines page. */
 export function LegalLinks() {
+  const { t } = useTranslation();
   return (
-    <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[14px]">
+    <nav aria-label={t('legalLinks.label')} className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[14px]">
       {links.map((link) => (
         <Link
           key={link.to}
           to={link.to}
           className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground underline-offset-4 hover:underline"
         >
-          {link.label}
+          {t(link.label)}
         </Link>
       ))}
     </nav>

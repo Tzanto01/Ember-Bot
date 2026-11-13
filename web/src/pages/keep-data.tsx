@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, useFocusHeadingOnChange, type Validator, validateAll } from '@/components/auth/use-field';
@@ -13,6 +14,7 @@ import { PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
+import { t as translate } from '@/lib/i18n';
 import type { UpgradeSummary } from '@/lib/local/types';
 import { saveExport } from '@/lib/native/save-file';
 import { auth, backup, localMode, upgrade } from '@/lib/services';
@@ -21,23 +23,20 @@ import { useStore } from '@/lib/store';
 type Step = { step: 'form' } | { step: 'recovery'; code: string } | { step: 'conflict'; message: string };
 
 const passphraseRule: Validator = (value) => {
-  if (!value) return 'Please choose a passphrase.';
-  return value.length >= 10 ? null : 'Use at least 10 characters. A few words make a good passphrase.';
+  if (!value) return translate('keepData.passphrase.required');
+  return value.length >= 10 ? null : translate('keepData.passphrase.short');
 };
-const loginPasswordRule: Validator = (value) => (value ? null : 'Please enter your login password.');
+const loginPasswordRule: Validator = (value) => (value ? null : translate('keepData.password.required'));
 const noRule: Validator = () => null;
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /** "12 habits, 340 check-ins, 8 journal entries": the habits always, the rest when there are any. */
 function summaryText(summary: UpgradeSummary): string {
   return [
-    plural(summary.habits, 'habit', 'habits'),
-    summary.checkIns ? plural(summary.checkIns, 'check-in', 'check-ins') : '',
-    summary.notes ? plural(summary.notes, 'journal entry', 'journal entries') : '',
-    summary.moods ? plural(summary.moods, 'mood', 'moods') : '',
+    translate('keepData.count.habits', { count: summary.habits }),
+    summary.checkIns ? translate('keepData.count.checkIns', { count: summary.checkIns }) : '',
+    summary.notes ? translate('keepData.count.notes', { count: summary.notes }) : '',
+    summary.moods ? translate('keepData.count.moods', { count: summary.moods }) : '',
   ]
     .filter(Boolean)
     .join(', ');
@@ -49,6 +48,7 @@ function summaryText(summary: UpgradeSummary): string {
  * gets the choice of another account or staying without one.
  */
 export default function KeepDataPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const me = useStore(auth.me);
   const summary = useQuery({ queryKey: ['upgrade-summary'], queryFn: () => upgrade.summary() });
@@ -82,10 +82,10 @@ export default function KeepDataPage() {
     !privateJournal
       ? null
       : !value
-        ? 'Please type your passphrase again.'
+        ? t('keepData.confirm.required')
         : value === passphrase.value
           ? null
-          : "The two passphrases don't match yet.",
+          : t('keepData.confirm.mismatch'),
   );
   const password = useField(needsPassword ? loginPasswordRule : noRule);
 
@@ -109,7 +109,7 @@ export default function KeepDataPage() {
       )
       .catch(
         () =>
-          ({ ok: false, reason: 'failed', message: "Your data didn't move this time. You can try again." }) as const,
+          ({ ok: false, reason: 'failed', message: t('keepData.moveFailed') }) as const,
       );
     if (result.ok) {
       if (result.recoveryCode) setStep({ step: 'recovery', code: result.recoveryCode });
@@ -129,7 +129,7 @@ export default function KeepDataPage() {
       await localMode.finishUpgrade();
       await navigate('/today');
     } catch {
-      setProblem("That didn't work just now. You can try again.");
+      setProblem(t('keepData.finishFailed'));
       setBusy(false);
     }
   }
@@ -141,10 +141,10 @@ export default function KeepDataPage() {
     try {
       if (await saveExport(await backup.exportBackup())) {
         await backup.markBackedUp();
-        setExported('Backup saved.');
+        setExported(t('backup.saved'));
       }
     } catch {
-      setExported("The backup couldn't be saved. You can try again.");
+      setExported(t('backup.saveFailed'));
     }
     setExporting(false);
   }
@@ -158,7 +158,7 @@ export default function KeepDataPage() {
   if (step.step === 'recovery') {
     return (
       <>
-        <PageHeader title="Your data is in your account" />
+        <PageHeader title={t('keepData.recovery.title')} />
         <RecoveryStep
           code={step.code}
           onFinish={() =>
@@ -175,21 +175,21 @@ export default function KeepDataPage() {
   if (step.step === 'conflict') {
     return (
       <>
-        <PageHeader title="This account already has habits" />
+        <PageHeader title={t('keepData.conflict.title')} />
         <Notice>
           <p>{step.message}</p>
         </Notice>
-        <p className="text-muted-foreground">Your habits are still safe on this device.</p>
+        <p className="text-muted-foreground">{t('keepData.conflict.safe')}</p>
         <div className="flex flex-col gap-3">
           <BusyButton
             type="button"
             variant="secondary"
             block
             busy={leaving}
-            busyLabel="Signing out…"
+            busyLabel={t('keepData.conflict.signingOut')}
             onClick={() => void otherAccount()}
           >
-            Use a different account
+            {t('keepData.conflict.otherAccount')}
           </BusyButton>
           <KeepLocalButton />
         </div>
@@ -199,59 +199,61 @@ export default function KeepDataPage() {
 
   const data = summary.data;
   const hasJournal = !!data && data.notes + data.moods > 0;
-  const leftOut = [
-    data?.leftOut?.notes ? plural(data.leftOut.notes, 'journal entry', 'journal entries') : '',
-    data?.leftOut?.lowDays ? plural(data.leftOut.lowDays, 'low day', 'low days') : '',
-  ]
-    .filter(Boolean)
-    .join(' and ');
+  const leftOutNotes = data?.leftOut?.notes ? t('keepData.count.notes', { count: data.leftOut.notes }) : '';
+  const leftOutLowDays = data?.leftOut?.lowDays ? t('keepData.count.lowDays', { count: data.leftOut.lowDays }) : '';
+  const leftOut =
+    leftOutNotes && leftOutLowDays
+      ? t('keepData.leftOut.both', { first: leftOutNotes, second: leftOutLowDays })
+      : leftOutNotes || leftOutLowDays;
   return (
     <>
-      <PageHeader title="Keep your data" lede="Move what's on this device into your account." />
+      <PageHeader title={t('keepData.title')} lede={t('keepData.lede')} />
       {summary.isPending || !me || !checked ? (
         <>
           <p role="status" className="sr-only">
-            Loading what's on this device…
+            {t('keepData.loading')}
           </p>
           <Skeleton className="h-[6rem] rounded-xl" />
         </>
       ) : summary.isError ? (
         <Notice tone="notice">
-          <p>Ember couldn't read what's on this device just now.</p>
+          <p>{t('keepData.readFailed')}</p>
           <Button type="button" variant="secondary" onClick={() => void summary.refetch()}>
-            Try again
+            {t('keepData.retry')}
           </Button>
         </Notice>
       ) : !data ? (
         <>
-          <p>There's nothing from this device waiting to move.</p>
+          <p>{t('keepData.nothing')}</p>
           {problem && (
             <Notice tone="notice">
               <p>{problem}</p>
             </Notice>
           )}
-          <BusyButton type="button" block busy={busy} busyLabel="One moment…" onClick={() => void finish()}>
-            Continue
+          <BusyButton type="button" block busy={busy} busyLabel={t('keepData.finishing')} onClick={() => void finish()}>
+            {t('keepData.continue')}
           </BusyButton>
         </>
       ) : (
         <form ref={form} noValidate onSubmit={(event) => void move(event)} className="flex flex-col gap-4">
           <p>
-            On this device: <strong>{summaryText(data)}</strong>.
+            <Trans
+              i18nKey="keepData.onDevice"
+              values={{ summary: summaryText(data) }}
+              components={{ strong: <strong /> }}
+            />
           </p>
           {leftOut && (
             <Notice>
-              <p>
-                {leftOut} from before your first habit can't be moved to the account. They stay in your device backup.
-              </p>
+              <p>{t('keepData.leftOut.text', { items: leftOut })}</p>
               <BusyButton
                 type="button"
                 variant="secondary"
                 busy={exporting}
-                busyLabel="Preparing…"
+                busyLabel={t('backup.preparing')}
                 onClick={() => void exportFirst()}
               >
-                Export backup first
+                {t('keepData.exportFirst')}
               </BusyButton>
               <p role="status" className="text-[14px]">
                 {exported}
@@ -270,11 +272,10 @@ export default function KeepDataPage() {
               </div>
               <div className="flex flex-col pt-[10px]">
                 <Label htmlFor={privateId} className="font-normal">
-                  Keep my journal private (end-to-end encrypted)
+                  {t('keepData.private.label')}
                 </Label>
                 <p id={`${privateId}-hint`} className="text-[14px] text-muted-foreground">
-                  Your entries and moods are locked with a passphrase on this device before they move. Ember's server
-                  can't read them.
+                  {t('keepData.private.hint')}
                 </p>
               </div>
             </div>
@@ -282,13 +283,13 @@ export default function KeepDataPage() {
           {hasJournal && privateJournal && (
             <>
               <FormField
-                label="Journal passphrase"
-                hint="At least 10 characters. Pick something different from your login password."
+                label={t('keepData.passphrase.label')}
+                hint={t('keepData.passphrase.hint')}
                 error={passphrase.error}
               >
                 {(control) => <PasswordInput {...control} {...passphrase.input} autoComplete="new-password" />}
               </FormField>
-              <FormField label="Type it again" error={confirm.error}>
+              <FormField label={t('keepData.confirm.label')} error={confirm.error}>
                 {(control) => <PasswordInput {...control} {...confirm.input} autoComplete="new-password" />}
               </FormField>
               <div className="flex min-h-[44px] items-center gap-3">
@@ -298,7 +299,7 @@ export default function KeepDataPage() {
                   onCheckedChange={(value) => setRemember(value === true)}
                 />
                 <Label htmlFor={`${privateId}-remember`} className="font-normal">
-                  Remember on this device
+                  {t('keepData.remember')}
                 </Label>
               </div>
               {needsPassword && (
@@ -314,8 +315,8 @@ export default function KeepDataPage() {
                     aria-hidden="true"
                   />
                   <FormField
-                    label="Your login password"
-                    hint="Ember checks it before setting up your journal key."
+                    label={t('keepData.password.label')}
+                    hint={t('keepData.password.hint')}
                     error={password.error}
                   >
                     {(control) => <PasswordInput {...control} {...password.input} autoComplete="current-password" />}
@@ -329,8 +330,8 @@ export default function KeepDataPage() {
               <p>{problem}</p>
             </Notice>
           )}
-          <BusyButton type="submit" block busy={busy} busyLabel="Moving your data…">
-            {problem ? 'Try again' : 'Move my data'}
+          <BusyButton type="submit" block busy={busy} busyLabel={t('keepData.moving')}>
+            {problem ? t('keepData.retry') : t('keepData.move')}
           </BusyButton>
           <KeepLocalButton />
         </form>

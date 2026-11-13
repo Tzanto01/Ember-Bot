@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { email as emailRule, useField, useFocusHeadingOnChange, validateAll } from '@/components/auth/use-field';
@@ -12,15 +13,17 @@ import { asApiError, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
 
 function BackToSignIn() {
+  const { t } = useTranslation();
   return (
     <Button asChild variant="ghost" block>
-      <Link to="/login">Back to sign in</Link>
+      <Link to="/login">{t('auth.backToSignIn')}</Link>
     </Button>
   );
 }
 
 /** `/forgot-password`: asks for the email, then confirms a link is on its way. */
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const [problem, setProblem] = useState<string | null>(null);
@@ -43,8 +46,8 @@ export default function ForgotPasswordPage() {
     return (
       <>
         <PageHeader
-          title="Check your inbox"
-          lede="If that address has an account, a link is on its way. It can take a minute or two."
+          title={t('forgot.sent.title')}
+          lede={t('forgot.sent.lede')}
         />
         <BackToSignIn />
       </>
@@ -54,11 +57,11 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <PageHeader
-        title="Reset your password"
-        lede="Tell us your email and we'll send you a link to choose a new one."
+        title={t('forgot.title')}
+        lede={t('forgot.lede')}
       />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
-        <FormField label="Email" error={email.error}>
+        <FormField label={t('auth.email')} error={email.error}>
           {(field) => (
             <Input
               {...field}
@@ -71,8 +74,8 @@ export default function ForgotPasswordPage() {
           )}
         </FormField>
         {problem && <Notice tone="notice">{problem}</Notice>}
-        <BusyButton type="submit" block busy={send.isPending} busyLabel="Sending…">
-          Send the link
+        <BusyButton type="submit" block busy={send.isPending} busyLabel={t('auth.sending')}>
+          {t('forgot.submit')}
         </BusyButton>
       </form>
       <BackToSignIn />

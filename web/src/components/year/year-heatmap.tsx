@@ -1,6 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { type KeyboardEvent, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { currentLanguage, t } from '@/lib/i18n';
 import { addDays, formatDate, weekdayLabels } from '@/lib/local-date';
 import type { LocalDateString } from '@/lib/models';
 import { cn } from '@/lib/utils';
@@ -17,18 +19,33 @@ const toneClass: Record<YearTone, string> = {
 };
 
 const cellSize = 'size-[20px] rounded-[4px] pointer-coarse:size-[28px] pointer-coarse:rounded-[6px]';
-const longDate = new Intl.DateTimeFormat(undefined, {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
+const longDates = new Map<string, Intl.DateTimeFormat>();
+
+function longDate(): Intl.DateTimeFormat {
+  const language = currentLanguage();
+  let format = longDates.get(language);
+  if (!format) {
+    format = new Intl.DateTimeFormat(language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+    longDates.set(language, format);
+  }
+  return format;
+}
 
 /** "{long date}: {words}, mood {label}", the cell's accessible name. */
 export function yearDayName(date: LocalDateString, day: YearDay | undefined, showMoods: boolean): string {
-  const mood = showMoods && day?.mood ? `, mood ${day.mood.label}` : '';
-  return `${longDate.format(new Date(`${date}T00:00:00Z`))}: ${day?.words ?? 'nothing recorded'}${mood}`;
+  const values = {
+    date: longDate().format(new Date(`${date}T00:00:00Z`)),
+    words: day?.words ?? t('year.nothingRecorded'),
+  };
+  return showMoods && day?.mood
+    ? t('year.cellNameMood', { ...values, mood: day.mood.label })
+    : t('year.cellName', values);
 }
 
 /** A legend or grid swatch for `tone`, optionally with the mood marker. */
@@ -85,12 +102,13 @@ export function YearHeatmap({
   onSelect,
   detailId,
 }: YearHeatmapProps) {
+  const { t, i18n } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [scrollable, setScrollable] = useState(false);
   const weeks = Array.from({ length: yearWeeks }, (_, w) => addDays(start, w * 7));
-  const rowNames = weekdayLabels(undefined, 'long');
-  const rowShort = weekdayLabels(undefined, 'short');
+  const rowNames = weekdayLabels(i18n.language, 'long');
+  const rowShort = weekdayLabels(i18n.language, 'short');
   const monthStarts = weeks.map(
     (monday) => Array.from({ length: 7 }, (_, d) => addDays(monday, d)).find((d) => d.endsWith('-01')) ?? null,
   );
@@ -128,13 +146,13 @@ export function YearHeatmap({
       {scrollable && (
         <p className="flex items-center gap-1.5 text-[14px] text-muted-foreground">
           <ArrowLeft aria-hidden className="size-[16px] shrink-0" />
-          Earlier months are to the left. Scroll sideways to see them.
+          {t('year.scrollHint')}
         </p>
       )}
       <div ref={scrollRef} className="-mx-1 overflow-x-auto px-1 pb-2">
         <table
           ref={tableRef}
-          aria-label="Your last 12 months, one column per week"
+          aria-label={t('year.tableLabel')}
           className="[border-collapse:separate] [border-spacing:4px] pointer-coarse:[border-spacing:0]"
         >
           <thead>
@@ -211,36 +229,37 @@ export function YearHeatmap({
 
 /** Swatches for the grid's fills; the single-habit states and the mood marker only when they apply. */
 export function YearLegend({ habit, showMoods }: { habit: boolean; showMoods: boolean }) {
+  const { t } = useTranslation();
   const item = 'flex items-center gap-2';
   return (
-    <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-muted-foreground">
+    <ul aria-label={t('calendar.legendLabel')} className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-muted-foreground">
       <li className={item}>
-        <span>Less</span>
+        <span>{t('year.legend.less')}</span>
         {([0, 1, 2, 3] as const).map((tone) => (
           <YearSwatch key={tone} tone={tone} />
         ))}
-        <span>More</span>
+        <span>{t('year.legend.more')}</span>
       </li>
       {habit && (
         <>
           <li className={item}>
             <YearSwatch tone="lowday" />
-            Low day
+            {t('year.legend.lowday')}
           </li>
           <li className={item}>
             <YearSwatch tone="paused" />
-            Paused
+            {t('year.legend.paused')}
           </li>
           <li className={item}>
             <YearSwatch tone="offday" />
-            Rest day
+            {t('year.legend.offday')}
           </li>
         </>
       )}
       {showMoods && (
         <li className={item}>
           <YearSwatch tone={0} mood />
-          Has a mood
+          {t('year.legend.mood')}
         </li>
       )}
     </ul>

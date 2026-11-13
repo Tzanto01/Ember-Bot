@@ -1,9 +1,11 @@
-import crisisLines from '@/content/crisis-lines.json';
+import de from '@/content/crisis-lines.de.json';
+import en from '@/content/crisis-lines.en.json';
+import { currentLanguage, t } from '@/lib/i18n';
 
-/** A region with its own entry in `content/crisis-lines.json`. */
+/** A region with its own entry in `content/crisis-lines.{en,de}.json`. */
 export type CrisisRegion = 'DE' | 'AT' | 'CH' | 'GB' | 'IE' | 'US' | 'EU' | 'INTL';
 
-/** One entry of `content/crisis-lines.json`. */
+/** One entry of `content/crisis-lines.{en,de}.json`. */
 export interface CrisisLine {
   region: CrisisRegion;
   name: string;
@@ -14,20 +16,22 @@ export interface CrisisLine {
   checked: string;
 }
 
-/** Every crisis line in file order. */
-export const CRISIS_LINES = crisisLines as CrisisLine[];
+const content = { en: en as CrisisLine[], de: de as CrisisLine[] };
 
-/** The country select's options in file order, with readable names. */
-export const CRISIS_REGIONS: readonly { region: CrisisRegion; label: string }[] = [
-  { region: 'DE', label: 'Germany' },
-  { region: 'AT', label: 'Austria' },
-  { region: 'CH', label: 'Switzerland' },
-  { region: 'GB', label: 'United Kingdom' },
-  { region: 'IE', label: 'Ireland' },
-  { region: 'US', label: 'United States' },
-  { region: 'EU', label: 'Elsewhere in the EU' },
-  { region: 'INTL', label: 'Somewhere else' },
-];
+/** Every crisis line in the current language, in file order. */
+export function crisisLines(): CrisisLine[] {
+  return content[currentLanguage()];
+}
+
+/** The country select's options in file order, with names in the current language. */
+export const CRISIS_REGIONS: readonly { region: CrisisRegion; readonly label: string }[] = (
+  ['DE', 'AT', 'CH', 'GB', 'IE', 'US', 'EU', 'INTL'] as const
+).map((region) => ({
+  region,
+  get label() {
+    return t(`crisis.region.${region}`);
+  },
+}));
 
 const listed = new Set<string>(['DE', 'AT', 'CH', 'GB', 'IE', 'US']);
 
@@ -155,7 +159,7 @@ export function detectRegion(): CrisisRegion {
 /** The lines to show for a region: its own entries, plus the EU 112 entry for EU member regions (once). */
 export function linesForRegion(
   region: CrisisRegion,
-  lines: readonly CrisisLine[] = CRISIS_LINES,
+  lines: readonly CrisisLine[] = crisisLines(),
 ): CrisisLine[] {
   const own = lines.filter((line) => line.region === region);
   if (region === 'EU' || !euMembers.has(region)) return own;

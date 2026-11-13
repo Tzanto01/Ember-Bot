@@ -1,7 +1,9 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { currentLanguage } from '@/lib/i18n';
 import {
   type BetaUpdate,
   EmberUpdater,
@@ -9,6 +11,7 @@ import {
   findUpdate,
   updaterAvailable,
 } from '@/lib/native/updater';
+import { type LocalizedNotes, notesIn } from '@/lib/release-notes';
 
 type Phase = 'offer' | 'permission' | 'downloading' | 'failed';
 
@@ -22,10 +25,11 @@ let dismissedCode = 0;
  * the new version's notes from the server when it has them. Dismissing hides that version for the rest of the session.
  */
 export function BetaUpdateBanner() {
+  const { t } = useTranslation();
   const [update, setUpdate] = useState<BetaUpdate | null>(null);
   const [phase, setPhase] = useState<Phase>('offer');
   const [percent, setPercent] = useState<number | null>(null);
-  const [notes, setNotes] = useState<{ versionName: string; notes: string[] } | null>(null);
+  const [notes, setNotes] = useState<{ versionName: string; notes: LocalizedNotes } | null>(null);
   const updateRef = useRef<BetaUpdate | null>(null);
   const phaseRef = useRef<Phase>('offer');
   const busy = useRef(false);
@@ -116,22 +120,22 @@ export function BetaUpdateBanner() {
   }
 
   const text = {
-    offer: `Update available: Ember Beta ${update.versionName}`,
-    permission: 'Allow Ember to install updates, then come back.',
-    downloading: `Downloading Ember Beta ${update.versionName}…`,
-    failed: "The update couldn't be downloaded. Try again in a moment.",
+    offer: t('betaUpdate.offer', { version: update.versionName }),
+    permission: t('betaUpdate.permission'),
+    downloading: t('betaUpdate.downloading', { version: update.versionName }),
+    failed: t('betaUpdate.failed'),
   }[phase];
 
   return (
-    <Notice tone="info" aria-label="App update">
+    <Notice tone="info" aria-label={t('betaUpdate.label')}>
       <div className="flex w-full flex-wrap items-center gap-2">
         <p>{text}</p>
         {phase === 'offer' && notes?.versionName === update.versionName && (
           <ul
-            aria-label={`What's new in ${update.versionName}`}
+            aria-label={t('betaUpdate.notesLabel', { version: update.versionName })}
             className="flex w-full list-disc flex-col gap-1 pl-5"
           >
-            {notes.notes.map((note) => (
+            {notesIn(notes.notes, currentLanguage()).map((note) => (
               <li key={note}>{note}</li>
             ))}
           </ul>
@@ -139,19 +143,19 @@ export function BetaUpdateBanner() {
         {phase === 'downloading' ? (
           <progress
             className="h-2 w-full accent-primary"
-            aria-label="Download progress"
+            aria-label={t('betaUpdate.progress')}
             max={100}
             {...(percent === null ? {} : { value: percent })}
           />
         ) : (
           <Button variant="secondary" onClick={() => void install()}>
-            {phase === 'failed' ? 'Try again' : 'Update'}
+            {phase === 'failed' ? t('betaUpdate.retry') : t('betaUpdate.update')}
           </Button>
         )}
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Dismiss"
+          aria-label={t('betaUpdate.dismiss')}
           className="-my-2 -mr-2 ml-auto"
           onClick={dismiss}
         >

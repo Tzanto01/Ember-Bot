@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { ProblemDetails } from './models';
 
 /**
@@ -60,52 +61,37 @@ export interface FriendlyProblem {
   offerResend: boolean;
 }
 
-const identityCodes: Record<string, { field: string; text: string }> = {
-  PasswordTooShort: { field: 'password', text: 'Use at least 10 characters.' },
-  PasswordRequiresDigit: {
-    field: 'password',
-    text: 'That password needs a different mix. A longer phrase works well.',
-  },
-  PasswordRequiresLower: {
-    field: 'password',
-    text: 'That password needs a different mix. A longer phrase works well.',
-  },
-  PasswordRequiresUpper: {
-    field: 'password',
-    text: 'That password needs a different mix. A longer phrase works well.',
-  },
-  PasswordRequiresNonAlphanumeric: {
-    field: 'password',
-    text: 'That password needs a different mix. A longer phrase works well.',
-  },
-  PasswordRequiresUniqueChars: {
-    field: 'password',
-    text: 'Try a password with a few more different characters.',
-  },
-  PasswordMismatch: { field: 'password', text: "That password didn't match. Try again." },
-  InvalidEmail: { field: 'email', text: "That doesn't look like an email address yet." },
-  InvalidUserName: { field: 'email', text: "That doesn't look like an email address yet." },
-  DuplicateUserName: {
-    field: 'email',
-    text: 'That address is already in use. Try signing in instead.',
-  },
-  DuplicateEmail: {
-    field: 'email',
-    text: 'That address is already in use. Try signing in instead.',
-  },
+const identityCodes: Record<string, { field: string; key: ErrorKey }> = {
+  PasswordTooShort: { field: 'password', key: 'errors.password.tooShort' },
+  PasswordRequiresDigit: { field: 'password', key: 'errors.password.mix' },
+  PasswordRequiresLower: { field: 'password', key: 'errors.password.mix' },
+  PasswordRequiresUpper: { field: 'password', key: 'errors.password.mix' },
+  PasswordRequiresNonAlphanumeric: { field: 'password', key: 'errors.password.mix' },
+  PasswordRequiresUniqueChars: { field: 'password', key: 'errors.password.uniqueChars' },
+  PasswordMismatch: { field: 'password', key: 'errors.password.mismatch' },
+  InvalidEmail: { field: 'email', key: 'errors.email.invalid' },
+  InvalidUserName: { field: 'email', key: 'errors.email.invalid' },
+  DuplicateUserName: { field: 'email', key: 'errors.email.taken' },
+  DuplicateEmail: { field: 'email', key: 'errors.email.taken' },
 };
 
-const expiredLink = 'This link has expired or was already used. You can ask for a fresh one.';
+type ErrorKey =
+  | 'errors.password.tooShort'
+  | 'errors.password.mix'
+  | 'errors.password.uniqueChars'
+  | 'errors.password.mismatch'
+  | 'errors.email.invalid'
+  | 'errors.email.taken';
 
 function fieldKey(key: string): string {
   const bare = key.replace(/^\$\./, '').split('.').pop() ?? key;
   return bare.charAt(0).toLowerCase() + bare.slice(1);
 }
 
-function waitText(seconds: number | null): string {
-  if (seconds === null || seconds <= 0) return 'Please try again in a little while.';
-  if (seconds < 90) return `Please try again in about ${seconds} seconds.`;
-  return `Please try again in about ${Math.ceil(seconds / 60)} minutes.`;
+function tooManyText(seconds: number | null): string {
+  if (seconds === null || seconds <= 0) return t('errors.tooMany');
+  if (seconds < 90) return t('errors.tooMany.seconds', { count: seconds });
+  return t('errors.tooMany.minutes', { count: Math.ceil(seconds / 60) });
 }
 
 /**
@@ -122,94 +108,91 @@ export function problemToMessage(
 
   switch (error.status) {
     case 0:
-      result.message = "Ember can't be reached right now. Check your connection and try again.";
+      result.message = t('errors.network');
       return result;
     case 400: {
       for (const [key, messages] of Object.entries(problem?.errors ?? {})) {
         const identity = identityCodes[key];
         if (key === 'InvalidToken') {
-          result.message = expiredLink;
+          result.message = t('errors.expiredLink');
         } else if (identity) {
-          result.fields[identity.field] ??= identity.text;
+          result.fields[identity.field] ??= t(identity.key);
         } else if (key.startsWith('Password')) {
-          result.fields['password'] ??= messages[0] ?? 'Please choose a different password.';
+          result.fields['password'] ??= messages[0] ?? t('errors.password.different');
         } else {
           result.fields[fieldKey(key)] ??= messages.join(' ');
         }
       }
       if (!result.message) {
         result.message = Object.keys(result.fields).length
-          ? 'A few details need another look.'
-          : (detail ?? 'Something in that request needs another look.');
+          ? t('errors.fieldsInvalid')
+          : (detail ?? t('errors.requestInvalid'));
       }
       return result;
     }
     case 401:
       if (context === 'login') {
         if (detail === 'NotAllowed') {
-          result.message =
-            "Your email isn't confirmed yet. Check your inbox, or we can send the link again.";
+          result.message = t('errors.login.notConfirmed');
           result.offerResend = true;
         } else if (detail === 'RequiresTwoFactor') {
-          result.message = 'Enter the code from your authenticator app to finish signing in.';
+          result.message = t('errors.login.twoFactor');
         } else {
-          result.message =
-            "That email and password don't match. Try again, or reset your password.";
+          result.message = t('errors.login.failed');
         }
       } else if (context === 'confirm-email') {
-        result.message =
-          "That link or password didn't work. Check the password you chose when you signed up, or reset it.";
+        result.message = t('errors.confirm.failed');
         result.offerResend = true;
       } else if (context === 'email-code') {
         result.message =
           error.type === 'password_required'
-            ? 'Enter your password to finish on this device.'
-            : "That code didn't work. Check the newest email or send a new code.";
+            ? t('errors.code.passwordRequired')
+            : t('errors.code.wrong');
       } else if (context === 'reset-password') {
-        result.message = expiredLink;
+        result.message = t('errors.expiredLink');
       } else {
-        result.message = 'Your session ended. Please sign in again.';
+        result.message = t('errors.session');
       }
       return result;
     case 403:
       result.message =
         error.type === 'consent_required'
-          ? 'Ember needs your OK before it saves habits and check-ins.'
+          ? t('errors.consentRequired')
           : error.type === 'antiforgery'
-            ? 'Something got out of sync. Reload the page and try again.'
-            : "That isn't available for your account.";
+            ? t('errors.antiforgery')
+            : t('errors.forbidden');
       return result;
     case 404:
-      result.message = "We couldn't find that. It may have been removed.";
+      result.message = t('errors.notFound');
       return result;
     case 409:
       result.message =
         error.type === 'habit_limit'
-          ? 'You have 25 habits, the most Ember keeps. Remove one you no longer need to make room.'
-          : (detail ?? "That couldn't be done right now.");
+          ? t('errors.habitLimit')
+          : (detail ?? t('errors.conflict'));
       return result;
     case 413:
-      result.message = 'That was more than Ember can take in one go. Try fewer or smaller pictures.';
+      result.message = t('errors.tooLarge');
       return result;
     case 422:
       result.message =
         error.type === 'in_future'
-          ? "That day hasn't happened yet."
+          ? t('errors.day.inFuture')
           : error.type === 'before_habit_start'
-            ? 'That day is before this habit started.'
-            : 'That day is outside the range you can edit.';
+            ? t('errors.day.beforeStart')
+            : t('errors.day.outOfRange');
       return result;
     case 429:
-      result.message = `That was a lot of tries in a short time. ${waitText(error.retryAfterSeconds)}`;
+      result.message = tooManyText(error.retryAfterSeconds);
       return result;
     case 501:
-      result.message = "This isn't available yet.";
+      result.message = t('errors.notYet');
       return result;
     default:
       result.message =
         error.status >= 500
-          ? 'Something went wrong on our side. Please try again in a moment.'
-          : 'Something went wrong. Please try again.';
+          ? t('errors.server')
+          : t('errors.unknown');
       return result;
   }
 }

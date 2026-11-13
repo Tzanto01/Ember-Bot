@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
@@ -21,18 +22,19 @@ import { api, auth } from '@/lib/services';
 import { useStore } from '@/lib/store';
 
 function Summary({ habit }: { habit: Habit }) {
+  const { t } = useTranslation();
   const { streak, week } = habit.stats;
   const showStreaks = useStore(auth.me)?.showStreaks !== false;
   return (
     <Card className="hidden lg:flex">
-      {showStreaks && streak !== null && streak > 0 && <p className="font-semibold">{streak}-day streak</p>}
+      {showStreaks && streak !== null && streak > 0 && <p className="font-semibold">{t('habit.streak', { count: streak })}</p>}
       {week && week.done > 0 && (
         <p className="font-semibold">
-          {week.done} of {week.target} this week
+          {t('habit.weekProgress', { done: week.done, target: week.target })}
         </p>
       )}
       <TapLink to={`/history/${habit.id}`} className="self-start">
-        See its history
+        {t('habitEdit.history')}
       </TapLink>
     </Card>
   );
@@ -40,6 +42,7 @@ function Summary({ habit }: { habit: Habit }) {
 
 /** `/habits/:id/edit`: details, where reminders go, pause and delete; reloads `me` on entry for a fresh local today. */
 export default function HabitEditPage() {
+  const { t } = useTranslation();
   const id = Number(useParams()['id']);
   const valid = Number.isInteger(id) && id > 0;
   const queryClient = useQueryClient();
@@ -69,14 +72,14 @@ export default function HabitEditPage() {
     content = (
       <EmptyState
         illustration={<DriftingSpark />}
-        title="This habit wandered off."
+        title={t('habitEdit.notFound')}
         action={
           <Button asChild>
-            <Link to="/today">Back to Today</Link>
+            <Link to="/today">{t('habitEdit.backToToday')}</Link>
           </Button>
         }
       >
-        <p>It may have been removed, or the link is out of date.</p>
+        <p>{t('habitEdit.notFoundBody')}</p>
       </EmptyState>
     );
   } else if (habit) {
@@ -93,7 +96,7 @@ export default function HabitEditPage() {
     );
   } else if (error) {
     content = error.handled ? null : (
-      <Notice tone="notice" heading="This habit didn't load">
+      <Notice tone="notice" heading={t('habitEdit.loadFailed')}>
         <p>{problemToMessage(error).message}</p>
         <Button
           type="button"
@@ -101,7 +104,7 @@ export default function HabitEditPage() {
           aria-disabled={query.isFetching || undefined}
           onClick={() => void query.refetch()}
         >
-          Try again
+          {t('habitEdit.tryAgain')}
         </Button>
       </Notice>
     );
@@ -109,7 +112,7 @@ export default function HabitEditPage() {
     content = (
       <div className="flex max-w-[40rem] flex-col gap-6">
         <p role="status" className="sr-only">
-          Loading your habit…
+          {t('habitEdit.loading')}
         </p>
         <Skeleton className="h-[22rem] rounded-xl" />
         <Skeleton className="h-[10rem] rounded-xl" />
@@ -119,7 +122,7 @@ export default function HabitEditPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Edit habit" lede={habit?.name} />
+      <PageHeader title={t('habitEdit.title')} lede={habit?.name} />
       {content}
     </div>
   );

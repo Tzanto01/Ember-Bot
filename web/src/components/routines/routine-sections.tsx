@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type KeyboardEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { FormField, fieldMessages, focusFirstInvalid } from '@/components/form-field';
 import { Spinner } from '@/components/spinner';
@@ -9,6 +10,7 @@ import { cardVariants } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { env } from '@/lib/env';
+import { t } from '@/lib/i18n';
 import type { Habit, NewRoutine, Routine, RoutinePatch } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api, localMode } from '@/lib/services';
@@ -20,12 +22,10 @@ export const routinesKey = ['routines'] as const;
 /** Query key of the habits the routine pages offer. */
 export const routineHabitsKey = ['routines', 'habits'] as const;
 
-const limitMessage = 'You have 10 routines, the most Ember keeps. Remove one you no longer need to make room.';
-
 /** Contract name rule: 1 to 50 characters after trimming. Null when valid. */
 export function routineNameError(name: string): string | null {
   const length = name.trim().length;
-  if (length === 0) return 'Give your routine a short name, like Morning.';
+  if (length === 0) return t('routine.nameMissing');
   if (length > 50) return fieldMessages.maxLength(50);
   return null;
 }
@@ -35,7 +35,7 @@ function failure(error: unknown, creating = false): FriendlyProblem | null {
   const apiError = asApiError(error);
   if (apiError.handled) return null;
   const problem = problemToMessage(apiError);
-  return creating && apiError.status === 409 ? { ...problem, message: limitMessage } : problem;
+  return creating && apiError.status === 409 ? { ...problem, message: t('routines.limit') } : problem;
 }
 
 interface Feedback {
@@ -55,6 +55,7 @@ export interface RoutineDetailsProps {
  * editing sends only the changed fields, or says "Nothing has changed yet.".
  */
 export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const root = useRef<HTMLFormElement>(null);
@@ -81,7 +82,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
         return;
       }
       setTouched(false);
-      setFeedback({ tone: 'success', text: 'Saved.' });
+      setFeedback({ tone: 'success', text: t('habitEdit.saved') });
     },
     onError: (error) => {
       const problem = failure(error, !routine);
@@ -116,7 +117,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
     if (!reminderTime && routine.reminderTime !== null) patch.clearReminder = true;
     else if (reminderTime && reminderTime !== routine.reminderTime) patch.reminderTime = reminderTime;
     if (Object.keys(patch).length === 0) {
-      setFeedback({ tone: 'info', text: 'Nothing has changed yet.' });
+      setFeedback({ tone: 'info', text: t('habitEdit.unchanged') });
       return;
     }
     save.mutate(patch);
@@ -133,9 +134,9 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
       className={cardVariants({ className: 'gap-5' })}
     >
       <h2 id="routine-details-heading" className="text-[22px]">
-        Details
+        {t('habitEdit.details')}
       </h2>
-      <FormField label="Name" error={nameError} id="routine-name">
+      <FormField label={t('habitFields.name')} error={nameError} id="routine-name">
         {(field) => (
           <Input
             {...field}
@@ -158,9 +159,9 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
       {!localWeb && (
         <>
           <FormField
-            label="Reminder time"
+            label={t('habitFields.reminderTime')}
             optional
-            hint="One gentle nudge for the habits here that are still open. It replaces their own reminders while they're in this routine."
+            hint={t('routine.reminderHint')}
             error={fieldErrors['reminderTime'] ?? null}
           >
             {(field) => (
@@ -175,7 +176,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
           </FormField>
           {!routine && (
             <p className="text-[14px] text-muted-foreground">
-              Once it's saved, you can choose where its reminder goes.
+              {t('routine.afterSave')}
             </p>
           )}
         </>
@@ -186,16 +187,16 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
           {save.isPending ? (
             <>
               <Spinner />
-              Saving…
+              {t('habitEdit.saving')}
             </>
           ) : routine ? (
-            'Save changes'
+            t('habitEdit.save')
           ) : (
-            'Create routine'
+            t('routine.create')
           )}
         </Button>
         <Button variant="ghost" block asChild>
-          <Link to="/routines">{routine ? 'Back to routines' : 'Cancel'}</Link>
+          <Link to="/routines">{routine ? t('routine.back') : t('habitNew.cancel')}</Link>
         </Button>
       </div>
     </form>
@@ -204,6 +205,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
 
 /** "Delete routine" with an inline confirm: Escape or "Keep it" cancels; its habits stay. Success goes to `/routines`. */
 export function RoutineDelete({ routine }: { routine: Routine }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const deleting = useRef(false);
@@ -251,7 +253,7 @@ export function RoutineDelete({ routine }: { routine: Routine }) {
   return (
     <section aria-labelledby="routine-delete-heading" className={cardVariants({ variant: 'farewell' })}>
       <h2 id="routine-delete-heading" className="text-[22px]">
-        Delete routine
+        {t('routine.delete')}
       </h2>
       {confirming ? (
         <div
@@ -263,27 +265,27 @@ export function RoutineDelete({ routine }: { routine: Routine }) {
           className="flex flex-col gap-3 focus:outline-none"
         >
           <p id="routine-delete-question">
-            Delete {routine.name}? Its habits and their check-ins stay, just no longer grouped.
+            {t('routine.deleteQuestion', { name: routine.name })}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="destructive" aria-disabled={remove.isPending || undefined} onClick={confirm}>
               {remove.isPending ? (
                 <>
                   <Spinner />
-                  Deleting…
+                  {t('habitEdit.deleting')}
                 </>
               ) : (
-                'Yes, delete it'
+                t('habitEdit.deleteYes')
               )}
             </Button>
             <Button type="button" variant="secondary" onClick={cancel}>
-              Keep it
+              {t('habitEdit.keep')}
             </Button>
           </div>
         </div>
       ) : (
         <>
-          <p className="text-[14px]">Your habits stay as they are. Only the grouping goes.</p>
+          <p className="text-[14px]">{t('routine.deleteHint')}</p>
           <Button
             id="routine-delete-start"
             type="button"
@@ -292,7 +294,7 @@ export function RoutineDelete({ routine }: { routine: Routine }) {
             className="bg-card"
             onClick={ask}
           >
-            Delete routine
+            {t('routine.delete')}
           </Button>
         </>
       )}

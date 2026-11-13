@@ -1,6 +1,7 @@
 import type { ExportFile } from '../api-client';
 import type { DayNote, LocalDateString, OwnMood } from '../models';
 import type { Store } from '../store';
+import { t } from '../i18n';
 
 /** `off`: plain journal. `locked`: private journal without its key on this device. `unlocked`: key at hand. */
 export type JournalState = 'off' | 'locked' | 'unlocked';
@@ -11,7 +12,7 @@ export type JournalSecret = { passphrase: string } | { recoveryCode: string };
 /** Thrown by reads and writes that need the key while the private journal is locked. */
 export class JournalLockedError extends Error {
   constructor() {
-    super('The private journal is locked on this device.');
+    super(t('journal.error.locked'));
     this.name = 'JournalLockedError';
   }
 }
@@ -19,7 +20,7 @@ export class JournalLockedError extends Error {
 /** Thrown when a passphrase or recovery code doesn't unwrap the journal key. */
 export class WrongSecretError extends Error {
   constructor() {
-    super("That passphrase or recovery code doesn't open the journal.");
+    super(t('journal.error.wrongSecret'));
     this.name = 'WrongSecretError';
   }
 }

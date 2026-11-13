@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { LiveRegion } from '@/components/live-region';
 import { Button } from '@/components/ui/button';
 import type { Habit, Routine } from '@/lib/models';
@@ -24,6 +25,7 @@ export interface RoutineHabitsProps {
  * habits with Add. Focus stays on the pressed control's habit and each change is announced.
  */
 export function RoutineHabits({ value, onChange, habits, routines, routineId, error }: RoutineHabitsProps) {
+  const { t } = useTranslation();
   const id = useId();
   const [announcement, setAnnouncement] = useState('');
   const byId = new Map(habits.map((h) => [h.id, h]));
@@ -49,7 +51,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
     apply(
       next,
       `${id}-${step < 0 ? 'up' : 'down'}-${value[index]}`,
-      `${habit?.name ?? 'Habit'} moved to ${target + 1} of ${value.length}.`,
+      t('routine.habits.moved', { name: habit?.name ?? t('routine.habits.habit'), n: target + 1, total: value.length }),
     );
   }
 
@@ -58,10 +60,10 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
       <LiveRegion message={announcement} />
       <div className="flex flex-col gap-2">
         <p id={`${id}-in`} className="font-medium">
-          Habits in this routine
+          {t('routine.habits.in')}
         </p>
         {members.length === 0 ? (
-          <p className="text-[14px] text-muted-foreground">None yet. Add the habits you do together below.</p>
+          <p className="text-[14px] text-muted-foreground">{t('routine.habits.none')}</p>
         ) : (
           <ol aria-labelledby={`${id}-in`} className="flex flex-col gap-2">
             {members.map((habit, index) => (
@@ -79,7 +81,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                   variant="ghost"
                   size="icon"
                   className="max-[379px]:ms-auto"
-                  aria-label={`Move ${habit.name} up`}
+                  aria-label={t('routine.habits.up', { name: habit.name })}
                   aria-disabled={index === 0 || undefined}
                   onClick={() => move(index, -1)}
                 >
@@ -90,7 +92,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Move ${habit.name} down`}
+                  aria-label={t('routine.habits.down', { name: habit.name })}
                   aria-disabled={index === members.length - 1 || undefined}
                   onClick={() => move(index, 1)}
                 >
@@ -100,12 +102,12 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Remove ${habit.name} from this routine`}
+                  aria-label={t('routine.habits.remove', { name: habit.name })}
                   onClick={() =>
                     apply(
                       value.filter((hid) => hid !== habit.id),
                       `${id}-add-${habit.id}`,
-                      `${habit.name} removed from this routine.`,
+                      t('routine.habits.removed', { name: habit.name }),
                     )
                   }
                 >
@@ -121,7 +123,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
       {others.length > 0 && (
         <div className="flex flex-col gap-2">
           <p id={`${id}-add`} className="font-medium">
-            Add habits
+            {t('routine.habits.add')}
           </p>
           <ul aria-labelledby={`${id}-add`} className="flex flex-col gap-2">
             {others.map((habit) => {
@@ -132,7 +134,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                     <span className="break-words">{habit.name}</span>
                     {from && (
                       <span className="text-[14px] text-muted-foreground">
-                        In your {routineTitle(from.name)}. Adding it moves it here.
+                        {t('routine.habits.from', { routine: routineTitle(from.name) })}
                       </span>
                     )}
                   </span>
@@ -140,13 +142,17 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                     id={`${id}-add-${habit.id}`}
                     type="button"
                     variant="secondary"
-                    aria-label={`Add ${habit.name}`}
+                    aria-label={t('routine.habits.addOne', { name: habit.name })}
                     onClick={() =>
-                      apply([...value, habit.id], `${id}-up-${habit.id}`, `${habit.name} added, ${value.length + 1} of ${value.length + 1}.`)
+                      apply(
+                        [...value, habit.id],
+                        `${id}-up-${habit.id}`,
+                        t('routine.habits.added', { name: habit.name, n: value.length + 1 }),
+                      )
                     }
                   >
                     <Plus aria-hidden />
-                    Add
+                    {t('routine.habits.addButton')}
                   </Button>
                 </li>
               );
@@ -155,7 +161,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
         </div>
       )}
       {habits.length === 0 && (
-        <p className="text-[14px] text-muted-foreground">Once you have habits, you can group them here.</p>
+        <p className="text-[14px] text-muted-foreground">{t('routine.habits.empty')}</p>
       )}
     </div>
   );

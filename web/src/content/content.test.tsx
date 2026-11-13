@@ -5,15 +5,24 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { CrisisLines } from '@/components/moment/crisis-lines';
 import { MomentDoor } from '@/components/moment/moment-door';
+import momentDe from '@/locales/de.json';
 import { momentCopy } from '@/lib/moment/copy';
+import type { CrisisLine } from '@/lib/moment/region';
 import type { MomentState, Practice } from '@/lib/moment/types';
 import HelpPage from '@/pages/help';
-import crisisLines from './crisis-lines.json';
-import practicesJson from './practices.json';
+import { inGerman } from '@/test-utils';
+import crisisLinesDe from './crisis-lines.de.json';
+import crisisLinesEn from './crisis-lines.en.json';
+import practicesDe from './practices.de.json';
+import practicesEn from './practices.en.json';
 
-const practices = practicesJson as Practice[];
+const languages = ['en', 'de'] as const;
+const practiceFiles = { en: practicesEn as Practice[], de: practicesDe as Practice[] };
+const crisisFiles = { en: crisisLinesEn as CrisisLine[], de: crisisLinesDe as CrisisLine[] };
 const states: MomentState[] = ['rejected', 'overloaded', 'racing', 'replaying', 'unsure'];
 const claims = /\b(treat|cure|therap|heal|clinical|diagnos|prevent|reliev|relief|reduc|proven)\w*/i;
+const germanClaims =
+  /(?<!\p{L})(behand|heil|geheilt|therap|klini|diagnos|vorbeug|vorgebeugt|verhind|lindr|linder|reduzi|bewiesen|nachgewiesen|nachweislich)\p{L}*/iu;
 const storeFile = 'mobile/STORE.md';
 const allowedClaimPhrases = [
   { file: storeFile, phrase: 'health' },
@@ -23,7 +32,10 @@ const allowedClaimPhrases = [
   { file: storeFile, phrase: 'Avoid "treat", "therapy", "symptom", "medication adherence" and "clinical"' },
   { file: storeFile, phrase: 'diagnostics' },
 ];
-const dizzy = 'If you feel dizzy, breathe normally.';
+const dizzy = {
+  en: 'If you feel dizzy, breathe normally.',
+  de: 'Wenn dir schwindlig wird, atme einfach normal.',
+};
 
 function strings(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -32,8 +44,12 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-function claimsIn(texts: string[]): string[] {
-  return texts.filter((text) => claims.test(text));
+function claimsIn(texts: string[], pattern = claims): string[] {
+  return texts.filter((text) => pattern.test(text));
+}
+
+function germanClaimsIn(texts: string[]): string[] {
+  return texts.filter((text) => germanClaims.test(text) || claims.test(text));
 }
 
 function copyStrings(): string[] {
@@ -55,7 +71,9 @@ function renderedText(ui: React.ReactElement): string[] {
   return result;
 }
 
-describe('practices.json', () => {
+describe.each(languages)('practices.%s.json', (language) => {
+  const practices = practiceFiles[language];
+
   it('has unique kebab-case ids and integer versions of at least 1', () => {
     const ids = practices.map((practice) => practice.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -128,19 +146,12 @@ describe('practices.json', () => {
     );
     expect(breathing.length).toBeGreaterThan(0);
     for (const practice of breathing)
-      expect(practice.steps.at(-1), practice.id).toEqual({ kind: 'text', text: dizzy });
+      expect(practice.steps.at(-1), practice.id).toEqual({ kind: 'text', text: dizzy[language] });
   });
 });
 
-describe('crisis-lines.json', () => {
-  const lines = crisisLines as {
-    region: string;
-    name: string;
-    numbers: string[];
-    hours: string;
-    url?: string;
-    checked: string;
-  }[];
+describe.each(languages)('crisis-lines.%s.json', (language) => {
+  const lines = crisisFiles[language];
   const numbersOf = (region: string) =>
     lines.filter((l) => l.region === region).flatMap((l) => l.numbers);
 
@@ -168,6 +179,27 @@ describe('crisis-lines.json', () => {
   });
 });
 
+describe('English and German content files', () => {
+  it('have the same practices apart from the shown text', () => {
+    const shape = (practices: Practice[]) =>
+      practices.map(({ title: _title, steps, ...rest }) => ({
+        ...rest,
+        steps: steps.map((step) => {
+          if (step.kind === 'text') return { kind: step.kind };
+          if (step.kind === 'timer') return { kind: step.kind, seconds: step.seconds };
+          return step;
+        }),
+      }));
+    expect(shape(practiceFiles.de)).toEqual(shape(practiceFiles.en));
+  });
+
+  it('have the same crisis lines apart from names and hours', () => {
+    const shape = (lines: CrisisLine[]) =>
+      lines.map(({ name: _name, hours: _hours, ...rest }) => rest);
+    expect(shape(crisisFiles.de)).toEqual(shape(crisisFiles.en));
+  });
+});
+
 describe('claims wordlist', () => {
   it('matches claim words and their inflections but not ordinary words', () => {
     for (const bad of [
@@ -188,15 +220,48 @@ describe('claims wordlist', () => {
       expect(claimsIn([fine]), fine).toEqual([]);
   });
 
+  it('matches German claim words and their inflections but not ordinary words', () => {
+    for (const bad of [
+      'Das behandelt Angst',
+      'eine Behandlung',
+      'heilen',
+      'Heilung',
+      'Therapie',
+      'therapeutisch',
+      'klinisch getestet',
+      'Diagnose',
+      'diagnostizieren',
+      'vorbeugen',
+      'lindert Stress',
+      'reduziert Angst',
+      'verhindert Panik',
+      'wissenschaftlich bewiesen',
+      'nachgewiesen',
+    ])
+      expect(germanClaimsIn([bad]), bad).toEqual([bad]);
+    for (const fine of ['Spür nach, benenne und atme.', 'Die Welle reiten', 'Zur Ruhe kommen'])
+      expect(germanClaimsIn([fine]), fine).toEqual([]);
+  });
+
   it('finds no claim words in the bundled content, including basis', () => {
-    expect(claimsIn(strings(practicesJson))).toEqual([]);
-    expect(claimsIn(strings(crisisLines))).toEqual([]);
+    expect(claimsIn(strings(practicesEn))).toEqual([]);
+    expect(claimsIn(strings(crisisLinesEn))).toEqual([]);
+    expect(germanClaimsIn(strings(practicesDe))).toEqual([]);
+    expect(germanClaimsIn(strings(crisisLinesDe))).toEqual([]);
   });
 
   it('finds no claim words in the moment copy', () => {
     const texts = copyStrings();
     expect(texts.length).toBeGreaterThan(50);
     expect(claimsIn(texts)).toEqual([]);
+  });
+
+  it('finds no claim words in the German moment copy', async () => {
+    expect(germanClaimsIn(strings(momentDe))).toEqual([]);
+    await inGerman();
+    const texts = copyStrings();
+    expect(texts).toContain(momentDe['moment.leave']);
+    expect(germanClaimsIn(texts)).toEqual([]);
   });
 
   it('finds no claim words in the rendered crisis lines, doors and help page', () => {

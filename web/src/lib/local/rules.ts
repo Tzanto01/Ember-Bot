@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { addDays, fromParts, startOfWeek, toParts, weekdayIndex } from '../local-date';
 import { reminderTimesOf, weekdays } from '../models';
 import type { DayEntry, DayStat, DayState, Habit, HabitStats, LocalDateString, WeeklyStats } from '../models';
@@ -253,27 +254,23 @@ function roundHalfEven(value: number): number {
   return rounded - value === 0.5 && rounded % 2 !== 0 ? rounded - 1 : rounded;
 }
 
-function checkIns(count: number): string {
-  return count === 1 ? '1 check-in' : `${count} check-ins`;
-}
-
 function toneLines(totalDone: number, totalPossible: number): { headline: string; footer: string } {
   if (totalDone === 0) {
     return {
-      headline: "It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
-      footer: 'No pressure. Progress happens at its own pace.',
+      headline: t('weekly.quiet.headline'),
+      footer: t('weekly.quiet.footer'),
     };
   }
   if (totalDone >= totalPossible) {
     return {
-      headline: `You nailed every single check-in this week 🔥 That's ${checkIns(totalDone)}. Incredible.`,
-      footer: "You're on fire. Keep going.",
+      headline: t('weekly.all.headline', { count: totalDone }),
+      footer: t('weekly.all.footer'),
     };
   }
   const pct = roundHalfEven((100 * totalDone) / totalPossible);
   return {
-    headline: `This week you showed up for **${checkIns(totalDone)}**. Every one of those counts. 💪`,
-    footer: pct >= 50 ? "More than half, that's a win. Keep it up." : "Small steps still move forward. You've got this.",
+    headline: t('weekly.some.headline', { count: totalDone }),
+    footer: pct >= 50 ? t('weekly.some.half') : t('weekly.some.small'),
   };
 }
 

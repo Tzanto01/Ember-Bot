@@ -1,5 +1,6 @@
 import { Moon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { themeSeconds } from './reward';
 
@@ -20,6 +21,7 @@ export interface TodaysEmberProps {
  * all are done), "Resting today" on a quiet low day, "Nothing checked in yet today" at zero otherwise.
  */
 export function TodaysEmber({ count, lowDay, allDone = false, stepping, className }: TodaysEmberProps) {
+  const { t } = useTranslation();
   const reduce = useReducedMotion();
   const scale = Math.min(0.85 + 0.05 * count, 1.1);
   const glow = Math.min(0.08 + 0.06 * count, 0.4);
@@ -51,21 +53,21 @@ export function TodaysEmber({ count, lowDay, allDone = false, stepping, classNam
       </svg>
       {count > 0 ? (
         <p className="text-[14px] leading-snug">
-          {count} checked in today
+          {t('today.ember.count', { n: count })}
           {allDone && (
             <>
               <br />
-              That's everything for today.
+              {t('today.ember.allDone')}
             </>
           )}
         </p>
       ) : lowDay ? (
         <p className="flex items-center gap-1.5 text-[14px] leading-snug">
           <Moon aria-hidden className="size-[16px] shrink-0" />
-          Resting today
+          {t('today.ember.resting')}
         </p>
       ) : (
-        <p className="text-[14px] leading-snug">Nothing checked in yet today</p>
+        <p className="text-[14px] leading-snug">{t('today.ember.none')}</p>
       )}
     </div>
   );

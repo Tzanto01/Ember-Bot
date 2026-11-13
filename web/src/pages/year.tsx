@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { type ChangeEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
@@ -44,6 +45,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
  * with moods when readable.
  */
 export default function YearPage() {
+  const { t } = useTranslation();
   const journal = useJournal();
   const queryClient = useQueryClient();
   const journalState = useStore(journal.state);
@@ -105,10 +107,10 @@ export default function YearPage() {
     const listError = habitsQuery.isError && !habitsQuery.isFetching ? asApiError(habitsQuery.error) : null;
     content = listError ? (
       !listError.handled && (
-        <Notice tone="notice" heading="Your habits didn't load">
+        <Notice tone="notice" heading={t('history.habitsError')}>
           <p>{problemToMessage(listError).message}</p>
           <Button variant="secondary" onClick={() => void habitsQuery.refetch()}>
-            Try again
+            {t('history.tryAgain')}
           </Button>
         </Notice>
       )
@@ -120,14 +122,14 @@ export default function YearPage() {
       <Card className="items-center">
         <EmptyState
           illustration={<NotebookIllustration />}
-          title="Nothing to look back on yet"
+          title={t('history.empty.title')}
           action={
             <Button asChild>
-              <Link to="/habits/new">Create a habit</Link>
+              <Link to="/habits/new">{t('history.empty.create')}</Link>
             </Button>
           }
         >
-          <p>Once you have a habit, your year fills in here.</p>
+          <p>{t('year.empty.body')}</p>
         </EmptyState>
       </Card>
     );
@@ -152,9 +154,9 @@ export default function YearPage() {
     content = (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="year-habit">Show</Label>
+          <Label htmlFor="year-habit">{t('year.show')}</Label>
           <NativeSelect id="year-habit" value={habit?.id ?? 'all'} onChange={choose}>
-            <option value="all">All habits</option>
+            <option value="all">{t('year.allHabits')}</option>
             {habits.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
@@ -163,10 +165,10 @@ export default function YearPage() {
           </NativeSelect>
         </div>
         {daysError ? (
-          <Notice tone="notice" heading="Your year didn't load">
+          <Notice tone="notice" heading={t('year.error')}>
             {!daysError.handled && <p>{problemToMessage(daysError).message}</p>}
             <Button variant="secondary" onClick={() => void daysQuery.refetch()}>
-              Try again
+              {t('history.tryAgain')}
             </Button>
           </Notice>
         ) : !days || !recent ? (
@@ -176,14 +178,14 @@ export default function YearPage() {
             <Card>
               <p className="text-[22px] font-semibold text-foreground">
                 {recent.of === 0
-                  ? 'Your year starts here.'
-                  : `You showed up ${recent.showed} of the last ${recent.of} ${recent.of === 1 ? 'day' : 'days'}.`}
+                  ? t('year.startsHere')
+                  : t('year.showedUp', { showed: recent.showed, count: recent.of })}
               </p>
               {perYear.length > 0 && (
                 <ul className="flex flex-wrap gap-x-5 gap-y-1 text-muted-foreground">
                   {perYear.map((y) => (
                     <li key={y.year}>
-                      {y.year}: {y.days} {y.days === 1 ? 'day' : 'days'}
+                      {t('year.perYear', { year: y.year, count: y.days })}
                     </li>
                   ))}
                 </ul>
@@ -205,8 +207,8 @@ export default function YearPage() {
               <YearLegend habit={!!habit} showMoods={showMoods} />
               {!showMoods && (
                 <p className="text-[14px] text-muted-foreground">
-                  Moods stay hidden while your private journal is locked on this device.{' '}
-                  <TapLink to="/settings#journal">Unlock it in Settings</TapLink>
+                  {t('year.moodsHidden')}{' '}
+                  <TapLink to="/settings#journal">{t('journal.unlockInSettings')}</TapLink>
                 </p>
               )}
             </Card>
@@ -221,20 +223,20 @@ export default function YearPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-[22px]">{formatDate(selected, longDate)}</h2>
-                  <Button variant="ghost" size="icon" aria-label="Close this day" onClick={closeDay}>
+                  <Button variant="ghost" size="icon" aria-label={t('year.closeDay')} onClick={closeDay}>
                     <X aria-hidden />
                   </Button>
                 </div>
-                <p>{capitalize(openDay?.words ?? 'nothing recorded')}.</p>
+                <p>{t('year.dayWords', { words: capitalize(openDay?.words ?? t('year.nothingRecorded')) })}</p>
                 {showMoods && openDay?.mood && (
                   <p className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Mood:</span>
+                    <span className="text-muted-foreground">{t('year.mood')}</span>
                     {openDay.mood.emoji && <span aria-hidden="true">{openDay.mood.emoji}</span>}
                     {openDay.mood.label}
                   </p>
                 )}
                 <TapLink to={habit ? `/history/${habit.id}` : '/history'} className="self-start">
-                  Open in History
+                  {t('year.openInHistory')}
                 </TapLink>
               </Card>
             )}
@@ -246,7 +248,7 @@ export default function YearPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Your year" lede="Every day you showed up, across the last 12 months. Tap a day for more." />
+      <PageHeader title={t('year.title')} lede={t('year.lede')} />
       <HistoryViewSwitch view="year" />
       {content}
     </div>
@@ -254,10 +256,11 @@ export default function YearPage() {
 }
 
 function Loading() {
+  const { t } = useTranslation();
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <span role="status" className="sr-only">
-        Loading your year…
+        {t('year.loading')}
       </span>
       <Skeleton className="h-[96px] rounded-xl" />
       <Skeleton className="h-[12rem] rounded-xl" />

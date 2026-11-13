@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { minLength, useField, useFocusHeadingOnChange, validateAll } from '@/components/auth/use-field';
@@ -18,6 +19,7 @@ function linkExpired(error: ApiError): boolean {
 
 /** `/reset-password?email=…&code=…`: chooses a new password. The code is kept in memory and removed from the address bar on load. */
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const [link] = useState(() => ({ email: params.get('email'), code: params.get('code') }));
   const form = useRef<HTMLFormElement>(null);
@@ -56,9 +58,9 @@ export default function ResetPasswordPage() {
   if (reset.isSuccess) {
     return (
       <>
-        <PageHeader title="Your password is updated" lede="Sign in with your new password whenever you're ready." />
+        <PageHeader title={t('reset.done.title')} lede={t('reset.done.lede')} />
         <Button asChild block>
-          <Link to="/login">Sign in</Link>
+          <Link to="/login">{t('auth.signIn')}</Link>
         </Button>
       </>
     );
@@ -67,13 +69,13 @@ export default function ResetPasswordPage() {
   if (!link.email || !link.code) {
     return (
       <>
-        <PageHeader title="Let's get you a fresh link" />
-        <Notice>This link looks incomplete. Open it again from the email, or ask for a new one.</Notice>
+        <PageHeader title={t('reset.incomplete.title')} />
+        <Notice>{t('reset.incomplete.body')}</Notice>
         <Button asChild block>
-          <Link to="/forgot-password">Send me a new link</Link>
+          <Link to="/forgot-password">{t('auth.newLink')}</Link>
         </Button>
         <Button asChild variant="ghost" block>
-          <Link to="/login">Back to sign in</Link>
+          <Link to="/login">{t('auth.backToSignIn')}</Link>
         </Button>
       </>
     );
@@ -82,7 +84,7 @@ export default function ResetPasswordPage() {
   const fields = problem?.friendly.fields;
   return (
     <>
-      <PageHeader title="Choose a new password" lede={`For ${link.email}`} />
+      <PageHeader title={t('reset.title')} lede={t('reset.lede', { email: link.email })} />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <input
           className="sr-only"
@@ -95,8 +97,8 @@ export default function ResetPasswordPage() {
           aria-hidden="true"
         />
         <FormField
-          label="New password"
-          hint="At least 10 characters. A short phrase you'll remember works well."
+          label={t('reset.newPassword')}
+          hint={t('auth.passwordHint')}
           error={newPassword.error ?? fields?.['password'] ?? fields?.['newPassword'] ?? null}
         >
           {(field) => <PasswordInput {...field} {...newPassword.input} autoComplete="new-password" />}
@@ -109,13 +111,13 @@ export default function ResetPasswordPage() {
                 to="/forgot-password"
                 className="inline-flex min-h-[44px] items-center font-medium underline underline-offset-4"
               >
-                Send me a new link
+                {t('auth.newLink')}
               </Link>
             )}
           </Notice>
         )}
-        <BusyButton type="submit" block busy={reset.isPending} busyLabel="Saving…">
-          Save new password
+        <BusyButton type="submit" block busy={reset.isPending} busyLabel={t('auth.saving')}>
+          {t('reset.submit')}
         </BusyButton>
       </form>
     </>

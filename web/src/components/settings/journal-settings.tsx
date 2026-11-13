@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { BusyButton } from '@/components/auth/busy-button';
 import { journalKey } from '@/components/journal/day-journal';
 import { useJournal } from '@/components/journal/journal-context';
@@ -23,15 +24,11 @@ type Flow =
 type Panel = 'change' | 'disable' | 'discard' | null;
 
 const readable = [
-  'your email and Discord ID',
-  'habit and routine names (the Discord bot and reminders need them)',
-  'check-ins and their times',
-  'low days',
-];
-
-function leftText(left: number): string {
-  return left === 1 ? '1 entry or mood to go.' : `${left} entries and moods to go.`;
-}
+  'journalSettings.readable.identity',
+  'journalSettings.readable.names',
+  'journalSettings.readable.checkIns',
+  'journalSettings.readable.lowDays',
+] as const;
 
 /**
  * Settings body for the private journal (contract "Private journal"), following `journal.state`: turn it on (with
@@ -41,6 +38,7 @@ function leftText(left: number): string {
  * state and go when they close.
  */
 export function JournalSettings({ me }: { me: Me }) {
+  const { t } = useTranslation();
   const journal = useJournal();
   const queryClient = useQueryClient();
   const state = useStore(journal.state);
@@ -85,9 +83,7 @@ export function JournalSettings({ me }: { me: Me }) {
   async function expired(): Promise<void> {
     await journal.forget();
     setFlow(null);
-    setProblem(
-      'That took a while, so the journal locked again. Unlock it with your recovery code once more.',
-    );
+    setProblem(t('journalSettings.expired'));
   }
 
   async function lock(): Promise<void> {
@@ -96,7 +92,7 @@ export function JournalSettings({ me }: { me: Me }) {
     await journal.forget();
     queryClient.removeQueries({ queryKey: journalKey });
     setBusy(null);
-    announce('Locked on this device. Unlock it with your passphrase whenever you like.');
+    announce(t('journalSettings.lockedDone'));
   }
 
   async function exportJournal(): Promise<void> {
@@ -114,38 +110,31 @@ export function JournalSettings({ me }: { me: Me }) {
 
   const progress = (
     <p role="status" className="text-muted-foreground">
-      {left > 0 ? `Encrypting your journal: ${leftText(left)}` : 'Setting up encryption…'}
+      {left > 0 ? t('journalSettings.encrypting', { count: left }) : t('journalSettings.settingUp')}
     </p>
   );
 
   const encryptedLeft = turningOff ? me.journal.encryptedLeft : 0;
   const decrypting = encryptedLeft > 0 && (
     <p role="status" className="text-muted-foreground">
-      {encryptedLeft === 1
-        ? 'Decrypting your journal: 1 entry or mood to go.'
-        : `Decrypting your journal: ${encryptedLeft} entries and moods to go.`}
+      {t('journalSettings.decrypting', { count: encryptedLeft })}
     </p>
   );
 
   let body;
   if (flow?.step === 'recovery') {
     body = (
-      <RecoveryStep code={flow.code} onFinish={() => announce('Your private journal is ready.')} />
+      <RecoveryStep code={flow.code} onFinish={() => announce(t('journalSettings.ready'))} />
     );
   } else if (flow?.step === 'new-passphrase') {
     body = (
       <>
-        <p>
-          Your recovery code worked. Choose a new passphrase to finish unlocking; your recovery code
-          stays the same.
-        </p>
+        <p>{t('journalSettings.recoveryWorked')}</p>
         <PassphraseForm
           me={me}
           current={false}
-          submitLabel="Save new passphrase"
-          onDone={() =>
-            announce('Your new passphrase is set. Your journal is unlocked on this device.')
-          }
+          submitLabel={t('journalSettings.saveNewPassphrase')}
+          onDone={() => announce(t('journalSettings.newPassphraseDone'))}
           onExpired={() => void expired()}
         />
       </>
@@ -153,25 +142,17 @@ export function JournalSettings({ me }: { me: Me }) {
   } else if (state === 'off' || flow?.step === 'enabling') {
     body = (
       <>
-        <p>
-          Your journal is already private to your account. The private journal goes one step
-          further: entries and your own moods are encrypted on your device before they're sent, so
-          only you can read them. Not even Ember's server can.
-        </p>
+        <p>{t('journalSettings.offIntro')}</p>
         <div className="flex flex-col gap-1">
-          <p>What Ember's server can still read, by design:</p>
+          <p>{t('journalSettings.readableIntro')}</p>
           <ul className="list-disc pl-6">
             {readable.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>{t(item)}</li>
             ))}
           </ul>
         </div>
-        <Notice tone="info" heading="Keep two things safe">
-          <p>
-            Your passphrase and a recovery code (shown once) are the only ways in. If you lose both,
-            nobody can open your journal again, Ember included. You could only delete it and start
-            fresh.
-          </p>
+        <Notice tone="info" heading={t('journalSettings.keepSafe.heading')}>
+          <p>{t('journalSettings.keepSafe.text')}</p>
         </Notice>
         <EnableForm me={me} onSubmit={enable} progress={progress} />
       </>
@@ -180,28 +161,21 @@ export function JournalSettings({ me }: { me: Me }) {
     body = (
       <>
         <p>
-          {turningOff
-            ? 'Ember is turning your private journal back into a plain one. Unlock it on this device to carry on.'
-            : 'Your private journal is locked on this device. Unlock it to read and write entries here.'}
+          {turningOff ? t('journalSettings.lockedTurningOff') : t('journalSettings.locked')}
         </p>
         {panel === 'discard' ? (
           <>
-            <Notice tone="info" heading="Delete the private journal">
-              <p>
-                This deletes every private journal entry and your own moods for good, then turns the
-                private journal off. Your habits, check-ins and low days stay.
-              </p>
+            <Notice tone="info" heading={t('journalSettings.discard.heading')}>
+              <p>{t('journalSettings.discard.text')}</p>
             </Notice>
             <ConfirmJournalForm
               me={me}
               typeDelete
-              submitLabel="Delete my private journal"
-              busyLabel="Deleting…"
+              submitLabel={t('journalSettings.discard.submit')}
+              busyLabel={t('settings.delete.deleting')}
               onSubmit={async (password) => {
                 await journal.discard(password);
-                announce(
-                  'Your private journal is deleted and turned off. You can start a fresh one any time.',
-                );
+                announce(t('journalSettings.discard.done'));
               }}
               onCancel={() => open(null)}
             />
@@ -212,12 +186,12 @@ export function JournalSettings({ me }: { me: Me }) {
               onUnlocked={(needsNewPassphrase) =>
                 needsNewPassphrase && !turningOff
                   ? setFlow({ step: 'new-passphrase' })
-                  : announce('Unlocked on this device.')
+                  : announce(t('journalSettings.unlockedDone'))
               }
             />
             <div>
               <Button type="button" variant="link" className="px-0" onClick={() => open('discard')}>
-                I lost both my passphrase and recovery code
+                {t('journalSettings.lostBoth')}
               </Button>
             </div>
           </>
@@ -227,20 +201,17 @@ export function JournalSettings({ me }: { me: Me }) {
   } else if (turningOff && panel !== 'disable') {
     body = (
       <>
-        <Notice tone="info" heading="Turning your private journal off">
-          <p>
-            Your entries and own moods are being decrypted on this device and saved to your account
-            readable again. Confirm to finish.
-          </p>
+        <Notice tone="info" heading={t('journalSettings.finishOff.heading')}>
+          <p>{t('journalSettings.finishOff.text')}</p>
         </Notice>
         {decrypting}
         <ConfirmJournalForm
           me={me}
-          submitLabel="Finish turning off"
-          busyLabel="Turning off…"
+          submitLabel={t('journalSettings.finishOff.submit')}
+          busyLabel={t('settings.turningOff')}
           onSubmit={async (password) => {
             await journal.disable(password);
-            announce('The private journal is off. Your entries are back to normal.');
+            announce(t('journalSettings.offDone'));
           }}
         />
       </>
@@ -248,33 +219,27 @@ export function JournalSettings({ me }: { me: Me }) {
   } else {
     body = (
       <>
-        <p>
-          Your private journal is on and unlocked on this device. Entries and your own moods are
-          encrypted here before they're sent.
-        </p>
+        <p>{t('journalSettings.unlocked')}</p>
         {left > 0 && progress}
         {panel === 'change' ? (
           <PassphraseForm
             me={me}
             current
-            submitLabel="Change passphrase"
-            onDone={() => announce('Your passphrase is changed.')}
+            submitLabel={t('journalSettings.changePassphrase')}
+            onDone={() => announce(t('journalSettings.passphraseChanged'))}
             onCancel={() => open(null)}
           />
         ) : panel === 'disable' ? (
           <>
-            <p>
-              Your entries and own moods are decrypted on this device and saved to your account
-              readable again, like before. Notes from "I need a moment" are re-uploaded as plain text too.
-            </p>
+            <p>{t('journalSettings.disableText')}</p>
             {decrypting}
             <ConfirmJournalForm
               me={me}
-              submitLabel="Turn off the private journal"
-              busyLabel="Turning off…"
+              submitLabel={t('journalSettings.turnOff')}
+              busyLabel={t('settings.turningOff')}
               onSubmit={async (password) => {
                 await journal.disable(password);
-                announce('The private journal is off. Your entries are back to normal.');
+                announce(t('journalSettings.offDone'));
               }}
               onCancel={() => open(null)}
             />
@@ -283,16 +248,16 @@ export function JournalSettings({ me }: { me: Me }) {
           <>
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="secondary" onClick={() => open('change')}>
-                Change passphrase
+                {t('journalSettings.changePassphrase')}
               </Button>
               <BusyButton
                 type="button"
                 variant="secondary"
                 busy={busy === 'lock'}
-                busyLabel="Locking…"
+                busyLabel={t('journalSettings.locking')}
                 onClick={() => void lock()}
               >
-                Lock on this device
+                {t('journalSettings.lock')}
               </BusyButton>
             </div>
             <div className="flex flex-col items-start gap-2">
@@ -300,18 +265,16 @@ export function JournalSettings({ me }: { me: Me }) {
                 type="button"
                 variant="secondary"
                 busy={busy === 'export'}
-                busyLabel="Preparing…"
+                busyLabel={t('settings.preparing')}
                 onClick={() => void exportJournal()}
               >
-                Export my journal (decrypted)
+                {t('journalSettings.export')}
               </BusyButton>
-              <p className="text-[14px] text-muted-foreground">
-                The file isn't encrypted, so keep it somewhere private.
-              </p>
+              <p className="text-[14px] text-muted-foreground">{t('journalSettings.exportHint')}</p>
             </div>
             <div>
               <Button type="button" variant="link" className="px-0" onClick={() => open('disable')}>
-                Turn off the private journal
+                {t('journalSettings.turnOff')}
               </Button>
             </div>
           </>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LiveRegion } from '@/components/live-region';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
@@ -12,6 +13,7 @@ function clock(seconds: number): string {
  * While `halted` (urgent help open) a running timer pauses silently; the user resumes.
  */
 export function TimerStep({ seconds, halted = false }: { seconds: number; halted?: boolean }) {
+  useTranslation();
   const labelId = useId();
   const [left, setLeft] = useState(seconds);
   const [running, setRunning] = useState(false);
@@ -41,7 +43,7 @@ export function TimerStep({ seconds, halted = false }: { seconds: number; halted
     }
     if (left === 0 || left === seconds) {
       setLeft(seconds);
-      setAnnounce(momentCopy.timerStarted(`${seconds} seconds`));
+      setAnnounce(momentCopy.timerStarted(momentCopy.seconds(seconds)));
     } else {
       setAnnounce(momentCopy.timerResumed);
     }

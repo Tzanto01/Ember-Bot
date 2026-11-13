@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DayCell, joinsRun } from '@/components/day-cell';
 import type { RewardKeyword } from '@/components/today/reward';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,6 @@ import type { CalendarDay } from '@/lib/calendar';
 import { weekdayLabels } from '@/lib/local-date';
 import type { LocalDateString } from '@/lib/models';
 import { cn } from '@/lib/utils';
-
-const shortDays = weekdayLabels(undefined, 'short');
-const longDays = weekdayLabels(undefined, 'long');
 
 export interface MonthCalendarProps {
   title: string;
@@ -50,13 +48,18 @@ export function MonthCalendar({
   problem,
   timesPerDay = 1,
 }: MonthCalendarProps) {
+  const { t, i18n } = useTranslation();
+  const [shortDays, longDays] = useMemo(
+    () => [weekdayLabels(i18n.language, 'short'), weekdayLabels(i18n.language, 'long')],
+    [i18n.language],
+  );
   return (
     <section aria-labelledby="month-heading" className={cn(cardVariants(), 'px-0 md:px-5')}>
       <div className="flex items-center justify-between gap-2 px-2 md:px-0">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Previous month"
+          aria-label={t('calendar.previousMonth')}
           aria-disabled={!canPrevious || undefined}
           onClick={onPrevious}
         >
@@ -65,7 +68,7 @@ export function MonthCalendar({
         <h2 id="month-heading" aria-live="polite" className="text-[22px]">
           {title}
         </h2>
-        <Button variant="ghost" size="icon" aria-label="Next month" aria-disabled={!canNext || undefined} onClick={onNext}>
+        <Button variant="ghost" size="icon" aria-label={t('calendar.nextMonth')} aria-disabled={!canNext || undefined} onClick={onNext}>
           <ChevronRight aria-hidden />
         </Button>
       </div>

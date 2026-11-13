@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Notice } from '@/components/ui/notice';
@@ -16,11 +17,12 @@ export function useReminderDestinations(enabled = true) {
 
 /** A destination's label, plus a "This phone" or "This browser" badge when it is this device. */
 export function DestinationName({ destination }: { destination: ReminderDestination }) {
+  const { t } = useTranslation();
   return (
     <>
       <span className="[overflow-wrap:anywhere]">{destination.label}</span>
       {destination.current && <span className="sr-only">,</span>}{' '}
-      {destination.current && <Badge>{destination.kind === 'phone' ? 'This phone' : 'This browser'}</Badge>}
+      {destination.current && <Badge>{destination.kind === 'phone' ? t('habitFields.thisPhone') : t('habitFields.thisBrowser')}</Badge>}
     </>
   );
 }
@@ -53,15 +55,16 @@ export async function allowDeviceReminders(): Promise<boolean> {
 
 /** The notice after {@link allowDeviceReminders} answered false, linking to the Settings card that can fix it. */
 export function DeviceRemindersOff() {
+  const { t } = useTranslation();
   return env.native ? (
     <Notice tone="notice">
-      <p>Notifications are off for Ember on this phone. Turn them on in your phone settings so reminders can arrive.</p>
-      <Link to={{ pathname: '/settings', hash: 'phone-reminders' }}>Reminders on this phone</Link>
+      <p>{t('habitFields.offPhone')}</p>
+      <Link to={{ pathname: '/settings', hash: 'phone-reminders' }}>{t('habitFields.offPhoneLink')}</Link>
     </Notice>
   ) : (
     <Notice tone="notice">
-      <p>Notifications are off for Ember in this browser, so reminders can't show here yet.</p>
-      <Link to={{ pathname: '/settings', hash: 'push' }}>Turn them on in Settings</Link>
+      <p>{t('habitFields.offBrowser')}</p>
+      <Link to={{ pathname: '/settings', hash: 'push' }}>{t('habitFields.offBrowserLink')}</Link>
     </Notice>
   );
 }

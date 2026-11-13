@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { FormField } from '@/components/form-field';
 import { LiveRegion } from '@/components/live-region';
@@ -92,6 +93,7 @@ export function Reflect({
   onLeave: () => void;
   onDraft?: (draft: boolean) => void;
 }) {
+  useTranslation();
   const id = useId();
   const saveCase = useSaveCase();
   const journal = useJournal();

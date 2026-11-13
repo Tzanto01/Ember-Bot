@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { TapLink } from '@/components/auth/busy-button';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -12,6 +13,7 @@ import { markVersionSeen, readSeenVersion, releaseNotesQuery } from '@/lib/relea
  * or opening What's new, records the version.
  */
 export function WhatsNewCard() {
+  const { t } = useTranslation();
   const latest = useQuery(releaseNotesQuery).data?.[0]?.version;
   const [seen, setSeen] = useState(readSeenVersion);
 
@@ -31,11 +33,11 @@ export function WhatsNewCard() {
   }
 
   return (
-    <Notice tone="info" heading={`Ember ${latest} is here`}>
+    <Notice tone="info" heading={t('whatsNew.card.heading', { version: latest })}>
       <div className="-my-1 flex flex-wrap items-center gap-x-4">
-        <TapLink to="/whats-new">See what's new</TapLink>
+        <TapLink to="/whats-new">{t('whatsNew.card.link')}</TapLink>
         <Button type="button" variant="ghost" className="-ml-2 px-2" onClick={dismiss}>
-          Dismiss
+          {t('whatsNew.card.dismiss')}
         </Button>
       </div>
     </Notice>

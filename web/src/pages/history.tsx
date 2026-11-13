@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useReducedMotion } from 'motion/react';
 import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
 import { type DayAction, DayPanel } from '@/components/history/day-panel';
@@ -40,6 +41,7 @@ const idFrom = (raw: string | undefined) => (raw === undefined ? null : Number(r
 
 /** `/history` and `/history/:habitId`: one habit's month calendar with stats, the legend and the day panel. */
 export default function HistoryPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const routeParam = useParams()['habitId'];
   const me = useStore(auth.me);
@@ -193,8 +195,13 @@ export default function HistoryPage() {
         queryClient.setQueryData<Habit[]>(habitsKey, (list) =>
           list?.map((h) => (h.id === updated.id ? updated : h)),
         );
-        const words = action === 'done' ? 'marked done' : action === 'notdone' ? 'marked not done' : 'cleared';
-        return `${formatDate(date, longDate)} ${words}.`;
+        const key =
+          action === 'done'
+            ? 'history.announce.done'
+            : action === 'notdone'
+              ? 'history.announce.notDone'
+              : 'history.announce.cleared';
+        return t(key, { date: formatDate(date, longDate) });
       },
       keyword ? { date, keyword } : null,
     );
@@ -211,7 +218,7 @@ export default function HistoryPage() {
         queryClient.setQueryData<Habit[]>(habitsKey, (list) =>
           list?.map((h) => (h.id === updated.id ? updated : h)),
         );
-        return `${formatDate(date, longDate)}: ${count} of ${habit.timesPerDay}.`;
+        return t('history.announce.count', { date: formatDate(date, longDate), count, total: habit.timesPerDay });
       },
       keyword ? { date, keyword } : null,
     );
@@ -223,7 +230,7 @@ export default function HistoryPage() {
     void runEdit(async () => {
       if (day.lowDay) await api.clearLowDay(day.date);
       else await api.markLowDay(day.date);
-      return `${formatDate(day.date, longDate)} ${day.lowDay ? 'is no longer a low day' : 'marked as a low day'}.`;
+      return t(day.lowDay ? 'history.announce.lowDayOff' : 'history.announce.lowDayOn', { date: formatDate(day.date, longDate) });
     });
   }
 
@@ -232,17 +239,17 @@ export default function HistoryPage() {
     const listError = habitsQuery.isError && !habitsQuery.isFetching ? asApiError(habitsQuery.error) : null;
     content = listError ? (
       !listError.handled && (
-        <Notice tone="notice" heading="Your habits didn't load">
+        <Notice tone="notice" heading={t('history.habitsError')}>
           <p>{problemToMessage(listError).message}</p>
           <Button variant="secondary" onClick={() => void habitsQuery.refetch()}>
-            Try again
+            {t('history.tryAgain')}
           </Button>
         </Notice>
       )
     ) : (
       <div aria-busy="true" className="flex flex-col gap-6">
         <span role="status" className="sr-only">
-          Loading your history…
+          {t('history.loading')}
         </span>
         <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((i) => (
@@ -257,23 +264,23 @@ export default function HistoryPage() {
       <Card className="items-center">
         <EmptyState
           illustration={<NotebookIllustration />}
-          title="Nothing to look back on yet"
+          title={t('history.empty.title')}
           action={
             <Button asChild>
-              <Link to="/habits/new">Create a habit</Link>
+              <Link to="/habits/new">{t('history.empty.create')}</Link>
             </Button>
           }
         >
-          <p>Once you have a habit, its days show up here.</p>
+          <p>{t('history.empty.body')}</p>
         </EmptyState>
       </Card>
     );
   } else if (!selected || !month) {
     content = selected ? null : (
-      <Notice tone="notice" heading="We couldn't find that habit">
-        <p>It may have been removed.</p>
+      <Notice tone="notice" heading={t('history.notFound.title')}>
+        <p>{t('history.notFound.body')}</p>
         <Button asChild variant="secondary">
-          <Link to="/history">Show my history</Link>
+          <Link to="/history">{t('history.notFound.action')}</Link>
         </Button>
       </Notice>
     );
@@ -285,7 +292,7 @@ export default function HistoryPage() {
         <div className="flex min-w-0 flex-col gap-6 max-lg:contents">
           {habits.length > 1 ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="habit-picker">Habit</Label>
+              <Label htmlFor="habit-picker">{t('history.habit')}</Label>
               <NativeSelect id="habit-picker" value={selected.id} onChange={choose}>
                 {habits.map((h) => (
                   <option key={h.id} value={h.id}>
@@ -313,10 +320,10 @@ export default function HistoryPage() {
             problem={
               monthError && (
                 <div className="px-4 md:px-0">
-                  <Notice tone="notice" heading="These days didn't load">
+                  <Notice tone="notice" heading={t('history.daysError')}>
                     {!monthError.handled && <p>{problemToMessage(monthError).message}</p>}
                     <Button variant="secondary" onClick={() => void daysQuery.refetch()}>
-                      Try again
+                      {t('history.tryAgain')}
                     </Button>
                   </Notice>
                 </div>
@@ -342,7 +349,7 @@ export default function HistoryPage() {
           ) : (
             <Card className="hidden items-center text-center text-muted-foreground lg:flex">
               <CalendarIllustration />
-              <p>Pick a day to fill it in or change it.</p>
+              <p>{t('history.pickDay')}</p>
             </Card>
           )}
           {openDay && <DayJournal date={openDay.date} />}
@@ -362,7 +369,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="History" lede="Any day can be filled in later. Tap a day to change it." />
+      <PageHeader title={t('history.title')} lede={t('history.lede')} />
       <HistoryViewSwitch view="month" />
       <LiveRegion message={announcement} />
       {content}

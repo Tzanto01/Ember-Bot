@@ -2,34 +2,61 @@
   {
     "version": "0.10.0-beta.1",
     "date": "2026-11-14",
-    "notes": [
-      "Ember is now a calm companion for hard moments and gentle days. Your habits are still here, for the other days.",
-      "Hard moment? Tap I need a moment on Today, on the sign-in page, on the Android widget or with a long press on the app icon. Ember walks you through naming what it feels like and riding it out with a short practice. Reflecting afterwards is optional.",
-      "The moment works offline and without an account. Nothing from it is saved unless you choose to add a reflection to your private journal, and that needs the private journal turned on and unlocked.",
-      "Crisis help is one tap away. Every step has an Urgent help button, and Settings has Help right now.",
-      "Streaks are optional now. New accounts start with them off. To turn them on, go to Settings, then Habits & days, and switch on Show streaks. Existing accounts keep their streaks on.",
-      "This What's new page lists the changes in every version. After an update, Today shows a short note once, and the Android app shows the notes before you update.",
-      "After you send feedback, Ember says thank you and offers Send more feedback. The tables in the privacy policy are easier to read on phones."
-    ]
+    "notes": {
+      "en": [
+        "Ember is now a calm companion for hard moments and gentle days. Your habits are still here, for the other days.",
+        "Hard moment? Tap I need a moment on Today, on the sign-in page, on the Android widget or with a long press on the app icon. Ember walks you through naming what it feels like and riding it out with a short practice. Reflecting afterwards is optional.",
+        "The moment works offline and without an account. Nothing from it is saved unless you choose to add a reflection to your private journal, and that needs the private journal turned on and unlocked.",
+        "Crisis help is one tap away. Every step has an Urgent help button, and Settings has Help right now.",
+        "Streaks are optional now. New accounts start with them off. To turn them on, go to Settings, then Habits & days, and switch on Show streaks. Existing accounts keep their streaks on.",
+        "This What's new page lists the changes in every version. After an update, Today shows a short note once, and the Android app shows the notes before you update.",
+        "After you send feedback, Ember says thank you and offers Send more feedback. The tables in the privacy policy are easier to read on phones."
+      ],
+      "de": [
+        "Ember ist jetzt ein ruhiger Begleiter für schwere Momente und sanfte Tage. Deine Habits sind noch da, für die anderen Tage.",
+        "Ein schwerer Moment? Tipp auf „Ich brauche einen Moment“: auf Heute, auf der Anmeldeseite, im Android-Widget oder mit langem Druck auf das App-Symbol. Ember hilft dir, zu benennen, wie es sich anfühlt, und es mit einer kurzen Übung durchzustehen. Zurückschauen ist danach freiwillig.",
+        "Der Moment funktioniert offline und ohne Konto. Nichts davon wird gespeichert, außer du fügst deinem privaten Tagebuch einen Rückblick hinzu. Dafür muss das private Tagebuch eingeschaltet und entsperrt sein.",
+        "Hilfe in der Krise ist nur einen Tipp entfernt. Jeder Schritt hat einen Button „Dringende Hilfe“, und in den Einstellungen gibt es „Hilfe jetzt“.",
+        "Streaks sind jetzt freiwillig. Neue Konten starten ohne sie. Zum Einschalten geh zu Einstellungen, dann „Habits & Tage“, und schalte „Streaks anzeigen“ ein. Bestehende Konten behalten ihre Streaks.",
+        "Diese Seite „Was ist neu“ zeigt die Änderungen jeder Version. Nach einem Update zeigt Heute einmal einen kurzen Hinweis, und die Android-App zeigt die Neuerungen, bevor du aktualisierst.",
+        "Nachdem du Feedback gesendet hast, bedankt sich Ember und bietet „Weiteres Feedback senden“ an. Die Tabellen in der Datenschutzerklärung sind auf Handys leichter zu lesen."
+      ]
+    }
   },
   {
     "version": "0.9.0-beta.5",
     "date": "2026-11-12",
-    "notes": [
-      "Reminders reach every device you allow, not just one.",
-      "Pick which devices get reminders in Settings under Reminders, and choose for each habit where its reminders go.",
-      "Add up to 5 pictures to your feedback.",
-      "Give your feedback a title, or send it anonymously."
-    ]
+    "notes": {
+      "en": [
+        "Reminders reach every device you allow, not just one.",
+        "Pick which devices get reminders in Settings under Reminders, and choose for each habit where its reminders go.",
+        "Add up to 5 pictures to your feedback.",
+        "Give your feedback a title, or send it anonymously."
+      ],
+      "de": [
+        "Erinnerungen erreichen jedes Gerät, das du erlaubst, nicht nur eins.",
+        "Wähle in den Einstellungen unter „Erinnerungen“, welche Geräte Erinnerungen bekommen, und leg für jeden Habit fest, wohin seine Erinnerungen gehen.",
+        "Füge deinem Feedback bis zu 5 Bilder hinzu.",
+        "Gib deinem Feedback einen Titel oder sende es anonym."
+      ]
+    }
   },
   {
     "version": "0.9.0-beta.4",
     "date": "2026-11-12",
-    "notes": [
-      "Send feedback from Settings. It works without an account too.",
-      "History has a Year view next to the Month view, so you can see the last 12 months at a glance.",
-      "Today's ember now sits under the date.",
-      "Using the Discord bot? You can send feedback there with /feedback."
-    ]
+    "notes": {
+      "en": [
+        "Send feedback from Settings. It works without an account too.",
+        "History has a Year view next to the Month view, so you can see the last 12 months at a glance.",
+        "Today's ember now sits under the date.",
+        "Using the Discord bot? You can send feedback there with /feedback."
+      ],
+      "de": [
+        "Sende Feedback aus den Einstellungen. Das geht auch ohne Konto.",
+        "Der Verlauf hat neben der Monatsansicht jetzt eine Jahresansicht, so siehst du die letzten 12 Monate auf einen Blick.",
+        "Die Glut von heute sitzt jetzt unter dem Datum.",
+        "Du nutzt den Discord-Bot? Dort kannst du mit /feedback Feedback senden."
+      ]
+    }
   }
 ]

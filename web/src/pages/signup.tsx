@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { DiscordButton } from '@/components/auth/discord-button';
@@ -18,10 +19,9 @@ import type { Credentials } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
 
-const passwordHint = "At least 10 characters. A short phrase you'll remember works well.";
-
 /** `/signup`: email and password, then the "Check your inbox" view with the emailed code and a resend action. */
 export default function SignupPage() {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
   const password = useField(minLength(10));
@@ -48,11 +48,11 @@ export default function SignupPage() {
   if (sentTo !== null) {
     return (
       <>
-        <PageHeader title="Check your inbox" lede={`We sent a 6-digit code to ${sentTo}. Enter it here to finish.`} />
+        <PageHeader title={t('signup.sent.title')} lede={t('signup.sent.lede', { email: sentTo })} />
         <EnvelopeSpark className="self-center" />
         <EmailCodeForm email={sentTo} />
         <Button asChild variant="ghost" block>
-          <Link to="/login">Back to sign in</Link>
+          <Link to="/login">{t('auth.backToSignIn')}</Link>
         </Button>
       </>
     );
@@ -60,10 +60,10 @@ export default function SignupPage() {
 
   return (
     <>
-      <PageHeader title="Create your account" lede={`${pitch.description} It takes a minute.`} />
+      <PageHeader title={t('signup.title')} lede={t('signup.lede', { description: pitch.description })} />
       <UpgradingNotice />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
-        <FormField label="Email" error={email.error ?? problem?.fields['email'] ?? null}>
+        <FormField label={t('auth.email')} error={email.error ?? problem?.fields['email'] ?? null}>
           {(field) => (
             <Input
               {...field}
@@ -75,32 +75,30 @@ export default function SignupPage() {
             />
           )}
         </FormField>
-        <FormField label="Password" hint={passwordHint} error={password.error ?? problem?.fields['password'] ?? null}>
+        <FormField label={t('auth.password')} hint={t('auth.passwordHint')} error={password.error ?? problem?.fields['password'] ?? null}>
           {(field) => <PasswordInput {...field} {...password.input} autoComplete="new-password" />}
         </FormField>
 
         {problem && <Notice tone="notice">{problem.message}</Notice>}
 
         <p className="text-muted-foreground">
-          Creating an account means you accept the{' '}
-          <Link to="/legal/terms" className="text-primary underline underline-offset-4">
-            terms
-          </Link>
-          . The{' '}
-          <Link to="/legal/privacy" className="text-primary underline underline-offset-4">
-            privacy policy
-          </Link>{' '}
-          explains what Ember stores and why.
+          <Trans
+            i18nKey="signup.accept"
+            components={{
+              terms: <Link to="/legal/terms" className="text-primary underline underline-offset-4" />,
+              privacy: <Link to="/legal/privacy" className="text-primary underline underline-offset-4" />,
+            }}
+          />
         </p>
 
-        <BusyButton type="submit" block busy={register.isPending} busyLabel="Creating your account…">
-          Create account
+        <BusyButton type="submit" block busy={register.isPending} busyLabel={t('signup.creating')}>
+          {t('signup.submit')}
         </BusyButton>
-        <p className="text-center text-[14px] text-muted-foreground">Ember is for people 16 and older.</p>
+        <p className="text-center text-[14px] text-muted-foreground">{t('auth.age')}</p>
       </form>
-      <DiscordButton>Continue with Discord</DiscordButton>
+      <DiscordButton>{t('auth.discordContinue')}</DiscordButton>
       <p className="text-center text-muted-foreground">
-        Already have an account? <TapLink to="/login">Sign in</TapLink>
+        {t('signup.haveAccount')} <TapLink to="/login">{t('signup.signIn')}</TapLink>
       </p>
       <NoAccountLink />
     </>

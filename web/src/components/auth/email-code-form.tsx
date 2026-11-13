@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { type NavigateFunction, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { peekSignupKey, takeSignupEmail } from '@/components/auth/signup-email';
@@ -8,13 +9,14 @@ import { email as emailRule, required, useField, type Validator, validateAll } f
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { t } from '@/lib/i18n';
 import type { EmailCode, Me } from '@/lib/models';
 import { type ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth } from '@/lib/services';
 
 const codeRule: Validator = (value) => {
-  if (!value) return 'Enter the 6-digit code from the email.';
-  return /^\d{6}$/.test(value) ? null : 'The code is 6 digits.';
+  if (!value) return t('auth.code.required');
+  return /^\d{6}$/.test(value) ? null : t('auth.code.digits');
 };
 
 const passwordRequired = (error: ApiError | null) => error?.status === 401 && error.type === 'password_required';
@@ -44,6 +46,7 @@ export interface EmailCodeFormProps {
  * Focuses the code field when it appears (the password field when that is what's missing).
  */
 export function EmailCodeForm({ email: knownEmail, userId = null, code: linkCode = null, initialError }: EmailCodeFormProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -132,7 +135,7 @@ export function EmailCodeForm({ email: knownEmail, userId = null, code: linkCode
     <>
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         {askEmail && (
-          <FormField label="Email" optional={!!userId} error={email.error}>
+          <FormField label={t('auth.email')} optional={!!userId} error={email.error}>
             {(field) => (
               <Input
                 {...field}
@@ -145,7 +148,7 @@ export function EmailCodeForm({ email: knownEmail, userId = null, code: linkCode
             )}
           </FormField>
         )}
-        <FormField label="6-digit code" error={code.error ?? wrong}>
+        <FormField label={t('auth.code.label')} error={code.error ?? wrong}>
           {(field) => (
             <Input
               {...field}
@@ -161,33 +164,33 @@ export function EmailCodeForm({ email: knownEmail, userId = null, code: linkCode
           )}
         </FormField>
         {needsPassword && (
-          <FormField label="Password" hint="Enter your password to finish on this device." error={password.error}>
+          <FormField label={t('auth.password')} hint={t('errors.code.passwordRequired')} error={password.error}>
             {(field) => (
               <PasswordInput {...field} {...password.input} ref={passwordInput} autoComplete="current-password" />
             )}
           </FormField>
         )}
         {problem && <Notice tone="notice">{problem}</Notice>}
-        <BusyButton type="submit" block busy={confirm.isPending} busyLabel="Signing you in…">
-          Finish signing up
+        <BusyButton type="submit" block busy={confirm.isPending} busyLabel={t('auth.signingYouIn')}>
+          {t('auth.code.submit')}
         </BusyButton>
       </form>
       {(knownEmail || askEmail) && (
         <>
           {resend.isSuccess && (
-            <Notice tone="success">A new code is on its way. It can take a minute or two to arrive.</Notice>
+            <Notice tone="success">{t('auth.code.resent')}</Notice>
           )}
           {resendProblem && <Notice tone="notice">{resendProblem}</Notice>}
-          <p className="text-muted-foreground">Nothing there? Check your spam folder, or we can send a new code.</p>
+          <p className="text-muted-foreground">{t('auth.code.nothing')}</p>
           <BusyButton
             type="button"
             variant="secondary"
             block
             busy={resend.isPending}
-            busyLabel="Sending…"
+            busyLabel={t('auth.sending')}
             onClick={resendCode}
           >
-            Send a new code
+            {t('auth.code.resend')}
           </BusyButton>
         </>
       )}

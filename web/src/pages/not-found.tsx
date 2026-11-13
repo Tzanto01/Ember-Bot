@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ function StraySpark() {
 
 /** The `**` page: a spark that drifted off its dotted path, and a way back to Today. */
 export default function NotFoundPage() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <div aria-hidden="true">
@@ -32,11 +34,11 @@ export default function NotFoundPage() {
       </div>
       <PageHeader
         className="justify-center"
-        title="This page wandered off"
-        lede="The link may be old, or the address has a small typo. Nothing is lost."
+        title={t('notFound.title')}
+        lede={t('notFound.lede')}
       />
       <Button asChild block>
-        <Link to="/today">Go to Today</Link>
+        <Link to="/today">{t('notFound.today')}</Link>
       </Button>
     </div>
   );

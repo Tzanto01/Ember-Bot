@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { TapLink } from '@/components/auth/busy-button';
 import { renderLegal } from '@/components/legal/markdown';
 import { PageHeader } from '@/components/page-header';
@@ -9,11 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type LegalDoc = 'privacy' | 'terms' | 'imprint';
 
-const documents: Record<LegalDoc, { file: string; title: string }> = {
-  privacy: { file: 'datenschutzerklaerung.md', title: 'Privacy' },
-  terms: { file: 'nutzungsbedingungen.md', title: 'Terms' },
-  imprint: { file: 'impressum.md', title: 'Imprint' },
-};
+const documents = {
+  privacy: { file: 'datenschutzerklaerung.md', title: 'title.privacy' },
+  terms: { file: 'nutzungsbedingungen.md', title: 'title.terms' },
+  imprint: { file: 'impressum.md', title: 'title.imprint' },
+} as const satisfies Record<LegalDoc, { file: string; title: string }>;
 
 const prose = [
   'flex max-w-[38rem] flex-col gap-4 [overflow-wrap:anywhere] hyphens-auto',
@@ -36,36 +37,37 @@ async function loadDocument(file: string) {
 
 /** `/legal/privacy`, `/legal/terms`, `/legal/imprint`: the German legal text from `/legal/*.md`, its `#` heading as the `h1`. */
 export default function LegalPage({ doc }: { doc: LegalDoc }) {
+  const { t } = useTranslation();
   const { file, title } = documents[doc];
   const query = useQuery({ queryKey: ['legal', doc], queryFn: () => loadDocument(file), staleTime: Infinity });
   const loaded = query.data;
 
   return (
     <div lang={loaded ? 'de' : undefined} className="flex w-full flex-col gap-6">
-      <PageHeader title={loaded?.heading ?? title} />
+      <PageHeader title={loaded?.heading ?? t(title)} />
       {loaded ? (
         <div className={prose} dangerouslySetInnerHTML={{ __html: loaded.html }} />
       ) : query.isError && !query.isFetching ? (
         <Notice tone="notice">
-          <p>This page couldn't be loaded. Check your connection and try again.</p>
+          <p>{t('legal.loadFailed')}</p>
           <Button type="button" variant="secondary" onClick={() => void query.refetch()}>
-            Try again
+            {t('legal.retry')}
           </Button>
         </Notice>
       ) : (
         <div className="flex flex-col gap-3" aria-busy="true">
           <p role="status" className="sr-only">
-            Loading…
+            {t('legal.loading')}
           </p>
           <Skeleton className="h-5" />
           <Skeleton className="h-5" />
           <Skeleton className="h-5 w-3/5" />
         </div>
       )}
-      <p lang="en">
+      <p>
         <TapLink to="/" className="gap-2">
           <ArrowLeft aria-hidden className="size-[18px]" />
-          Back to Ember
+          {t('legal.back')}
         </TapLink>
       </p>
     </div>

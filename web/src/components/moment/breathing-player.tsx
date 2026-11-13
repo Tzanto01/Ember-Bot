@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LiveRegion } from '@/components/live-region';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
@@ -51,6 +52,7 @@ export function BreathingPlayer({
   /** While true (urgent help open), a running player pauses silently; the user resumes. */
   halted?: boolean;
 }) {
+  useTranslation();
   const phases = phasesOf(inhale, hold, exhale);
   const reduce = useReduceMotion();
 

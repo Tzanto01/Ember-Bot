@@ -7,7 +7,7 @@ export type PracticeStep =
   | { kind: 'breath'; inhale: number; hold: number; exhale: number; rounds: number }
   | { kind: 'timer'; seconds: number; text: string };
 
-/** One practice of `content/practices.json`. `basis` names the public technique for content review and is never shown. */
+/** One practice of `content/practices.{en,de}.json`. `basis` names the public technique for content review and is never shown. */
 export interface Practice {
   id: string;
   version: number;

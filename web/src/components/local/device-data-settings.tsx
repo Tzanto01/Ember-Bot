@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, type FormEvent, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
@@ -8,6 +9,7 @@ import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { t } from '@/lib/i18n';
 import type { BackupSummary, ParsedBackup } from '@/lib/local/types';
 import { saveExport } from '@/lib/native/save-file';
 import { auth, backup, localMode } from '@/lib/services';
@@ -17,24 +19,20 @@ type Busy = 'export' | 'import' | 'restore' | 'upgrade';
 
 const deleteWord: Validator = (value) => {
   const word = value.trim();
-  if (!word) return 'Type DELETE to confirm.';
-  return word === 'DELETE' ? null : 'Type DELETE in capital letters to confirm.';
+  if (!word) return t('local.delete.required');
+  return word === 'DELETE' ? null : t('local.delete.capitals');
 };
-
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 function contents(summary: BackupSummary): string {
   const parts = [
-    plural(summary.habits, 'habit', 'habits'),
-    plural(summary.checkIns, 'check-in', 'check-ins'),
-    plural(summary.lowDays, 'low day', 'low days'),
-    plural(summary.routines, 'routine', 'routines'),
-    plural(summary.notes, 'journal entry', 'journal entries'),
-    plural(summary.moods, 'mood', 'moods'),
+    t('local.count.habits', { count: summary.habits }),
+    t('local.count.checkIns', { count: summary.checkIns }),
+    t('local.count.lowDays', { count: summary.lowDays }),
+    t('local.count.routines', { count: summary.routines }),
+    t('local.count.notes', { count: summary.notes }),
+    t('local.count.moods', { count: summary.moods }),
   ];
-  return `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
+  return t('local.list', { items: parts.slice(0, -1).join(', '), last: parts.at(-1) });
 }
 
 /**
@@ -42,6 +40,7 @@ function contents(summary: BackupSummary): string {
  * confirmation before it replaces the device data), and "Create an account and keep my data".
  */
 export function DeviceDataSettings() {
+  useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -67,10 +66,10 @@ export function DeviceDataSettings() {
     try {
       if (await saveExport(await backup.exportBackup())) {
         await backup.markBackedUp();
-        setDone('Backup saved.');
+        setDone(t('backup.saved'));
       }
     } catch {
-      setProblem("The backup couldn't be saved. You can try again.");
+      setProblem(t('backup.saveFailed'));
     }
     setBusy(null);
   }
@@ -81,7 +80,7 @@ export function DeviceDataSettings() {
     if (!file || !begin('import')) return;
     setPending(null);
     if (file.size > 5 * 1024 * 1024) {
-      setProblem('This file is too big to be an Ember backup.');
+      setProblem(t('backup.error.tooBig'));
       setBusy(null);
       return;
     }
@@ -89,7 +88,7 @@ export function DeviceDataSettings() {
     try {
       text = await file.text();
     } catch {
-      setProblem("Ember couldn't read that file. You can try again.");
+      setProblem(t('local.import.readFailed'));
       setBusy(null);
       return;
     }
@@ -113,11 +112,11 @@ export function DeviceDataSettings() {
       await Promise.all([queryClient.invalidateQueries(), auth.loadMe(true).catch(() => null)]);
       flushSync(() => {
         setPending(null);
-        setDone('Backup restored.');
+        setDone(t('local.import.restored'));
       });
       status.current?.focus();
     } catch {
-      setProblem("The backup couldn't be restored. Your data on this device is unchanged.");
+      setProblem(t('local.import.restoreFailed'));
     }
     setBusy(null);
   }
@@ -133,7 +132,7 @@ export function DeviceDataSettings() {
       await localMode.beginUpgrade();
       await navigate('/signup');
     } catch {
-      setProblem("That didn't work just now. You can try again.");
+      setProblem(t('local.upgrade.failed'));
       setBusy(null);
     }
   }
@@ -146,28 +145,28 @@ export function DeviceDataSettings() {
           type="button"
           variant="secondary"
           busy={busy === 'export'}
-          busyLabel="Preparing…"
+          busyLabel={t('backup.preparing')}
           onClick={() => void exportBackup()}
         >
-          Export backup
+          {t('backup.export')}
         </BusyButton>
         <BusyButton
           ref={importButton}
           type="button"
           variant="secondary"
           busy={busy === 'import'}
-          busyLabel="Reading…"
+          busyLabel={t('local.import.reading')}
           onClick={() => {
             if (!busy) fileInput.current?.click();
           }}
         >
-          Import backup
+          {t('local.import.button')}
         </BusyButton>
         <input
           ref={fileInput}
           type="file"
           accept="application/json,.json"
-          aria-label="Choose a backup file"
+          aria-label={t('local.import.fileLabel')}
           className="sr-only"
           aria-hidden="true"
           tabIndex={-1}
@@ -181,25 +180,18 @@ export function DeviceDataSettings() {
           className="flex flex-col gap-3 rounded-md border border-border bg-muted p-4"
         >
           <h3 ref={confirmHeading} id={headingId} tabIndex={-1} className="font-semibold focus:outline-none">
-            Replace what's on this device?
+            {t('local.import.confirmHeading')}
           </h3>
-          <p>This backup has {contents(pending.summary)}. Restoring it replaces everything on this device now.</p>
+          <p>{t('local.import.confirmText', { contents: contents(pending.summary) })}</p>
           {pending.summary.skippedEncrypted > 0 && (
-            <p>
-              {plural(
-                pending.summary.skippedEncrypted,
-                'private journal entry or mood',
-                'private journal entries and moods',
-              )}{' '}
-              in it can only be opened with the account's passphrase, so they're left out.
-            </p>
+            <p>{t('local.import.skipped', { count: pending.summary.skippedEncrypted })}</p>
           )}
           <div className="flex flex-wrap gap-2">
-            <BusyButton type="button" busy={busy === 'restore'} busyLabel="Restoring…" onClick={() => void restore()}>
-              Replace my data
+            <BusyButton type="button" busy={busy === 'restore'} busyLabel={t('local.import.restoring')} onClick={() => void restore()}>
+              {t('local.import.replace')}
             </BusyButton>
             <Button type="button" variant="ghost" onClick={cancel}>
-              Cancel
+              {t('local.import.cancel')}
             </Button>
           </div>
         </div>
@@ -212,15 +204,15 @@ export function DeviceDataSettings() {
       <p ref={status} role="status" tabIndex={-1} className="text-[14px] text-muted-foreground focus:outline-none">
         {done}
       </p>
-      <p>Want your habits on more devices? Create an account and bring everything with you.</p>
+      <p>{t('local.upgrade.text')}</p>
       <div>
         <BusyButton
           type="button"
           busy={busy === 'upgrade'}
-          busyLabel="One moment…"
+          busyLabel={t('local.upgrade.busy')}
           onClick={() => void createAccount()}
         >
-          Create an account and keep my data
+          {t('local.upgrade.button')}
         </BusyButton>
       </div>
     </>
@@ -229,6 +221,7 @@ export function DeviceDataSettings() {
 
 /** Settings body "Delete everything on this device" for no-account mode: typed DELETE, then `localMode.wipe()`. */
 export function DeleteDeviceData() {
+  useTranslation();
   const navigate = useNavigate();
   const form = useRef<HTMLFormElement>(null);
   const confirm = useField(deleteWord);
@@ -244,19 +237,16 @@ export function DeleteDeviceData() {
       await localMode.wipe();
       await navigate('/login');
     } catch {
-      setProblem("Ember couldn't delete the data on this device. You can try again.");
+      setProblem(t('local.delete.failed'));
       setBusy(false);
     }
   }
 
   return (
     <>
-      <p>
-        This removes your habits, check-ins, low days, routines, journal and settings from this device. It can't be
-        undone. If you'd like to keep a copy, export a backup first.
-      </p>
+      <p>{t('local.delete.text')}</p>
       <form ref={form} noValidate onSubmit={(event) => void wipe(event)} className="flex flex-col gap-3">
-        <FormField label="Type DELETE to confirm" error={confirm.error}>
+        <FormField label={t('local.delete.label')} error={confirm.error}>
           {(field) => (
             <Input
               {...field}
@@ -274,8 +264,8 @@ export function DeleteDeviceData() {
           </Notice>
         )}
         <div>
-          <BusyButton type="submit" variant="destructive" busy={busy} busyLabel="Deleting…">
-            Delete everything on this device
+          <BusyButton type="submit" variant="destructive" busy={busy} busyLabel={t('local.delete.busy')}>
+            {t('local.delete.button')}
           </BusyButton>
         </div>
       </form>

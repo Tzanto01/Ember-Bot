@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type FormEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { focusFirstInvalid } from '@/components/form-field';
 import {
@@ -33,6 +34,7 @@ const nameId = 'habit-name';
 
 /** `/habits/new`: pick a template (skipped when none load), then the habit form; "Create habit" lands on `/today`. */
 export default function HabitNewPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const templates = useQuery({ queryKey: ['habit-templates'], queryFn: () => api.listTemplates(), retry: false });
@@ -130,18 +132,18 @@ export default function HabitNewPage() {
   const preview = habitFormValue(form);
   const lede = showForm
     ? picked
-      ? `Based on ${picked}. Adjust anything you like.`
-      : 'Keep it small. Small is how habits start.'
-    : 'Pick a starting point, or begin from scratch. You can change everything later.';
+      ? t('habitNew.basedOn', { name: picked })
+      : t('habitNew.keepSmall')
+    : t('habitNew.pick');
 
   return (
     <div ref={root} className="flex flex-col gap-6">
-      <PageHeader title="New habit" lede={lede} />
+      <PageHeader title={t('habitNew.title')} lede={lede} />
 
       {!showForm && !templates.data && (
         <div className="grid gap-3 md:grid-cols-2">
           <p role="status" className="sr-only">
-            Loading suggestions…
+            {t('habitNew.loading')}
           </p>
           {[1, 2, 3, 4].map((n) => (
             <Skeleton key={n} className="h-[7rem] rounded-xl" />
@@ -153,7 +155,7 @@ export default function HabitNewPage() {
         <>
           <Button type="button" variant="secondary" block onClick={() => startForm(null)}>
             <Plus aria-hidden />
-            Start from scratch
+            {t('habitNew.scratch')}
           </Button>
           <ul className="grid gap-3 md:grid-cols-2">
             {templates.data.map((template) => (
@@ -169,8 +171,12 @@ export default function HabitNewPage() {
                   <span className="font-display text-[18px]">{template.name}</span>
                   <span className="text-muted-foreground">{template.description}</span>
                   <span className="text-[14px] text-muted-foreground">
-                    {cadenceText(template.frequency, template.weeklyTarget)}
-                    {reminders && ` · reminder at ${template.suggestedReminderTime}`}
+                    {reminders
+                      ? t('habitNew.cadenceReminder', {
+                          cadence: cadenceText(template.frequency, template.weeklyTarget),
+                          time: template.suggestedReminderTime,
+                        })
+                      : cadenceText(template.frequency, template.weeklyTarget)}
                   </span>
                 </button>
               </li>
@@ -181,10 +187,10 @@ export default function HabitNewPage() {
 
       {createdOff && (
         <Card ref={offRef} tabIndex={-1} className="w-full max-w-[36rem] focus:outline-none">
-          <p className="font-semibold">Your habit is ready.</p>
+          <p className="font-semibold">{t('habitNew.ready')}</p>
           <DeviceRemindersOff />
           <Button block asChild>
-            <Link to="/today">Go to Today</Link>
+            <Link to="/today">{t('habitNew.goToday')}</Link>
           </Button>
         </Card>
       )}
@@ -204,16 +210,17 @@ export default function HabitNewPage() {
                 silent={silent}
                 reminderNote={
                   reach === 'none' && (
-                    <>
-                      Reminders reach you through notifications on this device, or Discord if you use it.{' '}
-                      <Link to={{ pathname: '/settings', hash: reminderHash }}>Turn one on in Settings.</Link>
-                    </>
+                    <Trans
+                      t={t}
+                      i18nKey="habitNew.reachNote"
+                      components={{ anchor: <Link to={{ pathname: '/settings', hash: reminderHash }} /> }}
+                    />
                   )
                 }
               />
               {localPhone && (
                 <div className="-mt-3 flex flex-col gap-2">
-                  <p className="font-medium">How this habit reminds you</p>
+                  <p className="font-medium">{t('habitNew.howReminds')}</p>
                   <ChannelChoices
                     options={phoneChoice}
                     current={phoneOn ? ['mobile'] : []}
@@ -228,19 +235,19 @@ export default function HabitNewPage() {
                   {create.isPending ? (
                     <>
                       <Spinner />
-                      Creating your habit…
+                      {t('habitNew.creating')}
                     </>
                   ) : (
-                    'Create habit'
+                    t('habitNew.create')
                   )}
                 </Button>
                 {hasTemplates && (
                   <Button type="button" variant="ghost" block onClick={backToSuggestions}>
-                    Back to suggestions
+                    {t('habitNew.back')}
                   </Button>
                 )}
                 <Button variant="ghost" block asChild>
-                  <Link to="/today">Cancel</Link>
+                  <Link to="/today">{t('habitNew.cancel')}</Link>
                 </Button>
               </div>
             </form>

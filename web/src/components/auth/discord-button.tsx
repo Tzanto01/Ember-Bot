@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { env } from '@/lib/env';
@@ -17,11 +18,12 @@ export function DiscordButton({
   onNative?: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   if (env.native) {
     if (!onNative) return null;
     return (
       <>
-        <Separator>or</Separator>
+        <Separator>{t('auth.or')}</Separator>
         <Button type="button" variant="secondary" block onClick={onNative}>
           {children}
         </Button>
@@ -30,7 +32,7 @@ export function DiscordButton({
   }
   return (
     <>
-      <Separator>or</Separator>
+      <Separator>{t('auth.or')}</Separator>
       <Button asChild variant="secondary" block>
         <a href={api.discordLoginUrl(returnUrl)}>{children}</a>
       </Button>

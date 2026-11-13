@@ -1,0 +1,85 @@
+[
+  {
+    "region": "DE",
+    "name": "TelefonSeelsorge",
+    "numbers": ["0800 111 0 111", "0800 111 0 222", "116 123"],
+    "hours": "Kostenlos, rund um die Uhr",
+    "url": "https://www.telefonseelsorge.de",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "AT",
+    "name": "TelefonSeelsorge",
+    "numbers": ["142"],
+    "hours": "Kostenlos, rund um die Uhr",
+    "url": "https://www.telefonseelsorge.at",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "CH",
+    "name": "Die Dargebotene Hand",
+    "numbers": ["143"],
+    "hours": "Rund um die Uhr",
+    "url": "https://www.143.ch",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "GB",
+    "name": "Samaritans",
+    "numbers": ["116 123"],
+    "hours": "Kostenlos, rund um die Uhr",
+    "url": "https://www.samaritans.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "GB",
+    "name": "Notruf",
+    "numbers": ["999"],
+    "hours": "Rund um die Uhr",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "IE",
+    "name": "Samaritans",
+    "numbers": ["116 123"],
+    "hours": "Kostenlos, rund um die Uhr",
+    "url": "https://www.samaritans.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "IE",
+    "name": "Notruf",
+    "numbers": ["999"],
+    "hours": "Rund um die Uhr",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "US",
+    "name": "988 Suicide & Crisis Lifeline",
+    "numbers": ["988"],
+    "hours": "Anruf oder SMS, rund um die Uhr",
+    "url": "https://988lifeline.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "US",
+    "name": "Notruf",
+    "numbers": ["911"],
+    "hours": "Rund um die Uhr",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "EU",
+    "name": "Notruf (EU)",
+    "numbers": ["112"],
+    "hours": "Rund um die Uhr",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "INTL",
+    "name": "Dein örtlicher Notruf",
+    "numbers": ["112"],
+    "hours": "Die 112 gilt in der ganzen EU. Anderswo ruf deinen örtlichen Notruf an.",
+    "checked": "2026-11-13"
+  }
+]
