@@ -1,4 +1,6 @@
-# Ember API contract v1.16
+# Ember API contract v1.17
+
+v1.17 (2026-11-13, Nico: "Localization. At least english and german", and he chose to hold the companion release for it): every account has a language (`en` or `de`) used for the app, emails, notifications and the Discord bot. See "Language v1.17" and docs/contracts/i18n-v1.md.
 
 v1.16 (2026-11-13, Nico chose "Full pivot now": "The moment flow plus repositioning Ember as a companion now: new pitch on both sites and in-app, streaks off by default, legal check started."): Ember becomes a companion with an "I need a moment" flow that runs entirely on the device; streaks become an account setting, off for new accounts; a journal entry for today no longer needs a habit. See "Companion v1.16" and docs/contracts/companion-v1.md.
 
@@ -598,3 +600,10 @@ Additive. Older clients keep working (they ignore `showStreaks` and keep showing
 ### Moments (client only)
 
 - There is no moments endpoint. Choosing a feeling, the intensity and the practice never leave the device's memory. The only thing that can reach the server is a reflection the user explicitly saves, appended to today's day note, and only while the private journal is on (not turning off) and unlocked: the server sees day-note ciphertext only. Nothing about moments goes to Discord, notifications, the weekly summary, feedback or logs.
+
+## Language v1.17
+
+- `Me` gains `"language": "en" | "de"`. `PATCH /api/me` accepts `language?` (`en` or `de`; anything else → 400 `validation` on `language`; absent leaves it unchanged). Export `settings.language`; import optional.
+- Stored as `User.Language` (non-null, default `en`; the migration sets `en` for existing rows). A new account takes it from the sign-up request's `Accept-Language` (any `de` or `de-*` first match → `de`, else `en`); an account the Discord bot creates takes it from the interaction's `UserLocale` the same way.
+- The server uses `User.Language` for everything it writes to the user: emails (sign-up code, confirmation, password reset, and any other mail to the user), web push and phone reminder texts, the Discord bot's replies, DMs, reminders, weekly summary and share card. Mail before an account exists (none today) would use `Accept-Language`. The operator's feedback digest stays English.
+- Validation messages in 400 responses stay English; clients show their own translated text for known errors.
