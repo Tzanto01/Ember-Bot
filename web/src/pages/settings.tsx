@@ -54,7 +54,7 @@ import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, deviceSync, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { applyLanguage, currentLanguage, heldLanguage, holdLanguage, type Language, rememberDeviceLanguage, storedLanguage, t } from '@/lib/i18n';
-import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
+import { applyCalm, calmMode, rememberAccountTheme, type ThemeId } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 type Section =
@@ -331,13 +331,17 @@ export default function SettingsPage() {
   }
 
   function changeCalm(value: boolean): void {
+    const before = calmMode.get();
     calmRef.current = value;
     setCalm(value);
+    applyCalm(value);
     void patch('calm', { calmMode: value }).then((error) => {
       if (calmRef.current !== value) return;
       calmRef.current = null;
       setCalm(null);
-      if (error) fail('calm', error);
+      if (!error) return;
+      applyCalm(before);
+      fail('calm', error);
     });
   }
 

@@ -171,7 +171,7 @@ export function useCalmMode(): boolean {
 export function applyCalm(on: boolean): void {
   if (on) document.documentElement.dataset['calm'] = '';
   else delete document.documentElement.dataset['calm'];
-  write(calmKey, on ? '1' : null);
+  if ((read(calmKey) === '1') !== on) write(calmKey, on ? '1' : null);
   calmMode.set(on);
 }
 

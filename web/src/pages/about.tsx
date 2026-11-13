@@ -37,7 +37,7 @@ export default function AboutPage() {
           rel="noopener"
           className="inline-flex min-h-[44px] items-center gap-2 font-medium text-primary underline underline-offset-4"
         >
-          {t('about.site')}
+          {t('about.site')}{' '}
           <span className="sr-only">{t('about.newTab')}</span>
           <ExternalLink aria-hidden className="size-[16px] shrink-0" />
         </a>

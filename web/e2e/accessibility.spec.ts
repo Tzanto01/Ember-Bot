@@ -231,7 +231,7 @@ for (const { code, locale, strings } of languages) {
             await enableRememberedJournal(page);
             await saveMomentReflection(page);
             await page.getByRole('link', { name: 'See your moments' }).click();
-            await page.getByRole('button', { name: 'Add “Slow breathing” to What helps me' }).click();
+            await page.getByRole('button', { name: 'Add to What helps me: “Slow breathing”' }).click();
             await expect(page.getByText('In What helps me')).toBeVisible();
             await setAccountLanguage(page, code);
 

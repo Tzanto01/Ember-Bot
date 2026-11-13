@@ -298,7 +298,7 @@
   "moments.intensity": "How strong",
   "moments.then": "then",
   "moments.add": "Add to What helps me",
-  "moments.addLabel": "Add “{{text}}” to What helps me",
+  "moments.addLabel": "Add to What helps me: “{{text}}”",
   "moments.adding": "Adding…",
   "moments.inList": "In What helps me",
   "moment.door.label": "I need a moment",

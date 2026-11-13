@@ -425,7 +425,7 @@ export class JournalService implements JournalApi {
       return false;
     });
     const sealedHelps = me.journal.encrypted && !me.journal.turningOff ? await this.api.getHelps() : null;
-    const helps = sealedHelps ? (await this.openHelps(sealedHelps.encrypted)).items : [];
+    const helps = sealedHelps ? await this.openHelps(sealedHelps.encrypted).then((list) => list.items, () => []) : [];
     const file = { exportedAt: new Date().toISOString(), entries, moods, helps };
     return {
       blob: new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),

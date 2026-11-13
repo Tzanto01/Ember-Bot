@@ -41,7 +41,7 @@ test('a saved moment goes to What helps me, shows as a Catch chip, and the list 
   await expect(page).toHaveURL(/\/moments$/);
   await expect(page.getByRole('heading', { name: 'Your moments', level: 1 })).toBeVisible();
   await expect(page.getByText(reflectionTrigger)).toBeVisible();
-  await page.getByRole('button', { name: 'Add “Slow breathing” to What helps me' }).click();
+  await page.getByRole('button', { name: 'Add to What helps me: “Slow breathing”' }).click();
   await expect(page.getByText('In What helps me')).toBeVisible();
 
   await openSettingsGroup(page, 'Privacy & data');

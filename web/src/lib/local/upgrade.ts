@@ -161,7 +161,7 @@ export class UpgradeService implements UpgradeApi {
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
           const current = this.auth.me.get();
-          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language });
+          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language, calmMode: updated.calmMode });
           await save({ importSent: true, journalOmitted: omit });
           try {
             await this.api.importData(importDocument(data, !omit));

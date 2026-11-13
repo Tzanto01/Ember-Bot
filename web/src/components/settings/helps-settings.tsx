@@ -163,6 +163,7 @@ export function HelpsSettings() {
     const entry = text.trim();
     const ok = await act('add', async () =>
       t((await helps.add({ text: entry })) ? 'helps.added' : 'helps.already', { text: entry }),
+      'helps-new',
     );
     if (ok) {
       setText('');
@@ -240,7 +241,7 @@ export function HelpsSettings() {
       {items.length === 0 ? (
         <p>{t('helps.empty')}</p>
       ) : (
-        <ol aria-labelledby="helps-heading" className="flex flex-col divide-y divide-border">
+        <ol role="list" aria-labelledby="helps-heading" className="flex flex-col divide-y divide-border">
           {items.map((item, index) => (
             <li key={item.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
               {editing === item.id ? (

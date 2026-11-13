@@ -45,7 +45,7 @@ function Heading({
         <span className="font-sans text-base font-normal text-muted-foreground">{eyebrow}</span>
       )}
       <span
-        className={large ? 'text-[26px] leading-snug md:text-[32px]' : 'text-[28px] md:text-[36px]'}
+        className={large ? 'text-[26px] leading-snug [overflow-wrap:anywhere] md:text-[32px]' : 'text-[28px] md:text-[36px]'}
       >
         {children}
       </span>

@@ -47,7 +47,7 @@ export async function createMomentsAccount(page: Page): Promise<string> {
   await saveMomentReflection(page);
   await page.getByRole('link', { name: 'See your moments' }).click();
   await expect(page).toHaveURL(/\/moments$/);
-  await page.getByRole('button', { name: 'Add “Slow breathing” to What helps me' }).click();
+  await page.getByRole('button', { name: 'Add to What helps me: “Slow breathing”' }).click();
   await expect(page.getByText('In What helps me')).toBeVisible();
   return email;
 }

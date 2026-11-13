@@ -111,6 +111,7 @@ export function BreathingPlayer({
     <div className="flex flex-col items-center gap-6">
       <div
         aria-hidden="true"
+        data-calm-hide
         className="flex size-[200px] max-w-[60vw] items-center justify-center"
       >
         <div

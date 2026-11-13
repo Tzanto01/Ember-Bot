@@ -214,7 +214,13 @@ export default function MomentsPage() {
     body = (
       <section aria-labelledby="moments-unlock" className={cardVariants()}>
         <p id="moments-unlock">{t('moments.locked')}</p>
-        <UnlockForm onUnlocked={setNewPassphrase} />
+        <UnlockForm
+          onUnlocked={(needsNewPassphrase) => {
+            setNewPassphrase(needsNewPassphrase);
+            setAnnouncement(t('journal.unlocked'));
+            document.querySelector<HTMLElement>('#main h1')?.focus();
+          }}
+        />
       </section>
     );
   } else if (query.isPending) {
@@ -246,7 +252,7 @@ export default function MomentsPage() {
             <h2 id={`moments-${month}`} className="text-[22px]">
               {monthLabel(`${month}-01`)}
             </h2>
-            <ul className="flex flex-col gap-4">
+            <ul role="list" className="flex flex-col gap-4">
               {moments.map((moment) => (
                 <MomentItem
                   key={moment.key}
