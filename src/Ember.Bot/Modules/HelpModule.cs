@@ -52,7 +52,7 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
                 "`/habit second-reminder` — get one more nudge if you haven't checked in yet",
                 inline: false)
             .AddField("Share",
-                "`/habit share` — post a streak card in this channel",
+                "`/habit share` — post a habit card in this channel",
                 inline: false)
             .AddField("Web app",
                 "`/link` — use Ember in your browser, or add Discord to an email account",

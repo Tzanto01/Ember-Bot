@@ -68,7 +68,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         try
         {
             await component.FollowupAsync(embed: embed);
-            reply = "Streak card posted! 🔥";
+            reply = "Habit card posted! 🔥";
         }
         catch (HttpException)
         {

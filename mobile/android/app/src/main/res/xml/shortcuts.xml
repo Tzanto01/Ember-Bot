@@ -5,7 +5,7 @@
         android:icon="@mipmap/ic_launcher"
         android:shortcutId="moment"
         android:shortcutLongLabel="@string/moment_label"
-        android:shortcutShortLabel="@string/moment_label">
+        android:shortcutShortLabel="@string/moment_short_label">
         <intent
             android:action="app.ember.habits.OPEN_MOMENT"
             android:targetClass="app.ember.habits.MainActivity"

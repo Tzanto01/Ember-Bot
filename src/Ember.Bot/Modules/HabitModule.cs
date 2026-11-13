@@ -357,7 +357,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
     // ── /habit share ──────────────────────────────────────────────────────────
 
-    [SlashCommand("share", "Share a habit streak card publicly in this channel")]
+    [SlashCommand("share", "Share a habit card publicly in this channel")]
     public async Task ShareAsync()
     {
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
