@@ -79,6 +79,9 @@ public partial class HabitService
             await _db.JournalKeys
                 .Where(k => k.UserId == sourceUserId)
                 .ExecuteUpdateAsync(s => s.SetProperty(k => k.UserId, targetUserId), cancellationToken);
+            await _db.UserHelps
+                .Where(h => h.UserId == sourceUserId && !_db.UserHelps.Any(t => t.UserId == targetUserId))
+                .ExecuteUpdateAsync(s => s.SetProperty(h => h.UserId, targetUserId), cancellationToken);
 
             await _db.DayMarks
                 .Where(m => m.UserId == sourceUserId

@@ -185,6 +185,7 @@ public static class ApiApp
         signedIn.MapReminderDestinations();
         signedIn.MapLowDays();
         signedIn.MapJournal();
+        signedIn.MapHelps();
         signedIn.MapStats();
 
         api.MapHabitTemplates();

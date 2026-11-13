@@ -16,6 +16,8 @@ public class ExportBuilderTests
             GraceDaysPerWeek = 2,
             SecondReminderMinutes = 30,
             ShowStreaks = true,
+            Language = "de",
+            CalmMode = true,
             DmFailureCount = 3,
             DmRemindersPausedAt = new DateTime(2025, 6, 17, 9, 0, 0, DateTimeKind.Utc),
             DmPauseNoticeSentAt = new DateTime(2025, 6, 18, 7, 45, 0, DateTimeKind.Utc),
@@ -74,6 +76,7 @@ public class ExportBuilderTests
             PassphraseSalt = "cHM=", PassphraseIterations = 600000, PassphraseIv = "cGl2", PassphraseWrapped = "cHc=",
             RecoverySalt = "cnM=", RecoveryIv = "cml2", RecoveryWrapped = "cnc=",
         };
+        user.Helps = new UserHelps { Encrypted = "+aGVscHM=", Version = 2 };
         return user;
     }
 
@@ -98,7 +101,8 @@ public class ExportBuilderTests
             && r["dm_reminders_paused_at"] == "2025-06-17T09:00:00Z"
             && r["dm_pause_notice_sent_at"] == "2025-06-18T07:45:00Z"
             && r["health_data_consent_at"] == "2025-06-01T12:00:00Z" && r["consent_policy_version"] == "2026-10"
-            && r["consent_prompted_on"] == "2025-06-01" && r["second_reminder_minutes"] == "30" && r["show_streaks"] == "true");
+            && r["consent_prompted_on"] == "2025-06-01" && r["second_reminder_minutes"] == "30" && r["show_streaks"] == "true"
+            && r["language"] == "de" && r["calm_mode"] == "true");
         rows.Where(r => r["record_type"] == "habit").Select(r => r["habit_id"]).Should().BeEquivalentTo(["10", "11"]);
         rows.Should().ContainSingle(r => r["record_type"] == "habit" && r["habit_id"] == "11"
             && r["reminder_time"] == "08:30" && r["next_reminder_utc"] == "2025-06-19T06:30:00Z"
@@ -146,7 +150,7 @@ public class ExportBuilderTests
         doc.Should().NotBeNull();
         doc!.Settings.Should().Be(new ExportBuilder.SettingsRecord("Europe/Berlin", 2, null, 3,
             new DateTime(2025, 6, 17, 9, 0, 0, DateTimeKind.Utc), new DateTime(2025, 6, 18, 7, 45, 0, DateTimeKind.Utc),
-            new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc), "2026-10", new DateOnly(2025, 6, 1), false, 30, true));
+            new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc), "2026-10", new DateOnly(2025, 6, 1), false, 30, true, "de", true));
         doc.Habits.Should().HaveCount(2).And.Contain(h => h.Id == 11 && h.ReminderTime == new TimeOnly(8, 30)
             && h.NextReminderUtc == new DateTime(2025, 6, 19, 6, 30, 0, DateTimeKind.Utc));
         doc.Logs.Should().HaveCount(2).And.Contain(l => l.HabitId == 10 && l.GuildId == "123456789012345678");
@@ -187,6 +191,7 @@ public class ExportBuilderTests
         }, o => o.WithStrictOrdering());
         doc.JournalKey.Should().BeEquivalentTo(new ExportBuilder.JournalKeyRecord(3, true,
             new ExportBuilder.PassphraseWrapRecord("cHM=", 600000, "cGl2", "cHc="), new ExportBuilder.RecoveryWrapRecord("cnM=", "cml2", "cnc=")));
+        doc.HelpsEncrypted.Should().Be("+aGVscHM=");
         json.Should().StartWith("{\n  \"format_version\": 2,").And.NotContain("habit_ids");
         json.Should().Contain("\"journal_key\"").And.Contain("\"turning_off\"").And.Contain("\"ct\"").And.Contain("\"times_per_day\"");
     }
@@ -198,6 +203,7 @@ public class ExportBuilderTests
 
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("journal_key").ValueKind.Should().Be(JsonValueKind.Null);
+        doc.RootElement.GetProperty("helps_encrypted").ValueKind.Should().Be(JsonValueKind.Null);
         doc.RootElement.GetProperty("habits")[0].GetProperty("routine_position").ValueKind.Should().Be(JsonValueKind.Null);
         doc.RootElement.GetProperty("routines").GetArrayLength().Should().Be(0);
     }
@@ -248,6 +254,7 @@ public class ExportBuilderTests
         rows.Should().ContainSingle(r => r["record_type"] == "journal_key" && r["version"] == "3" && r["turning_off"] == "true"
             && r["passphrase_salt"] == "cHM=" && r["passphrase_iterations"] == "600000" && r["passphrase_iv"] == "cGl2"
             && r["passphrase_wrapped"] == "cHc=" && r["recovery_salt"] == "cnM=" && r["recovery_iv"] == "cml2" && r["recovery_wrapped"] == "cnc=");
+        rows.Should().ContainSingle(r => r["record_type"] == "helps" && r["helps_encrypted"] == "'+aGVscHM=");
     }
 
     [Fact]
@@ -285,7 +292,7 @@ public class ExportBuilderTests
 
         rows.Select(r => r["record_type"]).Distinct().Should().BeEquivalentTo(["settings", "habit", "log", "day_mark", "routine"]);
         rows.Should().OnlyContain(r => r["email"] == "" && r["discord_id"] == "");
-        foreach (var key in new[] { "account", "push_subscriptions", "day_notes", "moods", "journal_key" })
+        foreach (var key in new[] { "account", "push_subscriptions", "day_notes", "moods", "journal_key", "helps_encrypted" })
             json.RootElement.GetProperty(key).ValueKind.Should().Be(JsonValueKind.Null, key);
         json.RootElement.GetProperty("routines").GetArrayLength().Should().Be(1);
         json.RootElement.GetProperty("logs").GetArrayLength().Should().Be(2);

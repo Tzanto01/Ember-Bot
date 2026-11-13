@@ -253,4 +253,40 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         number.GetProperty("errors").Has("showStreaks").Should().BeTrue();
         off.GetProperty("showStreaks").GetBoolean().Should().BeFalse();
     }
+
+    [DockerFact]
+    public async Task Patching_me_sets_the_language_to_en_or_de_only()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("language").GetString().Should().Be("en");
+
+        var german = await (await user.Patch("/api/me", new { language = "de" })).ExpectJson();
+        var kept = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+        var french = await (await user.Patch("/api/me", new { language = "fr" })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var number = await (await user.Patch("/api/me", new { language = 1 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var english = await (await user.Patch("/api/me", new { language = "en" })).ExpectJson();
+
+        german.GetProperty("language").GetString().Should().Be("de");
+        kept.GetProperty("language").GetString().Should().Be("de");
+        french.GetProperty("errors").Has("language").Should().BeTrue();
+        number.GetProperty("errors").Has("language").Should().BeTrue();
+        english.GetProperty("language").GetString().Should().Be("en");
+    }
+
+    [DockerFact]
+    public async Task Calm_mode_starts_off_and_patching_me_turns_it_on_and_off_and_only_takes_a_bool()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("calmMode").GetBoolean().Should().BeFalse();
+
+        var on = await (await user.Patch("/api/me", new { calmMode = true })).ExpectJson();
+        var kept = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+        var word = await (await user.Patch("/api/me", new { calmMode = "yes" })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var off = await (await user.Patch("/api/me", new { calmMode = false })).ExpectJson();
+
+        on.GetProperty("calmMode").GetBoolean().Should().BeTrue();
+        kept.GetProperty("calmMode").GetBoolean().Should().BeTrue();
+        word.GetProperty("errors").Has("calmMode").Should().BeTrue();
+        off.GetProperty("calmMode").GetBoolean().Should().BeFalse();
+    }
 }

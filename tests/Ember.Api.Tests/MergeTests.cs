@@ -274,7 +274,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     };
 
     [DockerFact]
-    public async Task Merging_moves_routines_moods_day_notes_and_the_journal_key_and_the_routine_limit_does_not_block()
+    public async Task Merging_moves_routines_moods_day_notes_the_journal_key_and_helps_and_the_routine_limit_does_not_block()
     {
         var user = await Host.SignedInAsync();
         var userId = await user.IdAsync();
@@ -289,6 +289,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         await Seed(new DayNote { UserId = bot.UserId, Date = Host.Today.AddDays(-1), Text = "A walk", Mood = $"custom:{mood.Id}" });
         await Seed(new DayNote { UserId = bot.UserId, Date = Host.Today, CipherVersion = 1, CipherIv = "aXY=", CipherText = "Y3Q=" });
         await Seed(Key(bot.UserId));
+        await Seed(new UserHelps { UserId = bot.UserId, Encrypted = "aGVscHM=", Version = 3, UpdatedAt = DateTime.UtcNow });
         await StartMergeAsync(user, bot.DiscordId);
 
         await (await user.Post(MergeUrl)).Expect(HttpStatusCode.NoContent);
@@ -301,6 +302,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
             .Should().Equal($"custom:{mood.Id}", null);
         (await Host.Db(db => db.JournalKeys.Where(k => k.UserId == userId).Select(k => k.PassphraseWrapped).SingleAsync()))
             .Should().Be("d3JhcA==");
+        (await Host.Db(db => db.UserHelps.Where(h => h.UserId == userId).Select(h => h.Version).SingleAsync())).Should().Be(3);
         (await UserExists(bot.UserId)).Should().BeFalse();
     }
 
