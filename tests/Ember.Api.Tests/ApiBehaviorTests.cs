@@ -234,4 +234,23 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         kept.GetProperty("secondReminderMinutes").GetInt32().Should().Be(30);
         kept.GetProperty("graceDaysPerWeek").GetInt32().Should().Be(1);
     }
+
+    [DockerFact]
+    public async Task A_new_account_starts_with_streaks_off_and_patching_me_turns_them_on_and_off_and_only_takes_a_bool()
+    {
+        var user = await Host.SignedInAsync();
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("showStreaks").GetBoolean().Should().BeFalse();
+
+        var on = await (await user.Patch("/api/me", new { showStreaks = true })).ExpectJson();
+        var kept = await (await user.Patch("/api/me", new { theme = "tidepool" })).ExpectJson();
+        var word = await (await user.Patch("/api/me", new { showStreaks = "yes" })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var number = await (await user.Patch("/api/me", new { showStreaks = 1 })).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+        var off = await (await user.Patch("/api/me", new { showStreaks = false })).ExpectJson();
+
+        on.GetProperty("showStreaks").GetBoolean().Should().BeTrue();
+        kept.GetProperty("showStreaks").GetBoolean().Should().BeTrue();
+        word.GetProperty("errors").Has("showStreaks").Should().BeTrue();
+        number.GetProperty("errors").Has("showStreaks").Should().BeTrue();
+        off.GetProperty("showStreaks").GetBoolean().Should().BeFalse();
+    }
 }

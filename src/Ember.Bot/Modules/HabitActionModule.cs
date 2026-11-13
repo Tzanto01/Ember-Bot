@@ -18,6 +18,7 @@ namespace Ember.Bot.Modules;
 ///   habitaction:pause:{habitId}:{duration}   (today | 3days | 1week | resume)
 ///   habitaction:freq:{habitId}:daily
 ///   habit:grace:{days}
+///   habit:streaks:{on|off}  (sets the account's ShowStreaks and re-renders the /habit streak reply)
 ///   habit:add:modal  (modal submit)
 ///   habit:rename:modal:{habitId}  (modal submit)
 /// </summary>
@@ -259,7 +260,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         string message = duration == "resume"
             ? $"**{habit.Name}** is back on. Welcome back! 🔥"
             : $"**{habit.Name}** is paused until **{pausedUntil:MMM d}**.\n" +
-              "Reminders are off and paused days won't count against your streak. Rest well. 💙";
+              "Reminders are off while it's paused. Rest well. 💙";
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
@@ -308,7 +309,7 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
         {
             0 => "Strict mode — streaks require a check-in every single day.",
             1 => "1 flex day per week — one unlogged day won't break your streak.",
-            2 => "2 flex days per week — life happens, your streak is safe.",
+            2 => "2 flex days per week — two unlogged days won't break your streak.",
             3 => "3 flex days per week — maximum flexibility.",
             _ => ""
         };
@@ -319,6 +320,27 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
                 m.Content    = $"Flex days set to **{days}/week**. {description}";
                 m.Components = new ComponentBuilder().Build();
             });
+    }
+
+    // ── habit:streaks:{on|off} ────────────────────────────────────────────────
+
+    [ComponentInteraction("habit:streaks:*")]
+    public async Task OnStreaksAsync(string state)
+    {
+        if (state is not ("on" or "off")) { await BadIdAsync(); return; }
+
+        await _habits.SetShowStreaksAsync(Context.User.Id, state == "on");
+        var (pages, toggle) = await HabitModule.RenderStatsAsync(_habits, Context.User.Id);
+
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content    = pages.Count == 0 ? HabitModule.NoStatsText : null;
+                m.Embeds     = pages.Take(1).ToArray();
+                m.Components = pages.Count == 0 ? new ComponentBuilder().Build() : toggle;
+            });
+        foreach (var page in pages.Skip(1))
+            await FollowupAsync(embed: page, ephemeral: true);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

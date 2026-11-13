@@ -53,8 +53,9 @@ internal static class JournalEndpoints
 
             var userId = principal.UserId();
             if (!await habits.HasHealthDataConsentAsync(userId)) return Problems.ConsentRequired();
-            if (day > await habits.GetLocalTodayAsync(userId)) return Problems.DayEdit(DayEditResult.InFuture)!;
-            if ((await habits.GetDayNotesAsync(userId, day, day)).Count == 0
+            var today = await habits.GetLocalTodayAsync(userId);
+            if (day > today) return Problems.DayEdit(DayEditResult.InFuture)!;
+            if (day != today && (await habits.GetDayNotesAsync(userId, day, day)).Count == 0
                 && (await habits.GetEarliestHabitStartAsync(userId) is not { } start || day < start))
                 return Problems.DayEdit(DayEditResult.BeforeHabitStart)!;
 

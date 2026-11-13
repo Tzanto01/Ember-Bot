@@ -162,6 +162,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
         var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
         var tz     = await _habits.GetUserTzAsync(Context.User.Id);
+        var showStreaks = await _habits.GetShowStreaksAsync(Context.User.Id);
 
         if (habits.Count == 0)
         {
@@ -187,18 +188,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                 var pauseStr     = h.PausedUntil.HasValue && h.PausedUntil >= today
                     ? $" · ⏸️ paused until {h.PausedUntil:MMM d}" : "";
 
-                string progressStr;
-                if (h.FrequencyType == FrequencyType.Weekly)
-                {
-                    var (done, target) = HabitService.WeeklyProgress(h, today);
-                    progressStr = $"This week: **{done}/{target}** · Last 4 wks: **{HabitService.FlexibleStreak(h, today, 28)}/28**";
-                }
-                else
-                {
-                    var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
-                    var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-                    progressStr = $"{StreakText(streak)}{graceStr} · Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
-                }
+                var progressStr  = ListProgress(h, today, grace, lowDays, tz, showStreaks);
 
                 embed.AddField(
                     $"{todayMark} {h.Name}{pauseStr} _({FrequencyLabel(h)})_",
@@ -256,20 +246,41 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("streak", "See your personal habit stats")]
     public async Task StreakAsync()
     {
-        var habits = await _habits.GetHabitsAsync(Context.User.Id);
-        var grace  = await _habits.GetGraceDaysAsync(Context.User.Id);
-        var today  = await _habits.GetLocalTodayAsync(Context.User.Id);
-        var lowDays = await _habits.GetLowDaysAsync(Context.User.Id);
-        var tz     = await _habits.GetUserTzAsync(Context.User.Id);
+        var (pages, toggle) = await RenderStatsAsync(_habits, Context.User.Id);
 
-        if (habits.Count == 0)
+        if (pages.Count == 0)
         {
-            await RespondAsync("No habits tracked yet. Use `/habit add` to begin!", ephemeral: true);
+            await RespondAsync(NoStatsText, ephemeral: true);
             return;
         }
 
+        await RespondAsync(embed: pages[0], components: toggle, ephemeral: true);
+        foreach (var page in pages.Skip(1))
+            await FollowupAsync(embed: page, ephemeral: true);
+    }
+
+    internal const string NoStatsText = "No habits tracked yet. Use `/habit add` to begin!";
+
+    /// <summary>
+    /// The <c>/habit streak</c> reply: one stats embed per page of habits (none without habits) and the button that flips
+    /// <see cref="User.ShowStreaks"/> ("habit:streaks:on" / "habit:streaks:off"). With streaks off the stats have no streak lines.
+    /// </summary>
+    internal static async Task<(List<Embed> Pages, MessageComponent Toggle)> RenderStatsAsync(HabitService service, ulong userId)
+    {
+        var habits = await service.GetHabitsAsync(userId);
+        var grace  = await service.GetGraceDaysAsync(userId);
+        var today  = await service.GetLocalTodayAsync(userId);
+        var lowDays = await service.GetLowDaysAsync(userId);
+        var tz     = await service.GetUserTzAsync(userId);
+        var showStreaks = await service.GetShowStreaksAsync(userId);
+
+        var toggle = new ComponentBuilder()
+            .WithButton(showStreaks ? "Hide streaks" : "Show streaks", $"habit:streaks:{(showStreaks ? "off" : "on")}", ButtonStyle.Secondary)
+            .Build();
+
         const int pageSize = 6;
         var pages = (int)Math.Ceiling(habits.Count / (double)pageSize);
+        var embeds = new List<Embed>();
 
         for (int page = 0; page < pages; page++)
         {
@@ -291,6 +302,14 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                         $"This week: **{done}/{target}**\n" +
                         $"Last 28 days: **{last28}/28** · Total: **{total}**";
                 }
+                else if (!showStreaks)
+                {
+                    var last7  = HabitService.FlexibleStreak(h, today, 7, lowDays, tz);
+                    var last30 = HabitService.FlexibleStreak(h, today, 30, lowDays, tz);
+                    statsText =
+                        $"Last 7: **{last7}/7** · Last 30: **{last30}/30**\n" +
+                        $"Total: **{h.Logs.Count(l => l.Completed)}**";
+                }
                 else
                 {
                     var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
@@ -311,13 +330,29 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                     inline: true);
             }
 
-            embed.WithFooter($"Flex days: {grace}/week · Every check-in counts, no matter the gap.");
-
-            if (page == 0)
-                await RespondAsync(embed: embed.Build(), ephemeral: true);
-            else
-                await FollowupAsync(embed: embed.Build(), ephemeral: true);
+            embed.WithFooter(showStreaks
+                ? $"Flex days: {grace}/week · Every check-in counts, no matter the gap."
+                : "Every check-in counts, no matter the gap.");
+            embeds.Add(embed.Build());
         }
+
+        return (embeds, toggle);
+    }
+
+    /// <summary>The <c>/habit list</c> progress line of <paramref name="h"/>; without <paramref name="showStreaks"/> it has no streak.</summary>
+    internal static string ListProgress(Habit h, DateOnly today, int grace, IReadOnlySet<DateOnly> lowDays, TimeZoneInfo tz, bool showStreaks)
+    {
+        if (h.FrequencyType == FrequencyType.Weekly)
+        {
+            var (done, target) = HabitService.WeeklyProgress(h, today);
+            return $"This week: **{done}/{target}** · Last 4 wks: **{HabitService.FlexibleStreak(h, today, 28)}/28**";
+        }
+
+        var last7 = $"Last 7: **{HabitService.FlexibleStreak(h, today, 7, lowDays, tz)}/7**";
+        if (!showStreaks) return last7;
+        var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
+        var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
+        return $"{StreakText(streak)}{graceStr} · {last7}";
     }
 
     // ── /habit share ──────────────────────────────────────────────────────────
@@ -394,7 +429,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
 
     // ── /habit pause ──────────────────────────────────────────────────────────
 
-    [SlashCommand("pause", "Pause a habit temporarily — reminders stop and streak is protected")]
+    [SlashCommand("pause", "Pause a habit temporarily — reminders stop while it's paused")]
     public async Task PauseAsync()
     {
         var habits = await _habits.GetHabitsAsync(Context.User.Id);
