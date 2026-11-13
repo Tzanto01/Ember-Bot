@@ -17,9 +17,12 @@ import type {
 import type { DroppedNote, ResealResult } from '../offline-queue';
 import { ApiError, asApiError } from '../problem';
 import { Store } from '../store';
+import type { HelpsList } from '../helps/types';
 import {
+  decryptHelps,
   decryptMood,
   decryptNote,
+  encryptHelps,
   encryptMood,
   encryptNote,
   importJournalKey,
@@ -231,6 +234,20 @@ export class JournalService implements JournalApi {
     const stored = await this.api.updateMood(id, body);
     this.bump();
     return this.readMood(stored, key);
+  }
+
+  /**
+   * The "What helps me" list sealed as the API's `encrypted` string (the day-note envelope as JSON text). Throws
+   * `JournalLockedError` unless the private journal is on, not turning off, and unlocked.
+   */
+  async sealHelps(list: HelpsList): Promise<string> {
+    return JSON.stringify(await encryptHelps(this.helpsKey(), list));
+  }
+
+  /** The "What helps me" list from the API's `encrypted` string. Same conditions as {@link sealHelps}. */
+  openHelps(encrypted: string): Promise<HelpsList> {
+    const key = this.helpsKey();
+    return decryptHelps(key, JSON.parse(encrypted) as EncryptedBlob);
   }
 
   restore(): Promise<void> {
@@ -651,6 +668,12 @@ export class JournalService implements JournalApi {
     const me = this.session.me.get();
     if (!me) throw new Error('Not signed in.');
     return me;
+  }
+
+  private helpsKey(): CryptoKey {
+    const me = this.session.me.get();
+    if (!me?.journal.encrypted || me.journal.turningOff) throw new JournalLockedError();
+    return this.requireKey();
   }
 
   private requireKey(): CryptoKey {

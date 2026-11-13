@@ -13,6 +13,7 @@ import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { JournalLockedError } from '@/lib/journal/types';
 import { formatDate } from '@/lib/local-date';
+import { hasMoments } from '@/lib/moment/moments';
 import type { DayNote, LocalDateString, MoodKey } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { auth, offlineQueue } from '@/lib/services';
@@ -363,6 +364,11 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
             </Button>
           )}
         </div>
+        {hasMoments(note?.text ?? null) && (
+          <div>
+            <TapLink to="/moments">{t('journal.yourMoments')}</TapLink>
+          </div>
+        )}
       </form>
     );
   }

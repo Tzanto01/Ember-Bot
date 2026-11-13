@@ -196,6 +196,7 @@ export const routes: RouteObject[] = [
           { path: 'routines/:id/edit', ...page('title.routineEdit', () => import('./pages/routine-edit')) },
           { path: 'settings/:group?', ...page('title.settings', () => import('./pages/settings')) },
           { path: 'whats-new', ...page('title.whatsNew', () => import('./pages/whats-new')) },
+          { path: 'moments', ...page('title.moments', () => import('./pages/moments')) },
           { path: 'link/merge', ...page('title.linkMerge', () => import('./pages/link-merge')) },
         ],
       },

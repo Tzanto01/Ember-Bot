@@ -408,6 +408,21 @@ export class ApiClient {
     return this.http.request('DELETE', '/api/me/journal-key', { body });
   }
 
+  /** `GET /api/me/helps` (v1.17): the encrypted "What helps me" list, or null when there is none (404). */
+  async getHelps(): Promise<{ encrypted: string; version: number } | null> {
+    try {
+      return await this.http.request<{ encrypted: string; version: number }>('GET', '/api/me/helps');
+    } catch (error) {
+      if (asApiError(error).status === 404) return null;
+      throw error;
+    }
+  }
+
+  /** `PUT /api/me/helps` (v1.17): `version` as last read (0 for none); 409 `conflict` on a mismatch or with the private journal off. */
+  putHelps(body: { encrypted: string; version: number }): Promise<{ version: number }> {
+    return this.http.request('PUT', '/api/me/helps', { body });
+  }
+
   /** `GET /api/me/2fa`. */
   twoFactorStatus(): Promise<TwoFactorStatus> {
     return this.http.request('GET', '/api/me/2fa');

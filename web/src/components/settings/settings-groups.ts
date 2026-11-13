@@ -45,7 +45,7 @@ export const settingsGroups: SettingsGroup[] = [
     cards: ['appearance'],
     summaryKey: 'settings.group.appearanceSummary',
   },
-  { slug: 'privacy', nameKey: 'settings.group.privacy', icon: Lock, cards: ['journal', 'export', 'delete'] },
+  { slug: 'privacy', nameKey: 'settings.group.privacy', icon: Lock, cards: ['journal', 'moments', 'helps', 'export', 'delete'] },
   {
     slug: 'feedback',
     nameKey: 'settings.group.feedback',

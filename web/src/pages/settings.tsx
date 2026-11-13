@@ -12,7 +12,7 @@ import {
 import { flushSync } from 'react-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { BusyButton } from '@/components/auth/busy-button';
+import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
 import { DestinationName, reminderDestinationsKey } from '@/components/habits/device-reminders';
@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/page-header';
 import { ColorSchemePicker } from '@/components/settings/color-scheme-picker';
 import { LanguagePicker } from '@/components/settings/language-picker';
 import { FeedbackForm } from '@/components/settings/feedback-form';
+import { HelpsSettings } from '@/components/settings/helps-settings';
 import { JournalSettings } from '@/components/settings/journal-settings';
 import { ReminderNamesSetting } from '@/components/settings/reminder-names-setting';
 import { settingsGroupOf, settingsGroups } from '@/components/settings/settings-groups';
@@ -578,8 +579,10 @@ export default function SettingsPage() {
           { id: 'two-factor', title: t('settings.card.twoFactor') },
           { id: 'discord', title: 'Discord' },
           { id: 'journal', title: t('settings.card.journal') },
-          { id: 'export', title: t('settings.card.export') },
+          { id: 'moments', title: t('settings.card.moments') },
         ]),
+    { id: 'helps', title: t('settings.card.helps') },
+    ...(local ? [] : [{ id: 'export', title: t('settings.card.export') }]),
     { id: 'delete', title: local ? t('settings.card.deleteDevice') : t('settings.card.deleteAccount') },
     { id: 'feedback', title: t('settings.card.feedback') },
     { id: 'help', title: t('settings.card.help') },
@@ -1252,6 +1255,21 @@ export default function SettingsPage() {
             {shown('journal') && (
               <SettingsCard id="journal" title={title('journal')}>
                 <JournalSettings me={me} />
+              </SettingsCard>
+            )}
+
+            {shown('moments') && (
+              <SettingsCard id="moments" title={title('moments')}>
+                <p>{t('settings.moments.intro')}</p>
+                <div>
+                  <TapLink to="/moments">{t('settings.moments.open')}</TapLink>
+                </div>
+              </SettingsCard>
+            )}
+
+            {shown('helps') && (
+              <SettingsCard id="helps" title={title('helps')}>
+                <HelpsSettings />
               </SettingsCard>
             )}
 

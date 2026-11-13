@@ -179,6 +179,9 @@ export function Reflect({
             <Check aria-hidden className="mt-[3px] size-[18px] shrink-0" />
             <p>{momentCopy.saved}</p>
           </div>
+          <div>
+            <TapLink to="/moments">{momentCopy.yourMoments}</TapLink>
+          </div>
           {done}
         </>
       ) : saveCase === 'checking' ? (
