@@ -34,7 +34,7 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
         var description =
             "Your habit names, check-ins, low days, day notes and moods can say something about your health " +
             "(think \"take my meds\" or \"sleep 8 hours\"). " +
-            "Ember stores them only to run your habit tracker for you. They're never shared or sold.\n\n" +
+            "Ember stores them only to run Ember for you. They're never sold or used for ads, and reach only the services that run Ember, like Discord. The privacy policy lists them.\n\n" +
             "Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.";
 
         if (config[PolicyUrlKey] is { Length: > 0 } url)
