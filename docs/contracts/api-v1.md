@@ -604,7 +604,7 @@ Additive. Older clients keep working (they ignore `showStreaks` and keep showing
 ## Language v1.17
 
 - `Me` gains `"language": "en" | "de"`. `PATCH /api/me` accepts `language?` (`en` or `de`; anything else → 400 `validation` on `language`; absent leaves it unchanged). Export `settings.language`; import optional.
-- Stored as `User.Language` (non-null, default `en`; the migration sets `en` for existing rows). A new account takes it from the sign-up request's `Accept-Language` (any `de` or `de-*` first match → `de`, else `en`); an account the Discord bot creates takes it from the interaction's `UserLocale` the same way.
+- Stored as `User.Language` (non-null, default `en`; the migration sets `en` for existing rows). A new account takes it from the sign-up request's `language` field when given (`en` or `de`; the email sign-up and Discord sign-in requests accept it), else from its `Accept-Language` (any `de` or `de-*` first match → `de`, else `en`); an account the Discord bot creates takes it from the interaction's `UserLocale` the same way.
 - The server uses `User.Language` for everything it writes to the user: emails (sign-up code, confirmation, password reset, and any other mail to the user), web push and phone reminder texts, the Discord bot's replies, DMs, reminders, weekly summary and share card. Mail before an account exists (none today) would use `Accept-Language`. The operator's feedback digest stays English.
 - Validation messages in 400 responses stay English; clients show their own translated text for known errors.
 
