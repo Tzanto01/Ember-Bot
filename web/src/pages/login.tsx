@@ -123,7 +123,7 @@ function TwoFactorStep({
           </FormField>
         )}
         <div>
-          <Button type="button" variant="link" className="px-0" onClick={toggle}>
+          <Button type="button" variant="link" className="px-0 text-left [overflow-wrap:anywhere]" onClick={toggle}>
             {useRecovery ? t('login.twoFactor.useApp') : t('login.twoFactor.useRecovery')}
           </Button>
         </div>

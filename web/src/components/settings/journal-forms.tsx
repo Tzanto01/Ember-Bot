@@ -344,7 +344,7 @@ export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: bo
         </FormField>
       )}
       <div>
-        <Button type="button" variant="link" className="px-0" onClick={toggle}>
+        <Button type="button" variant="link" className="px-0 text-left [overflow-wrap:anywhere]" onClick={toggle}>
           {useRecovery ? t('journalSettings.unlock.usePassphrase') : t('journalSettings.unlock.useRecovery')}
         </Button>
       </div>

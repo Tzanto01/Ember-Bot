@@ -190,7 +190,7 @@ export function JournalSettings({ me }: { me: Me }) {
               }
             />
             <div>
-              <Button type="button" variant="link" className="px-0" onClick={() => open('discard')}>
+              <Button type="button" variant="link" className="px-0 text-left [overflow-wrap:anywhere]" onClick={() => open('discard')}>
                 {t('journalSettings.lostBoth')}
               </Button>
             </div>

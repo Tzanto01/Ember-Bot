@@ -23,7 +23,7 @@ export function CopyButton({ text, children }: { text: string; children?: string
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button type="button" variant="secondary" onClick={() => void copy()}>
+      <Button type="button" variant="secondary" className="[overflow-wrap:anywhere]" onClick={() => void copy()}>
         <Copy aria-hidden />
         {children ?? t('twoFactor.copy')}
       </Button>

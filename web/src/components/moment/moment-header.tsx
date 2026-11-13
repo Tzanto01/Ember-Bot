@@ -74,7 +74,7 @@ export function MomentHeader({
         >
           <p id={`${confirmId}-question`}>{momentCopy.leaveDraft}</p>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={keepWriting}>
+            <Button type="button" variant="secondary" className="[overflow-wrap:anywhere]" onClick={keepWriting}>
               {momentCopy.keepWriting}
             </Button>
             <Button type="button" variant="outline" onClick={onLeave}>

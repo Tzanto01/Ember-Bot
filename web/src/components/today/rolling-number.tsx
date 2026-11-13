@@ -12,7 +12,7 @@ export function RollingNumber({ value, roll }: { value: number; roll: boolean })
   const reduce = useReducedMotion();
   const duration = roll && !reduce ? themeSeconds('--ember-dur', 0.22) : 0;
   return (
-    <span className="relative inline-flex overflow-hidden">
+    <span className="relative inline-flex shrink-0 overflow-hidden">
       <AnimatePresence initial={false} mode="popLayout" custom={duration}>
         <motion.span
           key={value}

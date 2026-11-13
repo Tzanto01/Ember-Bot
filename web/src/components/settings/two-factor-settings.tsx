@@ -326,7 +326,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
           />
         ) : (
           <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="secondary" onClick={() => setMode('regenerate')}>
+            <Button type="button" variant="secondary" className="[overflow-wrap:anywhere]" onClick={() => setMode('regenerate')}>
               {t('twoFactor.regenerate')}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setMode('disable')}>
