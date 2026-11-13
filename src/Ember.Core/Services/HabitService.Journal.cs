@@ -171,7 +171,7 @@ public partial class HabitService
     }
 
     /// <summary>
-    /// Deletes the key. With <paramref name="discardEncrypted"/>, first deletes every encrypted day note and own mood, in one transaction;
+    /// Deletes the key and the "What helps me" list. With <paramref name="discardEncrypted"/>, first deletes every encrypted day note and own mood, in one transaction;
     /// without it, returns false and deletes nothing while any encrypted entry or mood remains.
     /// </summary>
     public async Task<bool> DeleteJournalKeyAsync(Guid userId, bool discardEncrypted)
@@ -188,6 +188,7 @@ public partial class HabitService
             return false;
         }
 
+        await _db.UserHelps.Where(h => h.UserId == userId).ExecuteDeleteAsync();
         await _db.JournalKeys.Where(k => k.UserId == userId).ExecuteDeleteAsync();
         await transaction.CommitAsync();
         return true;

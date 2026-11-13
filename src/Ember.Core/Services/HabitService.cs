@@ -696,7 +696,7 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
-    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods and journal key (reminders live on the habits and routines).</summary>
+    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods, journal key and "What helps me" list (reminders live on the habits and routines).</summary>
     public async Task DeleteUserDataAsync(Guid userId)
     {
         await _db.Users
@@ -833,6 +833,14 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.Language, language));
     }
 
+    /// <summary>Sets <see cref="User.CalmMode"/>.</summary>
+    public async Task SetCalmModeAsync(Guid userId, bool calmMode)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.CalmMode, calmMode));
+    }
+
     public async Task SetThemeAsync(Guid userId, string theme)
     {
         await _db.Users
@@ -870,7 +878,7 @@ public partial class HabitService
 
     /// <summary>
     /// The user with their logins, push subscriptions, phones, every habit, log, day mark, routine, journal entry and own mood, and the
-    /// journal key (untracked), or null when Ember stores nothing about them.
+    /// journal key and "What helps me" list (untracked), or null when Ember stores nothing about them.
     /// </summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
@@ -884,6 +892,7 @@ public partial class HabitService
             .Include(u => u.DayNotes)
             .Include(u => u.Moods)
             .Include(u => u.JournalKey)
+            .Include(u => u.Helps)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.Id == userId);
 

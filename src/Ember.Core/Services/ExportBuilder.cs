@@ -9,8 +9,8 @@ namespace Ember.Core.Services;
 /// <summary>
 /// Builds a user's complete data export (GDPR Art. 15/20): settings, every habit (including habits
 /// without logs), every log, every day mark, every push subscription endpoint, every registered phone, every routine, journal entry and own mood,
-/// and the wrapped private-journal key. Expects <see cref="User.Habits"/>, each habit's logs, <see cref="User.DayMarks"/>,
-/// <see cref="User.Routines"/>, <see cref="User.DayNotes"/>, <see cref="User.Moods"/> and <see cref="User.JournalKey"/> to be loaded.
+/// the wrapped private-journal key and the encrypted "What helps me" list. Expects <see cref="User.Habits"/>, each habit's logs, <see cref="User.DayMarks"/>,
+/// <see cref="User.Routines"/>, <see cref="User.DayNotes"/>, <see cref="User.Moods"/>, <see cref="User.JournalKey"/> and <see cref="User.Helps"/> to be loaded.
 /// The JSON document is also the import format.
 /// </summary>
 public static class ExportBuilder
@@ -22,7 +22,8 @@ public static class ExportBuilder
     /// <c>mood_id</c>, <c>label</c>, <c>emoji</c>, <c>archived</c> (mood); <c>cipher_version</c>, <c>cipher_iv</c>, <c>cipher_text</c>
     /// (encrypted day_note or mood); <c>version</c>, <c>turning_off</c>, <c>passphrase_salt</c>, <c>passphrase_iterations</c>,
     /// <c>passphrase_iv</c>, <c>passphrase_wrapped</c>, <c>recovery_salt</c>, <c>recovery_iv</c>, <c>recovery_wrapped</c> (journal_key);
-    /// <c>second_reminder_minutes</c> (settings); <c>enabled</c> (push_subscription, phone); <c>show_streaks</c> (settings). <c>reminder_exclusions</c> joins a habit's or
+    /// <c>second_reminder_minutes</c> (settings); <c>enabled</c> (push_subscription, phone); <c>show_streaks</c>, <c>language</c>, <c>calm_mode</c> (settings);
+    /// <c>helps_encrypted</c> (helps). <c>reminder_exclusions</c> joins a habit's or
     /// routine's excluded reminder destination ids with <c>;</c>.
     /// </summary>
     public const string CsvHeader =
@@ -34,7 +35,7 @@ public static class ExportBuilder
         "two_factor_enabled,days,times_per_day,routine_id,count,routine_position,text,mood,mood_id,label,emoji,archived," +
         "cipher_version,cipher_iv,cipher_text,version,turning_off," +
         "passphrase_salt,passphrase_iterations,passphrase_iv,passphrase_wrapped,recovery_salt,recovery_iv,recovery_wrapped," +
-        "second_reminder_minutes,enabled,show_streaks";
+        "second_reminder_minutes,enabled,show_streaks,language,calm_mode,helps_encrypted";
 
     private static readonly string[] CsvColumns = CsvHeader.Split(',');
 
@@ -56,7 +57,7 @@ public static class ExportBuilder
         string Timezone, int GraceDaysPerWeek, string? Theme,
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
         DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn, bool TwoFactorEnabled,
-        int SecondReminderMinutes, bool ShowStreaks);
+        int SecondReminderMinutes, bool ShowStreaks, string Language, bool CalmMode);
 
     /// <summary>
     /// One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderExclusions</c> lists the reminder destination ids (<c>discord</c>, <c>browser-…</c>, <c>phone-…</c>) the habit does not remind on.
@@ -113,11 +114,14 @@ public static class ExportBuilder
     /// <summary>The account's email (null for accounts created through Discord) and Discord ID (a string, null when not linked).</summary>
     public sealed record AccountRecord(string? Email, string? DiscordId);
 
-    /// <summary>The JSON export document. <c>JournalKey</c> is null while the private journal is off.</summary>
+    /// <summary>
+    /// The JSON export document. <c>JournalKey</c> is null while the private journal is off. <c>HelpsEncrypted</c> is the "What helps me"
+    /// ciphertext as stored, or null when there is none.
+    /// </summary>
     public sealed record ExportDocument(SettingsRecord Settings, List<HabitRecord> Habits, List<LogRecord> Logs, List<DayMarkRecord> DayMarks,
         AccountRecord? Account = null, List<PushSubscriptionRecord>? PushSubscriptions = null,
         List<RoutineRecord>? Routines = null, List<DayNoteRecord>? DayNotes = null, List<MoodRecord>? Moods = null,
-        JournalKeyRecord? JournalKey = null, List<PhoneRecord>? Phones = null)
+        JournalKeyRecord? JournalKey = null, List<PhoneRecord>? Phones = null, string? HelpsEncrypted = null)
     {
         /// <summary>The export format version (<see cref="CurrentFormatVersion"/>), written first.</summary>
         [JsonPropertyOrder(-1)]
@@ -129,7 +133,7 @@ public static class ExportBuilder
     /// <see cref="ExportDocument.PushSubscriptions"/> needs <see cref="User.PushSubscriptions"/>, <see cref="ExportDocument.Phones"/>
     /// needs <see cref="User.ReminderPhones"/>.
     /// With <paramref name="forDiscord"/> it holds only what the bot shows (settings, habits, logs, day marks and routines):
-    /// account, push subscriptions, phones, day notes, moods and the journal key are left out.
+    /// account, push subscriptions, phones, day notes, moods, the journal key and the "What helps me" list are left out.
     /// </summary>
     public static ExportDocument BuildDocument(User user, bool forDiscord = false)
     {
@@ -139,7 +143,7 @@ public static class ExportBuilder
             new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.Theme,
                 user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
                 AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn, user.TwoFactorEnabled,
-                user.SecondReminderMinutes, user.ShowStreaks),
+                user.SecondReminderMinutes, user.ShowStreaks, user.Language, user.CalmMode),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
@@ -175,7 +179,8 @@ public static class ExportBuilder
             full
                 ? user.ReminderPhones.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
                     .Select(p => new PhoneRecord(p.Label, p.Enabled, DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc))).ToList()
-                : null);
+                : null,
+            full ? user.Helps?.Encrypted : null);
     }
 
     private static EncryptedRecord? Encrypted(int? version, string? iv, string? ct)
@@ -188,7 +193,7 @@ public static class ExportBuilder
     /// One CSV file with <see cref="CsvHeader"/> columns: a <c>settings</c> row, one <c>habit</c> row per habit,
     /// one <c>log</c> row per log, one <c>day_mark</c> row per day mark, one <c>push_subscription</c> row per push subscription,
     /// one <c>phone</c> row per registered phone, one <c>routine</c> row per routine, one <c>day_note</c> row per journal entry, one <c>mood</c> row per own mood and a
-    /// <c>journal_key</c> row when the private journal is on (reminder exclusions and a habit's reminder times are joined with <c>;</c>); columns that don't apply to a record type are empty.
+    /// <c>journal_key</c> row when the private journal is on and a <c>helps</c> row when there is a "What helps me" list (reminder exclusions and a habit's reminder times are joined with <c>;</c>); columns that don't apply to a record type are empty.
     /// Cells starting with a formula character are prefixed with <c>'</c> so spreadsheets don't evaluate them, except the base64
     /// cipher and journal key columns, which are written verbatim. See <see cref="BuildDocument"/> for <paramref name="forDiscord"/>.
     /// </summary>
@@ -205,7 +210,7 @@ public static class ExportBuilder
             ("consent_policy_version", s.ConsentPolicyVersion ?? ""), ("consent_prompted_on", Date(s.ConsentPromptedOn)),
             ("email", doc.Account?.Email ?? ""), ("discord_id", doc.Account?.DiscordId ?? ""),
             ("two_factor_enabled", Bool(s.TwoFactorEnabled)), ("second_reminder_minutes", Num(s.SecondReminderMinutes)),
-            ("show_streaks", Bool(s.ShowStreaks)));
+            ("show_streaks", Bool(s.ShowStreaks)), ("language", s.Language), ("calm_mode", Bool(s.CalmMode)));
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", ("habit_id", Num(h.Id)), ("name", h.Name), ("frequency", h.Frequency),
@@ -247,6 +252,9 @@ public static class ExportBuilder
                 ("passphrase_salt", k.Passphrase.Salt), ("passphrase_iterations", Num(k.Passphrase.Iterations)),
                 ("passphrase_iv", k.Passphrase.Iv), ("passphrase_wrapped", k.Passphrase.Wrapped),
                 ("recovery_salt", k.Recovery.Salt), ("recovery_iv", k.Recovery.Iv), ("recovery_wrapped", k.Recovery.Wrapped));
+
+        if (doc.HelpsEncrypted is { } helps)
+            AppendRow(csv, "helps", ("helps_encrypted", helps));
 
         return csv.ToString();
     }
