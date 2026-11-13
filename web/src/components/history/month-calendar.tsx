@@ -76,7 +76,7 @@ export function MonthCalendar({
         <table
           aria-labelledby="month-heading"
           aria-busy={loading || undefined}
-          className="isolate -mx-[4px] w-[calc(100%+8px)] max-w-[424px] table-fixed sm:mx-auto [border-collapse:separate] [border-spacing:4px] [--day-gap:4px] aria-busy:opacity-60 max-[359px]:[border-spacing:2px] max-[359px]:[--day-gap:2px] md:mx-auto md:w-auto"
+          className="isolate -mx-[4px] w-[calc(100%+8px)] max-w-[424px] table-fixed sm:mx-auto [border-collapse:separate] [border-spacing:4px] [--day-gap:4px] aria-busy:opacity-60 max-[359px]:mx-0 max-[359px]:w-full max-[359px]:[border-spacing:2px] max-[359px]:[--day-gap:2px] md:mx-auto md:w-auto"
         >
           <thead>
             <tr>

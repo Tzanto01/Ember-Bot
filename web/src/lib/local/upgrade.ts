@@ -8,7 +8,7 @@ import { earliestStart, exportDocument } from './backend';
 import type { LocalMode } from './mode';
 import type { LocalStore } from './store';
 import type { LocalData, LocalMood, LocalNote, UpgradeApi, UpgradeProgress, UpgradeResult, UpgradeSummary } from './types';
-import { currentLanguage, t } from '../i18n';
+import { deviceLanguage, t } from '../i18n';
 
 const conflictCopy = () => t('upgrade.error.conflict');
 
@@ -152,13 +152,15 @@ export class UpgradeService implements UpgradeApi {
         if (!landed) {
           if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy() };
           const { profile } = data;
-          await this.api.updateMe({
+          const updated = await this.api.updateMe({
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
             showStreaks: profile.showStreaks ?? true,
-            language: currentLanguage(),
+            language: deviceLanguage(),
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
+          const current = this.auth.me.get();
+          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language });
           await save({ importSent: true, journalOmitted: omit });
           try {
             await this.api.importData(importDocument(data, !omit));

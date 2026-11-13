@@ -6,6 +6,7 @@ import i18n from '@/lib/i18n';
 afterEach(async () => {
   cleanup();
   await i18n.changeLanguage('en');
+  localStorage.removeItem('ember.language');
   document.documentElement.lang = '';
 });
 

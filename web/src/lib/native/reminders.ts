@@ -261,7 +261,8 @@ export class Reminders {
         };
     const plan = planReminders(habits, timeZone, now, routines, secondMinutes, target);
     const names = reminderNames.get();
-    if (this.channelLanguage !== currentLanguage()) {
+    const language = currentLanguage();
+    if (this.channelLanguage !== language) {
       await plugin.createChannel({
         id: channelId,
         name: t('reminders.channelName'),
@@ -273,7 +274,7 @@ export class Reminders {
           { id: doneActionType, actions: [{ id: doneAction, title: t('reminders.done'), foreground: true }] },
         ],
       });
-      this.channelLanguage = currentLanguage();
+      this.channelLanguage = language;
     }
     if (!plan.length || !(await this.allowed(plugin))) {
       localStorage.removeItem(plannedKey);

@@ -61,7 +61,7 @@ export function CrisisLines() {
                   key={number}
                   href={`tel:${number.replace(/[^\d+]/g, '')}`}
                   aria-label={t('crisis.call', { name: line.name, number })}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[18px] font-semibold whitespace-nowrap text-secondary-foreground no-underline"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[18px] font-semibold max-w-full text-secondary-foreground no-underline"
                 >
                   <Phone aria-hidden className="size-[18px] shrink-0" />
                   {number}

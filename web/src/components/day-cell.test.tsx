@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { formatDate } from '@/lib/local-date';
 import type { DayState } from '@/lib/models';
+import { inGerman } from '@/test-utils';
 import { DayCell, joinsRun } from './day-cell';
 
 const longDate = (date: string) => formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -20,6 +21,13 @@ describe('DayCell', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveAccessibleName(`${longDate('2026-10-28')}, ${words}`);
     expect(button.getAttribute('aria-label')).not.toMatch(/missed/i);
+  });
+
+  it('names the day with the German weekday and month in German', async () => {
+    await inGerman();
+    render(<DayCell state="done" date="2026-10-28" onSelect={() => {}} />);
+
+    expect(screen.getByRole('button')).toHaveAccessibleName(expect.stringMatching(/^Mittwoch, 28\. Oktober/));
   });
 
   it('prefixes "today, " and marks the current date', () => {

@@ -5,7 +5,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { CrisisLines } from '@/components/moment/crisis-lines';
 import { MomentDoor } from '@/components/moment/moment-door';
-import momentDe from '@/locales/de.json';
+import localeDe from '@/locales/de.json';
+import localeEn from '@/locales/en.json';
 import { momentCopy } from '@/lib/moment/copy';
 import type { CrisisLine } from '@/lib/moment/region';
 import type { MomentState, Practice } from '@/lib/moment/types';
@@ -250,17 +251,21 @@ describe('claims wordlist', () => {
     expect(germanClaimsIn(strings(crisisLinesDe))).toEqual([]);
   });
 
+  it('finds no claim words in any English or German app string', () => {
+    expect(claimsIn(strings(localeEn).map((text) => text.replace(/\bhealth\b/gi, ' ')))).toEqual([]);
+    expect(germanClaimsIn(strings(localeDe))).toEqual([]);
+  });
+
   it('finds no claim words in the moment copy', () => {
     const texts = copyStrings();
     expect(texts.length).toBeGreaterThan(50);
     expect(claimsIn(texts)).toEqual([]);
   });
 
-  it('finds no claim words in the German moment copy', async () => {
-    expect(germanClaimsIn(strings(momentDe))).toEqual([]);
+  it('finds no claim words in the German moment copy as rendered', async () => {
     await inGerman();
     const texts = copyStrings();
-    expect(texts).toContain(momentDe['moment.leave']);
+    expect(texts).toContain(localeDe['moment.leave']);
     expect(germanClaimsIn(texts)).toEqual([]);
   });
 

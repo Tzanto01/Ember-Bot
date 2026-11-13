@@ -90,6 +90,23 @@ describe('LocalBackend through ApiClient', () => {
     expect(cleared.today.state).toBe('pending');
   });
 
+  it('stores a language choice on the device, reads it back as the profile language and rejects anything but en or de', async () => {
+    await store.replace(seed());
+    vi.stubGlobal('navigator', { languages: ['en-GB'], language: 'en-GB' });
+
+    expect((await api.getMe()).language).toBe('en');
+    expect((await api.updateMe({ language: 'de' })).language).toBe('de');
+    expect(localStorage.getItem('ember.language')).toBe('de');
+    expect((await api.getMe()).language).toBe('de');
+
+    const bad = await rejection(api.updateMe({ language: 'fr' } as never));
+    expect(bad.status).toBe(400);
+    expect(bad.type).toBe('validation');
+    expect(bad.problem?.errors?.['language']).toBeTruthy();
+    expect(localStorage.getItem('ember.language')).toBe('de');
+    localStorage.clear();
+  });
+
   it('answers bad input with the problem types the screens read', async () => {
     await store.replace(seed([localHabit(1, { timesPerDay: 2 })]));
 

@@ -6,7 +6,7 @@ import type { OfflineCache } from './http';
 import type { Habit, Me } from './models';
 import { listenForMoment, takeMomentLaunch } from './native/moment-launch';
 import { capacitorWidget } from './native/widget';
-import { applyLanguage, currentLanguage, deviceLanguage, isLanguage, type Language, onLanguageChange } from './i18n';
+import { applyLanguage, currentLanguage, deviceLanguage, heldLanguage, isLanguage, type Language, onLanguageChange, rememberDeviceLanguage } from './i18n';
 import { navigate } from './navigation';
 import { auth, deviceStore, deviceSync, http, localMode, push } from './services';
 import { Store } from './store';
@@ -101,13 +101,14 @@ function shareLanguage(language: Language): void {
 }
 
 /**
- * Shows the account's language when signed in (`Me.language`), else the device's, and follows every change of `me`.
- * A change rebuilds the phone's reminders so their texts follow.
+ * Shows the account's language when signed in (`Me.language`, also remembered on the device for pages that don't load the
+ * account), else the device's, and follows every change of `me`. A change rebuilds the phone's reminders so their texts follow.
  */
 function followLanguage(): void {
   const show = () => {
     const account = auth.me.get()?.language;
-    applyLanguage(isLanguage(account) ? account : deviceLanguage());
+    if (isLanguage(account) && !heldLanguage() && localMode.mode.get() !== 'local') rememberDeviceLanguage(account);
+    applyLanguage(heldLanguage() ?? (isLanguage(account) ? account : deviceLanguage()));
   };
   auth.me.subscribe(show);
   show();

@@ -37,7 +37,7 @@ async function loadDocument(file: string) {
 
 /** `/legal/privacy`, `/legal/terms`, `/legal/imprint`: the German legal text from `/legal/*.md`, its `#` heading as the `h1`. */
 export default function LegalPage({ doc }: { doc: LegalDoc }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { file, title } = documents[doc];
   const query = useQuery({ queryKey: ['legal', doc], queryFn: () => loadDocument(file), staleTime: Infinity });
   const loaded = query.data;
@@ -64,7 +64,7 @@ export default function LegalPage({ doc }: { doc: LegalDoc }) {
           <Skeleton className="h-5 w-3/5" />
         </div>
       )}
-      <p>
+      <p lang={i18n.language}>
         <TapLink to="/" className="gap-2">
           <ArrowLeft aria-hidden className="size-[18px]" />
           {t('legal.back')}

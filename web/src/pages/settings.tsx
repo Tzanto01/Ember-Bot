@@ -52,7 +52,7 @@ import { loadPage } from '@/lib/navigation';
 import { ApiError, asApiError, problemToMessage } from '@/lib/problem';
 import { api, auth, deviceSync, localMode, push, reminders } from '@/lib/services';
 import { useStore } from '@/lib/store';
-import { applyLanguage, currentLanguage, type Language, rememberDeviceLanguage, t } from '@/lib/i18n';
+import { applyLanguage, currentLanguage, heldLanguage, holdLanguage, type Language, rememberDeviceLanguage, storedLanguage, t } from '@/lib/i18n';
 import { rememberAccountTheme, type ThemeId } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
@@ -347,11 +347,15 @@ export default function SettingsPage() {
 
   function saveLanguage(language: Language): void {
     const before = currentLanguage();
+    const stored = storedLanguage();
+    holdLanguage(language);
     rememberDeviceLanguage(language);
     applyLanguage(language);
     void patch('appearance', { language }).then((error) => {
+      if (heldLanguage() !== language) return;
+      holdLanguage(null);
       if (!error) return;
-      rememberDeviceLanguage(before);
+      rememberDeviceLanguage(stored);
       applyLanguage(before);
       if (!error.handled) show('appearance', { tone: 'info', text: t('language.notSaved') });
     });

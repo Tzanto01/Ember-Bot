@@ -24,6 +24,7 @@ import { Card, cardVariants } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { env } from '@/lib/env';
+import { templateDescription, templateName } from '@/lib/local/templates';
 import type { HabitTemplate, NewHabit } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api, localMode } from '@/lib/services';
@@ -83,7 +84,7 @@ export default function HabitNewPage() {
         template
           ? {
               ...emptyHabitForm,
-              name: template.name,
+              name: templateName(template),
               frequency: template.frequency,
               weeklyTarget: template.weeklyTarget ?? 3,
               reminderTimes: [template.suggestedReminderTime],
@@ -91,7 +92,7 @@ export default function HabitNewPage() {
           : emptyHabitForm,
       );
       setTouched(false);
-      setPicked(template?.name ?? null);
+      setPicked(template ? templateName(template) : null);
       setPhoneOn(true);
       setProblem(null);
       setChosen(true);
@@ -168,8 +169,8 @@ export default function HabitNewPage() {
                     'w-full cursor-pointer gap-1 text-left transition-colors duration-[var(--ember-dur-fast)] ease-ember hover:border-ring focus-visible:border-ring',
                   )}
                 >
-                  <span className="font-display text-[18px]">{template.name}</span>
-                  <span className="text-muted-foreground">{template.description}</span>
+                  <span className="font-display text-[18px]">{templateName(template)}</span>
+                  <span className="text-muted-foreground">{templateDescription(template)}</span>
                   <span className="text-[14px] text-muted-foreground">
                     {reminders
                       ? t('habitNew.cadenceReminder', {

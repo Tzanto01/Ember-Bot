@@ -32,11 +32,24 @@ export function storedLanguage(): Language | null {
   }
 }
 
-/** Remembers the language picked on this device (`ember.language`); a failing storage is ignored. */
-export function rememberDeviceLanguage(language: Language): void {
+/** Remembers the language picked on this device (`ember.language`, null forgets it); a failing storage is ignored. */
+export function rememberDeviceLanguage(language: Language | null): void {
   try {
-    localStorage.setItem(deviceKey, language);
+    if (language) localStorage.setItem(deviceKey, language);
+    else localStorage.removeItem(deviceKey);
   } catch {}
+}
+
+let held: Language | null = null;
+
+/** Holds a language picked in Settings while it is saved, so a `me` loaded meanwhile doesn't switch back; null releases it. */
+export function holdLanguage(language: Language | null): void {
+  held = language;
+}
+
+/** The language held by {@link holdLanguage}, if any. */
+export function heldLanguage(): Language | null {
+  return held;
 }
 
 /** The device's language: the stored pick, else the first English or German entry of `navigator.languages`, else `en`. */
