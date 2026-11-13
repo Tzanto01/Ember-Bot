@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -12,6 +14,15 @@ import practicesJson from './practices.json';
 const practices = practicesJson as Practice[];
 const states: MomentState[] = ['rejected', 'overloaded', 'racing', 'replaying', 'unsure'];
 const claims = /\b(treat|cure|therap|heal|clinical|diagnos|prevent|reliev|relief|reduc|proven)\w*/i;
+const storeFile = 'mobile/STORE.md';
+const allowedClaimPhrases = [
+  { file: storeFile, phrase: 'health' },
+  { file: storeFile, phrase: 'Play may treat' },
+  { file: storeFile, phrase: 'the policy treats' },
+  { file: storeFile, phrase: 'makes no diagnosis, treatment or monitoring claim' },
+  { file: storeFile, phrase: 'Avoid "treat", "therapy", "symptom", "medication adherence" and "clinical"' },
+  { file: storeFile, phrase: 'diagnostics' },
+];
 const dizzy = 'If you feel dizzy, breathe normally.';
 
 function strings(value: unknown): string[] {
@@ -199,5 +210,27 @@ describe('claims wordlist', () => {
     expect(texts.join(' ')).toContain('crisis service');
     expect(texts.join(' ')).toContain('I need a moment');
     expect(claimsIn(texts)).toEqual([]);
+  });
+
+  it('finds no claim words in the shell, manifest, release notes, README and store listing', () => {
+    const files = [
+      'web/index.html',
+      'web/public/manifest.webmanifest',
+      'web/public/release-notes.json',
+      'README.md',
+      storeFile,
+    ];
+    const escape = (phrase: string) => phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hits: string[] = [];
+    for (const file of files) {
+      let text = readFileSync(resolve(__dirname, '../../..', file), 'utf8');
+      for (const entry of allowedClaimPhrases.filter((allowed) => allowed.file === file)) {
+        const phrase = new RegExp(escape(entry.phrase), 'gi');
+        expect(text, `${file}: stale allowlist entry ${entry.phrase}`).toMatch(phrase);
+        text = text.replace(phrase, ' ');
+      }
+      for (const match of text.match(new RegExp(claims.source, 'gi')) ?? []) hits.push(`${file}: ${match}`);
+    }
+    expect(hits).toEqual([]);
   });
 });
