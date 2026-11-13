@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Ember.Core.Models;
 using Ember.Core.Services;
@@ -14,13 +15,13 @@ namespace Ember.Bot.Services;
 public class DiscordDmReminderChannel : IReminderChannel
 {
     /// <summary>Label of the reminder's Skip button; calm, with no red mark.</summary>
-    public const string SkipLabel = "Skip for today";
+    public static string SkipLabel(Texts t) => t.Get("reminder.skip");
 
     /// <summary>Subtext added to a closed reminder whose habits are done for its day.</summary>
-    public const string LoggedLine = "-# ✅ Logged.";
+    public static string LoggedLine(Texts t) => t.Get("reminder.logged-line");
 
     /// <summary>Subtext added to a closed reminder whose habits are not all done for its day.</summary>
-    public const string ClosedLine = "-# This reminder has closed.";
+    public static string ClosedLine(Texts t) => t.Get("reminder.closed-line");
 
     private readonly IDiscordDmSender _discord;
     private readonly TimeProvider _time;
@@ -42,7 +43,7 @@ public class DiscordDmReminderChannel : IReminderChannel
     {
         if (reminder.DiscordUserId is not { } discordUserId) return DeliveryOutcome.UserNotFound;
         var (message, components) = reminder.PendingHabits is { } pending
-            ? RoutineMessage(reminder.HabitName, pending, reminder.Second)
+            ? RoutineMessage(BotTexts.For(reminder.Language), reminder.HabitName, pending, reminder.Second)
             : HabitMessage(reminder);
 
         var sent = await _discord.SendTrackedMessageAsync(discordUserId, message, components, cancellationToken);
@@ -52,24 +53,25 @@ public class DiscordDmReminderChannel : IReminderChannel
 
     private (string, MessageComponent) HabitMessage(Reminder reminder)
     {
+        var t = BotTexts.For(reminder.Language);
         var name = reminder.HabitName;
-        string intro = reminder.Snoozed
-            ? $"⏰ Snoozed reminder: **{name}**. Ready when you are!"
+        string intro = t.Format(reminder.Snoozed
+            ? "reminder.intro.snoozed"
             : reminder.RecentCompletions >= 4
-                ? $"Hey! Just a gentle nudge for **{name}**. You've been doing great 🔥"
+                ? "reminder.intro.great"
                 : reminder.RecentCompletions >= 1
-                    ? $"Hey! Reminder for **{name}**. No pressure — just showing up counts 💙"
-                    : $"Hey 👋 Checking in on **{name}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.";
+                    ? "reminder.intro.some"
+                    : "reminder.intro.fresh", name);
 
         var message = reminder.Second
-            ? $"🔔 One more nudge for **{name}**, in case the first one got buried. Did you get to it today?"
-            : $"{intro}\n\nDid you follow this habit today?";
+            ? t.Format("reminder.second", name)
+            : t.Format("reminder.habit", intro);
 
         var now = _time.GetUtcNow().ToUnixTimeSeconds();
         var components = new ComponentBuilder()
-            .WithButton("Done ✅", $"checkin:done:{reminder.HabitId}:{now}", ButtonStyle.Success)
-            .WithButton(SkipLabel, $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
-            .WithButton("Snooze 1h ⏰", $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
+            .WithButton(t.Get("reminder.done"), $"checkin:done:{reminder.HabitId}:{now}", ButtonStyle.Success)
+            .WithButton(SkipLabel(t), $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
+            .WithButton(t.Get("reminder.snooze"), $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .Build();
 
         return (message, components);
@@ -83,7 +85,7 @@ public class DiscordDmReminderChannel : IReminderChannel
     /// <summary>Keeps the habit list well under Discord's 2000-character message limit.</summary>
     private const int MaxListLength = 1500;
 
-    private (string, MessageComponent) RoutineMessage(string routineName, IReadOnlyList<RoutineHabit> pending, bool second)
+    private (string, MessageComponent) RoutineMessage(Texts t, string routineName, IReadOnlyList<RoutineHabit> pending, bool second)
     {
         var lines = new List<string>();
         var length = 0;
@@ -93,17 +95,15 @@ public class DiscordDmReminderChannel : IReminderChannel
             lines.Add(line);
             length += line.Length + 1;
         }
-        if (lines.Count < pending.Count) lines.Add($"and {pending.Count - lines.Count} more");
+        if (lines.Count < pending.Count) lines.Add(t.Format("reminder.routine.more", pending.Count - lines.Count));
         var list = string.Join("\n", lines);
-        var message = second
-            ? $"🔔 One more nudge for your **{routineName}** routine. Still open today:\n{list}"
-            : $"Hey 👋 Time for your **{routineName}** routine. Still open today:\n{list}\n\nTap Done for each one you've done. No pressure 💙";
+        var message = t.Format(second ? "reminder.routine.second" : "reminder.routine", routineName, list);
 
         var now = _time.GetUtcNow().ToUnixTimeSeconds();
         var components = new ComponentBuilder();
         foreach (var (habit, i) in pending.Take(MaxButtons).Select((h, i) => (h, i)))
         {
-            var label = $"Done: {habit.Name}";
+            var label = t.Format("reminder.routine.done-button", habit.Name);
             if (label.Length > MaxButtonLabel) label = label[..(MaxButtonLabel - 1)] + "…";
             components.WithButton(label, $"checkin:done:{habit.Id}:{now}", ButtonStyle.Success, row: i / ButtonsPerRow);
         }
@@ -137,7 +137,7 @@ public class DiscordDmReminderChannel : IReminderChannel
             foreach (var old in superseded)
             {
                 if (!await _discord.DeleteMessageAsync(old.ChannelId, old.MessageId))
-                    await _discord.CloseMessageAsync(old.ChannelId, old.MessageId, ClosedLine);
+                    await _discord.CloseMessageAsync(old.ChannelId, old.MessageId, ClosedLine(BotTexts.For(reminder.Language)));
                 await habits.DeleteReminderMessageAsync(old.Id);
             }
         }

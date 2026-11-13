@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -11,18 +12,10 @@ namespace Ember.Bot.Modules;
 /// </summary>
 public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionContext>
 {
-    internal const string AskText =
-        "Want me to send your reminders here as Discord DMs? 🔥\n" +
-        "You can change this any time in Ember's Settings.";
+    internal static string AskText(Texts t) => t.Get("discordreminders.ask");
 
-    internal const string OffText =
-        "\nDiscord reminders are off for you, so I won't DM this one. You can turn them back on in Ember's Settings or with the button in my earlier message.";
-
-    internal const string YesText =
-        "Lovely, your reminders will come here too. 💙 You can change where Ember reminds you any time in Settings.";
-
-    internal const string NoText =
-        "No problem, I won't DM you your reminders. 💙 If you change your mind, tap below or turn on Discord DMs in Settings.";
+    /// <summary>The note, on its own line, that a reminder set from Discord won't come by DM because the user said no.</summary>
+    internal static string OffText(Texts t) => "\n" + t.Get("discordreminders.off");
 
     private readonly HabitService _habits;
 
@@ -31,13 +24,13 @@ public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionCon
         _habits = habits;
     }
 
-    internal static MessageComponent AskButtons(ulong userId) => new ComponentBuilder()
-        .WithButton("Yes, remind me here", $"discordreminders:yes:{userId}", ButtonStyle.Primary)
-        .WithButton("No thanks", $"discordreminders:no:{userId}", ButtonStyle.Secondary)
+    internal static MessageComponent AskButtons(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("discordreminders.ask.yes"), $"discordreminders:yes:{userId}", ButtonStyle.Primary)
+        .WithButton(t.Get("discordreminders.ask.no"), $"discordreminders:no:{userId}", ButtonStyle.Secondary)
         .Build();
 
-    internal static MessageComponent TurnOnButton(ulong userId) => new ComponentBuilder()
-        .WithButton("Turn them on", $"discordreminders:yes:{userId}", ButtonStyle.Primary)
+    internal static MessageComponent TurnOnButton(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("discordreminders.turn-on"), $"discordreminders:yes:{userId}", ButtonStyle.Primary)
         .Build();
 
     /// <summary>Records the owner's answer only when the person clicking is that owner. Returns whether the clicker is the owner.</summary>
@@ -56,16 +49,17 @@ public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionCon
 
     private async Task AnswerAsync(string ownerIdStr, bool yes)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!await TryAnswerAsync(_habits, ownerIdStr, Context.User.Id, yes))
         {
-            await RespondAsync("This button isn't for you.", ephemeral: true);
+            await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content = yes ? YesText : NoText;
-            m.Components = yes ? new ComponentBuilder().Build() : TurnOnButton(Context.User.Id);
+            m.Content = t.Get(yes ? "discordreminders.yes" : "discordreminders.no");
+            m.Components = yes ? new ComponentBuilder().Build() : TurnOnButton(t, Context.User.Id);
         });
     }
 }

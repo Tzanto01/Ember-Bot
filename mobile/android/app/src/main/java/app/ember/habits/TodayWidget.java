@@ -219,6 +219,9 @@ public class TodayWidget extends AppWidgetProvider {
 
     private static RemoteViews views(Context context, JSONObject snapshot, int rows) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_today);
+        Context text = AppLanguage.localized(context);
+        views.setTextViewText(R.id.widget_title, text.getString(R.string.widget_name));
+        views.setTextViewText(R.id.widget_moment, text.getString(R.string.moment_label));
         Intent today = new Intent(context, MainActivity.class).setAction(ACTION_OPEN_TODAY);
         views.setOnClickPendingIntent(R.id.widget_root, open(context, 0, today));
         Intent moment = new Intent(context, MainActivity.class).setAction(MainActivity.ACTION_OPEN_MOMENT);
@@ -228,7 +231,7 @@ public class TodayWidget extends AppWidgetProvider {
         int more = snapshot == null ? 0 : Math.max(0, snapshot.optInt("more")) + (habits == null ? 0 : habits.length() - shown);
         views.setTextViewText(
             R.id.widget_empty,
-            context.getString(
+            text.getString(
                 snapshot != null
                     ? R.string.widget_nothing_today
                     : prefs(context).contains(SNAPSHOT) ? R.string.widget_stale : R.string.widget_signed_out
@@ -242,11 +245,11 @@ public class TodayWidget extends AppWidgetProvider {
                 continue;
             }
             String name = habit.optString("name");
-            String state = stateLabel(context, habit);
+            String state = stateLabel(text, habit);
             views.setViewVisibility(ROWS[i], View.VISIBLE);
             views.setTextViewText(NAMES[i], name);
             views.setTextViewText(STATE_TEXTS[i], state);
-            views.setContentDescription(ROWS[i], context.getString(R.string.widget_row_description, name, state));
+            views.setContentDescription(ROWS[i], text.getString(R.string.widget_row_description, name, state));
             Intent checkIn = new Intent(context, MainActivity.class)
                 .setAction(ACTION_CHECK_IN)
                 .putExtra("habitId", habit.optLong("id"))
@@ -256,7 +259,7 @@ public class TodayWidget extends AppWidgetProvider {
             views.setOnClickPendingIntent(ROWS[i], open(context, i + 1, checkIn));
         }
         views.setViewVisibility(R.id.widget_more, more > 0 ? View.VISIBLE : View.GONE);
-        views.setTextViewText(R.id.widget_more, context.getString(R.string.widget_more, more));
+        views.setTextViewText(R.id.widget_more, text.getString(R.string.widget_more, more));
         return views;
     }
 

@@ -11,7 +11,7 @@ namespace Ember.Core.Services;
 public sealed record ImportData(
     IReadOnlyList<Routine> Routines, IReadOnlyList<Habit> Habits, IReadOnlyList<DayMark> DayMarks, IReadOnlyList<Mood> Moods,
     IReadOnlyList<(DayNote Note, Mood? CustomMood)> DayNotes, JournalKey? JournalKey, int? GraceDaysPerWeek, string? Theme,
-    int SecondReminderMinutes, bool? ShowStreaks = null);
+    int SecondReminderMinutes, bool? ShowStreaks = null, string? Language = null, bool? CalmMode = null);
 
 /// <summary>Outcome of <see cref="HabitService.ImportAsync"/>.</summary>
 public enum ImportResult
@@ -91,13 +91,17 @@ public partial class HabitService
         var theme = data.Theme;
         var secondReminderMinutes = data.SecondReminderMinutes;
         var showStreaks = data.ShowStreaks;
+        var language = data.Language;
+        var calmMode = data.CalmMode;
         await _db.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.GraceDaysPerWeek, u => grace ?? u.GraceDaysPerWeek)
                 .SetProperty(u => u.Theme, u => theme ?? u.Theme)
                 .SetProperty(u => u.SecondReminderMinutes, secondReminderMinutes)
-                .SetProperty(u => u.ShowStreaks, u => showStreaks ?? u.ShowStreaks));
+                .SetProperty(u => u.ShowStreaks, u => showStreaks ?? u.ShowStreaks)
+                .SetProperty(u => u.Language, u => language ?? u.Language)
+                .SetProperty(u => u.CalmMode, u => calmMode ?? u.CalmMode));
         await transaction.CommitAsync();
         return ImportResult.Imported;
     }

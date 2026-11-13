@@ -1,0 +1,146 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="reminder.skip" xml:space="preserve">
+    <value>Skip for today</value>
+  </data>
+  <data name="reminder.logged-line" xml:space="preserve">
+    <value>-# ✅ Logged.</value>
+  </data>
+  <data name="reminder.closed-line" xml:space="preserve">
+    <value>-# This reminder has closed.</value>
+  </data>
+  <data name="reminder.done" xml:space="preserve">
+    <value>Done ✅</value>
+  </data>
+  <data name="reminder.snooze" xml:space="preserve">
+    <value>Snooze 1h ⏰</value>
+  </data>
+  <data name="reminder.intro.snoozed" xml:space="preserve">
+    <value>⏰ Snoozed reminder: **{0}**. Ready when you are!</value>
+  </data>
+  <data name="reminder.intro.great" xml:space="preserve">
+    <value>Hey! Just a gentle nudge for **{0}**. You've been doing great 🔥</value>
+  </data>
+  <data name="reminder.intro.some" xml:space="preserve">
+    <value>Hey! Reminder for **{0}**. No pressure — just showing up counts 💙</value>
+  </data>
+  <data name="reminder.intro.fresh" xml:space="preserve">
+    <value>Hey 👋 Checking in on **{0}**. It's been a little while, and that's okay — today's a fresh start whenever you're ready.</value>
+  </data>
+  <data name="reminder.habit" xml:space="preserve">
+    <value>{0}
+
+Did you follow this habit today?</value>
+  </data>
+  <data name="reminder.second" xml:space="preserve">
+    <value>🔔 One more nudge for **{0}**, in case the first one got buried. Did you get to it today?</value>
+  </data>
+  <data name="reminder.routine" xml:space="preserve">
+    <value>Hey 👋 Time for your **{0}** routine. Still open today:
+{1}
+
+Tap Done for each one you've done. No pressure 💙</value>
+  </data>
+  <data name="reminder.routine.second" xml:space="preserve">
+    <value>🔔 One more nudge for your **{0}** routine. Still open today:
+{1}</value>
+  </data>
+  <data name="reminder.routine.more" xml:space="preserve">
+    <value>and {0} more</value>
+  </data>
+  <data name="reminder.routine.done-button" xml:space="preserve">
+    <value>Done: {0}</value>
+  </data>
+  <data name="push.reminder.first" xml:space="preserve">
+    <value>A gentle nudge from Ember</value>
+  </data>
+  <data name="push.reminder.second" xml:space="preserve">
+    <value>One more nudge, in case the first one got buried.</value>
+  </data>
+  <data name="push.logged" xml:space="preserve">
+    <value>Logged. Nice work. ✅</value>
+  </data>
+  <data name="weekly.title" xml:space="preserve">
+    <value>🗓️ Your weekly habit summary</value>
+  </data>
+  <data name="weekly.link" xml:space="preserve">
+    <value>[See your week in the Ember web app]({0})</value>
+  </data>
+  <data name="weekly.overflow.title" xml:space="preserve">
+    <value>…and more</value>
+  </data>
+  <data name="weekly.overflow" xml:space="preserve">
+    <value>Plus **{0}** more habits — see them all with `/habit list`.</value>
+  </data>
+  <data name="weekly.goal" xml:space="preserve">
+    <value>{0} **{1}/{2}** · Weekly goal: **{3}**/wk</value>
+  </data>
+  <data name="weekly.grace.one" xml:space="preserve">
+    <value>_(+{0} flex)_</value>
+  </data>
+  <data name="weekly.grace.other" xml:space="preserve">
+    <value>_(+{0} flex)_</value>
+  </data>
+  <data name="missedday.title" xml:space="preserve">
+    <value>💙 A gentle check-in</value>
+  </data>
+  <data name="missedday.open.one" xml:space="preserve">
+    <value>Yesterday is still open: want to log **{0}**?</value>
+  </data>
+  <data name="missedday.open.many" xml:space="preserve">
+    <value>Yesterday is still open: want to log any of these?
+{0}</value>
+  </data>
+  <data name="missedday.weekly.one" xml:space="preserve">
+    <value>You're at {0} for **{1}** this week.</value>
+  </data>
+  <data name="missedday.weekly.many" xml:space="preserve">
+    <value>Where your weekly habits stand:
+{0}</value>
+  </data>
+  <data name="missedday.weekly.line" xml:space="preserve">
+    <value>• **{0}**: {1} this week</value>
+  </data>
+  <data name="missedday.closing.0" xml:space="preserve">
+    <value>No pressure, and no reply needed.</value>
+  </data>
+  <data name="missedday.closing.1" xml:space="preserve">
+    <value>Life happens. You're still here, and that matters.</value>
+  </data>
+  <data name="missedday.closing.2" xml:space="preserve">
+    <value>A quiet day doesn't undo the work you've put in.</value>
+  </data>
+  <data name="missedday.closing.3" xml:space="preserve">
+    <value>Rest is part of it too. Go easy on yourself.</value>
+  </data>
+  <data name="missedday.closing.4" xml:space="preserve">
+    <value>If it was a rough day, you can mark it as a low day.</value>
+  </data>
+  <data name="missedday.footer.open" xml:space="preserve">
+    <value>Log it, mark a low day, or just move on.</value>
+  </data>
+  <data name="missedday.footer" xml:space="preserve">
+    <value>Mark a low day, or just move on.</value>
+  </data>
+  <data name="missedday.log" xml:space="preserve">
+    <value>Log yesterday</value>
+  </data>
+  <data name="missedday.low" xml:space="preserve">
+    <value>It was a low day</value>
+  </data>
+  <data name="missedday.dismiss" xml:space="preserve">
+    <value>That's ok, move on</value>
+  </data>
+</root>

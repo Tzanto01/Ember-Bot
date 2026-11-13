@@ -11,7 +11,7 @@ public class ShareCardTests
         var habit = HabitFactory.Make((2, true), (4, false));
         var lowDays = new HashSet<DateOnly> { HabitFactory.Today.AddDays(-3), HabitFactory.Today };
 
-        var description = HabitSelectModule.BuildShareEmbed(habit, 1, "nico", HabitFactory.Today, lowDays, showStreaks: true).Description;
+        var description = HabitSelectModule.BuildShareEmbed(Ember.Bot.BotTexts.English, habit, 1, "nico", HabitFactory.Today, lowDays, showStreaks: true).Description;
         var grid = description.Split("\n\n")[1];
 
         grid.Should().NotContain("🟥").And.NotContain("🌙");
@@ -24,7 +24,7 @@ public class ShareCardTests
     {
         var habit = HabitFactory.Make((0, true), (1, true), (2, true));
 
-        var description = HabitSelectModule.BuildShareEmbed(habit, 1, "nico", HabitFactory.Today, new HashSet<DateOnly>(), showStreaks: true).Description;
+        var description = HabitSelectModule.BuildShareEmbed(Ember.Bot.BotTexts.English, habit, 1, "nico", HabitFactory.Today, new HashSet<DateOnly>(), showStreaks: true).Description;
 
         description.Should().StartWith("**3-day streak** 🔥\n")
             .And.EndWith("Last 30 days: **3/30** · Best ever: **3** · Total: **3**");
@@ -35,7 +35,7 @@ public class ShareCardTests
     {
         var habit = HabitFactory.Make((0, true), (1, true), (2, true));
 
-        var description = HabitSelectModule.BuildShareEmbed(habit, 1, "nico", HabitFactory.Today, new HashSet<DateOnly>(), showStreaks: false).Description;
+        var description = HabitSelectModule.BuildShareEmbed(Ember.Bot.BotTexts.English, habit, 1, "nico", HabitFactory.Today, new HashSet<DateOnly>(), showStreaks: false).Description;
 
         description.Should().StartWith("**3 of the last 30 days**\n")
             .And.EndWith("Last 30 days: **3/30** · Total: **3**");
@@ -49,7 +49,7 @@ public class ShareCardTests
     {
         var habit = HabitFactory.Make((0, true), (1, true));
 
-        HabitModule.ListProgress(habit, HabitFactory.Today, 1, new HashSet<DateOnly>(), TimeZoneInfo.Utc, showStreaks)
+        HabitModule.ListProgress(Ember.Bot.BotTexts.English, habit, HabitFactory.Today, 1, new HashSet<DateOnly>(), TimeZoneInfo.Utc, showStreaks)
             .Should().Be(expected);
     }
 }

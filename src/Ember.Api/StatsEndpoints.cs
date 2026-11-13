@@ -19,7 +19,7 @@ internal static partial class StatsEndpoints
             if (user is null) return Problems.NotFound();
 
             var summary = WeeklySummaryService.Build(user, TimezoneHelper.LocalToday(user.Timezone, time).AddDays(-1));
-            var (headline, footer) = summary.HasSummarableWeek ? WeeklySummaryService.ToneLines(summary.TotalDone, summary.TotalPossible) : ("", "");
+            var (headline, footer) = summary.HasSummarableWeek ? WeeklySummaryService.ToneLines(summary.TotalDone, summary.TotalPossible, new Ember.Core.Localization.Texts(user.Language, Ember.Core.Localization.Texts.CoreResources)) : ("", "");
             return Results.Ok(new WeeklyDto(summary.TotalDone, summary.TotalPossible, PlainText(headline), PlainText(footer),
                 summary.Habits.Select(h => new WeeklyHabitDto(h.Habit.Id, h.Habit.Name, h.Done, h.Possible,
                     h.Habit.FrequencyType != FrequencyType.Weekly ? (int?)h.CurrentStreak : null)).ToList()));

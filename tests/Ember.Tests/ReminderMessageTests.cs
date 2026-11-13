@@ -91,7 +91,7 @@ public class ReminderMessageTests
         time.Advance(TimeSpan.FromMinutes(1));
         await RunJobAsync(host);
 
-        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine));
+        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine(Ember.Bot.BotTexts.English)));
         (await OpenMessagesAsync(host)).Should().ContainSingle().Which.Date.Should().Be(Today.AddDays(1));
     }
 
@@ -108,7 +108,7 @@ public class ReminderMessageTests
         await RunJobAsync(host);
         await RunJobAsync(host);
 
-        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.LoggedLine));
+        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.LoggedLine(Ember.Bot.BotTexts.English)));
         (await OpenMessagesAsync(host)).Should().BeEmpty();
     }
 
@@ -134,17 +134,17 @@ public class ReminderMessageTests
             .WithButton("Skip for today", $"checkin:skip:1:{sent}", ButtonStyle.Secondary)
             .Build().Components;
         Task<string?> ExpiredLine(string timestamp) => host.WithScopeAsync(sp =>
-            CheckInButtonModule.ExpiredLineAsync(sp.GetRequiredService<HabitService>(), time, DiscordUser, timestamp, buttons));
+            CheckInButtonModule.ExpiredLineAsync(Ember.Bot.BotTexts.English, sp.GetRequiredService<HabitService>(), time, DiscordUser, timestamp, buttons));
 
         time.SetUtcNow(new DateTimeOffset(2027, 1, 16, 8, 59, 0, TimeSpan.Zero));
         (await ExpiredLine(sent)).Should().BeNull();
 
         time.Advance(TimeSpan.FromMinutes(1));
-        (await ExpiredLine(sent)).Should().Be(DiscordDmReminderChannel.ClosedLine);
+        (await ExpiredLine(sent)).Should().Be(DiscordDmReminderChannel.ClosedLine(Ember.Bot.BotTexts.English));
         (await ExpiredLine("not-a-timestamp")).Should().BeNull();
 
         await CheckInAsync(host, 1);
-        (await ExpiredLine(sent)).Should().Be(DiscordDmReminderChannel.LoggedLine);
+        (await ExpiredLine(sent)).Should().Be(DiscordDmReminderChannel.LoggedLine(Ember.Bot.BotTexts.English));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class ReminderMessageTests
 
         host.Discord.Changes.Should().Equal(
             new ChangedDiscordDm(Channel, first.MessageId, null),
-            new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine));
+            new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine(Ember.Bot.BotTexts.English)));
         (await OpenMessagesAsync(host)).Should().ContainSingle().Which.MessageId.Should().NotBe(first.MessageId);
     }
 
@@ -332,7 +332,7 @@ public class ReminderMessageTests
         await RunJobAsync(host);
 
         host.Discord.Messages.Should().HaveCount(2);
-        host.Discord.Changes.Last().Should().Be(new ChangedDiscordDm(Channel, second.MessageId, DiscordDmReminderChannel.LoggedLine));
+        host.Discord.Changes.Last().Should().Be(new ChangedDiscordDm(Channel, second.MessageId, DiscordDmReminderChannel.LoggedLine(Ember.Bot.BotTexts.English)));
         (await OpenMessagesAsync(host)).Should().BeEmpty();
     }
 
@@ -376,6 +376,6 @@ public class ReminderMessageTests
         time.SetUtcNow(new DateTimeOffset(2027, 1, 16, 9, 0, 0, TimeSpan.Zero));
         await RunJobAsync(host);
 
-        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine));
+        host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, DiscordDmReminderChannel.ClosedLine(Ember.Bot.BotTexts.English)));
     }
 }

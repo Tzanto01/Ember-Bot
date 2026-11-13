@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using AspNet.Security.OAuth.Discord;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -102,7 +103,7 @@ internal static class DiscordEndpoints
                 || !info!.AuthenticationProperties!.Items.TryGetValue(ChallengeKey, out var challenge) || !IsChallenge(challenge))
                 return Results.Redirect(NativeError);
 
-            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId);
+            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
             if (await users.FindByIdAsync(userId.ToString()) is null) return Results.Redirect(NativeError);
 
             var code = Base64Url(RandomNumberGenerator.GetBytes(32));
@@ -162,7 +163,7 @@ internal static class DiscordEndpoints
             await http.SignOutAsync(IdentityConstants.ExternalScheme);
             if (DiscordId(info, LoginFlow) is not { } discordId) return Results.Redirect(LoginError);
 
-            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId);
+            var userId = await habits.ResolveOrCreateDiscordUserAsync(discordId, Languages.FromAcceptLanguage(http.Request.Headers.AcceptLanguage));
             var user = await users.FindByIdAsync(userId.ToString());
             if (user is null) return Results.Redirect(LoginError);
 

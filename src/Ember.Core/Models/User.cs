@@ -31,6 +31,15 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public bool ShowStreaks { get; set; }
 
+    /// <summary>
+    /// The account's language (one of <see cref="Localization.Languages.All"/>) for the app, emails, notifications and the bot.
+    /// A new account takes it from the sign-up request or the Discord interaction's locale.
+    /// </summary>
+    public string Language { get; set; } = Localization.Languages.English;
+
+    /// <summary>Whether the app shows its calm mode. False for new accounts and for every account that existed when it was added.</summary>
+    public bool CalmMode { get; set; }
+
     /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
     public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
 
@@ -87,4 +96,7 @@ public class User : IdentityUser<Guid>
 
     /// <summary>The wrapped private-journal key; null while the private journal is off.</summary>
     public JournalKey? JournalKey { get; set; }
+
+    /// <summary>The encrypted "What helps me" list; null when there is none.</summary>
+    public UserHelps? Helps { get; set; }
 }

@@ -56,7 +56,7 @@ public class DiscordReminderAskTests
 
         host.Discord.Messages.Select(m => m.UserId).Should().BeEquivalentTo([10UL, 40UL]);
         var ask = host.Discord.Messages.First(m => m.UserId == 10);
-        ask.Text.Should().Be(DiscordRemindersModule.AskText);
+        ask.Text.Should().Be(DiscordRemindersModule.AskText(Ember.Bot.BotTexts.English));
         ask.Components!.Components.OfType<Discord.ActionRowComponent>().SelectMany(r => r.Components).OfType<Discord.ButtonComponent>().Select(b => (b.Label, b.CustomId))
             .Should().Equal(("Yes, remind me here", "discordreminders:yes:10"), ("No thanks", "discordreminders:no:10"));
         (await UserAsync(host, 10)).DiscordRemindersAskedAt.Should().Be(Now.UtcDateTime);
@@ -99,15 +99,15 @@ public class DiscordReminderAskTests
         foreach (var habit in unanswered.Habits.Concat(declined.Habits)) habit.NextReminderUtc = Now.UtcDateTime;
         await using var host = await CreateAsync(unanswered, declined);
         var note = (ulong discordId) => host.WithScopeAsync(sp =>
-            ReminderSetupModule.DiscordRemindersNoteAsync(sp.GetRequiredService<HabitService>(), discordId));
+            ReminderSetupModule.DiscordRemindersNoteAsync(Ember.Bot.BotTexts.English, sp.GetRequiredService<HabitService>(), discordId));
 
         (await note(10)).Should().BeEmpty();
-        (await note(20)).Should().Be(DiscordRemindersModule.OffText);
+        (await note(20)).Should().Be(DiscordRemindersModule.OffText(Ember.Bot.BotTexts.English));
         await RunAskAsync(host);
         await ActivatorUtilities.CreateInstance<ReminderDispatchJob>(host.Host.Services).RunAsync();
 
         host.Discord.Messages.Select(m => m.UserId).Should().Equal(10UL);
-        host.Discord.Messages.Single().Text.Should().NotBe(DiscordRemindersModule.AskText);
+        host.Discord.Messages.Single().Text.Should().NotBe(DiscordRemindersModule.AskText(Ember.Bot.BotTexts.English));
         var user = await UserAsync(host, 10);
         (user.DiscordReminders, user.DiscordRemindersAskedAt).Should().Be((true, Now.UtcDateTime));
         (await UserAsync(host, 20)).DiscordReminders.Should().BeFalse();
@@ -139,7 +139,7 @@ public class DiscordReminderAskTests
         (await answer(10, true)).Should().BeTrue();
 
         (await UserAsync(host, 10)).DiscordReminders.Should().BeTrue();
-        DiscordRemindersModule.TurnOnButton(10).Components.OfType<Discord.ActionRowComponent>().SelectMany(r => r.Components).OfType<Discord.ButtonComponent>()
+        DiscordRemindersModule.TurnOnButton(Ember.Bot.BotTexts.English, 10).Components.OfType<Discord.ActionRowComponent>().SelectMany(r => r.Components).OfType<Discord.ButtonComponent>()
             .Should().ContainSingle(b => b.CustomId == "discordreminders:yes:10");
     }
 

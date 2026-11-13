@@ -1,15 +1,20 @@
 using System.Globalization;
 using System.Net;
+using System.Resources;
 using System.Security.Cryptography;
 using System.Text;
 using Ember.Core.Data;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ember.Api.Email;
 
-/// <summary>Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host).</summary>
+/// <summary>
+/// Identity's account emails, with links into the web app at <c>Ember:WebOrigin</c> (never the request host), in the account's
+/// <see cref="User.Language"/>.
+/// </summary>
 internal sealed class EmberEmailSender(
     IEmailTransport transport, IConfiguration configuration, TimeProvider time, IServiceScopeFactory scopes,
     IHttpContextAccessor http, ILogger<EmberEmailSender> logger)
@@ -23,6 +28,11 @@ internal sealed class EmberEmailSender(
 
     /// <summary>Tries (right or wrong) a sign-up code allows.</summary>
     internal const int CodeTries = 5;
+
+    /// <summary>The email texts in <c>Resources/Email.resx</c>.</summary>
+    internal static readonly ResourceManager EmailResources = new("Ember.Api.Resources.Email", typeof(EmberEmailSender).Assembly);
+
+    private static Texts TextsFor(string language) => new(language, EmailResources, Texts.CoreResources);
 
     private string Origin => ApiApp.WebOrigin(configuration)
         ?? throw new InvalidOperationException("Ember:WebOrigin is not configured.");
@@ -52,8 +62,8 @@ internal sealed class EmberEmailSender(
         var expires = (time.GetUtcNow() + CodeLifetime).UtcDateTime;
         var userId = user.Id;
         var link = $"{Origin}/confirm-email?user={userId}&code={code}";
-        return Send(user.Email ?? email, "Confirm your Ember email address",
-            $"Welcome to Ember.\n\nYour code:\n\n{code}\n\nEnter it in Ember to confirm your email address and sign in, or open this link:\n{link}\n\nThe code works for 15 minutes. If you didn't create an Ember account, you can ignore this email.",
+        var t = TextsFor(user.Language);
+        return Send(user.Email ?? email, t.Get("email.confirm.subject"), t.Format("email.confirm.body", code, link),
             async () =>
             {
                 using var scope = scopes.CreateScope();
@@ -68,8 +78,8 @@ internal sealed class EmberEmailSender(
     {
         var to = user.Email ?? email;
         var link = $"{Origin}/reset-password?email={Uri.EscapeDataString(to)}&code={Uri.EscapeDataString(WebUtility.HtmlDecode(resetCode))}";
-        return Send(to, "Reset your Ember password",
-            $"Someone asked to reset the password of your Ember account.\n\nChoose a new password here:\n{link}\n\nIf this wasn't you, you can ignore this email; your password stays the same.");
+        var t = TextsFor(user.Language);
+        return Send(to, t.Get("email.reset.subject"), t.Format("email.reset.body", link));
     }
 
     /// <summary>Not used: the Identity API endpoints send reset codes (<see cref="SendPasswordResetCodeAsync"/>).</summary>
@@ -77,9 +87,13 @@ internal sealed class EmberEmailSender(
         => throw new NotSupportedException();
 
     /// <summary>Sent instead of a confirmation when someone registers with an address that already has an account.</summary>
-    public Task SendAlreadyRegisteredAsync(string email)
-        => Send(email, "Your Ember account",
-            $"Someone tried to create an Ember account with this email address, but it already has one.\n\nSign in: {Origin}/login\nForgot your password? {Origin}/forgot-password\n\nIf this wasn't you, you can ignore this email.");
+    /// <param name="email">The account's address.</param>
+    /// <param name="language">The account's <see cref="User.Language"/>.</param>
+    public Task SendAlreadyRegisteredAsync(string email, string language)
+    {
+        var t = TextsFor(language);
+        return Send(email, t.Get("email.registered.subject"), t.Format("email.registered.body", $"{Origin}/login", $"{Origin}/forgot-password"));
+    }
 
     /// <summary>
     /// Hands the email off in the background, so every mail-sending endpoint answers at the same speed and an SMTP failure
