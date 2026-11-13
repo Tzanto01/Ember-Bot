@@ -25,6 +25,16 @@ Ember is a web app and an Android app. If you use Discord, you can add the Ember
 
 Ember is in public beta at [beta.ember-glow.app](https://beta.ember-glow.app).
 
+## Worum geht es bei Ember?
+
+Ember ist ein ruhiger Begleiter für schwere Momente und sanfte Tage. Du nutzt es als Web-App oder als Android-App, und wenn du magst, auch als Discord-Bot.
+
+Wenn dir gerade alles zu viel wird, tippst du auf „Ich brauche einen Moment“. Ember fragt, was los ist, und geht mit dir eine kurze Übung durch, zum Beispiel ruhiges Atmen oder 5-4-3-2-1. Das klappt auch ohne Konto und offline. Gespeichert wird davon nichts, außer du willst eine Notiz in deinem privaten Tagebuch behalten.
+
+An den anderen Tagen gibt es sanfte Habits: kleine Gewohnheiten wie ein Glas Wasser trinken oder zehn Seiten lesen, an die Ember dich freundlich erinnert. Ein schlechter Tag zählt nicht gegen dich. Du kannst ihn als Tief markieren oder später nachtragen, und Streaks sind freiwillig. Dazu kommt ein Tagebuch mit Stimmungen, auf Wunsch Ende-zu-Ende-verschlüsselt.
+
+Ember ist kostenlos, noch in der Beta und kein medizinischer Dienst. Im Notfall ruf die 112 an.
+
 ## Get Ember
 
 | Way in | What it is | Get it |
