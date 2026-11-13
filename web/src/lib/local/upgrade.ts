@@ -8,8 +8,9 @@ import { earliestStart, exportDocument } from './backend';
 import type { LocalMode } from './mode';
 import type { LocalStore } from './store';
 import type { LocalData, LocalMood, LocalNote, UpgradeApi, UpgradeProgress, UpgradeResult, UpgradeSummary } from './types';
+import { deviceLanguage, t } from '../i18n';
 
-const conflictCopy = 'This account already has habits, so nothing was moved. Your device data is still here.';
+const conflictCopy = () => t('upgrade.error.conflict');
 
 /** The `detail` of the API's 409 `conflict` when the account isn't empty (`ImportEndpoints.NotEmptyMessage`). */
 export const notEmptyDetail = 'Import only works into an account without habits, routines, moods or journal entries.';
@@ -99,15 +100,15 @@ export class UpgradeService implements UpgradeApi {
     options: { privateJournal?: { passphrase: string; remember: boolean; password?: string } } = {},
   ): Promise<UpgradeResult> {
     const me = this.auth.me.get();
-    if (this.localMode.mode.get() !== 'upgrading' || !me) return failed('Sign in to your new account first.');
+    if (this.localMode.mode.get() !== 'upgrading' || !me) return failed(t('upgrade.error.signIn'));
     const data = await this.store.load().catch(() => null);
-    if (!data) return failed("There's no device data waiting to be moved.");
+    if (!data) return failed(t('upgrade.error.nothing'));
     const secret = options.privateJournal;
     if (data.upgrade && data.upgrade.userId !== me.id && data.upgrade.importSent && !data.upgrade.imported) {
-      return failed('Sign in to the account you started moving your data to, then try again.');
+      return failed(t('upgrade.error.otherTarget'));
     }
     if (data.upgrade?.imported && data.upgrade.userId !== me.id) {
-      return failed('Your data already moved to another account. Sign in to that account to finish.');
+      return failed(t('upgrade.error.movedElsewhere'));
     }
 
     let progress: UpgradeProgress =
@@ -126,7 +127,7 @@ export class UpgradeService implements UpgradeApi {
           };
     if (progress.finished) {
       if (holdsData(data)) {
-        return failed('Sign in to the account you moved your data to and save its recovery code first.');
+        return failed(t('upgrade.error.recoveryFirst'));
       }
       return { ok: true, recoveryCode: progress.recoveryCode };
     }
@@ -149,14 +150,17 @@ export class UpgradeService implements UpgradeApi {
           names.every((name, i) => name === local[i]) &&
           (names.length > 0 || (await this.landedWithoutHabits(data, progress.journalOmitted)));
         if (!landed) {
-          if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy };
+          if (names.length > 0) return { ok: false, reason: 'conflict', message: conflictCopy() };
           const { profile } = data;
-          await this.api.updateMe({
+          const updated = await this.api.updateMe({
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
             showStreaks: profile.showStreaks ?? true,
+            language: deviceLanguage(),
             ...(profile.theme ? { theme: profile.theme } : {}),
           });
+          const current = this.auth.me.get();
+          if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language });
           await save({ importSent: true, journalOmitted: omit });
           try {
             await this.api.importData(importDocument(data, !omit));
@@ -200,10 +204,10 @@ export class UpgradeService implements UpgradeApi {
       this.localMode.finishUpgrade();
       return { ok: true, recoveryCode: null };
     } catch (error) {
-      if (error instanceof JournalLockedError) return failed('Unlock your private journal on this device, then try again.');
+      if (error instanceof JournalLockedError) return failed(t('upgrade.error.locked'));
       if (error instanceof RangeError) return failed(error.message);
       const apiError = asApiError(error);
-      if (importing && isNotEmpty(apiError)) return { ok: false, reason: 'conflict', message: conflictCopy };
+      if (importing && isNotEmpty(apiError)) return { ok: false, reason: 'conflict', message: conflictCopy() };
       if (apiError.status === 403 && apiError.type === 'consent_required') {
         return { ok: false, reason: 'consent', message: problemToMessage(apiError).message };
       }

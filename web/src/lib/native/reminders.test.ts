@@ -261,7 +261,7 @@ describe('Reminders', () => {
   it('names no habit but still offers Done for that habit and day while "Show habit names" is off', async () => {
     const [first] = await rebuildOnline([reminded]);
 
-    expect(first).toMatchObject({ title: 'Ember', body: reminderBody, actionTypeId: doneActionType });
+    expect(first).toMatchObject({ title: 'Ember', body: reminderBody(), actionTypeId: doneActionType });
     expect(first.extra).toEqual({ userId: 'u1', habitId: 1, date: '2026-11-01' });
     expect(JSON.stringify(first)).not.toContain('Walk');
     expect(reminders.wasIssued(first.id, first.extra)).toBe(true);
@@ -280,7 +280,7 @@ describe('Reminders', () => {
 
     expect(notifications[0]).toMatchObject({
       title: 'Evening',
-      body: reminderBody,
+      body: reminderBody(),
       extra: { userId: 'u1', routineId: 4, date: '2026-11-01' },
     });
     expect(notifications[0].actionTypeId).toBeUndefined();
@@ -301,10 +301,10 @@ describe('Reminders', () => {
     await done;
     const [first, second] = schedule.mock.calls[0][0].notifications;
 
-    expect(first).toMatchObject({ title: 'Walk', body: reminderBody, actionTypeId: doneActionType });
+    expect(first).toMatchObject({ title: 'Walk', body: reminderBody(), actionTypeId: doneActionType });
     expect(second).toMatchObject({
       title: 'Walk',
-      body: secondReminderBody,
+      body: secondReminderBody(),
       actionTypeId: doneActionType,
       extra: first.extra,
     });

@@ -1,5 +1,6 @@
 import type { EncryptedBlob, JournalKey, LocalDateString, MoodKey } from '../models';
 import { WrongSecretError } from './types';
+import { t } from '../i18n';
 
 /** Contract "Crypto details": PBKDF2-SHA256 iterations for new passphrase wraps. */
 export const passphraseIterations = 600_000;
@@ -214,7 +215,7 @@ async function seal(key: CryptoKey, payload: unknown, aad: Bytes): Promise<Encry
       ),
     ),
   );
-  if (ct.length > maxCiphertextLength) throw new RangeError('That entry is too long to save.');
+  if (ct.length > maxCiphertextLength) throw new RangeError(t('journal.error.cipherTooLong'));
   return { v: 1, iv: toBase64(iv), ct };
 }
 

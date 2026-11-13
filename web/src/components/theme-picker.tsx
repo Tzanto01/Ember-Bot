@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { DayCell } from '@/components/day-cell';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useStore } from '@/lib/store';
@@ -39,6 +40,7 @@ export function ThemePicker({
   describedBy?: string;
   onChoose?: (id: ThemeId) => void;
 }) {
+  const { t: translate } = useTranslation();
   useStore(themeApplied);
   const theme = currentTheme();
 
@@ -75,7 +77,7 @@ export function ThemePicker({
                 {t.name}
               </span>
               <span id={`theme-${t.id}-description`} className="text-muted-foreground">
-                {t.description}
+                {translate(t.description)}
               </span>
             </span>
             <ThemePreview id={t.id} />

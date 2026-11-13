@@ -581,6 +581,36 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByRole('radio', { name: 'Tidepool' })).toBeChecked();
   });
 
+  it('switches to German on picking Deutsch: saves it to the account, remembers it on the device and sets <html lang>', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/appearance');
+
+    await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
+
+    const patch = await fetch.next('PATCH', '/api/me');
+    expect(patch.body).toEqual({ language: 'de' });
+    patch.respond(200, { ...me, language: 'de' });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Darstellung' })).toBeInTheDocument();
+    expect(screen.getByText('Sprache')).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('de');
+    expect(localStorage.getItem('ember.language')).toBe('de');
+    expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
+  });
+
+  it('goes back to English and says the language was not saved when saving it fails', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/appearance');
+
+    await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
+    (await fetch.next('PATCH', '/api/me')).fail();
+
+    const status = await screen.findByText("Your language couldn't be saved. Try again in a moment.");
+    expect(status.closest('[role="status"]')).not.toBeNull();
+    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
+    expect(document.documentElement.lang).toBe('en');
+    expect(localStorage.getItem('ember.language')).toBeNull();
+  });
+
   it('deletes the account with the password and lands on /login?reason=deleted', async () => {
     const user = userEvent.setup();
     const { fetch, router } = await open('/settings/privacy');

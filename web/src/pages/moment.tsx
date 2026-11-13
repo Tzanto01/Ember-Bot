@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { useFocusHeadingOnChange } from '@/components/auth/use-field';
 import { BreathingPlayer } from '@/components/moment/breathing-player';
@@ -50,6 +51,7 @@ function Heading({
 
 /** `/moment`, public: the "I need a moment" flow (Catch, Name, Ride it out, optional Reflect). State lives in memory only. */
 export default function MomentPage() {
+  useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [startedAt] = useState(() => new Date());
@@ -66,6 +68,10 @@ export default function MomentPage() {
     step.kind === 'practice' ? `practice:${practice.id}:${step.index}` : step.kind,
   );
 
+  function inLanguage(shown: Practice): Practice {
+    return practices().find((p) => p.id === shown.id) ?? shown;
+  }
+
   function leave(): void {
     if (location.key !== 'default') void navigate(-1);
     else void navigate('/');
@@ -73,19 +79,19 @@ export default function MomentPage() {
 
   function begin(next: Practice): void {
     setPractice(next);
-    setTried((list) => (list.includes(next) ? list : [...list, next]));
+    setTried((list) => (list.some((p) => p.id === next.id) ? list : [...list, next]));
     setStep({ kind: 'practice', index: 0 });
   }
 
   function candidates(): Practice[] {
     const matching = named ? practicesFor(named) : [];
-    return [...matching, ...practices.filter((p) => !matching.includes(p))];
+    return [...matching, ...practices().filter((p) => !matching.includes(p))];
   }
 
   function tryAnother(): void {
     const list = candidates();
     setAfter(undefined);
-    begin(list[(list.indexOf(practice) + 1) % list.length]!);
+    begin(list[(list.findIndex((p) => p.id === practice.id) + 1) % list.length]!);
   }
 
   function pickTile(state: MomentState): void {
@@ -94,7 +100,7 @@ export default function MomentPage() {
   }
 
   function rideItOut(): void {
-    begin(named ? practicesFor(named)[0]! : breathingPractice);
+    begin(named ? practicesFor(named)[0]! : breathingPractice());
   }
 
   let body: ReactNode;
@@ -120,7 +126,7 @@ export default function MomentPage() {
               variant="secondary"
               block
               className="min-h-[56px] text-[18px]"
-              onClick={() => begin(breathingPractice)}
+              onClick={() => begin(breathingPractice())}
             >
               {momentCopy.catchBreathe}
             </Button>
@@ -198,12 +204,13 @@ export default function MomentPage() {
       break;
     }
     case 'practice': {
-      const current = practice.steps[step.index]!;
-      const last = step.index === practice.steps.length - 1;
+      const shown = inLanguage(practice);
+      const current = shown.steps[step.index]!;
+      const last = step.index === shown.steps.length - 1;
       body = (
         <div className="flex flex-col gap-8">
           <Heading
-            eyebrow={momentCopy.stepOf(practice.title, step.index + 1, practice.steps.length)}
+            eyebrow={momentCopy.stepOf(shown.title, step.index + 1, shown.steps.length)}
             large
           >
             {current.kind === 'breath' ? momentCopy.breathHeading : current.text}
@@ -284,8 +291,8 @@ export default function MomentPage() {
           tile={named && momentCopy.tiles[named]}
           before={before}
           after={after}
-          tried={tried}
-          used={practice}
+          tried={tried.map(inLanguage)}
+          used={inLanguage(practice)}
           onLeave={leave}
           onDraft={setDraft}
         />

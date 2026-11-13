@@ -1,6 +1,7 @@
 import { ImagePlus, Info, X } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { Button } from '@/components/ui/button';
 import { fieldMessages, FormField, focusFirstInvalid } from '@/components/form-field';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';
 import { env } from '@/lib/env';
+import { currentLanguage, t } from '@/lib/i18n';
 import type { FeedbackRequest } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { auth, api, localMode } from '@/lib/services';
@@ -29,19 +31,23 @@ interface Picture {
 }
 
 function remainingText(remaining: number): string {
-  return remaining === 1 ? '1 character left' : `${remaining} characters left`;
+  return t('feedback.remaining', { count: remaining });
 }
 
 function sizeText(bytes: number): string {
   return bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    ? t('feedback.kb', { size: Math.max(1, Math.round(bytes / 1024)) })
+    : t('feedback.mb', {
+        size: new Intl.NumberFormat(currentLanguage(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(
+          bytes / (1024 * 1024),
+        ),
+      });
 }
 
 function picturesText(pictures: Picture[]): string {
-  if (!pictures.length) return 'Up to 5 pictures, 10 MB together. Screenshots help a lot.';
+  if (!pictures.length) return t('feedback.pictures.none');
   const bytes = pictures.reduce((sum, picture) => sum + picture.blob.size, 0);
-  return `${pictures.length} of ${maxPictures} pictures · ${sizeText(bytes)} of 10 MB`;
+  return t('feedback.pictures.count', { count: pictures.length, max: maxPictures, size: sizeText(bytes) });
 }
 
 async function feedbackBody(title: string, text: string): Promise<FeedbackRequest> {
@@ -63,6 +69,7 @@ async function feedbackBody(title: string, text: string): Promise<FeedbackReques
  * (shrunk on the device, 10 MB together) can go along and the report can be sent anonymously. Never sends habit data.
  */
 export function FeedbackForm() {
+  const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +88,7 @@ export function FeedbackForm() {
   const [problem, setProblem] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [announced, setAnnounced] = useState('');
+  const [announced, setAnnounced] = useState<number | null>(null);
   const [pictures, setPictures] = useState<Picture[]>([]);
   const [pictureError, setPictureError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -95,7 +102,7 @@ export function FeedbackForm() {
 
   useEffect(() => {
     if (remaining > announceFrom) return;
-    const timer = setTimeout(() => setAnnounced(remainingText(remaining)), 1000);
+    const timer = setTimeout(() => setAnnounced(remaining), 1000);
     return () => clearTimeout(timer);
   }, [remaining]);
 
@@ -114,7 +121,7 @@ export function FeedbackForm() {
   function pickPictures() {
     if (preparing || busy) return;
     if (pictures.length >= maxPictures) {
-      setPictureError("That's 5 pictures, the most one report can carry. Remove one to add another.");
+      setPictureError(t('feedback.pictures.full'));
       return;
     }
     fileRef.current?.click();
@@ -127,20 +134,18 @@ export function FeedbackForm() {
     const messages: string[] = [];
     const room = maxPictures - pictures.length;
     if (files.length > room) {
-      messages.push(
-        `Only ${room === 1 ? '1 more picture fits' : `${room} more pictures fit`}, so the rest weren't added.`,
-      );
+      messages.push(t('feedback.pictures.room', { count: room }));
     }
     setPreparing(true);
     try {
       for (const file of files.slice(0, room)) {
         const blob = await shrinkImage(file);
         if (!blob) {
-          messages.push(`${file.name} couldn't be opened as a picture. A JPEG, PNG or WebP works.`);
+          messages.push(t('feedback.pictures.unreadable', { name: file.name }));
           continue;
         }
         if (bytes + blob.size > maxPictureBytes) {
-          messages.push(`${file.name} would go over 10 MB together, so it wasn't added.`);
+          messages.push(t('feedback.pictures.tooBig', { name: file.name }));
           continue;
         }
         bytes += blob.size;
@@ -190,11 +195,7 @@ export function FeedbackForm() {
       const apiError = asApiError(caught);
       if (apiError.handled) return;
       if (apiError.status === 429) {
-        setProblem(
-          attached.length
-            ? 'Ember has had a lot of feedback and pictures in a short time. Please try again a little later, or send just the text. Your words and pictures are still here.'
-            : 'Ember has had a lot of feedback in a short time. Please try again a little later, your text is still here.',
-        );
+        setProblem(attached.length ? t('feedback.tooManyPictures') : t('feedback.tooMany'));
         return;
       }
       const friendly = problemToMessage(apiError);
@@ -226,12 +227,12 @@ export function FeedbackForm() {
   if (sent) {
     return (
       <div className="flex flex-col gap-3">
-        <Notice tone="success" heading="Thank you, that really helps.">
-          <p>Your feedback is on its way to the Ember team.</p>
+        <Notice tone="success" heading={t('feedback.sent.heading')}>
+          <p>{t('feedback.sent.text')}</p>
         </Notice>
         <div>
           <Button ref={moreRef} type="button" variant="outline" onClick={sendMore}>
-            Send more feedback
+            {t('feedback.sent.more')}
           </Button>
         </div>
       </div>
@@ -240,7 +241,7 @@ export function FeedbackForm() {
 
   return (
     <form ref={formRef} noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
-      <FormField label="Title" hint='A few words, like "Reminder came late".' error={titleMessage}>
+      <FormField label={t('feedback.title.label')} hint={t('feedback.title.hint')} error={titleMessage}>
         {(field) => (
           <Input
             {...field}
@@ -256,8 +257,8 @@ export function FeedbackForm() {
         )}
       </FormField>
       <FormField
-        label="Description"
-        hint="What would make Ember better? Ideas, bugs, or anything that got in your way."
+        label={t('feedback.description.label')}
+        hint={t('feedback.description.hint')}
         error={error}
       >
         {(field) => (
@@ -279,7 +280,7 @@ export function FeedbackForm() {
               {remainingText(remaining)}
             </p>
             <p role="status" className="sr-only">
-              {remaining <= announceFrom ? announced : ''}
+              {remaining <= announceFrom && announced !== null ? remainingText(announced) : ''}
             </p>
           </>
         )}
@@ -287,17 +288,17 @@ export function FeedbackForm() {
       {canAttach ? (
         <div className="flex flex-col gap-2">
           {pictures.length > 0 && (
-            <ul aria-label="Pictures to send" className="flex flex-wrap gap-3 pt-2">
+            <ul aria-label={t('feedback.pictures.list')} className="flex flex-wrap gap-3 pt-2">
               {pictures.map((picture, index) => (
                 <li key={picture.key} className="relative">
                   <img
                     src={picture.url}
-                    alt={`Picture ${index + 1}`}
+                    alt={t('feedback.pictures.alt', { number: index + 1 })}
                     className="size-24 rounded-md border border-input bg-muted object-cover"
                   />
                   <button
                     type="button"
-                    aria-label={`Remove picture ${index + 1}`}
+                    aria-label={t('feedback.pictures.remove', { number: index + 1 })}
                     onClick={() => removePicture(picture.key)}
                     className="absolute -right-3 -top-3 grid size-[44px] place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-ring"
                   >
@@ -310,10 +311,10 @@ export function FeedbackForm() {
             </ul>
           )}
           <p id={`${picturesId}-why`} className="text-[14px] text-muted-foreground">
-            Pictures you add help us fix the problem; we keep them until it's handled.
+            {t('feedback.pictures.why')}
           </p>
           <p id={`${picturesId}-check`} className="text-[14px] text-muted-foreground">
-            Check your screenshot first: please don't send notes, moods or anything about your health or other people.
+            {t('feedback.pictures.check')}
           </p>
           <input
             ref={fileRef}
@@ -333,12 +334,12 @@ export function FeedbackForm() {
               type="button"
               variant="outline"
               busy={preparing}
-              busyLabel="Preparing pictures…"
+              busyLabel={t('feedback.pictures.preparing')}
               aria-describedby={cn(`${picturesId}-why`, `${picturesId}-check`, `${picturesId}-count`, pictureError && `${picturesId}-error`)}
               onClick={pickPictures}
             >
               <ImagePlus aria-hidden />
-              Add pictures
+              {t('feedback.pictures.add')}
             </BusyButton>
           </div>
           <p id={`${picturesId}-count`} aria-live="polite" className="text-[14px] text-muted-foreground">
@@ -352,14 +353,14 @@ export function FeedbackForm() {
           )}
         </div>
       ) : (
-        <p className="text-[14px] text-muted-foreground">With an account you can add pictures too.</p>
+        <p className="text-[14px] text-muted-foreground">{t('feedback.pictures.accountOnly')}</p>
       )}
       {canAttach && (
         <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${picturesId}-anonymous`}>Send feedback anonymously</Label>
+          <div className="flex min-w-0 flex-col gap-1">
+            <Label htmlFor={`${picturesId}-anonymous`}>{t('feedback.anonymous.label')}</Label>
             <p id={`${picturesId}-anonymous-hint`} className="text-[14px] text-muted-foreground">
-              Leaves your account off this report.
+              {t('feedback.anonymous.hint')}
             </p>
           </div>
           <Switch
@@ -373,27 +374,24 @@ export function FeedbackForm() {
       )}
       <div id={sentId} className="flex flex-col items-start text-[14px] text-muted-foreground">
         {canAttach ? (
-          <p>
-            Ember sends the title, description and any pictures, the app version, the time and whether you use the web
-            or the Android app. Your account goes with it unless you send anonymously. Never your habits or check-ins,
-            and please keep private entries and other people out of pictures.
-          </p>
+          <p>{t('feedback.sends.account')}</p>
         ) : (
-          <p>
-            Ember sends the title, description, the app version, the time and whether you use the web or the Android
-            app, plus your account if you're signed in. Never your habits or check-ins.
-          </p>
+          <p>{t('feedback.sends.plain')}</p>
         )}
-        <TapLink to="/legal/privacy">Privacy notice</TapLink>
+        <TapLink to="/legal/privacy">{t('feedback.privacy')}</TapLink>
       </div>
       {problem && (
-        <Notice tone="notice" heading="That wasn't sent yet">
+        <Notice tone="notice" heading={t('feedback.notSent')}>
           <p>{problem}</p>
         </Notice>
       )}
       <div>
-        <BusyButton type="submit" busy={busy || preparing} busyLabel={busy ? 'Sending…' : 'Preparing pictures…'}>
-          Send
+        <BusyButton
+          type="submit"
+          busy={busy || preparing}
+          busyLabel={busy ? t('feedback.sending') : t('feedback.pictures.preparing')}
+        >
+          {t('feedback.send')}
         </BusyButton>
       </div>
     </form>

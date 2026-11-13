@@ -1,4 +1,5 @@
 import type { ExportFile } from '../api-client';
+import { t } from '../i18n';
 import { isValidTimeZone } from '../local-date';
 import { builtinMoods, type MoodKey, type ReminderChannel, type TimeOfDay } from '../models';
 import { themes, type ThemeId } from '../theme';
@@ -30,13 +31,27 @@ const maxChars = 5 * 1024 * 1024;
 const reminderMs = 30 * 86_400_000;
 
 const copy = {
-  notBackup: "This file isn't an Ember backup.",
-  tooBig: 'This file is too big to be an Ember backup.',
-  version: "This backup is from a different version of Ember, so it can't be read here.",
-  damaged: "Part of this backup can't be read, so nothing was changed.",
-  habits: `This backup has more than ${limits.habits} habits, the most Ember keeps.`,
-  routines: `This backup has more than ${limits.routines} routines, the most Ember keeps.`,
-  moods: `This backup has more than ${limits.activeMoods} active moods, the most Ember keeps.`,
+  get notBackup() {
+    return t('backup.error.notBackup');
+  },
+  get tooBig() {
+    return t('backup.error.tooBig');
+  },
+  get version() {
+    return t('backup.error.version');
+  },
+  get damaged() {
+    return t('backup.error.damaged');
+  },
+  get habits() {
+    return t('backup.error.habits', { max: limits.habits });
+  },
+  get routines() {
+    return t('backup.error.routines', { max: limits.routines });
+  },
+  get moods() {
+    return t('backup.error.moods', { max: limits.activeMoods });
+  },
 };
 
 class Rejected extends Error {}

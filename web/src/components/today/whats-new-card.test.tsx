@@ -6,8 +6,8 @@ import { WhatsNewCard } from './whats-new-card';
 
 const seenKey = 'ember.seenReleaseNotes';
 const notes = [
-  { version: '0.9.0-beta.6', date: '2026-11-14', notes: ['Something new.'] },
-  { version: '0.9.0-beta.5', date: '2026-11-12', notes: ['Something older.'] },
+  { version: '0.9.0-beta.6', date: '2026-11-14', notes: { en: ['Something new.'] } },
+  { version: '0.9.0-beta.5', date: '2026-11-12', notes: { en: ['Something older.'] } },
 ];
 
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 20)));

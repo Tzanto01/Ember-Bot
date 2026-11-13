@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { applyLanguage, deviceLanguage } from '@/lib/i18n';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
 import { ApiError } from '@/lib/problem';
@@ -99,6 +100,22 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('6-digit code'), '123456');
     const confirm = await mock.next('POST', '/api/auth/confirm-email-code?useCookies=true');
     expect(confirm.body).toEqual({ email: 'a@example.test', code: '123456' });
+  });
+
+  it('renders in German when the browser prefers German and no language is stored, and a stored English choice wins', () => {
+    vi.stubGlobal('navigator', { languages: ['de-DE'], language: 'de-DE' });
+    applyLanguage(deviceLanguage());
+    const { unmount } = render(<QueryClientProvider client={new QueryClient()}><RouterProvider router={createMemoryRouter([{ path: '/login', element: <main id="main"><LoginPage /></main> }], { initialEntries: ['/login'] })} /></QueryClientProvider>);
+    expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('de');
+    unmount();
+
+    localStorage.setItem('ember.language', 'en');
+    applyLanguage(deviceLanguage());
+    renderPage('/login', LoginPage, '/login');
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('en');
+    localStorage.clear();
   });
 
   it('puts email sign-in first and Discord after it as the secondary option', () => {

@@ -87,8 +87,8 @@ describe('BetaUpdateBanner', () => {
     const f = await renderWith(200, manifest);
     await act(async () =>
       (await f.next('GET', notesUrl)).respond(200, [
-        { version: '0.9.0-beta.4', date: '2026-11-14', notes: ['Not this one.'] },
-        { version: '0.9.0-beta.3', date: '2026-11-12', notes: ['A new thing.', 'Another one.'] },
+        { version: '0.9.0-beta.4', date: '2026-11-14', notes: { en: ['Not this one.'] } },
+        { version: '0.9.0-beta.3', date: '2026-11-12', notes: { en: ['A new thing.', 'Another one.'] } },
       ]),
     );
 
@@ -107,7 +107,7 @@ describe('BetaUpdateBanner', () => {
     [
       'has no entry for the version',
       200,
-      [{ version: '0.9.0-beta.2', date: '2026-11-01', notes: ['Old.'] }],
+      [{ version: '0.9.0-beta.2', date: '2026-11-01', notes: { en: ['Old.'] } }],
     ],
   ])('offers the update as before when the notes request %s', async (_name, status, body) => {
     const f = await renderWith(200, manifest);

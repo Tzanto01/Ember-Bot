@@ -1,5 +1,6 @@
 import { Flame, Leaf, Minus, Moon, Pause, Pencil } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { DayCell } from '@/components/day-cell';
 import { habitCadence } from '@/components/habits/habit-fields';
@@ -30,6 +31,7 @@ export interface HabitRowProps {
 }
 
 function Progress({ habit, roll, showStreaks }: { habit: Habit; roll: boolean; showStreaks: boolean }) {
+  const { t } = useTranslation();
   const week = habit.stats.week;
   if (week) {
     return (
@@ -41,12 +43,15 @@ function Progress({ habit, roll, showStreaks }: { habit: Habit; roll: boolean; s
         </span>
         {week.done > 0 ? (
           <span>
-            <RollingNumber value={week.done} roll={roll} /> of {week.target} this week
+            <Trans
+              t={t}
+              i18nKey="today.weekDone"
+              values={{ done: week.done, target: week.target }}
+              components={{ num: <RollingNumber value={week.done} roll={roll} /> }}
+            />
           </span>
-        ) : week.target === 1 ? (
-          'Once a week'
         ) : (
-          `${week.target} times a week`
+          t('habitFields.cadence.weekly', { count: week.target })
         )}
       </span>
     );
@@ -57,8 +62,12 @@ function Progress({ habit, roll, showStreaks }: { habit: Habit; roll: boolean; s
     <Badge>
       <Flame aria-hidden />
       <span className="inline-flex">
-        <RollingNumber value={streak} roll={roll} />
-        -day streak
+        <Trans
+          t={t}
+          i18nKey="today.streak"
+          count={streak}
+          components={{ num: <RollingNumber value={streak} roll={roll} /> }}
+        />
       </span>
     </Badge>
   );
@@ -78,6 +87,7 @@ export function HabitRow({
   headingLevel: Heading = 'h2',
   showStreaks,
 }: HabitRowProps) {
+  const { t } = useTranslation();
   const state = habit.today.state;
   const paused = state === 'paused' || habit.pausedToday;
   const notStarted = !paused && state === 'beforestart';
@@ -94,33 +104,33 @@ export function HabitRow({
       <span className="inline-flex items-start gap-1.5">
         <Pause aria-hidden className="mt-[3px] size-[14px] shrink-0" />
         {habit.pausedUntil
-          ? `Paused until ${formatDate(habit.pausedUntil, shortDate)}. You can resume it any time under Edit.`
-          : 'Paused. You can resume it any time under Edit.'}
+          ? t('today.pausedUntil', { date: formatDate(habit.pausedUntil, shortDate) })
+          : t('today.paused')}
       </span>
     );
   } else if (notStarted) {
-    meta = <span>Starts {formatDate(habit.startDate, shortDate)}.</span>;
+    meta = <span>{t('today.starts', { date: formatDate(habit.startDate, shortDate) })}</span>;
   } else if (state === 'offday') {
     meta = (
       <span className="inline-flex items-start gap-1.5">
         <Leaf aria-hidden className="mt-[3px] size-[14px] shrink-0" />
-        Rest day, nothing planned. Checking in is still welcome.
+        {t('today.restDay')}
       </span>
     );
   } else if (state === 'lowday') {
     meta = (
       <span className="inline-flex items-start gap-1.5">
         <Moon aria-hidden className="mt-[3px] size-[14px] shrink-0" />
-        Low day, resting. Checking in is still welcome.
+        {t('today.lowDayRow')}
       </span>
     );
   } else {
     meta = (
       <>
         {done ? (
-          <span>Done today</span>
+          <span>{t('today.doneToday')}</span>
         ) : (
-          multi && count > 0 && <span className="font-medium text-foreground">{count} of {target} today</span>
+          multi && count > 0 && <span className="font-medium text-foreground">{t('today.countToday', { n: count, target })}</span>
         )}
         <Progress habit={habit} roll={roll} showStreaks={showStreaks} />
       </>
@@ -149,7 +159,7 @@ export function HabitRow({
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground"
-                  aria-label={`Take one check-in off ${habit.name}`}
+                  aria-label={t('today.undoOne', { name: habit.name })}
                   aria-disabled={busy || undefined}
                   onClick={onUndoOne}
                 >
@@ -157,7 +167,7 @@ export function HabitRow({
                 </Button>
               )}
               <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
-                <Link to={`/habits/${habit.id}/edit`} aria-label={`Edit ${habit.name}`}>
+                <Link to={`/habits/${habit.id}/edit`} aria-label={t('today.edit', { name: habit.name })}>
                   <Pencil aria-hidden />
                 </Link>
               </Button>

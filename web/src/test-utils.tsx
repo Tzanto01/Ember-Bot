@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router';
+import i18n from '@/lib/i18n';
 
 function Elsewhere() {
   return <h1>{useLocation().pathname}</h1>;
@@ -32,4 +33,9 @@ export function renderPage(path: string, Page: ComponentType, url: string) {
     </QueryClientProvider>,
   );
   return router;
+}
+
+/** Test helper: shows the app in German until the test ends (`test-setup.ts` switches back to English). */
+export async function inGerman(): Promise<void> {
+  await i18n.changeLanguage('de');
 }

@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { MomentDoor } from '@/components/moment/moment-door';
@@ -50,6 +51,7 @@ function TwoFactorStep({
   onBack: () => void;
   backLabel: string;
 }) {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [useRecovery, setUseRecovery] = useState(false);
@@ -91,20 +93,16 @@ function TwoFactorStep({
 
   const error =
     field.error ??
-    (wrong ? (useRecovery ? "That recovery code didn't work. Check it and try again." : wrongCodeText) : null);
+    (wrong ? (useRecovery ? t('login.twoFactor.recoveryWrong') : wrongCodeText()) : null);
   return (
     <>
       <PageHeader
-        title="Two-step sign-in"
-        lede={
-          useRecovery
-            ? 'Enter one of your recovery codes. Each one works once.'
-            : 'Enter the 6-digit code from your authenticator app.'
-        }
+        title={t('login.twoFactor.title')}
+        lede={useRecovery ? t('login.twoFactor.ledeRecovery') : t('login.twoFactor.lede')}
       />
       <form ref={form} noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
         {useRecovery ? (
-          <FormField key="recovery" label="Recovery code" error={error}>
+          <FormField key="recovery" label={t('login.twoFactor.recoveryLabel')} error={error}>
             {(control) => (
               <Input
                 {...control}
@@ -119,13 +117,13 @@ function TwoFactorStep({
             )}
           </FormField>
         ) : (
-          <FormField key="code" label="Authenticator code" error={error}>
+          <FormField key="code" label={t('login.twoFactor.codeLabel')} error={error}>
             {(control) => <CodeInput ref={input} field={code} control={control} />}
           </FormField>
         )}
         <div>
           <Button type="button" variant="link" className="px-0" onClick={toggle}>
-            {useRecovery ? 'Use my authenticator app instead' : 'Use a recovery code instead'}
+            {useRecovery ? t('login.twoFactor.useApp') : t('login.twoFactor.useRecovery')}
           </Button>
         </div>
         {problem && (
@@ -133,8 +131,8 @@ function TwoFactorStep({
             <p>{problem}</p>
           </Notice>
         )}
-        <BusyButton type="submit" block busy={busy} busyLabel="Signing in…">
-          Sign in
+        <BusyButton type="submit" block busy={busy} busyLabel={t('login.signingIn')}>
+          {t('login.submit')}
         </BusyButton>
         <Button type="button" variant="secondary" block onClick={onBack}>
           {backLabel}
@@ -157,6 +155,7 @@ export default function LoginPage() {
   const reason = params.get('reason');
   const discordFailed = params.get('discord') === 'error';
   const discordStep = params.get('step') === '2fa';
+  const { t } = useTranslation();
 
   const form = useRef<HTMLFormElement>(null);
   const email = useField(emailRule);
@@ -254,7 +253,7 @@ export default function LoginPage() {
           else if (discordCode) setDiscordCode(null);
           else void navigate({ search: '' }, { replace: true });
         }}
-        backLabel={pending || discordCode ? 'Back' : 'Back to sign-in'}
+        backLabel={pending || discordCode ? t('login.back') : t('login.backToSignIn')}
       />
     );
   }
@@ -263,15 +262,15 @@ export default function LoginPage() {
     return (
       <>
         <PageHeader
-          title="Ember can't be reached right now"
-          lede="You may be offline. Your habits will be here when you're back."
+          title={t('login.offline.title')}
+          lede={t('login.offline.lede')}
         />
         <div className="flex flex-col gap-3">
-          <BusyButton type="button" block busy={retrying} busyLabel="Trying again…" onClick={() => void retry()}>
-            Try again
+          <BusyButton type="button" block busy={retrying} busyLabel={t('login.offline.retrying')} onClick={() => void retry()}>
+            {t('login.offline.retry')}
           </BusyButton>
           <Button type="button" variant="ghost" block onClick={() => setOfflineForm(true)}>
-            Sign in instead
+            {t('login.offline.signIn')}
           </Button>
         </div>
       </>
@@ -280,16 +279,16 @@ export default function LoginPage() {
 
   return (
     <>
-      <PageHeader title="Welcome back" lede="Sign in to check in on your habits." />
+      <PageHeader title={t('login.title')} lede={t('login.lede')} />
       <UpgradingNotice />
-      {(discordFailed || discordError) && <Notice tone="notice">Discord sign-in didn't finish. You can try again.</Notice>}
-      {reason === 'session' && <Notice>Your session ended. Sign in again to pick up where you left off.</Notice>}
+      {(discordFailed || discordError) && <Notice tone="notice">{t('login.discordFailed')}</Notice>}
+      {reason === 'session' && <Notice>{t('login.sessionEnded')}</Notice>}
       {reason === 'deleted' && (
-        <Notice>Your account and everything in it are deleted. Thank you for spending time with Ember.</Notice>
+        <Notice>{t('login.deleted')}</Notice>
       )}
 
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
-        <FormField label="Email" error={email.error ?? problem?.fields['email'] ?? null}>
+        <FormField label={t('auth.email')} error={email.error ?? problem?.fields['email'] ?? null}>
           {(field) => (
             <Input
               {...field}
@@ -301,7 +300,7 @@ export default function LoginPage() {
             />
           )}
         </FormField>
-        <FormField label="Password" error={password.error}>
+        <FormField label={t('auth.password')} error={password.error}>
           {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -312,11 +311,11 @@ export default function LoginPage() {
               onCheckedChange={(checked) => setStaySignedIn(checked === true)}
             />
             <Label htmlFor="stay-signed-in" className="font-normal whitespace-nowrap">
-              Stay signed in
+              {t('login.staySignedIn')}
             </Label>
           </div>
           <TapLink to="/forgot-password" className="whitespace-nowrap">
-            Forgot password?
+            {t('login.forgot')}
           </TapLink>
         </div>
 
@@ -325,7 +324,7 @@ export default function LoginPage() {
             <p>{problem.message}</p>
             {problem.offerResend &&
               (resend.isSuccess ? (
-                <p>If that address still needs confirming, a fresh link is on its way.</p>
+                <p>{t('auth.resendSent')}</p>
               ) : (
                 <Button
                   type="button"
@@ -333,40 +332,40 @@ export default function LoginPage() {
                   aria-disabled={resend.isPending || undefined}
                   onClick={() => resend.mutate(email.value.trim())}
                 >
-                  Send the link again
+                  {t('login.resend')}
                 </Button>
               ))}
             {problem.offerResend && (
               <TapLink to="/confirm-email" state={{ email: email.value.trim() }}>
-                Enter your code
+                {t('login.enterCode')}
               </TapLink>
             )}
           </Notice>
         )}
 
-        <BusyButton type="submit" block busy={login.isPending} busyLabel="Signing in…">
-          Sign in
+        <BusyButton type="submit" block busy={login.isPending} busyLabel={t('login.signingIn')}>
+          {t('login.submit')}
         </BusyButton>
       </form>
 
       <DiscordButton returnUrl={returnUrl} onNative={() => void startDiscordSignIn()}>
-        {env.native ? 'Continue with Discord' : 'Sign in with Discord'}
+        {env.native ? t('auth.discordContinue') : t('login.discord')}
       </DiscordButton>
       <p className="text-center text-muted-foreground">
-        New to Ember? <TapLink to="/signup">Create an account</TapLink>
+        {t('login.newHere')} <TapLink to="/signup">{t('login.createAccount')}</TapLink>
       </p>
       <NoAccountLink />
       {!env.native && (
         <p className="text-center">
-          <TapLink to="/download">Get the app</TapLink>
+          <TapLink to="/download">{t('login.getApp')}</TapLink>
         </p>
       )}
       <p className="text-center">
-        <TapLink to="/feedback">Send feedback</TapLink>
+        <TapLink to="/feedback">{t('login.feedback')}</TapLink>
       </p>
       <p className="flex flex-wrap justify-center gap-x-6 text-center">
         <MomentDoor variant="quiet" />
-        <TapLink to="/help">Help right now</TapLink>
+        <TapLink to="/help">{t('legalLinks.help')}</TapLink>
       </p>
     </>
   );

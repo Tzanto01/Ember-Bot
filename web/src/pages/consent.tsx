@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { ShieldLeaf } from '@/components/auth/illustrations';
@@ -13,6 +14,7 @@ import { useStore } from '@/lib/store';
 
 /** `/consent`: health-data consent for the current privacy policy version. */
 export default function ConsentPage() {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const returnUrl = safeReturnUrl(params.get('returnUrl'));
@@ -43,38 +45,29 @@ export default function ConsentPage() {
   return (
     <>
       <div className="flex items-start justify-between gap-4">
-        <PageHeader title={policyChanged ? 'Our privacy policy changed' : 'One quick question'} />
+        <PageHeader className="hyphens-auto" title={policyChanged ? t('consent.changed') : t('consent.title')} />
         <ShieldLeaf />
       </div>
       <div className="flex flex-col gap-3">
+        <p>{t('consent.what')}</p>
+        <p>{t('consent.why')}</p>
         <p>
-          Ember saves your habit names, check-ins, low days, day notes and moods. They can say something about your
-          health (think "take my meds" or "sleep 8 hours"). Under the GDPR (Article 9) that counts as health data, so
-          Ember asks before saving it.
-        </p>
-        <p>
-          Ember stores it only to run your habit tracker for you. It's never sold or used for ads. It reaches only the
-          services that run Ember (for example Discord, if you use it for reminders, and our hosting and email
-          providers). The privacy policy lists them. You can change your mind any time by deleting your account in
-          Settings, which removes everything.
-        </p>
-        <p>
-          <TapLink to="/legal/privacy">Read the privacy policy</TapLink>
+          <TapLink to="/legal/privacy">{t('consent.readPolicy')}</TapLink>
         </p>
       </div>
 
       {problem && <Notice tone="notice">{problem}</Notice>}
 
       <div className="flex flex-col gap-3">
-        <p className="text-center text-[14px] text-muted-foreground">Ember is for people 16 and older.</p>
-        <BusyButton type="button" block busy={agree.isPending} busyLabel="Saving…" onClick={give}>
-          I agree
+        <p className="text-center text-[14px] text-muted-foreground">{t('auth.age')}</p>
+        <BusyButton type="button" block busy={agree.isPending} busyLabel={t('auth.saving')} onClick={give}>
+          {t('consent.agree')}
         </BusyButton>
         <Button asChild variant="ghost" block>
-          <Link to="/settings">Not now</Link>
+          <Link to="/settings">{t('consent.notNow')}</Link>
         </Button>
         <p className="text-center text-[14px] text-muted-foreground">
-          Without it you can still read your history, change settings, and export or delete your data.
+          {t('consent.without')}
         </p>
       </div>
     </>

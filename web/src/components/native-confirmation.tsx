@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LiveRegion } from '@/components/live-region';
 import { Notice } from '@/components/ui/notice';
 import { deviceSync } from '@/lib/services';
@@ -12,6 +13,7 @@ export const confirmationMs = 4000;
  * politely and cleared after {@link confirmationMs}. Mount it once in the signed-in shell.
  */
 export function NativeConfirmation() {
+  const { t } = useTranslation();
   const checkIn = useStore(deviceSync.nativeCheckIn);
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function NativeConfirmation() {
     return () => clearTimeout(timer);
   }, [checkIn]);
 
-  const message = checkIn ? `Checked in: ${checkIn.name}` : '';
+  const message = checkIn ? t('native.checkedIn', { name: checkIn.name }) : '';
   return (
     <>
       <LiveRegion message={message} />

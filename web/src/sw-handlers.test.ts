@@ -254,6 +254,21 @@ describe('handleDoneAction', () => {
     expect(all.openWindow).not.toHaveBeenCalled();
   });
 
+  it('confirms in German when the page stored German as its language', async () => {
+    const match = vi.fn(async () => new Response('de'));
+    vi.stubGlobal('caches', { match });
+    try {
+      const { note, reg, all, post } = setup(async () => new Response(null, { status: 204 }));
+
+      await handleDoneAction(note, reg, all, origin, post);
+
+      expect(match).toHaveBeenCalledWith('/language', { cacheName: 'ember-language' });
+      expect(reg.showNotification).toHaveBeenCalledWith('Ember', { body: 'Eingetragen. Schön gemacht. ✅' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it.each([
     ['the token is unknown', async () => new Response(null, { status: 404 })],
     ['the token expired', async () => new Response(null, { status: 410 })],

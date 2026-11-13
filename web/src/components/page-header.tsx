@@ -18,7 +18,7 @@ export function PageHeader({ title, lede, aside, className }: PageHeaderProps) {
         <h1 tabIndex={-1} className="text-[28px] [overflow-wrap:anywhere] focus:outline-none md:text-[36px]">
           {title}
         </h1>
-        {lede && <p className="max-w-[38rem] text-muted-foreground">{lede}</p>}
+        {lede && <p className="max-w-[38rem] text-muted-foreground [overflow-wrap:anywhere]">{lede}</p>}
       </div>
       {aside}
     </header>

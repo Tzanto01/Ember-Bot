@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { momentCopy } from '@/lib/moment/copy';
 import type { Intensity } from '@/lib/moment/types';
@@ -16,6 +17,7 @@ export function IntensityScale({
   value: Intensity | undefined;
   onChange: (value: Intensity) => void;
 }) {
+  useTranslation();
   return (
     <RadioGroup
       aria-labelledby={labelledBy}

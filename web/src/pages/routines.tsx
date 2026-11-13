@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Bell, BellOff, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
@@ -18,6 +19,7 @@ const routineLimit = 10;
 
 /** `/routines`: the user's routines with their habits in order and reminder, links to edit, and "New routine". */
 export default function RoutinesPage() {
+  const { t } = useTranslation();
   const routines = useQuery({ queryKey: routinesKey, queryFn: () => api.listRoutines() });
   const habits = useQuery({ queryKey: routineHabitsKey, queryFn: () => api.listHabits() });
   const names = new Map((habits.data ?? []).map((h) => [h.id, h.name]));
@@ -26,13 +28,13 @@ export default function RoutinesPage() {
 
   const newButton = atLimit ? (
     <p className="text-[14px] text-muted-foreground">
-      You have 10 routines, the most Ember keeps. Remove one you no longer need to make room.
+      {t('routines.limit')}
     </p>
   ) : (
     <Button asChild variant={list?.length ? 'secondary' : 'default'} className="w-full sm:w-auto sm:self-start">
       <Link to="/routines/new">
         <Plus aria-hidden />
-        New routine
+        {t('routines.new')}
       </Link>
     </Button>
   );
@@ -42,17 +44,17 @@ export default function RoutinesPage() {
     const error = routines.isError && !routines.isFetching ? asApiError(routines.error) : null;
     content = error ? (
       !error.handled && (
-        <Notice tone="notice" heading="Your routines didn't load">
+        <Notice tone="notice" heading={t('routines.loadFailed')}>
           <p>{problemToMessage(error).message}</p>
           <Button variant="secondary" onClick={() => void routines.refetch()}>
-            Try again
+            {t('routines.tryAgain')}
           </Button>
         </Notice>
       )
     ) : (
       <div aria-busy="true" className="flex flex-col gap-3">
         <span role="status" className="sr-only">
-          Loading your routines…
+          {t('routines.loading')}
         </span>
         {[1, 2].map((i) => (
           <Skeleton key={i} className="h-[112px] rounded-xl" />
@@ -64,10 +66,10 @@ export default function RoutinesPage() {
       <Card className="items-center">
         <EmptyState
           illustration={<HearthIllustration />}
-          title="No routines yet"
+          title={t('routines.empty.title')}
           action={newButton}
         >
-          <p>Group habits you do together, like a morning routine, and give them one reminder.</p>
+          <p>{t('routines.empty.body')}</p>
         </EmptyState>
       </Card>
     );
@@ -82,8 +84,8 @@ export default function RoutinesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="min-w-0 text-[20px] break-words">{routine.name}</h2>
                   <Button asChild variant="secondary" className="shrink-0">
-                    <Link to={`/routines/${routine.id}/edit`} aria-label={`Edit ${routineTitle(routine.name)}`}>
-                      Edit
+                    <Link to={`/routines/${routine.id}/edit`} aria-label={t('today.edit', { name: routineTitle(routine.name) })}>
+                      {t('routines.edit')}
                     </Link>
                   </Button>
                 </div>
@@ -91,19 +93,19 @@ export default function RoutinesPage() {
                   {routine.reminderTime ? (
                     <>
                       <Bell aria-hidden className="size-[14px] shrink-0" />
-                      Reminder at {routine.reminderTime}
+                      {t('routines.reminderAt', { time: routine.reminderTime })}
                     </>
                   ) : (
                     <>
                       <BellOff aria-hidden className="size-[14px] shrink-0" />
-                      No reminder
+                      {t('routines.noReminder')}
                     </>
                   )}
                 </p>
                 {routine.habitIds.length === 0 ? (
-                  <p className="text-[14px] text-muted-foreground">No habits in it yet.</p>
+                  <p className="text-[14px] text-muted-foreground">{t('routines.noHabits')}</p>
                 ) : members.length > 0 ? (
-                  <ol aria-label={`Habits in ${routine.name}`} className="flex flex-wrap gap-2">
+                  <ol aria-label={t('routines.habitsIn', { name: routine.name })} className="flex flex-wrap gap-2">
                     {members.map((name, i) => (
                       <li key={`${i}-${name}`} className="rounded-full bg-secondary px-3 py-1 text-[14px] text-secondary-foreground">
                         {name}
@@ -112,7 +114,7 @@ export default function RoutinesPage() {
                   </ol>
                 ) : (
                   <p className="text-[14px] text-muted-foreground">
-                    {routine.habitIds.length === 1 ? '1 habit' : `${routine.habitIds.length} habits`}
+                    {t('routines.habitCount', { count: routine.habitIds.length })}
                   </p>
                 )}
               </li>
@@ -127,8 +129,8 @@ export default function RoutinesPage() {
   return (
     <div className="flex max-w-[40rem] flex-col gap-6">
       <PageHeader
-        title="Routines"
-        lede="Habits you do together, in the order you do them. Today shows them as a group."
+        title={t('routines.title')}
+        lede={t('routines.lede')}
       />
       {content}
     </div>

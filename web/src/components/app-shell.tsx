@@ -1,5 +1,6 @@
 import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
 import { BetaUpdateBanner } from '@/components/beta-update';
@@ -14,10 +15,10 @@ import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 const nav = [
-  { to: '/today', label: 'Today', icon: Flame },
-  { to: '/history', label: 'History', icon: CalendarDays },
-  { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
-];
+  { to: '/today', label: 'nav.today', icon: Flame },
+  { to: '/history', label: 'nav.history', icon: CalendarDays },
+  { to: '/settings', label: 'nav.settings', icon: SlidersHorizontal },
+] as const;
 
 const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px]';
 
@@ -26,6 +27,7 @@ const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px
  * and "Sign out" from `md` (Settings has it on phones); the offline-queue and dropped-edit notices above the page; legal footer.
  */
 export function AppShell() {
+  const { t } = useTranslation();
   const pending = useStore(offlineQueue.pending);
   const dropped = useStore(deviceSync.dropped);
   const droppedNotes = useStore(offlineQueue.droppedNotes);
@@ -59,7 +61,7 @@ export function AppShell() {
             <BetaBadge />
           </div>
           <nav
-            aria-label="Main"
+            aria-label={t('nav.main')}
             className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:static md:gap-1 md:border-0 md:bg-transparent md:p-0"
           >
             {nav.map(({ to, label, icon: Icon }) => (
@@ -76,7 +78,7 @@ export function AppShell() {
                 }
               >
                 <Icon aria-hidden className="size-[22px] md:size-[18px]" />
-                <span>{label}</span>
+                <span>{t(label)}</span>
               </NavLink>
             ))}
           </nav>
@@ -87,7 +89,7 @@ export function AppShell() {
               aria-disabled={signingOut || undefined}
               onClick={() => void signOut()}
             >
-              {signingOut ? 'Signing out…' : 'Sign out'}
+              {signingOut ? t('nav.signingOut') : t('nav.signOut')}
             </Button>
           )}
         </div>
@@ -99,41 +101,39 @@ export function AppShell() {
       >
         {signOutFailed && (
           <Notice tone="notice">
-            <p>Ember couldn't sign you out. Check your connection and try again.</p>
+            <p>{t('shell.signOutFailed')}</p>
           </Notice>
         )}
         {pending > 0 && (
           <Notice tone="info">
-            {`${pending === 1 ? 'One change is' : `${pending} changes are`} saved on this device and will sync when you're back online.`}
+            {t('shell.pending', { count: pending })}
           </Notice>
         )}
         {dropped > 0 && (
           <Notice tone="notice">
-            A change you made offline couldn't be saved: that day can't be edited anymore, or the habit is gone.
-            Everything else is in place.
+            {t('shell.dropped')}
             <Button variant="ghost" onClick={() => deviceSync.dropped.set(0)}>
-              Okay
+              {t('shell.okay')}
             </Button>
           </Notice>
         )}
         {droppedNotes.length > 0 && (
           <Notice tone="notice">
             <p>
-              {droppedNotes.length === 1 ? 'A journal entry' : 'Some journal entries'} you wrote offline couldn't be
-              saved. Here is what you wrote, so you can copy it into the day again.
+              {t('shell.droppedNotes', { count: droppedNotes.length })}
             </p>
             <ul className="flex flex-col gap-2">
               {droppedNotes.map((note, index) => (
                 <li key={`${note.date}-${index}`}>
                   <strong>{formatDate(note.date, { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
                   <p className="whitespace-pre-line select-text">
-                    {note.text ?? "This entry was private and can't be shown on this device."}
+                    {note.text ?? t('shell.privateNote')}
                   </p>
                 </li>
               ))}
             </ul>
             <Button variant="ghost" onClick={() => offlineQueue.droppedNotes.set([])}>
-              Okay
+              {t('shell.okay')}
             </Button>
           </Notice>
         )}

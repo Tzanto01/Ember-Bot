@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import type { AnimationEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/spinner';
 import { cn } from '@/lib/utils';
 import type { RewardKeyword } from './reward';
@@ -38,6 +39,7 @@ export function CheckButton({
   count = 0,
   target = 1,
 }: CheckButtonProps) {
+  const { t } = useTranslation();
   const ended = (event: AnimationEvent<HTMLButtonElement>) => {
     if (event.target === event.currentTarget) onRewardEnd();
   };
@@ -48,7 +50,11 @@ export function CheckButton({
       id={id}
       type="button"
       aria-pressed={pressed}
-      aria-label={`Check in ${habitName} for today${multi ? ` (${Math.min(count, target)}/${target})` : ''}`}
+      aria-label={
+        multi
+          ? t('today.checkInCount', { name: habitName, n: Math.min(count, target), target })
+          : t('today.checkIn', { name: habitName })
+      }
       aria-disabled={busy || undefined}
       onClick={onToggle}
       onAnimationEnd={ended}

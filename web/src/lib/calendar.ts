@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { addDays, addMonths, isSameMonth, monthWeeks, startOfMonth } from './local-date';
 import { type DayEntry, type DayState, type Habit, type LocalDateString, weekdays } from './models';
 
@@ -17,26 +18,28 @@ export interface CalendarDay {
 
 /** Words for a day state, used in accessible names and the legend. Never "missed". */
 export const dayStateWords: Record<DayState, string> = {
-  done: 'done',
-  notdone: 'not checked in',
-  pending: 'still open',
-  lowday: 'low day, resting',
-  paused: 'paused',
-  beforestart: 'before this habit started',
-  offday: 'rest day, nothing planned',
-  partial: 'partly done',
+  get done() { return t('calendar.state.done'); },
+  get notdone() { return t('calendar.state.notdone'); },
+  get pending() { return t('calendar.state.pending'); },
+  get lowday() { return t('calendar.state.lowday'); },
+  get paused() { return t('calendar.state.paused'); },
+  get beforestart() { return t('calendar.state.beforestart'); },
+  get offday() { return t('calendar.state.offday'); },
+  get partial() { return t('calendar.state.partial'); },
 };
 
 /** The state words, with "2 of 3 done" for a partial day when the habit's `timesPerDay` is known. */
 export function stateWords(state: DayState, count = 0, timesPerDay = 1): string {
-  return state === 'partial' && timesPerDay > 1 ? `${count} of ${timesPerDay} done` : dayStateWords[state];
+  return state === 'partial' && timesPerDay > 1
+    ? t('calendar.partialCount', { count, total: timesPerDay })
+    : dayStateWords[state];
 }
 
 /** Accessible state text for a cell, for example "today, done", "2 of 3 done" or "not yet". */
 export function dayLabel(day: CalendarDay, timesPerDay = 1): string {
-  if (day.state === null) return 'not yet';
+  if (day.state === null) return t('calendar.notYet');
   const words = stateWords(day.state, day.count, timesPerDay);
-  return day.isToday ? `today, ${words}` : words;
+  return day.isToday ? t('calendar.today', { words }) : words;
 }
 
 /** True when `date` is outside a set-weekdays habit's schedule (a rest day). */

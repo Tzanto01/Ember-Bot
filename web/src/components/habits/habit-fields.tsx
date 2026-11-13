@@ -1,6 +1,7 @@
 import { Plus, X } from 'lucide-react';
 import { type ReactNode, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { FormField, fieldMessages } from '@/components/form-field';
 import { LiveRegion } from '@/components/live-region';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NativeSelect } from '@/components/ui/select';
+import { t } from '@/lib/i18n';
 import { formatTime, weekdayLabels } from '@/lib/local-date';
 import { type Frequency, type Habit, reminderTimesOf, type TimeOfDay, type Weekday, weekdays } from '@/lib/models';
 
@@ -65,18 +67,15 @@ export function habitToForm(habit: Habit): HabitFormState {
 /** Contract name rule: 1 to 100 characters after trimming. Null when valid. */
 export function habitNameError(name: string): string | null {
   const length = name.trim().length;
-  if (length === 0) return 'Give your habit a short name.';
+  if (length === 0) return t('habitFields.nameMissing');
   if (length > 100) return fieldMessages.maxLength(100);
   return null;
 }
 
 /** Null when the chosen weekdays are fine (at least one, when the schedule is set weekdays). */
 export function habitDaysError(state: HabitFormState): string | null {
-  return state.frequency === 'weekdays' && state.days.length === 0 ? 'Pick at least one day.' : null;
+  return state.frequency === 'weekdays' && state.days.length === 0 ? t('habitFields.daysMissing') : null;
 }
-
-const shortDays = weekdayLabels(undefined, 'short');
-const longDays = weekdayLabels(undefined, 'long');
 
 /** "Every day", "Mon, Wed, Fri", "Once a week" or "3 times a week", with ", 3 times a day" when more than once. */
 export function cadenceText(
@@ -85,13 +84,14 @@ export function cadenceText(
   days: readonly Weekday[] | null = null,
   timesPerDay = 1,
 ): string {
-  if (frequency === 'weekly') return weeklyTarget === 1 ? 'Once a week' : `${weeklyTarget ?? 1} times a week`;
-  const perDay = timesPerDay > 1 ? `${timesPerDay} times a day` : null;
+  if (frequency === 'weekly') return t('habitFields.cadence.weekly', { count: weeklyTarget ?? 1 });
+  const perDay = timesPerDay > 1 ? t('habitFields.cadence.perDay', { count: timesPerDay }) : null;
   if (frequency === 'weekdays' && days?.length) {
+    const shortDays = weekdayLabels(undefined, 'short');
     const names = weekdays.flatMap((day, i) => (days.includes(day) ? [shortDays[i]] : [])).join(', ');
-    return perDay ? `${names}, ${perDay}` : names;
+    return perDay ? t('habitFields.cadence.daysPerDay', { days: names, perDay }) : names;
   }
-  return perDay ? perDay.charAt(0).toUpperCase() + perDay.slice(1) : 'Every day';
+  return perDay ? perDay.charAt(0).toUpperCase() + perDay.slice(1) : t('habitFields.cadence.daily');
 }
 
 /** {@link cadenceText} for a saved habit. */
@@ -105,7 +105,9 @@ function sortedTimes(rows: readonly string[]): TimeOfDay[] {
 }
 
 function timeList(times: readonly string[]): string {
-  return times.length > 1 ? `${times.slice(0, -1).join(', ')} and ${times[times.length - 1]}` : (times[0] ?? '');
+  return times.length > 1
+    ? t('habitFields.timeList', { rest: times.slice(0, -1).join(', '), last: times[times.length - 1] })
+    : (times[0] ?? '');
 }
 
 /**
@@ -114,8 +116,8 @@ function timeList(times: readonly string[]): string {
  */
 export function reminderSchedule(times: readonly TimeOfDay[], timesPerDay: number): string | null {
   if (!times.length || timesPerDay <= 1) return null;
-  if (times.length === 1) return `Ember reminds you once, at ${times[0]}. You can add a time for each check-in.`;
-  return `Ember reminds you at ${timeList(times)} until you've checked in ${timesPerDay} times.`;
+  if (times.length === 1) return t('habitFields.scheduleOnce', { time: times[0] });
+  return t('habitFields.schedule', { times: timeList(times), count: timesPerDay });
 }
 
 /**
@@ -123,8 +125,7 @@ export function reminderSchedule(times: readonly TimeOfDay[], timesPerDay: numbe
  * is met, then stays quiet until Monday.
  */
 export function weeklySchedule(time: TimeOfDay, weeklyTarget: number): string {
-  const target = weeklyTarget === 1 ? 'once' : `${weeklyTarget} times`;
-  return `Ember reminds you at ${formatTime(time)} on days you haven't checked in yet, until you've done it ${target} this week. Then it's quiet until Monday.`;
+  return t('habitFields.weeklySchedule', { time: formatTime(time), count: weeklyTarget });
 }
 
 export function habitFormValue(state: HabitFormState): HabitFormValue {
@@ -140,11 +141,11 @@ export function habitFormValue(state: HabitFormState): HabitFormValue {
   };
 }
 
-const frequencies: { value: Frequency; label: string }[] = [
-  { value: 'daily', label: 'Every day' },
-  { value: 'weekdays', label: 'On set days' },
-  { value: 'weekly', label: 'A few times a week' },
-];
+const frequencies = [
+  { value: 'daily', label: 'habitFields.frequency.daily' },
+  { value: 'weekdays', label: 'habitFields.frequency.weekdays' },
+  { value: 'weekly', label: 'habitFields.frequency.weekly' },
+] as const satisfies readonly { value: Frequency; label: string }[];
 
 const targets = [1, 2, 3, 4, 5, 6];
 const perDayOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -189,7 +190,10 @@ export function HabitFields({
   showReminder = true,
   silent = false,
 }: HabitFieldsProps) {
+  const { t } = useTranslation();
   const id = useId();
+  const shortDays = weekdayLabels(undefined, 'short');
+  const longDays = weekdayLabels(undefined, 'long');
   const timesId = `${id}-times`;
   const timesRef = useRef<HTMLDivElement>(null);
   const [dropped, setDropped] = useState<TimeOfDay[]>([]);
@@ -198,11 +202,14 @@ export function HabitFields({
   const timesError = errors['reminderTimes'] ?? errors['reminderTime'] ?? null;
   const schedule = silent
     ? times.length
-      ? 'No reminders will go out for this habit, since every way to reach you is off.'
+      ? t('habitFields.silent')
       : null
     : reminderSchedule(times, limit);
   const droppedNote = dropped.length
-    ? `${timeList(dropped)} ${dropped.length === 1 ? 'was' : 'were'} taken off, since you now check in ${limit === 1 ? 'once' : `${limit} times`} a day.`
+    ? t(dropped.length === 1 ? 'habitFields.droppedOne' : 'habitFields.droppedMany', {
+        times: timeList(dropped),
+        count: limit,
+      })
     : null;
 
   function changeSchedule(next: HabitFormState): void {
@@ -253,7 +260,7 @@ export function HabitFields({
   }
   return (
     <div className="flex flex-col gap-5">
-      <FormField label="Name" error={nameError} {...(nameId ? { id: nameId } : {})}>
+      <FormField label={t('habitFields.name')} error={nameError} {...(nameId ? { id: nameId } : {})}>
         {(field) => (
           <Input
             {...field}
@@ -268,7 +275,7 @@ export function HabitFields({
 
       <div className="flex flex-col gap-2">
         <p id={legendId} className="font-medium">
-          How often
+          {t('habitFields.howOften')}
         </p>
         <RadioGroup
           aria-labelledby={legendId}
@@ -279,7 +286,7 @@ export function HabitFields({
           {frequencies.map((option) => (
             <Label key={option.value} htmlFor={`${id}-${option.value}`} className={optionClass}>
               <RadioGroupItem id={`${id}-${option.value}`} value={option.value} />
-              {option.label}
+              {t(option.label)}
             </Label>
           ))}
         </RadioGroup>
@@ -289,7 +296,7 @@ export function HabitFields({
       {value.frequency === 'weekdays' && (
         <div className="flex flex-col gap-2">
           <p id={daysId} className="font-medium">
-            Which days
+            {t('habitFields.whichDays')}
           </p>
           <div
             role="group"
@@ -321,7 +328,7 @@ export function HabitFields({
           ) : (
             allDays && (
               <p id={`${daysId}-hint`} className="text-[14px] text-muted-foreground">
-                All seven days is the same as every day, so it saves as every day.
+                {t('habitFields.allDays')}
               </p>
             )
           )}
@@ -330,8 +337,8 @@ export function HabitFields({
 
       {value.frequency !== 'weekly' && (
         <FormField
-          label="Times a day"
-          hint="More than once, like water through the day? Each check-in adds one."
+          label={t('habitFields.timesPerDay')}
+          hint={t('habitFields.timesPerDayHint')}
           error={errors['timesPerDay'] ?? null}
         >
           {(field) => (
@@ -349,7 +356,7 @@ export function HabitFields({
                 ))}
               </NativeSelect>
               {savedTimesPerDay !== undefined && value.timesPerDay < savedTimesPerDay && (
-                <p className="text-[14px] text-muted-foreground">Past days stay as they are.</p>
+                <p className="text-[14px] text-muted-foreground">{t('habitFields.pastDaysStay')}</p>
               )}
             </>
           )}
@@ -357,7 +364,7 @@ export function HabitFields({
       )}
 
       {value.frequency === 'weekly' && (
-        <FormField label="Times per week" error={errors['weeklyTarget'] ?? null}>
+        <FormField label={t('habitFields.timesPerWeek')} error={errors['weeklyTarget'] ?? null}>
           {(field) => (
             <NativeSelect
               {...field}
@@ -379,12 +386,12 @@ export function HabitFields({
         <>
           {limit === 1 ? (
             <FormField
-              label="Reminder time"
+              label={t('habitFields.reminderTime')}
               optional
               hint={
                 value.frequency === 'weekly' && times[0] && !silent
                   ? weeklySchedule(times[0], value.weeklyTarget)
-                  : 'Ember sends a gentle nudge at this time.'
+                  : t('habitFields.reminderTimeHint')
               }
               error={timesError}
             >
@@ -401,10 +408,11 @@ export function HabitFields({
           ) : (
             <div className="flex flex-col gap-2">
               <p id={timesId} className="font-medium">
-                Reminder times <span className="font-normal text-muted-foreground">(optional)</span>
+                {t('habitFields.reminderTimes')}{' '}
+                <span className="font-normal text-muted-foreground">{t('habitFields.optional')}</span>
               </p>
               <p id={`${timesId}-hint`} className="-mt-1 text-[14px] text-muted-foreground">
-                One gentle nudge at each time, up to one per check-in.
+                {t('habitFields.reminderTimesHint')}
               </p>
               <div
                 ref={timesRef}
@@ -419,7 +427,7 @@ export function HabitFields({
                   <div key={i} className="flex items-center gap-2">
                     <Input
                       type="time"
-                      aria-label={`Reminder time ${i + 1}`}
+                      aria-label={t('habitFields.reminderTimeN', { n: i + 1 })}
                       aria-invalid={timesError ? true : undefined}
                       className="max-w-[12rem]"
                       value={time}
@@ -430,7 +438,9 @@ export function HabitFields({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        aria-label={time ? `Remove ${time}` : `Remove reminder time ${i + 1}`}
+                        aria-label={
+                          time ? t('habitFields.removeTime', { time }) : t('habitFields.removeTimeN', { n: i + 1 })
+                        }
                         onClick={() => removeTime(i)}
                       >
                         <X aria-hidden />
@@ -442,7 +452,7 @@ export function HabitFields({
               {value.reminderTimes.length < limit && (
                 <Button type="button" variant="secondary" className="self-start" onClick={addTime}>
                   <Plus aria-hidden />
-                  Add another time
+                  {t('habitFields.addTime')}
                 </Button>
               )}
               {schedule && (

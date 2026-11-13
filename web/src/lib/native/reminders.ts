@@ -1,6 +1,7 @@
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
 import type { ApiClient } from '../api-client';
 import { type DeviceStore, withDayEdit } from '../device-store';
+import { currentLanguage, t } from '../i18n';
 import { addDays, isLocalDate } from '../local-date';
 import { localModeOn } from '../local/mode';
 import type { Habit, LocalDateString, ReminderDestination, Routine } from '../models';
@@ -14,9 +15,9 @@ import { updaterAvailable } from './updater';
 import { capacitorWidget, type EmberWidgetPlugin, widgetSnapshot } from './widget';
 
 /** Lock-screen text: names no habit (contract, web push rule). */
-export const reminderBody = 'A gentle nudge from Ember';
+export const reminderBody = () => t('reminders.body');
 /** Body of the second reminder (contract v1.8). */
-export const secondReminderBody = 'One more nudge, in case the first one got buried.';
+export const secondReminderBody = () => t('reminders.secondBody');
 /** The notification action type carrying the "Done" button (single-habit reminders, with or without names). */
 export const doneActionType = 'ember-done';
 /** The `actionId` of the "Done" button. */
@@ -82,7 +83,7 @@ export function checkInTarget(extra: unknown, userId: string): CheckInTarget | n
  */
 export class Reminders {
   private chain: Promise<void> = Promise.resolve();
-  private channelReady = false;
+  private channelLanguage: string | null = null;
 
   constructor(
     private readonly api: ApiClient,
@@ -260,19 +261,20 @@ export class Reminders {
         };
     const plan = planReminders(habits, timeZone, now, routines, secondMinutes, target);
     const names = reminderNames.get();
-    if (!this.channelReady) {
+    const language = currentLanguage();
+    if (this.channelLanguage !== language) {
       await plugin.createChannel({
         id: channelId,
-        name: 'Reminders',
-        description: 'Gentle habit reminders',
+        name: t('reminders.channelName'),
+        description: t('reminders.channelDescription'),
         importance: 3,
       });
       await plugin.registerActionTypes({
         types: [
-          { id: doneActionType, actions: [{ id: doneAction, title: 'Done ✅', foreground: true }] },
+          { id: doneActionType, actions: [{ id: doneAction, title: t('reminders.done'), foreground: true }] },
         ],
       });
-      this.channelReady = true;
+      this.channelLanguage = language;
     }
     if (!plan.length || !(await this.allowed(plugin))) {
       localStorage.removeItem(plannedKey);
@@ -292,7 +294,7 @@ export class Reminders {
       return {
         id: reminder.id,
         title: named ? name : 'Ember',
-        body: reminder.second ? secondReminderBody : reminderBody,
+        body: reminder.second ? secondReminderBody() : reminderBody(),
         channelId,
         iconColor,
         actionTypeId: reminder.habitId !== undefined ? doneActionType : undefined,

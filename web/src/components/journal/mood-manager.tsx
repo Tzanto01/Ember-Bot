@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { BusyButton } from '@/components/auth/busy-button';
 import type { Validator } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
+import { t } from '@/lib/i18n';
 import { JournalLockedError } from '@/lib/journal/types';
 import type { OwnMood } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
@@ -21,18 +23,18 @@ const moodsKey = [...journalKey, 'moods'] as const;
 
 const labelRule: Validator = (value) => {
   const length = value.trim().length;
-  if (length === 0) return 'Please give it a name.';
-  return length > 24 ? 'Keep it to 24 characters or fewer.' : null;
+  if (length === 0) return t('moods.nameRequired');
+  return length > 24 ? t('moods.nameTooLong') : null;
 };
 
 const emojiRule: Validator = (value) =>
-  !value.trim() || isSingleEmoji(value.trim()) ? null : 'Use a single emoji, or leave this empty.';
+  !value.trim() || isSingleEmoji(value.trim()) ? null : t('moods.emojiInvalid');
 
 function failureMessage(error: unknown): string | null {
   if (error instanceof JournalLockedError) return error.message;
   const apiError = asApiError(error);
   if (apiError.handled) return null;
-  if (apiError.status === 409) return 'You have 20 moods in use. Archive one to make room for another.';
+  if (apiError.status === 409) return t('moods.limit');
   return problemToMessage(apiError).message;
 }
 
@@ -56,6 +58,7 @@ function MoodForm({
   onSubmit: (values: MoodValues) => Promise<boolean>;
   onCancel?: () => void;
 }) {
+  const { t } = useTranslation();
   const [label, setLabel] = useState(initial.label);
   const [emoji, setEmoji] = useState(initial.emoji ?? '');
   const [touched, setTouched] = useState({ label: false, emoji: false });
@@ -80,7 +83,7 @@ function MoodForm({
   return (
     <form ref={formRef} noValidate onSubmit={(e) => void submit(e)} className="flex flex-col gap-3" aria-label={name}>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
-        <FormField id={`${idPrefix}-label`} label="Name" error={touched.label ? labelError : null}>
+        <FormField id={`${idPrefix}-label`} label={t('moods.name')} error={touched.label ? labelError : null}>
           {(field) => (
             <Input
               {...field}
@@ -92,7 +95,7 @@ function MoodForm({
             />
           )}
         </FormField>
-        <FormField id={`${idPrefix}-emoji`} label="Emoji" optional error={touched.emoji ? emojiError : null}>
+        <FormField id={`${idPrefix}-emoji`} label={t('moods.emoji')} optional error={touched.emoji ? emojiError : null}>
           {(field) => (
             <Input
               {...field}
@@ -110,7 +113,7 @@ function MoodForm({
         </BusyButton>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('moods.cancel')}
           </Button>
         )}
       </div>
@@ -132,6 +135,7 @@ function MoodRow({
   focusArchive: boolean;
   onArchived: (moodId: number | null) => void;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const changeRef = useRef<HTMLButtonElement>(null);
@@ -152,13 +156,13 @@ function MoodRow({
       <li className="rounded-md border-[length:var(--border-width)] border-border p-3">
         <MoodForm
           idPrefix={`mood-${mood.id}`}
-          name={`Change ${mood.label}`}
+          name={t('moods.changeLabel', { label: mood.label })}
           initial={mood}
-          submitLabel="Save"
-          busyLabel="Saving…"
+          submitLabel={t('moods.save')}
+          busyLabel={t('moods.saving')}
           onCancel={closeEdit}
           onSubmit={async (values) => {
-            const ok = await onChange(values, `${values.label} saved.`);
+            const ok = await onChange(values, t('moods.saved', { label: values.label }));
             if (ok) closeEdit();
             return ok;
           }}
@@ -172,7 +176,7 @@ function MoodRow({
     setBusy(true);
     const ok = await onChange(
       { archived: !mood.archived },
-      mood.archived ? `${mood.label} is back in the picker.` : `${mood.label} archived.`,
+      t(mood.archived ? 'moods.unarchived' : 'moods.archivedDone', { label: mood.label }),
     );
     setBusy(false);
     if (ok) onArchived(mood.id);
@@ -184,18 +188,18 @@ function MoodRow({
         {mood.emoji && <span aria-hidden="true">{mood.emoji}</span>}
         <span className="truncate">{mood.label}</span>
       </span>
-      <Button ref={changeRef} variant="ghost" onClick={() => setEditing(true)} aria-label={`Change ${mood.label}`}>
-        Change
+      <Button ref={changeRef} variant="ghost" onClick={() => setEditing(true)} aria-label={t('moods.changeLabel', { label: mood.label })}>
+        {t('moods.change')}
       </Button>
       <BusyButton
         id={`mood-${mood.id}-archive`}
         variant="secondary"
         busy={busy}
-        busyLabel={mood.archived ? 'Bringing back…' : 'Archiving…'}
+        busyLabel={mood.archived ? t('moods.bringingBack') : t('moods.archiving')}
         onClick={() => void toggleArchive()}
-        aria-label={`${mood.archived ? 'Unarchive' : 'Archive'} ${mood.label}`}
+        aria-label={t(mood.archived ? 'moods.unarchiveLabel' : 'moods.archiveLabel', { label: mood.label })}
       >
-        {mood.archived ? 'Unarchive' : 'Archive'}
+        {mood.archived ? t('moods.unarchive') : t('moods.archive')}
       </BusyButton>
     </li>
   );
@@ -203,6 +207,7 @@ function MoodRow({
 
 /** Settings section for the user's own moods: add, rename or change the emoji, archive and unarchive (no delete). */
 export function MoodManager() {
+  const { t } = useTranslation();
   const journal = useJournal();
   const queryClient = useQueryClient();
   const state = useStore(journal.state);
@@ -237,7 +242,7 @@ export function MoodManager() {
   }, [formKey]);
 
   if (state === 'locked') {
-    return <JournalLocked>Your own moods are in your private journal, which is locked on this device.</JournalLocked>;
+    return <JournalLocked>{t('moods.locked')}</JournalLocked>;
   }
 
   const moods = query.data;
@@ -261,49 +266,48 @@ export function MoodManager() {
     <div className="flex flex-col gap-4">
       <LiveRegion message={announcement} />
       <p className="text-muted-foreground">
-        Add your own moods next to the five built-in ones. Archiving hides a mood from the picker; days you already
-        gave it keep showing it.
+        {t('moods.intro')}
       </p>
       {!moods ? (
         query.isError && !query.isFetching ? (
-          <Notice tone="notice" heading="Your moods didn't load">
+          <Notice tone="notice" heading={t('moods.loadError')}>
             {failureMessage(query.error) && <p>{failureMessage(query.error)}</p>}
             <Button variant="secondary" onClick={() => void query.refetch()}>
-              Try again
+              {t('history.tryAgain')}
             </Button>
           </Notice>
         ) : (
           <div aria-busy="true">
             <span role="status" className="sr-only">
-              Loading your moods…
+              {t('moods.loading')}
             </span>
             <Skeleton className="h-[44px] rounded-md" />
           </div>
         )
       ) : (
         <>
-          {active.length > 0 ? rows(active) : <p className="text-muted-foreground">No own moods yet.</p>}
+          {active.length > 0 ? rows(active) : <p className="text-muted-foreground">{t('moods.none')}</p>}
           {archived.length > 0 && (
             <div className="flex flex-col gap-2">
-              <h3 className="text-[18px]">Archived</h3>
+              <h3 className="text-[18px]">{t('moods.archivedHeading')}</h3>
               {rows(archived)}
             </div>
           )}
         </>
       )}
       {problem && (
-        <Notice tone="notice" heading="That didn't go through">
+        <Notice tone="notice" heading={t('moods.failed')}>
           <p>{problem}</p>
         </Notice>
       )}
       <MoodForm
         key={formKey}
         idPrefix="new-mood"
-        name="Add a mood"
-        submitLabel="Add mood"
-        busyLabel="Adding…"
+        name={t('moods.addForm')}
+        submitLabel={t('moods.add')}
+        busyLabel={t('moods.adding')}
         onSubmit={async (values) => {
-          const ok = await run(() => journal.addMood(values), (mood) => `${mood.label} added.`);
+          const ok = await run(() => journal.addMood(values), (mood) => t('moods.added', { label: mood.label }));
           if (ok) setFormKey((k) => k + 1);
           return ok;
         }}

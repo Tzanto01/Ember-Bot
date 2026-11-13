@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { BusyButton } from '@/components/auth/busy-button';
 import { type Field, useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -9,40 +10,33 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input, PasswordInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
+import { t } from '@/lib/i18n';
 import { JournalLockedError, WrongSecretError } from '@/lib/journal/types';
 import type { Me } from '@/lib/models';
 import { ApiError, problemToMessage } from '@/lib/problem';
 import { CopyButton, GroupedCode } from './secret-codes';
 
 const passphraseRule: Validator = (value) => {
-  if (!value) return 'Please choose a passphrase.';
-  return value.length >= 10
-    ? null
-    : 'Use at least 10 characters. A few words make a good passphrase.';
+  if (!value) return t('journalSettings.passphrase.empty');
+  return value.length >= 10 ? null : t('journalSettings.passphrase.short');
 };
-const requiredPassphrase: Validator = (value) => (value ? null : 'Please enter your passphrase.');
+const requiredPassphrase: Validator = (value) => (value ? null : t('journalSettings.passphrase.required'));
 const requiredRecovery: Validator = (value) =>
-  value.trim() ? null : 'Please enter your recovery code.';
+  value.trim() ? null : t('journalSettings.recovery.required');
 const loginPasswordRule: Validator = (value) =>
-  value ? null : 'Please enter your login password.';
+  value ? null : t('journalSettings.loginPassword.required');
 const noRule: Validator = () => null;
 const deleteRule: Validator = (value) => {
   const word = value.trim();
-  if (!word) return 'Type DELETE to confirm.';
-  return word === 'DELETE' ? null : 'Type DELETE in capital letters to confirm.';
+  if (!word) return t('settings.delete.typeDelete');
+  return word === 'DELETE' ? null : t('settings.delete.typeDeleteCaps');
 };
-
-/** Shown for a 400 on a journal-key change: the login password didn't match. */
-const passwordMismatch = "That login password doesn't match. Try again.";
-const wrongPassphrase = "That passphrase doesn't open your journal. Check it and try again.";
-const wrongRecovery = "That recovery code doesn't open your journal. Check it and try again.";
 
 /** A gentle message for a failed journal action, or null when the app already handled it. */
 export function journalProblem(error: unknown): string | null {
-  if (error instanceof JournalLockedError)
-    return 'Your journal is locked on this device again. Unlock it, then try once more.';
+  if (error instanceof JournalLockedError) return t('journalSettings.problem.locked');
   if (error instanceof ApiError) return error.handled ? null : problemToMessage(error).message;
-  return 'Something went wrong on this device. You can try again.';
+  return t('journalSettings.problem.device');
 }
 
 function ProblemNotice({ text }: { text: string | null }) {
@@ -54,6 +48,7 @@ function ProblemNotice({ text }: { text: string | null }) {
 }
 
 function Remember({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  const { t } = useTranslation();
   const id = useId();
   return (
     <div className="flex items-start gap-3">
@@ -65,12 +60,12 @@ function Remember({ checked, onChange }: { checked: boolean; onChange: (value: b
           onCheckedChange={(value) => onChange(value === true)}
         />
       </div>
-      <div className="flex flex-col pt-[10px]">
+      <div className="flex min-w-0 flex-col pt-[10px]">
         <Label htmlFor={id} className="font-normal">
-          Remember on this device
+          {t('journalSettings.remember.label')}
         </Label>
         <p id={`${id}-hint`} className="text-[14px] text-muted-foreground">
-          Stay unlocked here until you sign out. Leave it off on a shared device.
+          {t('journalSettings.remember.hint')}
         </p>
       </div>
     </div>
@@ -79,6 +74,7 @@ function Remember({ checked, onChange }: { checked: boolean; onChange: (value: b
 
 /** The login password, for accounts that have one, with a hidden username for password managers. */
 function LoginPassword({ me, field, error }: { me: Me; field: Field; error: string | null }) {
+  const { t } = useTranslation();
   if (!me.hasPassword) return null;
   return (
     <>
@@ -93,8 +89,8 @@ function LoginPassword({ me, field, error }: { me: Me; field: Field; error: stri
         aria-hidden="true"
       />
       <FormField
-        label="Your login password"
-        hint="Ember checks it before changing your journal key."
+        label={t('journalSettings.loginPassword.label')}
+        hint={t('journalSettings.loginPassword.hint')}
         error={error}
       >
         {(control) => (
@@ -110,10 +106,10 @@ function useNewPassphrase() {
   const passphrase = useField(passphraseRule);
   const confirm = useField((value) =>
     !value
-      ? 'Please type your passphrase again.'
+      ? t('journalSettings.passphrase.againEmpty')
       : value === passphrase.value
         ? null
-        : "The two passphrases don't match yet.",
+        : t('journalSettings.passphrase.mismatch'),
   );
   return { passphrase, confirm };
 }
@@ -121,24 +117,25 @@ function useNewPassphrase() {
 function NewPassphraseFields({
   passphrase,
   confirm,
-  label = 'Journal passphrase',
+  label,
 }: {
   passphrase: Field;
   confirm: Field;
   label?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <FormField
-        label={label}
-        hint="At least 10 characters. Pick something different from your login password."
+        label={label ?? t('journalSettings.passphrase.label')}
+        hint={t('journalSettings.passphrase.hint')}
         error={passphrase.error}
       >
         {(control) => (
           <PasswordInput {...control} {...passphrase.input} autoComplete="new-password" />
         )}
       </FormField>
-      <FormField label="Type it again" error={confirm.error}>
+      <FormField label={t('journalSettings.passphrase.again')} error={confirm.error}>
         {(control) => <PasswordInput {...control} {...confirm.input} autoComplete="new-password" />}
       </FormField>
     </>
@@ -155,6 +152,7 @@ export function EnableForm({
   onSubmit: (passphrase: string, remember: boolean, password?: string) => Promise<void>;
   progress: ReactNode;
 }) {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const { passphrase, confirm } = useNewPassphrase();
   const password = useField(me.hasPassword ? loginPasswordRule : noRule);
@@ -201,12 +199,12 @@ export function EnableForm({
       <LoginPassword
         me={me}
         field={password}
-        error={password.error ?? (mismatch ? passwordMismatch : null)}
+        error={password.error ?? (mismatch ? t('journalSettings.loginPassword.mismatch') : null)}
       />
       <ProblemNotice text={problem} />
       <div>
-        <BusyButton type="submit" busy={busy} busyLabel="Turning on…">
-          Turn on the private journal
+        <BusyButton type="submit" busy={busy} busyLabel={t('settings.turningOn')}>
+          {t('journalSettings.turnOn')}
         </BusyButton>
       </div>
       {busy && progress}
@@ -216,11 +214,12 @@ export function EnableForm({
 
 /** The one-time journal recovery code; finishing needs the "saved it" tick. */
 export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () => void }) {
+  const { t } = useTranslation();
   const id = useId();
   const box = useRef<HTMLButtonElement>(null);
   const [saved, setSaved] = useState(false);
   const [tried, setTried] = useState(false);
-  const error = tried && !saved ? 'Tick this once your recovery code is somewhere safe.' : null;
+  const error = tried && !saved ? t('journalSettings.recoveryStep.tick') : null;
 
   function finish(): void {
     if (saved) {
@@ -233,14 +232,11 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
 
   return (
     <div className="flex flex-col gap-4">
-      <Notice tone="info" heading="Your private journal is on">
-        <p>
-          Here is your recovery code. It opens your journal if you forget your passphrase. Write it
-          down or keep it in a password manager: you'll only see it now.
-        </p>
+      <Notice tone="info" heading={t('journalSettings.recoveryStep.heading')}>
+        <p>{t('journalSettings.recoveryStep.text')}</p>
       </Notice>
-      <GroupedCode value={code} label="Your recovery code" />
-      <CopyButton text={code}>Copy recovery code</CopyButton>
+      <GroupedCode value={code} label={t('journalSettings.recoveryStep.code')} />
+      <CopyButton text={code}>{t('journalSettings.recoveryStep.copy')}</CopyButton>
       <div className="flex flex-col gap-2">
         <div className="flex min-h-[44px] items-center gap-3">
           <Checkbox
@@ -251,8 +247,8 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
             aria-describedby={error ? `${id}-error` : undefined}
             onCheckedChange={(value) => setSaved(value === true)}
           />
-          <Label htmlFor={id} className="font-normal">
-            I've saved my recovery code
+          <Label htmlFor={id} className="min-w-0 font-normal">
+            {t('journalSettings.recoveryStep.saved')}
           </Label>
         </div>
         {error && (
@@ -263,7 +259,7 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
       </div>
       <div>
         <Button type="button" onClick={finish}>
-          Finish
+          {t('journalSettings.recoveryStep.finish')}
         </Button>
       </div>
     </div>
@@ -272,6 +268,7 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
 
 /** Unlocks this device with the passphrase or the recovery code. */
 export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: boolean) => void }) {
+  const { t } = useTranslation();
   const journal = useJournal();
   const form = useRef<HTMLFormElement>(null);
   const [useRecovery, setUseRecovery] = useState(false);
@@ -312,7 +309,9 @@ export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: bo
     setProblem(null);
   }
 
-  const error = field.error ?? (wrong ? (useRecovery ? wrongRecovery : wrongPassphrase) : null);
+  const error =
+    field.error ??
+    (wrong ? (useRecovery ? t('journalSettings.recovery.wrong') : t('journalSettings.passphrase.wrong')) : null);
   return (
     <form
       ref={form}
@@ -323,8 +322,8 @@ export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: bo
       {useRecovery ? (
         <FormField
           key="recovery"
-          label="Recovery code"
-          hint="8 groups of 4 letters and numbers. Spaces and dashes are fine."
+          label={t('journalSettings.recovery.label')}
+          hint={t('journalSettings.recovery.hint')}
           error={error}
         >
           {(control) => (
@@ -340,20 +339,20 @@ export function UnlockForm({ onUnlocked }: { onUnlocked: (needsNewPassphrase: bo
           )}
         </FormField>
       ) : (
-        <FormField key="passphrase" label="Journal passphrase" error={error}>
+        <FormField key="passphrase" label={t('journalSettings.passphrase.label')} error={error}>
           {(control) => <PasswordInput {...control} {...passphrase.input} autoComplete="current-password" />}
         </FormField>
       )}
       <div>
         <Button type="button" variant="link" className="px-0" onClick={toggle}>
-          {useRecovery ? 'Use my passphrase instead' : 'Use my recovery code'}
+          {useRecovery ? t('journalSettings.unlock.usePassphrase') : t('journalSettings.unlock.useRecovery')}
         </Button>
       </div>
       <Remember checked={remember} onChange={setRemember} />
       <ProblemNotice text={problem} />
       <div>
-        <BusyButton type="submit" busy={busy} busyLabel="Unlocking…">
-          Unlock
+        <BusyButton type="submit" busy={busy} busyLabel={t('journalSettings.unlock.busy')}>
+          {t('journalSettings.unlock.submit')}
         </BusyButton>
       </div>
     </form>
@@ -380,6 +379,7 @@ export function PassphraseForm({
   /** The recovery unlock is too old to re-wrap the key. */
   onExpired?: () => void;
 }) {
+  const { t } = useTranslation();
   const journal = useJournal();
   const form = useRef<HTMLFormElement>(null);
   const old = useField(current ? requiredPassphrase : noRule);
@@ -433,27 +433,27 @@ export function PassphraseForm({
     >
       {current && (
         <FormField
-          label="Current passphrase"
-          error={old.error ?? (wrong === 'old' ? wrongPassphrase : null)}
+          label={t('journalSettings.passphrase.current')}
+          error={old.error ?? (wrong === 'old' ? t('journalSettings.passphrase.wrong') : null)}
         >
           {(control) => <PasswordInput {...control} {...old.input} autoComplete="current-password" />}
         </FormField>
       )}
-      <NewPassphraseFields passphrase={passphrase} confirm={confirm} label="New passphrase" />
+      <NewPassphraseFields passphrase={passphrase} confirm={confirm} label={t('journalSettings.passphrase.new')} />
       {current && <Remember checked={remember} onChange={setRemember} />}
       <LoginPassword
         me={me}
         field={password}
-        error={password.error ?? (wrong === 'password' ? passwordMismatch : null)}
+        error={password.error ?? (wrong === 'password' ? t('journalSettings.loginPassword.mismatch') : null)}
       />
       <ProblemNotice text={problem} />
       <div className="flex flex-wrap gap-3">
-        <BusyButton type="submit" busy={busy} busyLabel="Saving…">
+        <BusyButton type="submit" busy={busy} busyLabel={t('settings.saving')}>
           {submitLabel}
         </BusyButton>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('settings.cancel')}
           </Button>
         )}
       </div>
@@ -480,6 +480,7 @@ export function ConfirmJournalForm({
   onSubmit: (password?: string) => Promise<void>;
   onCancel?: () => void;
 }) {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const password = useField(me.hasPassword ? loginPasswordRule : noRule);
   const confirm = useField(typeDelete ? deleteRule : noRule);
@@ -517,10 +518,10 @@ export function ConfirmJournalForm({
       <LoginPassword
         me={me}
         field={password}
-        error={password.error ?? (mismatch ? passwordMismatch : null)}
+        error={password.error ?? (mismatch ? t('journalSettings.loginPassword.mismatch') : null)}
       />
       {typeDelete && (
-        <FormField label="Type DELETE to confirm" error={confirm.error}>
+        <FormField label={t('settings.delete.confirmLabel')} error={confirm.error}>
           {(control) => (
             <Input
               {...control}
@@ -545,7 +546,7 @@ export function ConfirmJournalForm({
         </BusyButton>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('settings.cancel')}
           </Button>
         )}
       </div>

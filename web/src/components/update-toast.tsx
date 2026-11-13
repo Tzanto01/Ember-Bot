@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { http } from '@/lib/services';
@@ -7,8 +8,9 @@ import { updateReady } from '@/lib/startup';
 import { useStore } from '@/lib/store';
 
 function Dismiss({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
   return (
-    <Button variant="ghost" size="icon" aria-label="Dismiss" className="-my-2 -mr-2 ml-auto" onClick={onClick}>
+    <Button variant="ghost" size="icon" aria-label={t('update.dismiss')} className="-my-2 -mr-2 ml-auto" onClick={onClick}>
       <X aria-hidden />
     </Button>
   );
@@ -20,6 +22,7 @@ function Dismiss({ onClick }: { onClick: () => void }) {
  * (`Http.offlineData`).
  */
 export function UpdateToast() {
+  const { t } = useTranslation();
   const reload = useStore(updateReady);
   const offline = useStore(http.offlineData);
   const [updateHidden, setUpdateHidden] = useState(false);
@@ -35,7 +38,7 @@ export function UpdateToast() {
       {showOffline && (
         <Notice tone="info" className="pointer-events-auto w-full max-w-[28rem] bg-card shadow-md">
           <div className="flex w-full items-start gap-2">
-            <p>You're offline, so this is what Ember saved on this device. Changes will sync when you're back.</p>
+            <p>{t('update.offline')}</p>
             <Dismiss onClick={() => setOfflineHidden(true)} />
           </div>
         </Notice>
@@ -43,7 +46,7 @@ export function UpdateToast() {
       {showUpdate && (
         <Notice tone="info" className="pointer-events-auto w-full max-w-[28rem] bg-card shadow-md">
           <div className="flex w-full flex-wrap items-center gap-2">
-            <p>A new version is ready.</p>
+            <p>{t('update.ready')}</p>
             <Button
               variant="secondary"
               aria-disabled={reloading || undefined}
@@ -53,7 +56,7 @@ export function UpdateToast() {
                 reload();
               }}
             >
-              {reloading ? 'Reloading…' : 'Reload'}
+              {reloading ? t('update.reloading') : t('update.reload')}
             </Button>
             <Dismiss onClick={() => setUpdateHidden(true)} />
           </div>

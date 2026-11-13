@@ -1,5 +1,6 @@
 import { moodLook, type MoodLook } from '@/components/journal/moods';
 import { dayStateWords } from '@/lib/calendar';
+import { t } from '@/lib/i18n';
 import { addDays, startOfWeek, toParts } from '@/lib/local-date';
 import type { DayEntry, DayNote, DayStat, LocalDateString, OwnMood } from '@/lib/models';
 
@@ -47,15 +48,19 @@ export function daysFromStats(
       tone = share >= 1 ? 3 : share >= 0.5 ? 2 : 1;
       words =
         stat.scheduled > 0
-          ? `you showed up, ${stat.done} of ${stat.scheduled} done${stat.partial ? `, ${stat.partial} partly` : ''}`
-          : 'you showed up';
+          ? t(stat.partial ? 'year.words.showedUpPartly' : 'year.words.showedUpDone', {
+              done: stat.done,
+              scheduled: stat.scheduled,
+              partial: stat.partial,
+            })
+          : t('year.words.showedUp');
     } else {
-      words = stat.scheduled > 0 ? 'no check-ins' : 'nothing planned';
+      words = stat.scheduled > 0 ? t('year.words.noCheckIns') : t('year.words.nothingPlanned');
     }
     map.set(stat.date, { date: stat.date, tone, showedUp: stat.showedUp, words, mood: moods.get(stat.date) ?? null });
   }
   for (const [date, mood] of moods) {
-    if (!map.has(date)) map.set(date, { date, tone: 0, showedUp: false, words: 'nothing recorded', mood });
+    if (!map.has(date)) map.set(date, { date, tone: 0, showedUp: false, words: t('year.nothingRecorded'), mood });
   }
   return map;
 }
@@ -87,7 +92,7 @@ export function daysFromEntries(
     });
   }
   for (const [date, mood] of moods) {
-    if (!map.has(date)) map.set(date, { date, tone: 0, showedUp: false, words: 'nothing recorded', mood });
+    if (!map.has(date)) map.set(date, { date, tone: 0, showedUp: false, words: t('year.nothingRecorded'), mood });
   }
   return map;
 }

@@ -16,6 +16,7 @@ import {
   type Weekday,
   weekdays,
 } from '../models';
+import { deviceLanguage, isLanguage, rememberDeviceLanguage } from '../i18n';
 import { themes } from '../theme';
 import {
   dayStats,
@@ -453,6 +454,7 @@ export class LocalBackend {
       dmReminders: { paused: false },
       journal: { encrypted: false, turningOff: false, plaintextLeft: 0, encryptedLeft: 0 },
       showStreaks: profile.showStreaks ?? true,
+      language: deviceLanguage(),
     };
   }
 
@@ -471,7 +473,10 @@ export class LocalBackend {
       errors['secondReminderMinutes'] = ['Must be 0, 15, 30, 60 or 120.'];
     const showStreaks = b['showStreaks'];
     if (showStreaks !== undefined && typeof showStreaks !== 'boolean') errors['showStreaks'] = ['Must be true or false.'];
+    const language = b['language'];
+    if (language !== undefined && !isLanguage(language)) errors['language'] = ['Must be en or de.'];
     if (Object.keys(errors).length) throw invalid(errors);
+    if (isLanguage(language)) rememberDeviceLanguage(language);
     const data = await this.update((d) => {
       if (typeof timezone === 'string') d.profile.timezone = timezone;
       if (typeof grace === 'number') d.profile.graceDaysPerWeek = grace;

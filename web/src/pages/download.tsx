@@ -1,13 +1,17 @@
 import { Download, ExternalLink } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { TapLink } from '@/components/auth/busy-button';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { pitch } from '@/content/pitch';
 import { downloads } from '@/lib/downloads';
 import { env } from '@/lib/env';
+import { currentLanguage } from '@/lib/i18n';
 
 function AndroidSection() {
-  const { apkUrl, version, size } = downloads.android;
+  const { t } = useTranslation();
+  const { apkUrl, version, sizeMb } = downloads.android;
+  const size = new Intl.NumberFormat(currentLanguage()).format(sizeMb);
   return (
     <section aria-labelledby="download-android" className="flex flex-col gap-3">
       <h2 id="download-android" className="text-[22px]">
@@ -16,58 +20,52 @@ function AndroidSection() {
       <Button asChild className="self-start">
         <a href={apkUrl} download>
           <Download aria-hidden />
-          Download for Android
+          {t('download.android.button')}
         </a>
       </Button>
       <p className="text-muted-foreground">
-        Version {version}, {size}, for Android 7 or newer.
+        {t('download.android.meta', { version, size })}
       </p>
       <ol className="flex list-decimal flex-col gap-1 pl-5">
-        <li>Open the file once it has downloaded.</li>
-        <li>When asked, allow "Install unknown apps" for your browser or messaging app.</li>
-        <li>
-          If Play Protect warns about an unknown developer, choose "Install anyway". That's expected for a beta
-          build.
-        </li>
+        <li>{t('download.android.step1')}</li>
+        <li>{t('download.android.step2')}</li>
+        <li>{t('download.android.step3')}</li>
       </ol>
     </section>
   );
 }
 
 function BrowserSection() {
+  const { t } = useTranslation();
   return (
     <section aria-labelledby="download-browser" className="flex flex-col gap-3">
       <h2 id="download-browser" className="text-[22px]">
-        iPhone and any other device
+        {t('download.browser.heading')}
       </h2>
-      <p>Use Ember right here in your browser, then add it to your home screen so it opens like an app.</p>
+      <p>{t('download.browser.lede')}</p>
       <ul className="flex list-disc flex-col gap-1 pl-5">
-        <li>iPhone, in Safari: tap Share, then "Add to Home Screen".</li>
-        <li>Android, in Chrome: open the menu, then "Add to Home screen" or "Install app".</li>
+        <li>{t('download.browser.iphone')}</li>
+        <li>{t('download.browser.android')}</li>
       </ul>
-      <p className="text-muted-foreground">
-        On iPhone, reminder notifications need Ember on your home screen (iOS 16.4 or newer).
-      </p>
+      <p className="text-muted-foreground">{t('download.browser.iosNote')}</p>
     </section>
   );
 }
 
 function DiscordSection() {
+  const { t } = useTranslation();
   return (
     <section aria-labelledby="download-discord" className="flex flex-col gap-3">
       <h2 id="download-discord" className="text-[22px]">
-        If you use Discord
+        {t('download.discord.heading')}
       </h2>
       <Button asChild variant="secondary" className="self-start">
         <a href={downloads.discordInvite} target="_blank" rel="noopener">
-          Add Ember to Discord <span className="sr-only">(opens in a new tab)</span>
+          {t('download.discord.button')} <span className="sr-only">{t('download.newTab')}</span>
           <ExternalLink aria-hidden />
         </a>
       </Button>
-      <p className="text-muted-foreground">
-        Optional: the Ember bot can remind you in your DMs and lets you check in with slash commands, in any server or
-        in your DMs.
-      </p>
+      <p className="text-muted-foreground">{t('download.discord.text')}</p>
     </section>
   );
 }
@@ -77,20 +75,24 @@ function DiscordSection() {
  * see the APK first, everyone else the browser route first; the native app hides the APK.
  */
 export default function DownloadPage() {
+  const { t } = useTranslation();
   const native = env.native;
   const androidBrowser = !native && navigator.userAgent.includes('Android');
   return (
     <div className="flex w-full flex-col gap-8">
       <PageHeader
-        title="Get Ember"
-        lede={`${pitch.description} Ember is in beta, so a few things may still change. Thanks for trying it early.`}
+        title={t('download.title')}
+        lede={t('download.lede', { description: pitch.description })}
       />
       {androidBrowser && <AndroidSection />}
       <BrowserSection />
       {!native && !androidBrowser && <AndroidSection />}
       <DiscordSection />
       <p className="text-muted-foreground">
-        Ready to start? <TapLink to="/signup">Create an account</TapLink> or <TapLink to="/login">sign in</TapLink>.
+        <Trans
+          i18nKey="download.ready"
+          components={{ signup: <TapLink to="/signup" />, login: <TapLink to="/login" /> }}
+        />
       </p>
     </div>
   );

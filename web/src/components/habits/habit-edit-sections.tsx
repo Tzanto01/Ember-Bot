@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { DayCell } from '@/components/day-cell';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -31,6 +32,7 @@ import {
   useReminderDestinations,
 } from '@/components/habits/device-reminders';
 import { env } from '@/lib/env';
+import { t } from '@/lib/i18n';
 import { formatDate } from '@/lib/local-date';
 import {
   type Habit,
@@ -72,6 +74,7 @@ export interface SectionProps {
  * (the habit's routine) it links there and, when that routine has a reminder, shows it replacing the habit's own.
  */
 export function DetailsSection({ habit, onChange, routine = null }: SectionProps & { routine?: Routine | null }) {
+  const { t } = useTranslation();
   const root = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState(() => habitToForm(habit));
   const [touched, setTouched] = useState(false);
@@ -97,7 +100,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
       setForm(habitToForm(updated));
       setTouched(false);
       setDeviceOff(!allowed);
-      setFeedback({ tone: 'success', text: 'Saved.' });
+      setFeedback({ tone: 'success', text: t('habitEdit.saved') });
     },
     onError: (error) => {
       const problem = failure(error);
@@ -129,7 +132,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
     if (value.timesPerDay !== habit.timesPerDay) patch.timesPerDay = value.timesPerDay;
     if (value.reminderTimes.join() !== reminderTimesOf(habit).join()) patch.reminderTimes = value.reminderTimes;
     if (Object.keys(patch).length === 0) {
-      setFeedback({ tone: 'info', text: 'Nothing has changed yet.' });
+      setFeedback({ tone: 'info', text: t('habitEdit.unchanged') });
       return;
     }
     setFieldErrors({});
@@ -148,7 +151,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
       className={cardVariants({ className: 'gap-5' })}
     >
       <h2 id="details-heading" className="text-[22px]">
-        Details
+        {t('habitEdit.details')}
       </h2>
       <HabitFields
         value={form}
@@ -161,21 +164,22 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
         silent={habit.reminderChannels?.length === 0}
         reminderNote={
           routine?.reminderTime &&
-          `Your ${routineTitle(routine.name)} reminds you at ${routine.reminderTime} instead, while this habit is part of it.`
+          t('habitEdit.routineReminder', { routine: routineTitle(routine.name), time: routine.reminderTime })
         }
       />
       <p className="text-[14px] text-muted-foreground">
-        Grace days apply to all your habits. You can change them in <Link to="/settings">Settings</Link>.
+        <Trans t={t} i18nKey="habitEdit.graceDays" components={{ anchor: <Link to="/settings" /> }} />
       </p>
       <p className="text-[14px] text-muted-foreground">
         {routine ? (
-          <>
-            Part of your <Link to={`/routines/${routine.id}/edit`}>{routineTitle(routine.name)}</Link>.
-          </>
+          <Trans
+            t={t}
+            i18nKey="habitEdit.partOf"
+            values={{ routine: routineTitle(routine.name) }}
+            components={{ anchor: <Link to={`/routines/${routine.id}/edit`} /> }}
+          />
         ) : (
-          <>
-            Habits you do together can share one reminder in <Link to="/routines">Routines</Link>.
-          </>
+          <Trans t={t} i18nKey="habitEdit.shareReminder" components={{ anchor: <Link to="/routines" /> }} />
         )}
       </p>
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
@@ -184,10 +188,10 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
         {save.isPending ? (
           <>
             <Spinner />
-            Saving…
+            {t('habitEdit.saving')}
           </>
         ) : (
-          'Save changes'
+          t('habitEdit.save')
         )}
       </Button>
     </form>
@@ -206,8 +210,9 @@ export function ChannelChoices({
   onToggle: (channel: ReminderChannel, checked: boolean) => void;
   idPrefix?: string;
 }) {
+  const { t } = useTranslation();
   return (
-    <div role="group" aria-label="Reminder channels" className="flex flex-col gap-1">
+    <div role="group" aria-label={t('habitEdit.channels')} className="flex flex-col gap-1">
       {options.map(({ channel, label }) => (
         <div key={channel} className="flex min-h-[44px] items-center gap-3">
           <Checkbox
@@ -225,7 +230,14 @@ export function ChannelChoices({
 }
 
 /** The one channel choice without an account: the phone, in the app. */
-export const phoneChoice = [{ channel: 'mobile' as const, label: 'Remind me on this phone' }];
+export const phoneChoice = [
+  {
+    channel: 'mobile' as const,
+    get label() {
+      return t('habitEdit.phoneChoice');
+    },
+  },
+];
 
 /** What {@link RemindersSection} saves: the phone's channel without an account, else the skipped destinations. */
 export type ReminderChoice = { reminderChannels: ReminderChannel[] } | { reminderExclusions: string[] };
@@ -265,6 +277,7 @@ export function RemindersSection(props: RemindersSectionProps) {
 }
 
 function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersSectionProps) {
+  const { t } = useTranslation();
   const [shown, setShown] = useState<{ base: string; next: ReminderChannel[] } | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [deviceOff, setDeviceOff] = useState(false);
@@ -278,7 +291,9 @@ function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersS
     onSuccess: (allowed, next) => {
       setDeviceOff(!allowed);
       setFeedback(
-        allowed ? { tone: 'success', text: next.length ? 'This phone will remind you.' : 'Reminder channels saved.' } : null,
+        allowed
+          ? { tone: 'success', text: next.length ? t('habitEdit.phoneOn') : t('habitEdit.channelsSaved') }
+          : null,
       );
     },
     onError: (error) => {
@@ -302,25 +317,25 @@ function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersS
   return (
     <section aria-labelledby="channels-heading" className={cardVariants()}>
       <h2 id="channels-heading" className="text-[22px]">
-        Where reminders go
+        {t('habitEdit.whereReminders')}
       </h2>
       {env.native ? (
         <>
           <ChannelChoices options={phoneChoice} current={current} onToggle={(_, checked) => toggle(checked)} />
           {channels.length === 0 ? (
             <p className="text-[14px] text-muted-foreground">
-              No reminders will go out for this {subject}. That's fine too.
+              {t(subject === 'habit' ? 'habitEdit.noReminders.habit' : 'habitEdit.noReminders.routine')}
             </p>
           ) : (
             !hasReminderTime && (
               <p className="text-[14px] text-muted-foreground">
-                Set a reminder time above so these have a moment to arrive.
+                {t('habitEdit.setTime')}
               </p>
             )
           )}
         </>
       ) : (
-        <p className="text-muted-foreground">Reminders need the Ember app or an account.</p>
+        <p className="text-muted-foreground">{t('habitEdit.needApp')}</p>
       )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       {deviceOff && <DeviceRemindersOff />}
@@ -329,6 +344,7 @@ function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersS
 }
 
 function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSectionProps) {
+  const { t } = useTranslation();
   const destinations = useReminderDestinations();
   const pushAvailable = useStore(push.available);
   const [shown, setShown] = useState<{ base: string; next: string[] } | null>(null);
@@ -348,10 +364,9 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
     onError: (error, { destination, checked }) => {
       setShown(null);
       if (failure(error)) {
-        const kept = checked ? 'off' : 'on';
         setFeedback({
           tone: 'notice',
-          text: `That didn't save, so ${destination.label} is still ${kept}. Try again in a moment.`,
+          text: t(checked ? 'habitEdit.stillOff' : 'habitEdit.stillOn', { name: destination.label }),
         });
       }
     },
@@ -377,11 +392,11 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
     content =
       list.length === 0 ? (
         <p className="text-muted-foreground">
-          Nothing can remind you yet. You can turn reminders on in{' '}
-          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
-            Settings
-          </Link>
-          .
+          <Trans
+            t={t}
+            i18nKey="habitEdit.nothingYet"
+            components={{ anchor: <Link to={destinationsLink} className="text-primary underline underline-offset-4" /> }}
+          />
         </p>
       ) : (
         <div
@@ -415,11 +430,13 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
                   </Label>
                   {!destination.enabled && (
                     <p id={`${id}-off`} className="text-[14px] text-muted-foreground">
-                      Turned off in{' '}
-                      <Link to={destinationsLink} className="text-primary underline underline-offset-4">
-                        Settings
-                      </Link>
-                      .
+                      <Trans
+                        t={t}
+                        i18nKey="habitEdit.turnedOff"
+                        components={{
+                          anchor: <Link to={destinationsLink} className="text-primary underline underline-offset-4" />,
+                        }}
+                      />
                     </p>
                   )}
                 </div>
@@ -438,7 +455,7 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
           aria-disabled={destinations.isFetching || undefined}
           onClick={() => void destinations.refetch()}
         >
-          Try again
+          {t('habitEdit.tryAgain')}
         </Button>
       </Notice>
     );
@@ -446,7 +463,7 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
     content = (
       <>
         <p role="status" className="sr-only">
-          Loading where Ember can remind you…
+          {t('habitEdit.loadingDestinations')}
         </p>
         <Skeleton className="h-[6rem] rounded-md" />
       </>
@@ -460,33 +477,33 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
   return (
     <section aria-labelledby="channels-heading" className={cardVariants()}>
       <h2 id="channels-heading" className="text-[22px]">
-        Remind me on
+        {t('habitEdit.remindOn')}
       </h2>
       {list.length > 0 && (
         <p id="channels-hint" className="text-[14px] text-muted-foreground">
-          Untick a place to skip it for this {subject}.
+          {t(subject === 'habit' ? 'habitEdit.untick.habit' : 'habitEdit.untick.routine')}
         </p>
       )}
       {content}
       {list.length > 0 &&
         (reaching === 0 ? (
           <p className="text-[14px] text-muted-foreground">
-            No reminders will go out for this {subject}. That's fine too.
+            {t(subject === 'habit' ? 'habitEdit.noReminders.habit' : 'habitEdit.noReminders.routine')}
           </p>
         ) : (
           !hasReminderTime && (
             <p className="text-[14px] text-muted-foreground">
-              Set a reminder time above so these have a moment to arrive.
+              {t('habitEdit.setTime')}
             </p>
           )
         ))}
       {missingHere && (
         <p className="text-[14px] text-muted-foreground">
-          To be reminded on this {thisDevice} too, turn it on in{' '}
-          <Link to={destinationsLink} className="text-primary underline underline-offset-4">
-            Settings
-          </Link>
-          .
+          <Trans
+            t={t}
+            i18nKey={thisDevice === 'phone' ? 'habitEdit.missingPhone' : 'habitEdit.missingBrowser'}
+            components={{ anchor: <Link to={destinationsLink} className="text-primary underline underline-offset-4" /> }}
+          />
         </p>
       )}
       {list.length > 0 && (
@@ -494,7 +511,7 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
           {saved && (
             <>
               <Check aria-hidden className="size-[18px] text-primary" />
-              Saved.
+              {t('habitEdit.saved')}
             </>
           )}
         </p>
@@ -505,13 +522,14 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
 }
 
 function pauseError(until: string, today: LocalDateString | null): string | null {
-  if (!until) return 'Choose the day the pause ends.';
-  if (today && until < today) return 'Pick today or a later day.';
+  if (!until) return t('habitEdit.pauseMissing');
+  if (today && until < today) return t('habitEdit.pauseEarly');
   return null;
 }
 
 /** "Take a break": pause until a day (not before `me.localToday`) or resume; focus returns to the heading. */
 export function PauseSection({ habit, onChange }: SectionProps) {
+  const { t } = useTranslation();
   const root = useRef<HTMLFormElement>(null);
   const today = useStore(auth.me)?.localToday ?? null;
   const [until, setUntil] = useState('');
@@ -546,40 +564,41 @@ export function PauseSection({ habit, onChange }: SectionProps) {
       focusFirstInvalid(root.current);
       return;
     }
-    run.mutate({ until, success: `Paused until ${formatDate(until, longDate)}.` });
+    run.mutate({ until, success: t('habitEdit.pausedUntil', { date: formatDate(until, longDate) }) });
   }
 
   return (
     <section aria-labelledby="pause-heading" className={cardVariants()}>
       <div className="flex items-center gap-3">
         <h2 id="pause-heading" tabIndex={-1} className="text-[22px] focus:outline-none">
-          Take a break
+          {t('habitEdit.pause')}
         </h2>
         <DayCell state="paused" size="swatch" />
       </div>
       {paused ? (
         <>
           <p>
-            {habit.pausedUntil ? `Paused until ${formatDate(habit.pausedUntil, longDate)}.` : 'Paused for now.'} Pick it
-            up again whenever you like.
+            {habit.pausedUntil
+              ? t('habitEdit.pausedUntilResume', { date: formatDate(habit.pausedUntil, longDate) })
+              : t('habitEdit.pausedResume')}
           </p>
           <Button
             type="button"
             variant="secondary"
             block
             aria-disabled={run.isPending || undefined}
-            onClick={() => run.mutate({ until: null, success: 'Welcome back. This habit is active again.' })}
+            onClick={() => run.mutate({ until: null, success: t('habitEdit.resumed') })}
           >
-            Resume now
+            {t('habitEdit.resume')}
           </Button>
         </>
       ) : (
         <>
           <p className="text-[14px] text-muted-foreground">
-            Pausing keeps your history and skips reminders until the day you choose.
+            {t('habitEdit.pauseHint')}
           </p>
           <form ref={root} noValidate onSubmit={pause} className="flex flex-col gap-3">
-            <FormField label="Pause until" error={error}>
+            <FormField label={t('habitEdit.pauseUntil')} error={error}>
               {(field) => (
                 <Input
                   {...field}
@@ -593,7 +612,7 @@ export function PauseSection({ habit, onChange }: SectionProps) {
               )}
             </FormField>
             <Button type="submit" variant="secondary" block aria-disabled={run.isPending || undefined}>
-              Pause habit
+              {t('habitEdit.pauseHabit')}
             </Button>
           </form>
         </>
@@ -605,6 +624,7 @@ export function PauseSection({ habit, onChange }: SectionProps) {
 
 /** "Delete habit" with an inline confirm: Escape or "Keep it" cancels (not while deleting); success goes to `/today`. */
 export function DeleteSection({ habit }: { habit: Habit }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const deleting = useRef(false);
   const [confirming, setConfirming] = useState(false);
@@ -649,7 +669,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
   return (
     <section aria-labelledby="delete-heading" className={cardVariants({ variant: 'farewell' })}>
       <h2 id="delete-heading" className="text-[22px]">
-        Delete habit
+        {t('habitEdit.delete')}
       </h2>
       {confirming ? (
         <div
@@ -660,7 +680,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
           onKeyDown={onKeyDown}
           className="flex flex-col gap-3 focus:outline-none"
         >
-          <p id="delete-question">Delete {habit.name} and all its check-ins? This can't be undone.</p>
+          <p id="delete-question">{t('habitEdit.deleteQuestion', { name: habit.name })}</p>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -671,22 +691,22 @@ export function DeleteSection({ habit }: { habit: Habit }) {
               {remove.isPending ? (
                 <>
                   <Spinner />
-                  Deleting…
+                  {t('habitEdit.deleting')}
                 </>
               ) : (
-                'Yes, delete it'
+                t('habitEdit.deleteYes')
               )}
             </Button>
             <Button type="button" variant="secondary" onClick={cancel}>
-              Keep it
+              {t('habitEdit.keep')}
             </Button>
           </div>
         </div>
       ) : (
         <>
-          <p className="text-[14px]">If this habit no longer fits, you can let it go.</p>
+          <p className="text-[14px]">{t('habitEdit.deleteHint')}</p>
           <Button id="delete-start" type="button" variant="secondary" block className="bg-card" onClick={ask}>
-            Delete habit
+            {t('habitEdit.delete')}
           </Button>
         </>
       )}

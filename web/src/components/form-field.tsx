@@ -1,14 +1,20 @@
 import { Info } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-/** Default field validation messages. */
+/** Default field validation messages, in the current language. */
 export const fieldMessages = {
-  required: 'Please fill this in.',
-  email: "That doesn't look like an email address yet.",
-  minLength: (length: number) => `Use at least ${length} characters.`,
-  maxLength: (length: number) => `Keep it to ${length} characters or fewer.`,
+  get required() {
+    return t('form.required');
+  },
+  get email() {
+    return t('form.email');
+  },
+  minLength: (length: number) => t('form.minLength', { count: length }),
+  maxLength: (length: number) => t('form.maxLength', { count: length }),
 };
 
 /** Attributes `FormField` hands to its control. */
@@ -50,6 +56,7 @@ export interface FormFieldProps {
  * ```
  */
 export function FormField({ label, hint, optional, error, id, className, children }: FormFieldProps) {
+  const { t } = useTranslation();
   const generated = useId();
   const inputId = id ?? `field-${generated}`;
   const hintId = `${inputId}-hint`;
@@ -59,7 +66,7 @@ export function FormField({ label, hint, optional, error, id, className, childre
     <div className={cn('flex flex-col gap-2', className)}>
       <Label htmlFor={inputId}>
         {label}
-        {optional && <span className="font-normal text-muted-foreground"> (optional)</span>}
+        {optional && <span className="font-normal text-muted-foreground"> {t('form.optional')}</span>}
       </Label>
       {hint && (
         <p id={hintId} className="-mt-1 text-[14px] text-muted-foreground">

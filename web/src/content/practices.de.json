@@ -1,0 +1,172 @@
+[
+  {
+    "id": "paced-breathing",
+    "version": 1,
+    "title": "Langsam atmen",
+    "states": ["racing", "overloaded", "unsure"],
+    "type": "breathing",
+    "minutes": 2,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Setz oder stell dich so hin, wie es sich okay anfühlt. Deine Augen können offen bleiben."
+      },
+      {
+        "kind": "text",
+        "text": "Wir atmen auf 4 ein und auf 6 aus, also beim Ausatmen etwas länger."
+      },
+      { "kind": "breath", "inhale": 4, "hold": 0, "exhale": 6, "rounds": 6 },
+      {
+        "kind": "text",
+        "text": "Spür nach, wie es dir jetzt geht. Jede Veränderung ist okay, und keine auch."
+      },
+      { "kind": "text", "text": "Wenn dir schwindlig wird, atme einfach normal." }
+    ],
+    "a11y": { "motion": "gentle", "languageLevel": "plain" },
+    "basis": "paced breathing"
+  },
+  {
+    "id": "kind-voice",
+    "version": 1,
+    "title": "Eine freundliche Stimme",
+    "states": ["rejected"],
+    "type": "reframe",
+    "minutes": 3,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Wenn es sich okay anfühlt, leg eine Hand auf deine Brust oder deinen Arm."
+      },
+      {
+        "kind": "text",
+        "text": "Sag dir: Das tut gerade weh. Verletzt zu sein gehört zum Menschsein dazu."
+      },
+      {
+        "kind": "text",
+        "text": "Frag dich: Kann man das, was passiert ist, auch anders sehen? Menschen sind oft müde, haben viel um die Ohren oder stecken in ihrem eigenen Tag."
+      },
+      {
+        "kind": "text",
+        "text": "Was würdest du einem lieben Menschen sagen, dem es so geht? Sag es dir selbst, mit derselben warmen Stimme."
+      },
+      {
+        "kind": "text",
+        "text": "Probier diese Worte: Ich darf das fühlen. Ich bin trotzdem wichtig."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "self-compassion break"
+  },
+  {
+    "id": "grounding-54321",
+    "version": 1,
+    "title": "5, 4, 3, 2, 1",
+    "states": ["overloaded", "racing", "replaying"],
+    "type": "grounding",
+    "minutes": 3,
+    "steps": [
+      { "kind": "text", "text": "Schau dich um. Nenn 5 Dinge, die du sehen kannst." },
+      {
+        "kind": "text",
+        "text": "Spür 4 Dinge, zum Beispiel deine Füße auf dem Boden oder den Stoff deiner Kleidung."
+      },
+      { "kind": "text", "text": "Hör hin. Nenn 3 Dinge, die du hören kannst." },
+      {
+        "kind": "text",
+        "text": "Find 2 Dinge, die du riechen kannst, oder denk an 2 Gerüche, die du magst."
+      },
+      {
+        "kind": "text",
+        "text": "Nenn 1 Sache, die du schmecken kannst, oder nimm einen Schluck Wasser."
+      },
+      {
+        "kind": "text",
+        "text": "Spür, wo du gerade sitzt oder stehst. Du bist hier, genau jetzt."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "5-4-3-2-1 grounding"
+  },
+  {
+    "id": "cool-and-here",
+    "version": 1,
+    "title": "Kühl und hier",
+    "states": ["racing", "overloaded"],
+    "type": "orientation",
+    "minutes": 2,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Lass diese Übung aus, wenn sich Kälte für dich unangenehm anfühlt."
+      },
+      {
+        "kind": "text",
+        "text": "Wenn du kannst, lass kühles Wasser über deine Hände laufen oder halte kurz etwas Kühles fest."
+      },
+      {
+        "kind": "text",
+        "text": "Spür die Kühle auf deiner Haut. Bleib eine kleine Weile dabei."
+      },
+      { "kind": "text", "text": "Sag, wo du bist, laut oder in Gedanken." },
+      { "kind": "text", "text": "Sag, welcher Tag heute ist." },
+      { "kind": "text", "text": "Nenn drei Dinge, die du gerade sehen kannst." },
+      { "kind": "text", "text": "Du bist hier, an diesem Ort, an diesem Tag." }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "cool water and orientation"
+  },
+  {
+    "id": "ride-the-wave",
+    "version": 1,
+    "title": "Die Welle reiten",
+    "states": ["rejected", "replaying"],
+    "type": "urge-surfing",
+    "minutes": 3,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Starke Gefühle und Impulse steigen wie eine Welle an, erreichen ihren Höhepunkt und ebben wieder ab. Du musst diesem nicht folgen."
+      },
+      {
+        "kind": "text",
+        "text": "Spür, wo du es in deinem Körper merkst. Nimm es einfach wahr. Du musst nichts daran ändern."
+      },
+      {
+        "kind": "timer",
+        "seconds": 90,
+        "text": "Bleib 90 Sekunden bei der Welle. Spür, wie sie steigt und sich verändert."
+      },
+      {
+        "kind": "text",
+        "text": "Spür nach, wie die Welle jetzt ist. Was auch immer sie gerade tut, ist okay."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "urge surfing"
+  },
+  {
+    "id": "set-it-down",
+    "version": 1,
+    "title": "Zur Seite legen",
+    "states": ["replaying"],
+    "type": "reframe",
+    "minutes": 2,
+    "steps": [
+      {
+        "kind": "text",
+        "text": "Gib dem Gedanken einen kurzen Namen, etwa „der Streit“ oder „diese Nachricht“."
+      },
+      {
+        "kind": "text",
+        "text": "Such dir eine Zeit später am Tag oder morgen aus, um darüber nachzudenken. Stell dir vor, du legst ihn bis dahin in ein Regal."
+      },
+      { "kind": "text", "text": "Atme einmal langsam ein und lass den Atem lange wieder raus." },
+      {
+        "kind": "text",
+        "text": "Der Gedanke wartet so lange. Du kannst ihn zu der Zeit, die du gewählt hast, wieder aufgreifen."
+      }
+    ],
+    "a11y": { "motion": "none", "languageLevel": "plain" },
+    "basis": "labelling and worry postponement"
+  }
+]

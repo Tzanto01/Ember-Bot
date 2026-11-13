@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
 import { DayCell, joinsRun } from '@/components/day-cell';
@@ -17,6 +18,7 @@ const sampleWeek: DayState[] = ['done', 'done', 'lowday', 'done', 'pending'];
  * `page` (legal, not found): one column, Card max 40rem.
  */
 export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' }) {
+  useTranslation();
   const auth = variant === 'auth';
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">

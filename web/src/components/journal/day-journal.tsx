@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, CloudOff, Lock } from 'lucide-react';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { FormField } from '@/components/form-field';
 import { PassphraseForm, UnlockForm } from '@/components/settings/journal-forms';
@@ -30,12 +31,13 @@ export const journalKey = ['journal'] as const;
 
 /** "Your private journal is locked on this device" with the way to Settings. Shows no journal data. */
 export function JournalLocked({ children }: { children?: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-start gap-3 text-muted-foreground">
       <Lock aria-hidden className="mt-[3px] size-[18px] shrink-0" />
       <div className="flex flex-col items-start">
-        <p>{children ?? 'Your private journal is locked on this device.'}</p>
-        <TapLink to="/settings#journal">Unlock it in Settings</TapLink>
+        <p>{children ?? t('journal.locked')}</p>
+        <TapLink to="/settings#journal">{t('journal.unlockInSettings')}</TapLink>
       </div>
     </div>
   );
@@ -44,12 +46,12 @@ export function JournalLocked({ children }: { children?: string }) {
 type Draft = { text: string; mood: MoodKey | null };
 type Status = 'saved' | 'queued' | 'cleared' | 'mood' | 'moodCleared' | null;
 
-const statusText: Record<Exclude<Status, 'queued' | null>, string> = {
-  saved: 'Saved',
-  cleared: 'Cleared',
-  mood: 'Mood saved',
-  moodCleared: 'Mood cleared',
-};
+const statusText = {
+  saved: 'journal.status.saved',
+  cleared: 'journal.status.cleared',
+  mood: 'journal.status.mood',
+  moodCleared: 'journal.status.moodCleared',
+} as const satisfies Record<Exclude<Status, 'queued' | null>, string>;
 
 /**
  * The journal card for one local day (today or any past day): a mood picker that saves on tap (with the day's
@@ -58,6 +60,7 @@ const statusText: Record<Exclude<Status, 'queued' | null>, string> = {
  * recovery-code unlock.
  */
 export function DayJournal({ date, className }: { date: LocalDateString; className?: string }) {
+  const { t } = useTranslation();
   const journal = useJournal();
   const queryClient = useQueryClient();
   const state = useStore(journal.state);
@@ -92,7 +95,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   async function expired() {
     await journal.forget();
     setNewPassphrase(false);
-    step('That took a while, so the journal locked again. Unlock it with your recovery code once more.');
+    step(t('journal.expired'));
   }
 
   const queryKey = [...journalKey, 'day', date];
@@ -133,8 +136,8 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
     setUnlockStatus('');
   }
 
-  const heading = date === today ? 'How was today?' : `How was ${formatDate(date, longDate)}?`;
-  const privacy = 'Only you see this. It never appears in reminders.';
+  const heading = date === today ? t('journal.headingToday') : t('journal.heading', { date: formatDate(date, longDate) });
+  const privacy = t('journal.privacy');
 
   if (state === 'locked' || (newPassphrase && me)) {
     return (
@@ -147,17 +150,14 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
         </p>
         {newPassphrase && me ? (
           <>
-            <p>
-              Your recovery code worked. Choose a new passphrase to finish unlocking; your recovery code stays the
-              same.
-            </p>
+            <p>{t('journal.recoveryNewPassphrase')}</p>
             <PassphraseForm
               me={me}
               current={false}
-              submitLabel="Save new passphrase"
+              submitLabel={t('journal.saveNewPassphrase')}
               onDone={() => {
                 setNewPassphrase(false);
-                step('Your new passphrase is set. Your journal is unlocked on this device.');
+                step(t('journal.newPassphraseSet'));
               }}
               onExpired={() => void expired()}
             />
@@ -166,13 +166,13 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
           <>
             <div className="flex items-start gap-3 text-muted-foreground">
               <Lock aria-hidden className="mt-[3px] size-[18px] shrink-0" />
-              <p>Your private journal is locked on this device.</p>
+              <p>{t('journal.locked')}</p>
             </div>
             <UnlockForm
               onUnlocked={(needsNew) => {
                 const next = needsNew && !turningOff;
                 setNewPassphrase(next);
-                step(next ? 'Your recovery code worked.' : 'Unlocked on this device.');
+                step(next ? t('journal.recoveryWorked') : t('journal.unlocked'));
               }}
             />
           </>
@@ -186,7 +186,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   const mood = draft ? draft.mood : (note?.mood ?? null);
   const trimmedLength = text.trim().length;
   const stored = !!note && text === (note.text ?? '') && mood === note.mood;
-  const lengthError = tooLong && trimmedLength > maxJournalText ? `Keep it to ${maxJournalText} characters or fewer.` : null;
+  const lengthError = tooLong && trimmedLength > maxJournalText ? t('journal.tooLong', { max: maxJournalText }) : null;
 
   function edit(next: Partial<Draft>) {
     setDraft({ text, mood, ...next });
@@ -259,16 +259,16 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   if (!query.data) {
     body =
       query.isError && !query.isFetching ? (
-        <Notice tone="notice" heading="Your journal didn't load">
+        <Notice tone="notice" heading={t('journal.loadError')}>
           {!asApiError(query.error).handled && <p>{problemToMessage(asApiError(query.error)).message}</p>}
           <Button variant="secondary" onClick={() => void query.refetch()}>
-            Try again
+            {t('history.tryAgain')}
           </Button>
         </Notice>
       ) : (
         <div aria-busy="true" className="flex flex-col gap-3">
           <span role="status" className="sr-only">
-            Loading your journal…
+            {t('journal.loading')}
           </span>
           <Skeleton className="h-[44px] rounded-md" />
           <Skeleton className="h-[8rem] rounded-md" />
@@ -280,7 +280,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
       <form ref={formRef} noValidate onSubmit={save} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <p id={moodLabelId} className="font-medium">
-            Mood <span className="font-normal text-muted-foreground">(optional)</span>
+            <Trans i18nKey="journal.mood" components={{ muted: <span className="font-normal text-muted-foreground" /> }} />
           </p>
           <RadioGroupPrimitive.Root
             aria-labelledby={moodLabelId}
@@ -296,7 +296,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               >
                 {choice.emoji && <span aria-hidden="true">{choice.emoji}</span>}
                 <span>{choice.label}</span>
-                {choice.archived && <span className="text-[14px] font-normal text-muted-foreground">(archived)</span>}
+                {choice.archived && <span className="text-[14px] font-normal text-muted-foreground">{t('journal.archived')}</span>}
                 <RadioGroupPrimitive.Indicator asChild>
                   <Check aria-hidden className="size-[16px]" />
                 </RadioGroupPrimitive.Indicator>
@@ -305,11 +305,11 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
           </RadioGroupPrimitive.Root>
           {mood && (
             <Button type="button" variant="link" className="self-start px-0" onClick={clearMood}>
-              Clear mood
+              {t('journal.clearMood')}
             </Button>
           )}
         </div>
-        <FormField label="A few words" optional hint={privacy} error={lengthError}>
+        <FormField label={t('journal.fewWords')} optional hint={privacy} error={lengthError}>
           {(field) => (
             <>
               <textarea
@@ -322,21 +322,21 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               />
               {trimmedLength >= counterFrom && (
                 <p id={`${field.id}-count`} className="self-end text-[14px] text-muted-foreground">
-                  {trimmedLength} of {maxJournalText} characters
+                  {t('journal.counter', { count: trimmedLength, max: maxJournalText })}
                 </p>
               )}
             </>
           )}
         </FormField>
         {problem && (
-          <Notice tone="notice" heading="That wasn't saved yet">
+          <Notice tone="notice" heading={t('journal.notSaved')}>
             <p>{problem}</p>
           </Notice>
         )}
         <div className="flex flex-wrap items-center gap-3">
           {!stored && (
-            <BusyButton type="submit" busy={busy} busyLabel="Saving…">
-              Save
+            <BusyButton type="submit" busy={busy} busyLabel={t('journal.saving')}>
+              {t('journal.save')}
             </BusyButton>
           )}
           <p
@@ -348,18 +348,18 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
             {status === 'queued' ? (
               <>
                 <CloudOff aria-hidden className="size-[18px] shrink-0" />
-                Saved on this device, it'll sync when you're back online.
+                {t('journal.queued')}
               </>
             ) : status || stored ? (
               <>
                 <Check aria-hidden className="size-[18px] shrink-0" />
-                {statusText[status ?? 'saved']}
+                {t(statusText[status ?? 'saved'])}
               </>
             ) : null}
           </p>
           {(text || mood) && (
             <Button type="button" variant="ghost" onClick={clearAll}>
-              Clear
+              {t('journal.clear')}
             </Button>
           )}
         </div>

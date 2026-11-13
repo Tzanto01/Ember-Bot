@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { KeptDays } from '@/components/history/kept-days';
 import { cardVariants } from '@/components/ui/card';
 import type { Habit } from '@/lib/models';
@@ -24,30 +25,40 @@ interface Tile {
   value: string;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
 /** "At a glance" for the History habit: up to five compact tiles that lead with what is there, never with gaps. */
 export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7Days, last30Days, showStreaks }: StatTilesProps) {
+  const { t } = useTranslation();
   const { streak, bestStreak, last7, week } = habit.stats;
   const tiles: Tile[] = [];
   if (week) {
-    tiles.push({ label: 'This week', value: week.done > 0 ? `${week.done} of ${week.target}` : `${week.target} a week` });
-    if (last7 > 0) tiles.push({ label: 'Last 7 days', value: `${last7} done` });
+    tiles.push({
+      label: t('stats.thisWeek'),
+      value: week.done > 0 ? t('stats.weekProgress', { done: week.done, target: week.target }) : t('stats.perWeek', { target: week.target }),
+    });
+    if (last7 > 0) tiles.push({ label: t('stats.lastDays', { count: 7 }), value: t('stats.done', { count: last7 }) });
   } else {
-    if (showStreaks) tiles.push({ label: 'Current streak', value: streak ? plural(streak, 'day') : 'Fresh start' });
-    if (showStreaks && bestStreak) tiles.push({ label: 'Best', value: plural(bestStreak, 'day') });
+    if (showStreaks) {
+      tiles.push({ label: t('stats.currentStreak'), value: streak ? t('stats.days', { count: streak }) : t('stats.freshStart') });
+    }
+    if (showStreaks && bestStreak) tiles.push({ label: t('stats.best'), value: t('stats.days', { count: bestStreak }) });
     for (const [window, days] of [[7, last7Days], [30, last30Days]] as const) {
       if (!days?.kept || (window === 30 && days.span <= 7)) continue;
       tiles.push({
-        label: days.span === window ? `Last ${window} days` : 'Since it started',
-        value: `Kept ${days.kept} of ${days.span}`,
+        label: days.span === window ? t('stats.lastDays', { count: window }) : t('stats.sinceStart'),
+        value: t('stats.kept', { kept: days.kept, span: days.span }),
       });
     }
   }
   if (doneInMonth) {
     tiles.push({
-      label: `In ${monthName}`,
-      value: `${doneInMonth} done${lowDaysInMonth > 0 ? ` · ${plural(lowDaysInMonth, 'low day')}` : ''}`,
+      label: t('stats.inMonth', { month: monthName }),
+      value:
+        lowDaysInMonth > 0
+          ? t('stats.monthValue', {
+              done: t('stats.done', { count: doneInMonth }),
+              lowDays: t('stats.lowDays', { count: lowDaysInMonth }),
+            })
+          : t('stats.done', { count: doneInMonth }),
     });
   }
 

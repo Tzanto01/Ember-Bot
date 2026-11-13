@@ -1,6 +1,6 @@
 import { Capacitor, type PluginListenerHandle, registerPlugin } from '@capacitor/core';
 import { env } from '../env';
-import { loadReleaseNotes } from '../release-notes';
+import { type LocalizedNotes, loadReleaseNotes } from '../release-notes';
 
 /** A newer sideloaded beta build, from `latest.json` next to the APK. */
 export interface BetaUpdate {
@@ -74,7 +74,7 @@ export async function findUpdate(): Promise<BetaUpdate | null> {
 }
 
 /** The notes for `versionName` from the server's `{apiBase}/release-notes.json`; null when they are missing or unreachable. */
-export async function findReleaseNotes(versionName: string): Promise<string[] | null> {
+export async function findReleaseNotes(versionName: string): Promise<LocalizedNotes | null> {
   try {
     const entries = await loadReleaseNotes(`${env.apiBase}/release-notes.json`);
     return entries.find((entry) => entry.version === versionName)?.notes ?? null;

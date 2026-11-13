@@ -1,8 +1,9 @@
 import { Store } from './store';
 
 /**
- * One selectable theme (docs/contracts/design-tokens-v1.md); `colors` are its `--background` as hex, for
- * `<meta name="theme-color">`, and `notification` tints the Android reminder icon.
+ * One selectable theme (docs/contracts/design-tokens-v1.md); `description` is its description's translation key,
+ * `colors` are its `--background` as hex, for `<meta name="theme-color">`, and `notification` tints the Android
+ * reminder icon.
  */
 export interface Theme {
   id: string;
@@ -17,28 +18,28 @@ export const themes = [
   {
     id: 'hearthlight',
     name: 'Hearthlight',
-    description: 'Candle-lit kitchen table: warm, soft, familiar.',
+    description: 'themes.hearthlight',
     colors: { light: '#fbf5ec', dark: '#1c1410' },
     notification: '#F69835',
   },
   {
     id: 'fieldnotes',
     name: 'Fieldnotes',
-    description: 'Pocket notebook: grounded, quiet, literary.',
+    description: 'themes.fieldnotes',
     colors: { light: '#f6f3e7', dark: '#121914' },
     notification: '#A9D29C',
   },
   {
     id: 'tidepool',
     name: 'Tidepool',
-    description: 'Morning by the water: cool, airy, unhurried.',
+    description: 'themes.tidepool',
     colors: { light: '#eef6f9', dark: '#0a171f' },
     notification: '#7DD5D8',
   },
   {
     id: 'marigold',
     name: 'Marigold',
-    description: 'Sticker sheet: playful, confident, high contrast.',
+    description: 'themes.marigold',
     colors: { light: '#fcf6de', dark: '#18130c' },
     notification: '#F6C755',
   },

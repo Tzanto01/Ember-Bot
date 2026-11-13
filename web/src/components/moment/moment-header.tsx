@@ -1,6 +1,7 @@
 import { LifeBuoy } from 'lucide-react';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { CrisisLines } from '@/components/moment/crisis-lines';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
@@ -20,6 +21,7 @@ export function MomentHeader({
   onToggle: () => void;
   draft?: boolean;
 }) {
+  useTranslation();
   const panelId = useId();
   const confirmId = useId();
   const leaveRef = useRef<HTMLButtonElement>(null);

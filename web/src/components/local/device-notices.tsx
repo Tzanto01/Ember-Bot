@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ function focusHeading(): void {
  * gentle 30-day backup reminder. Nothing in account mode.
  */
 export function DeviceNotices() {
+  const { t } = useTranslation();
   const local = useStore(localMode.mode) === 'local';
   const evicted = useStore(localMode.evicted);
   const due = useQuery({
@@ -30,7 +32,7 @@ export function DeviceNotices() {
   const [dismissed, setDismissed] = useState(evictedDismissed);
   const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState(false);
   const [saved, setSaved] = useState(false);
 
   if (!local) return null;
@@ -44,7 +46,7 @@ export function DeviceNotices() {
   async function exportBackup(): Promise<void> {
     if (busy) return;
     setBusy(true);
-    setProblem(null);
+    setProblem(false);
     try {
       if (await saveExport(await backup.exportBackup())) {
         await backup.markBackedUp();
@@ -52,7 +54,7 @@ export function DeviceNotices() {
         setSaved(true);
       }
     } catch {
-      setProblem("The backup couldn't be saved. You can try again.");
+      setProblem(true);
     }
     setBusy(false);
   }
@@ -69,41 +71,38 @@ export function DeviceNotices() {
     <>
       {evicted && !dismissed && (
         <Notice>
-          <p>
-            Ember couldn't find the habits saved on this device. The browser may have cleared its site data. If you
-            have a backup, you can import it in Settings.
-          </p>
+          <p>{t('backup.evicted')}</p>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="secondary">
-              <Link to="/settings#device">Open Settings</Link>
+              <Link to="/settings#device">{t('backup.openSettings')}</Link>
             </Button>
             <Button type="button" variant="ghost" onClick={dismiss}>
-              Got it
+              {t('backup.gotIt')}
             </Button>
           </div>
         </Notice>
       )}
       {due.data === true && !hidden && (
         <Notice>
-          <p>It's been a while since your last backup. A copy keeps your habits safe if this device loses them.</p>
-          {problem && <p>{problem}</p>}
+          <p>{t('backup.reminder')}</p>
+          {problem && <p>{t('backup.saveFailed')}</p>}
           <div className="flex flex-wrap gap-2">
             <BusyButton
               type="button"
               variant="secondary"
               busy={busy}
-              busyLabel="Preparing…"
+              busyLabel={t('backup.preparing')}
               onClick={() => void exportBackup()}
             >
-              Export backup
+              {t('backup.export')}
             </BusyButton>
             <Button type="button" variant="ghost" aria-disabled={busy || undefined} onClick={() => void notNow()}>
-              Not now
+              {t('backup.notNow')}
             </Button>
           </div>
         </Notice>
       )}
-      {saved && <Notice tone="success">Backup saved.</Notice>}
+      {saved && <Notice tone="success">{t('backup.saved')}</Notice>}
     </>
   );
 }

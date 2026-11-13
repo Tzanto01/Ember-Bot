@@ -1,12 +1,14 @@
 import { Check, Leaf, Moon, Pause } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import { stateWords } from '@/lib/calendar';
+import { t } from '@/lib/i18n';
 import { formatDate } from '@/lib/local-date';
 import type { DayState, LocalDateString } from '@/lib/models';
 import { cn } from '@/lib/utils';
 
 /**
- * `cell`: History grid cell, square, fills its column between 44 and 56 px (the page sets the column width).
+ * `cell`: History grid cell, square, fills its column between 44 (40 under 360 px) and 56 px (the page sets the column width).
  * `slot`: 56 px, holds the CheckButton's place on Today. `swatch`: 24 px legend and sample-strip cell. `pip`: 6 px dot.
  */
 export type DayCellSize = 'cell' | 'slot' | 'swatch' | 'pip';
@@ -32,7 +34,7 @@ export interface DayCellProps {
 const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 
 const sizeClass: Record<DayCellSize, string> = {
-  cell: 'aspect-square w-full min-w-[44px] max-w-[56px]',
+  cell: 'aspect-square w-full min-w-[40px] min-[360px]:min-w-[44px] max-w-[56px]',
   slot: 'size-[56px]',
   swatch: 'size-[24px]',
   pip: 'size-[6px] rounded-full',
@@ -66,8 +68,8 @@ export function dayCellName(
   isToday = false,
   progress?: { count: number; target: number },
 ): string {
-  const words = state === null ? 'not yet' : stateWords(state, progress?.count, progress?.target);
-  return `${formatDate(date, longDate)}, ${isToday ? 'today, ' : ''}${words}`;
+  const words = state === null ? t('calendar.notYet') : stateWords(state, progress?.count, progress?.target);
+  return t('calendar.cellName', { date: formatDate(date, longDate), words: isToday ? t('calendar.today', { words }) : words });
 }
 
 /**
@@ -88,6 +90,7 @@ export function DayCell({
   progress,
   className,
 }: DayCellProps) {
+  useTranslation();
   const dataState = state ?? 'future';
   const large = size === 'cell' || size === 'slot';
   const partial = state === 'partial' && progress && progress.target > 1 ? progress : undefined;

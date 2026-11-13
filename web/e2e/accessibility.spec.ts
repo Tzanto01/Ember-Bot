@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createHabit, createWebUser, localToday } from './support/accounts';
+import { createHabit, createWebUser, localToday, setAccountLanguage } from './support/accounts';
+import { languages, translator } from './support/locales';
 
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const viewports = [
@@ -23,142 +24,167 @@ async function visit(
   path: string,
   ready: RegExp | string,
   found: string[],
+  lang: string,
 ): Promise<void> {
   await page.goto(path);
   await expect(page.getByRole('heading', { name: ready }).first()).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
   await scan(page, path, found);
 }
 
-for (const { name, width, height } of viewports) {
-  for (const scheme of schemes) {
-    test.describe(`${name} ${scheme}`, () => {
-      test.use({ viewport: { width, height }, colorScheme: scheme });
+for (const { code, locale, strings } of languages) {
+  const tr = translator(strings);
 
-      test.beforeEach(async ({ page }) => {
-        await page.addInitScript(
-          (value) => localStorage.setItem('ember.colorScheme', value),
-          scheme,
-        );
+  for (const { name, width, height } of viewports) {
+    for (const scheme of schemes) {
+      test.describe(`${code} ${name} ${scheme}`, () => {
+        test.use({ viewport: { width, height }, colorScheme: scheme, locale });
+
+        test.beforeEach(async ({ page }) => {
+          await page.addInitScript(
+            (value) => localStorage.setItem('ember.colorScheme', value),
+            scheme,
+          );
+        });
+
+        async function useLanguage(page: Page): Promise<void> {
+          await setAccountLanguage(page, code);
+        }
+
+        function visitPage(page: Page, path: string, ready: RegExp | string, found: string[]) {
+          return visit(page, path, ready, found, code);
+        }
+
+        test('signed-out pages have no WCAG A/AA violations', async ({ page }) => {
+          const found: string[] = [];
+          await visitPage(page, '/', /./, found);
+          await visitPage(page, '/login', tr('login.title'), found);
+          await visitPage(page, '/signup', tr('signup.title'), found);
+          await visitPage(page, '/forgot-password', /./, found);
+          await visitPage(page, '/feedback', tr('title.feedback'), found);
+          await visitPage(page, '/download', /./, found);
+          await visitPage(page, '/legal/privacy', /./, found);
+          await expect(page.locator('#main [lang="de"]').first()).toBeVisible();
+          await visitPage(page, '/no-such-page', tr('notFound.title'), found);
+          expect(found).toEqual([]);
+        });
+
+        test('the moment flow and help page have no WCAG A/AA violations', async ({ page }) => {
+          const found: string[] = [];
+          const heading = (name: RegExp | string) => page.getByRole('heading', { name }).first();
+          const click = (name: string) => page.getByRole('button', { name, exact: true }).click();
+          const crisisLines = page.getByRole('list', { name: tr('crisis.list') });
+
+          await visitPage(page, '/help', tr('title.help'), found);
+          await page.goto('/moment');
+          await expect(heading(tr('moment.catch.heading'))).toBeVisible();
+          await expect(page.locator('html')).toHaveAttribute('lang', code);
+          await scan(page, '/moment catch', found);
+          await click(tr('moment.urgentHelp'));
+          await expect(crisisLines).toBeVisible();
+          await scan(page, '/moment catch (urgent help open)', found);
+          await click(tr('moment.urgentHelp'));
+
+          await click(tr('moment.catch.name'));
+          await expect(heading(tr('moment.name.heading'))).toBeVisible();
+          await scan(page, '/moment name', found);
+          await click(tr('moment.tile.overloaded'));
+          await expect(heading(tr('moment.intensity.heading'))).toBeVisible();
+          await page.getByRole('radio', { name: tr('moment.intensity.4'), exact: true }).check();
+          await scan(page, '/moment intensity', found);
+          await click(tr('moment.continue'));
+          await expect(heading(code === 'en' ? /Sit or stand/ : /Setz oder stell dich/)).toBeVisible();
+          await scan(page, '/moment practice step', found);
+          await click(tr('moment.next'));
+          await click(tr('moment.next'));
+          await expect(heading(tr('moment.breath.heading'))).toBeVisible();
+          await scan(page, '/moment breathing player', found);
+          await click(tr('moment.start'));
+          await expect(page.getByText(`${tr('moment.breath.in')}, 4`).first()).toBeVisible();
+          await scan(page, '/moment breathing player (running)', found);
+          await click(tr('moment.pause'));
+          await click(tr('moment.skipPractice'));
+          await expect(heading(tr('moment.after.heading'))).toBeVisible();
+          await scan(page, '/moment after', found);
+          await click(tr('moment.skip'));
+          await expect(heading(tr('moment.end.heading'))).toBeVisible();
+          await scan(page, '/moment end', found);
+          await click(tr('moment.reflect'));
+          await expect(heading(tr('moment.reflect.heading'))).toBeVisible();
+          await scan(page, '/moment reflect', found);
+          await click(tr('moment.urgentHelp'));
+          await expect(crisisLines).toBeVisible();
+          await scan(page, '/moment reflect (urgent help open)', found);
+          expect(found).toEqual([]);
+        });
+
+        test('no-account mode Today has no WCAG A/AA violations', async ({ page }) => {
+          const found: string[] = [];
+          await page.goto('/local');
+          await page.getByRole('button', { name: tr('local.start.button') }).click();
+          await expect(page.getByRole('heading', { name: tr('today.title'), exact: true })).toBeVisible();
+          await expect(page.locator('html')).toHaveAttribute('lang', code);
+          await scan(page, '/today (no account)', found);
+          expect(found).toEqual([]);
+        });
+
+        test.describe('signed in', () => {
+          test.use({ locale: 'en-US' });
+
+          test('signed-in pages have no WCAG A/AA violations', async ({ page }) => {
+            test.setTimeout(180_000);
+            const found: string[] = [];
+            await createWebUser(page);
+            await createHabit(page, 'Stretch');
+            await createHabit(page, 'Journal');
+
+            await page.goto('/routines/new');
+            await page.getByLabel('Name', { exact: true }).fill('Morning');
+            await page.getByRole('button', { name: 'Add Stretch' }).click();
+            await page.getByRole('button', { name: 'Create routine' }).click();
+            await expect(page).toHaveURL(/\/routines$/);
+            await useLanguage(page);
+
+            await visitPage(page, '/today', tr('today.title'), found);
+            const checkIn = page.getByRole('button', { name: tr('today.checkIn', { name: 'Journal' }) });
+            await checkIn.click();
+            await expect(checkIn).toHaveAttribute('aria-pressed', 'true');
+            await scan(page, '/today (checked)', found);
+            await checkIn.click();
+            await expect(checkIn).toHaveAttribute('aria-pressed', 'false');
+            await scan(page, '/today (unchecked)', found);
+
+            await visitPage(page, '/habits/new', /./, found);
+            await page.getByRole('button', { name: tr('habitNew.scratch') }).click();
+            await expect(page.getByLabel(tr('habitFields.name'), { exact: true })).toBeVisible();
+            await scan(page, '/habits/new (form)', found);
+            await page.goto('/today');
+            await page.getByRole('link', { name: tr('today.edit', { name: 'Stretch' }) }).first().click();
+            await expect(page.getByLabel(tr('habitFields.name'), { exact: true })).toHaveValue('Stretch');
+            await scan(page, 'habit edit', found);
+
+            await visitPage(page, '/routines', tr('routines.title'), found);
+            await page
+              .getByRole('link', { name: tr('today.edit', { name: tr('routine.title', { name: 'Morning' }) }) })
+              .click();
+            await expect(page.getByLabel(tr('habitFields.name'), { exact: true })).toHaveValue('Morning');
+            await scan(page, 'routine edit', found);
+
+            await visitPage(page, '/history', tr('history.title'), found);
+            const today = await localToday(page);
+            await page.locator(`#day-${today}`).click();
+            await expect(page.locator('#day-panel')).toHaveCSS('opacity', '1');
+            await scan(page, '/history (day panel)', found);
+            await visitPage(page, '/history/year', /./, found);
+
+            await visitPage(page, '/feedback', tr('title.feedback'), found);
+            for (const group of settingsGroups) await visitPage(page, `/settings/${group}`, /./, found);
+            await visitPage(page, '/whats-new', /./, found);
+            expect(found).toEqual([]);
+          });
+        });
       });
-
-      test('signed-out pages have no WCAG A/AA violations', async ({ page }) => {
-        const found: string[] = [];
-        await visit(page, '/', /./, found);
-        await visit(page, '/login', 'Welcome back', found);
-        await visit(page, '/signup', 'Create your account', found);
-        await visit(page, '/forgot-password', /./, found);
-        await visit(page, '/feedback', 'Send feedback', found);
-        await visit(page, '/download', /./, found);
-        await visit(page, '/legal/privacy', /./, found);
-        await visit(page, '/no-such-page', 'This page wandered off', found);
-        expect(found).toEqual([]);
-      });
-
-      test('the moment flow and help page have no WCAG A/AA violations', async ({ page }) => {
-        const found: string[] = [];
-        const heading = (name: RegExp | string) => page.getByRole('heading', { name }).first();
-        const click = (name: string) => page.getByRole('button', { name, exact: true }).click();
-
-        await visit(page, '/help', 'Help right now', found);
-        await page.goto('/moment');
-        await expect(heading("You're here. That's enough for now.")).toBeVisible();
-        await scan(page, '/moment catch', found);
-        await click('Urgent help');
-        await expect(page.getByRole('list', { name: 'Crisis lines' })).toBeVisible();
-        await scan(page, '/moment catch (urgent help open)', found);
-        await click('Urgent help');
-
-        await click("Name what's happening");
-        await expect(heading("What's happening?")).toBeVisible();
-        await scan(page, '/moment name', found);
-        await click('Too much / overloaded');
-        await expect(heading('How strong is it?')).toBeVisible();
-        await page.getByRole('radio', { name: 'Strong' }).check();
-        await scan(page, '/moment intensity', found);
-        await click('Continue');
-        await expect(heading(/Sit or stand/)).toBeVisible();
-        await scan(page, '/moment practice step', found);
-        await click('Next');
-        await click('Next');
-        await expect(heading('Breathe along. Start when you are ready.')).toBeVisible();
-        await scan(page, '/moment breathing player', found);
-        await click('Start');
-        await expect(page.getByText('Breathe in, 4').first()).toBeVisible();
-        await scan(page, '/moment breathing player (running)', found);
-        await click('Pause');
-        await click('Skip to the end');
-        await expect(heading('How is it now?')).toBeVisible();
-        await scan(page, '/moment after', found);
-        await click('Skip');
-        await expect(heading("That's it for now.")).toBeVisible();
-        await scan(page, '/moment end', found);
-        await click('Reflect on it');
-        await expect(heading('Reflect, if you like')).toBeVisible();
-        await scan(page, '/moment reflect', found);
-        await click('Urgent help');
-        await expect(page.getByRole('list', { name: 'Crisis lines' })).toBeVisible();
-        await scan(page, '/moment reflect (urgent help open)', found);
-        expect(found).toEqual([]);
-      });
-
-      test('no-account mode Today has no WCAG A/AA violations', async ({ page }) => {
-        const found: string[] = [];
-        await page.goto('/local');
-        await page.getByRole('button', { name: 'Start without an account' }).click();
-        await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-        await scan(page, '/today (no account)', found);
-        expect(found).toEqual([]);
-      });
-
-      test('signed-in pages have no WCAG A/AA violations', async ({ page }) => {
-        test.setTimeout(180_000);
-        const found: string[] = [];
-        await createWebUser(page);
-        await createHabit(page, 'Stretch');
-        await createHabit(page, 'Journal');
-
-        await page.goto('/routines/new');
-        await page.getByLabel('Name', { exact: true }).fill('Morning');
-        await page.getByRole('button', { name: 'Add Stretch' }).click();
-        await page.getByRole('button', { name: 'Create routine' }).click();
-        await expect(page).toHaveURL(/\/routines$/);
-
-        await visit(page, '/today', 'Today', found);
-        const checkIn = page.getByRole('button', { name: 'Check in Journal for today' });
-        await checkIn.click();
-        await expect(checkIn).toHaveAttribute('aria-pressed', 'true');
-        await scan(page, '/today (checked)', found);
-        await checkIn.click();
-        await expect(checkIn).toHaveAttribute('aria-pressed', 'false');
-        await scan(page, '/today (unchecked)', found);
-
-        await visit(page, '/habits/new', /./, found);
-        await page.getByRole('button', { name: 'Start from scratch' }).click();
-        await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
-        await scan(page, '/habits/new (form)', found);
-        await page.goto('/today');
-        await page.getByRole('link', { name: 'Edit Stretch' }).first().click();
-        await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Stretch');
-        await scan(page, 'habit edit', found);
-
-        await visit(page, '/routines', 'Routines', found);
-        await page.getByRole('link', { name: 'Edit Morning routine' }).click();
-        await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Morning');
-        await scan(page, 'routine edit', found);
-
-        await visit(page, '/history', 'History', found);
-        const today = await localToday(page);
-        await page.locator(`#day-${today}`).click();
-        await expect(page.locator('#day-panel')).toHaveCSS('opacity', '1');
-        await scan(page, '/history (day panel)', found);
-        await visit(page, '/history/year', /./, found);
-
-        await visit(page, '/feedback', 'Send feedback', found);
-        for (const group of settingsGroups) await visit(page, `/settings/${group}`, /./, found);
-        await visit(page, '/whats-new', /./, found);
-        expect(found).toEqual([]);
-      });
-    });
+    }
   }
 }
 

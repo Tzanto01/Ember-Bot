@@ -33,6 +33,7 @@ import {
   wrapWithRecovery,
 } from './crypto';
 import type { Keyring } from './keyring';
+import { t } from '../i18n';
 import {
   type JournalApi,
   JournalLockedError,
@@ -80,14 +81,14 @@ type Bytes = Uint8Array<ArrayBuffer>;
 function entryText(text: string | null): string | null {
   const trimmed = text?.trim() ?? '';
   if (!trimmed) return null;
-  if (trimmed.length > maxText) throw new RangeError('Keep the entry to 2000 characters or fewer.');
+  if (trimmed.length > maxText) throw new RangeError(t('journal.error.tooLong'));
   return trimmed;
 }
 
 function moodLabel(label: string): string {
   const trimmed = label.trim();
   if (!trimmed || trimmed.length > maxLabel)
-    throw new RangeError('Give the mood a name of up to 24 characters.');
+    throw new RangeError(t('journal.error.moodName'));
   return trimmed;
 }
 
@@ -175,7 +176,7 @@ export class JournalService implements JournalApi {
     const before = current.text?.trim() ?? '';
     if (before.endsWith(addition)) return;
     const text = before ? `${before}\n\n${addition}` : addition;
-    if (text.length > maxText) throw new RangeError('Keep the entry to 2000 characters or fewer.');
+    if (text.length > maxText) throw new RangeError(t('journal.error.tooLong'));
     const encrypted = await encryptNote(key, date, { text, mood: current.mood ?? null });
     if (this.key !== key || this.session.me.get()?.id !== me.id) throw new JournalLockedError();
     await this.api.sendNoteEdit({ kind: 'note', date, body: { encrypted } });
@@ -243,7 +244,7 @@ export class JournalService implements JournalApi {
     password?: string,
   ): Promise<{ recoveryCode: string }> {
     const me = this.requireMe();
-    if (!passphrase.trim()) throw new RangeError('Choose a passphrase.');
+    if (!passphrase.trim()) throw new RangeError(t('journal.error.passphrase'));
     const raw = newJournalKeyBytes();
     try {
       const recovery = await newRecoveryCode();
@@ -318,7 +319,7 @@ export class JournalService implements JournalApi {
     const me = this.requireMe();
     const hold = this.rewrap;
     if (!this.key || !hold || hold.userId !== me.id) throw new JournalLockedError();
-    if (!passphrase.trim()) throw new RangeError('Choose a passphrase.');
+    if (!passphrase.trim()) throw new RangeError(t('journal.error.passphrase'));
     const body = {
       passphrase: await wrapWithPassphrase(hold.raw, passphrase, this.iterations),
       recovery: hold.recovery,

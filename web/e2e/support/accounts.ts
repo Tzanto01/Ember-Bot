@@ -120,3 +120,18 @@ export async function localToday(page: Page): Promise<string> {
   const me: { localToday: string } = await response.json();
   return me.localToday;
 }
+
+/**
+ * Sets the signed-in account's language (`PATCH /api/me`, preferred by the app) and the device choice too, because public
+ * pages such as /feedback do not load the account and show the device language.
+ */
+export async function setAccountLanguage(page: Page, language: 'en' | 'de'): Promise<void> {
+  await page.request.get('/api/auth/antiforgery');
+  const token = (await page.context().cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')?.value ?? '';
+  const response = await page.request.patch('/api/me', {
+    data: { language },
+    headers: { 'X-XSRF-TOKEN': decodeURIComponent(token) },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+  await page.evaluate((value) => localStorage.setItem('ember.language', value), language);
+}

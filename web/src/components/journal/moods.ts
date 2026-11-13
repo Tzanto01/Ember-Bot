@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { type BuiltinMood, builtinMoods, type MoodKey, type OwnMood } from '@/lib/models';
 
 /** How a mood looks: an emoji (or null for an own mood without one) and its word. */
@@ -9,11 +10,11 @@ export interface MoodLook {
 }
 
 const builtinLooks: Record<BuiltinMood, { emoji: string; label: string }> = {
-  low: { emoji: '🌧️', label: 'Low' },
-  meh: { emoji: '☁️', label: 'Meh' },
-  okay: { emoji: '⛅', label: 'Okay' },
-  good: { emoji: '🌤️', label: 'Good' },
-  great: { emoji: '☀️', label: 'Great' },
+  low: { emoji: '🌧️', get label() { return t('moods.low'); } },
+  meh: { emoji: '☁️', get label() { return t('moods.meh'); } },
+  okay: { emoji: '⛅', get label() { return t('moods.okay'); } },
+  good: { emoji: '🌤️', get label() { return t('moods.good'); } },
+  great: { emoji: '☀️', get label() { return t('moods.great'); } },
 };
 
 /** The look of `key`, using `own` for `custom:<id>`; an unknown own mood reads "Your own mood". */
@@ -24,7 +25,7 @@ export function moodLook(key: MoodKey, own: readonly OwnMood[]): MoodLook {
   const mood = own.find((m) => `custom:${m.id}` === key);
   return mood
     ? { key, emoji: mood.emoji, label: mood.label, archived: mood.archived }
-    : { key, emoji: null, label: 'Your own mood', archived: false };
+    : { key, emoji: null, label: t('moods.ownMood'), archived: false };
 }
 
 /** The picker's choices: the five built-ins, the active own moods, and `current` when it is an archived one. */

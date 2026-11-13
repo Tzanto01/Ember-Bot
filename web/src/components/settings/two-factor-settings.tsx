@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { BusyButton } from '@/components/auth/busy-button';
 import { useField, type Validator, validateAll } from '@/components/auth/use-field';
 import { FormField, focusFirstInvalid } from '@/components/form-field';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { Skeleton } from '@/components/ui/skeleton';
+import { t } from '@/lib/i18n';
 import type { Me, TwoFactorSetup, TwoFactorStatus } from '@/lib/models';
 import { asApiError, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
@@ -16,9 +18,8 @@ import { CopyButton, GroupedCode, RecoveryCodes } from './secret-codes';
 import { CodeInput, cleanCode, codeRule, wrongCodeText } from './two-factor-code';
 
 const statusKey = ['two-factor'] as const;
-const passwordRule: Validator = (value) => (value ? null : 'Please enter your password.');
+const passwordRule: Validator = (value) => (value ? null : t('settings.passwordRequired'));
 const noRule: Validator = () => null;
-const passwordMismatch = "That password doesn't match. Try again.";
 
 function problemText(error: unknown): string | null {
   const apiError = asApiError(error);
@@ -51,7 +52,7 @@ function PasswordField({
         tabIndex={-1}
         aria-hidden="true"
       />
-      <FormField label="Your password" hint={hint} error={error}>
+      <FormField label={t('settings.yourPassword')} hint={hint} error={error}>
         {(control) => (
           <PasswordInput
             {...control}
@@ -91,6 +92,7 @@ export function ConfirmForm({
   onSubmit: (value: string, password?: string) => Promise<void>;
   onCancel?: () => void;
 }) {
+  const { t } = useTranslation();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const field = useField(kind === 'code' ? codeRule : passwordRule);
@@ -130,7 +132,7 @@ export function ConfirmForm({
 
   const error =
     field.error ??
-    (rejected === 'field' ? (kind === 'code' ? wrongCodeText : passwordMismatch) : null);
+    (rejected === 'field' ? (kind === 'code' ? wrongCodeText() : t('settings.passwordMismatch')) : null);
   return (
     <form
       ref={form}
@@ -139,7 +141,7 @@ export function ConfirmForm({
       className="flex flex-col gap-3"
     >
       {kind === 'code' ? (
-        <FormField label="Code from your authenticator app" hint={hint} error={error}>
+        <FormField label={t('twoFactor.code.label')} hint={hint} error={error}>
           {(control) => <CodeInput ref={input} field={field} control={control} />}
         </FormField>
       ) : (
@@ -149,8 +151,8 @@ export function ConfirmForm({
         <PasswordField
           email={email}
           field={password}
-          hint="Ember checks it before turning on two-step sign-in."
-          error={password.error ?? (rejected === 'password' ? passwordMismatch : null)}
+          hint={t('twoFactor.passwordHint')}
+          error={password.error ?? (rejected === 'password' ? t('settings.passwordMismatch') : null)}
         />
       )}
       {problem && (
@@ -164,7 +166,7 @@ export function ConfirmForm({
         </BusyButton>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('settings.cancel')}
           </Button>
         )}
       </div>
@@ -179,6 +181,7 @@ type Mode = 'idle' | 'setup' | 'regenerate' | 'disable';
  * QR code and the shared key, recovery codes shown once, new recovery codes, and turning it off.
  */
 export function TwoFactorSettings({ me }: { me: Me }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const status = useQuery({ queryKey: statusKey, queryFn: () => api.twoFactorStatus() });
   const [mode, setMode] = useState<Mode>('idle');
@@ -186,11 +189,11 @@ export function TwoFactorSettings({ me }: { me: Me }) {
   const [codes, setCodes] = useState<string[] | null>(null);
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [done, setDone] = useState('');
+  const [done, setDone] = useState<'off' | 'saved' | null>(null);
   const summary = useRef<HTMLParagraphElement>(null);
   const firstStep = useRef<HTMLHeadingElement>(null);
 
-  function settle(next: TwoFactorStatus, text: string): void {
+  function settle(next: TwoFactorStatus, text: 'off' | null): void {
     queryClient.setQueryData(statusKey, next);
     setMode('idle');
     setSetup(null);
@@ -201,7 +204,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     if (starting) return;
     setStarting(true);
     setProblem(null);
-    setDone('');
+    setDone(null);
     try {
       const next = await api.setupTwoFactor();
       flushSync(() => {
@@ -218,28 +221,25 @@ export function TwoFactorSettings({ me }: { me: Me }) {
 
   async function enable(code: string, password?: string): Promise<void> {
     const next = await api.enableTwoFactor(code, password);
-    settle({ enabled: true, recoveryCodesLeft: next.length }, '');
+    settle({ enabled: true, recoveryCodesLeft: next.length }, null);
     setCodes(next);
   }
 
   async function regenerate(code: string): Promise<void> {
     const next = await api.regenerateRecoveryCodes(code);
-    settle({ enabled: true, recoveryCodesLeft: next.length }, '');
+    settle({ enabled: true, recoveryCodesLeft: next.length }, null);
     setCodes(next);
   }
 
   async function disable(secret: string): Promise<void> {
     await api.disableTwoFactor(me.hasPassword ? { password: secret } : { code: secret });
-    settle(
-      { enabled: false, recoveryCodesLeft: 0 },
-      'Two-step sign-in is off. Your password alone signs you in again.',
-    );
+    settle({ enabled: false, recoveryCodesLeft: 0 }, 'off');
   }
 
   function savedCodes(): void {
     flushSync(() => {
       setCodes(null);
-      setDone('Recovery codes saved. Keep them safe.');
+      setDone('saved');
     });
     summary.current?.focus();
   }
@@ -254,16 +254,16 @@ export function TwoFactorSettings({ me }: { me: Me }) {
   if (!current) {
     body =
       status.isError && !status.isFetching ? (
-        <Notice tone="notice" heading="This didn't load">
+        <Notice tone="notice" heading={t('twoFactor.loadFailed')}>
           {problemText(status.error) && <p>{problemText(status.error)}</p>}
           <Button type="button" variant="secondary" onClick={() => void status.refetch()}>
-            Try again
+            {t('settings.tryAgain')}
           </Button>
         </Notice>
       ) : (
         <div aria-busy="true">
           <span role="status" className="sr-only">
-            Loading two-step sign-in…
+            {t('twoFactor.loading')}
           </span>
           <Skeleton className="h-[44px] rounded-md" />
         </div>
@@ -275,28 +275,22 @@ export function TwoFactorSettings({ me }: { me: Me }) {
       <ol className="flex flex-col gap-6">
         <li className="flex flex-col gap-3">
           <h3 ref={firstStep} tabIndex={-1} className="text-[18px] focus:outline-none">
-            1. Add Ember to your authenticator app
+            {t('twoFactor.setup.step1')}
           </h3>
-          <p>
-            Scan this code with an authenticator app on your phone, such as Aegis, 2FAS or Google
-            Authenticator.
-          </p>
-          <QrCode
-            value={setup.authenticatorUri}
-            label="QR code for adding Ember to your authenticator app"
-          />
-          <p className="text-muted-foreground">Can't scan it? Enter this key in the app instead.</p>
-          <GroupedCode value={setup.sharedKey.toUpperCase()} label="Setup key" />
-          <CopyButton text={cleanCode(setup.sharedKey).toUpperCase()}>Copy key</CopyButton>
+          <p>{t('twoFactor.setup.scan')}</p>
+          <QrCode value={setup.authenticatorUri} label={t('twoFactor.setup.qrLabel')} />
+          <p className="text-muted-foreground">{t('twoFactor.setup.cantScan')}</p>
+          <GroupedCode value={setup.sharedKey.toUpperCase()} label={t('twoFactor.setup.key')} />
+          <CopyButton text={cleanCode(setup.sharedKey).toUpperCase()}>{t('twoFactor.setup.copyKey')}</CopyButton>
         </li>
         <li className="flex flex-col gap-3">
-          <h3 className="text-[18px]">2. Enter the code it shows</h3>
+          <h3 className="text-[18px]">{t('twoFactor.setup.step2')}</h3>
           <ConfirmForm
             kind="code"
             email={me.email}
             withPassword={me.hasPassword}
-            submitLabel="Turn on two-step sign-in"
-            busyLabel="Checking…"
+            submitLabel={t('twoFactor.turnOn')}
+            busyLabel={t('settings.checking')}
             onSubmit={enable}
             onCancel={cancel}
             focusOnMount={false}
@@ -308,19 +302,15 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     body = (
       <>
         <p ref={summary} tabIndex={-1} className="focus:outline-none">
-          Two-step sign-in is on. After your password, Ember asks for a code from your authenticator
-          app.{' '}
-          {current.recoveryCodesLeft === 1
-            ? 'You have 1 recovery code left.'
-            : `You have ${current.recoveryCodesLeft} recovery codes left.`}
+          {t('twoFactor.on')} {t('twoFactor.codesLeft', { count: current.recoveryCodesLeft })}
         </p>
         {mode === 'regenerate' ? (
           <ConfirmForm
             kind="code"
             email={me.email}
-            hint="New codes replace your old ones."
-            submitLabel="Get new recovery codes"
-            busyLabel="Getting codes…"
+            hint={t('twoFactor.regenerateHint')}
+            submitLabel={t('twoFactor.regenerate')}
+            busyLabel={t('twoFactor.regenerating')}
             onSubmit={regenerate}
             onCancel={cancel}
           />
@@ -328,23 +318,19 @@ export function TwoFactorSettings({ me }: { me: Me }) {
           <ConfirmForm
             kind={me.hasPassword ? 'password' : 'code'}
             email={me.email}
-            hint={
-              me.hasPassword
-                ? 'To turn it off, confirm with your password.'
-                : 'To turn it off, confirm with a current code.'
-            }
-            submitLabel="Turn off two-step sign-in"
-            busyLabel="Turning off…"
+            hint={me.hasPassword ? t('twoFactor.disableHintPassword') : t('twoFactor.disableHintCode')}
+            submitLabel={t('twoFactor.turnOff')}
+            busyLabel={t('settings.turningOff')}
             onSubmit={disable}
             onCancel={cancel}
           />
         ) : (
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="secondary" onClick={() => setMode('regenerate')}>
-              Get new recovery codes
+              {t('twoFactor.regenerate')}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setMode('disable')}>
-              Turn off two-step sign-in
+              {t('twoFactor.turnOff')}
             </Button>
           </div>
         )}
@@ -354,18 +340,16 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     body = (
       <>
         <p ref={summary} tabIndex={-1} className="focus:outline-none">
-          Add a second step when you sign in: after your password, Ember asks for a 6-digit code
-          from an authenticator app on your phone. It protects your sign-in; your private journal
-          has its own lock.
+          {t('twoFactor.intro')}
         </p>
         <div>
           <BusyButton
             type="button"
             busy={starting}
-            busyLabel="Preparing…"
+            busyLabel={t('settings.preparing')}
             onClick={() => void startSetup()}
           >
-            Set up two-step sign-in
+            {t('twoFactor.setUp')}
           </BusyButton>
         </div>
       </>
@@ -381,7 +365,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
         </Notice>
       )}
       <p role="status" className="text-[14px] text-muted-foreground">
-        {done}
+        {done === 'off' ? t('twoFactor.offDone') : done === 'saved' ? t('twoFactor.codesSavedDone') : ''}
       </p>
     </>
   );

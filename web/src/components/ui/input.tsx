@@ -1,5 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { type ComponentProps, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 /** Shared look of text-like controls: 44 px, 16 px text, `--input` edge, `--destructive` edge while invalid. */
@@ -13,13 +14,14 @@ export function Input({ className, type = 'text', ...props }: ComponentProps<'in
 
 /** A password {@link Input} with a "Show password" toggle button (`aria-pressed`) that reveals what was typed. */
 export function PasswordInput({ className, ...props }: Omit<ComponentProps<'input'>, 'type'>) {
+  const { t } = useTranslation();
   const [shown, setShown] = useState(false);
   return (
     <div className="relative">
       <Input {...props} type={shown ? 'text' : 'password'} className={cn('pr-12', className)} />
       <button
         type="button"
-        aria-label="Show password"
+        aria-label={t('form.showPassword')}
         aria-pressed={shown}
         onClick={() => setShown((value) => !value)}
         className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
