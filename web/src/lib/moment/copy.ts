@@ -6,6 +6,8 @@ import type { Intensity, MomentState } from './types';
  */
 export const momentCopy = {
   leave: 'Leave',
+  leaveDraft: 'Leave without saving this note?',
+  keepWriting: 'Keep writing',
   urgentHelp: 'Urgent help',
   done: 'Done for now',
   back: 'Back',
@@ -81,6 +83,7 @@ export const momentCopy = {
     'Saving needs your consent to the privacy policy first. Nothing from this moment was saved, and you can still reflect here.',
   openConsent: 'Review consent',
   notSaved: 'Nothing from this moment was saved.',
+  checking: 'Checking whether this can be saved…',
   offline: "You're offline, so nothing was saved. Your words are still here.",
   full: "Today's note is full, so nothing was saved. Shorten what you wrote, or leave it here.",
   saveFailed: "That didn't save. Your words are still here, so you can try again.",

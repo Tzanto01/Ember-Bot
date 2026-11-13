@@ -127,6 +127,8 @@ Außerdem speichern die Web-App und die Android-App einige Dinge auf dem Gerät.
 | Browser, Local Storage | `ember.signupEmail` | E-Mail-Adresse aus der Anmeldung, bis die Bestätigung abgeschlossen ist | Nach der Bestätigung, beim Abmelden, spätestens nach einem Tag |
 | Browser, Local Storage | `ember.staySignedIn` | Kennung deines Kontos. Nur, wenn du bei der Anmeldung mit E-Mail und Passwort „Stay signed in“ gewählt hast | Beim Abmelden |
 | Browser, Local Storage | `ember.offlineMe` | Kopie deines Kontostands: E-Mail-Adresse, Zeitzone, Design, Stand der Einwilligung und des Tagebuchs. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft. Die Kopie wird nur am selben Tag genutzt |
+| Browser und Android-App, Local Storage | `ember.seenReleaseNotes` | Die letzte Version, deren Neuigkeiten du auf diesem Gerät gesehen hast, damit der Hinweis zu einer neuen Version auf „Today“ nur einmal erscheint | Wenn du die Website-Daten oder die Daten der App löschst. Beim Abmelden bleibt der Eintrag |
+| Browser und Android-App, Local Storage | `ember.tzClaimed.<Kennung>` | Mit der Kennung deines Kontos im Namen: Merker, dass die Zeitzone dieses Geräts einmal in dein Konto übernommen wurde, weil dort noch keine eingestellt war | Wenn du die Website-Daten oder die Daten der App löschst. Beim Abmelden bleibt der Eintrag |
 | Browser, Session Storage | `ember.preloadReload` | Zeitpunkt des letzten Neuladens nach einem App-Update | Am Ende der Browser-Sitzung |
 | Browser, IndexedDB `ember-device` | Speicher `cache` | Kopie deiner Habit-Liste. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft |
 | Browser, IndexedDB `ember-device` | Speicher `edits` | Änderungen, die du offline gemacht hast und noch nicht gesendet sind | Sobald sie gesendet sind. Beim Abmelden werden die offenen Änderungen verworfen |
@@ -137,6 +139,7 @@ Außerdem speichern die Web-App und die Android-App einige Dinge auf dem Gerät.
 | Android-App, Local Storage | `ember.installId` | Zufällige Kennung dieser Installation, mit der sich das Telefon als Erinnerungsziel anmeldet | Wenn du die App deinstallierst oder ihre Daten löschst |
 | Android-App, Local Storage | `ember.reminderPhone` | Kennung dieses Telefons als Erinnerungsziel und ob es eingeschaltet ist, für Erinnerungen ohne Internet | Beim Abmelden |
 | Android-App, Local Storage | `ember.reminderNames` | Einstellung „Show habit names in reminders“ (aus, wenn nicht gewählt) | Beim Abmelden, dann wieder aus |
+| Android-App, Local Storage | `ember.exactAlarmAsked` | Merker, dass die Beta-App die Einstellung „Alarme und Erinnerungen“ schon einmal geöffnet hat, damit Erinnerungen pünktlich kommen | Wenn du die App deinstallierst oder ihre Daten löschst |
 | Android-App, Widget | Heutige und morgige Habits für das Widget | Im Speicher, den nur die App liest | Beim Abmelden |
 | Android-App, sicherer Speicher (Keystore) | Anmeldetoken und, falls gemerkt, der Tagebuchschlüssel | Anmeldung und Tagebuch | Beim Abmelden |
 

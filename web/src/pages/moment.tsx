@@ -60,6 +60,7 @@ export default function MomentPage() {
   const [practice, setPractice] = useState<Practice>(breathingPractice);
   const [tried, setTried] = useState<Practice[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [draft, setDraft] = useState(false);
 
   useFocusHeadingOnChange(
     step.kind === 'practice' ? `practice:${practice.id}:${step.index}` : step.kind,
@@ -286,6 +287,7 @@ export default function MomentPage() {
           tried={tried}
           used={practice}
           onLeave={leave}
+          onDraft={setDraft}
         />
       );
       break;
@@ -297,6 +299,7 @@ export default function MomentPage() {
         onLeave={leave}
         open={helpOpen}
         onToggle={() => setHelpOpen((value) => !value)}
+        draft={step.kind === 'reflect' && draft}
       />
       {body}
     </div>

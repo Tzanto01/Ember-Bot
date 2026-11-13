@@ -5,6 +5,7 @@ import { FormField } from '@/components/form-field';
 import { LiveRegion } from '@/components/live-region';
 import { useJournal } from '@/components/journal/journal-context';
 import { UnlockForm } from '@/components/settings/journal-forms';
+import { Spinner } from '@/components/spinner';
 import { Button } from '@/components/ui/button';
 import { controlClass } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
@@ -22,7 +23,7 @@ const maxTrigger = 300;
 const nothing = 'nothing';
 const announceFrom = 20;
 
-type SaveCase = 'unlocked' | 'locked' | 'plain' | 'consent' | 'none';
+type SaveCase = 'checking' | 'unlocked' | 'locked' | 'plain' | 'consent' | 'none';
 
 function useSaveCase(): SaveCase {
   const me = useStore(auth.me);
@@ -30,6 +31,26 @@ function useSaveCase(): SaveCase {
   const journal = useJournal();
   const state = useStore(journal.state);
   const turningOff = useStore(journal.turningOff);
+  const [checking, setChecking] = useState(
+    () => !auth.me.get() && localMode.mode.get() === 'account',
+  );
+
+  useEffect(() => {
+    if (!checking) return;
+    let live = true;
+    void auth
+      .loadMe()
+      .catch(() => null)
+      .then((loaded) => (loaded ? journal.restore().catch(() => undefined) : undefined))
+      .finally(() => {
+        if (live) setChecking(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [checking, journal]);
+
+  if (checking && mode === 'account') return 'checking';
   if (!me || mode !== 'account') return 'none';
   if (!me.consent.given || me.consent.policyVersion !== me.consent.currentPolicyVersion)
     return 'consent';
@@ -45,8 +66,10 @@ function problemText(error: unknown): string {
 }
 
 /**
- * Optional reflection at the end of a moment. Whether it can be saved is decided from memory before any field shows;
- * only an unlocked private journal saves, through `appendPrivate`. The draft survives every error.
+ * Optional reflection at the end of a moment. Whether it can be saved is decided before any field shows: from memory,
+ * or on a cold start with `me` not loaded yet by loading it once (which restores a remembered journal key). Only an
+ * unlocked private journal saves, through `appendPrivate`. The draft survives every error; `onDraft` reports whether
+ * there is unsaved text.
  */
 export function Reflect({
   heading,
@@ -57,6 +80,7 @@ export function Reflect({
   tried,
   used,
   onLeave,
+  onDraft,
 }: {
   heading: string;
   startedAt: Date;
@@ -66,6 +90,7 @@ export function Reflect({
   tried: Practice[];
   used?: Practice;
   onLeave: () => void;
+  onDraft?: (draft: boolean) => void;
 }) {
   const id = useId();
   const saveCase = useSaveCase();
@@ -85,6 +110,11 @@ export function Reflect({
   useEffect(() => {
     if (saved) savedRef.current?.focus();
   }, [saved]);
+
+  const draft = !saved && trigger.trim() !== '';
+  useEffect(() => {
+    onDraft?.(draft);
+  }, [draft, onDraft]);
 
   useEffect(() => {
     if (!unlocked || saveCase !== 'unlocked') return;
@@ -147,6 +177,14 @@ export function Reflect({
             <Check aria-hidden className="mt-[3px] size-[18px] shrink-0" />
             <p>{momentCopy.saved}</p>
           </div>
+          {done}
+        </>
+      ) : saveCase === 'checking' ? (
+        <>
+          <p role="status" className="flex items-center gap-2 text-muted-foreground">
+            <Spinner />
+            {momentCopy.checking}
+          </p>
           {done}
         </>
       ) : (

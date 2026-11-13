@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createWebUser } from './support/accounts';
+import { createWebUser, SECRET } from './support/accounts';
 import {
   createUserWithHabit,
   dayNotes,
   enableJournal,
+  fillNewPassphrase,
+  journalSection,
   newPassphrase,
   openPage,
 } from './support/security';
@@ -231,4 +233,59 @@ test('a no-account profile reaches Reflect with no Save', async ({ page }) => {
   await reachReflect(page);
   await expectNoSave(page);
   await expect(page.getByText('Nothing from this moment was saved.')).toBeVisible();
+});
+
+test('a cold start on /moment loads the account once at Reflect and saves with the remembered key', async ({
+  page,
+}) => {
+  await createWebUser(page);
+  await page.goto('/settings/privacy');
+  const section = journalSection(page);
+  await fillNewPassphrase(section, 'Journal passphrase', newPassphrase());
+  await section.getByLabel('Your login password').fill(SECRET);
+  await section.getByLabel('Remember on this device').check();
+  await section.getByRole('button', { name: 'Turn on the private journal' }).click();
+  await section.getByLabel("I've saved my recovery code").check();
+  await section.getByRole('button', { name: 'Finish' }).click();
+  await expect(
+    section.getByRole('status').filter({ hasText: 'Your private journal is ready.' }),
+  ).toBeVisible();
+
+  await openPage(page, 'Today');
+  await momentDoor(page).click();
+  await expect(page).toHaveURL(/\/moment$/);
+  const meRequests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/me') meRequests.push(request.method());
+  });
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: "You're here. That's enough for now." }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: "Name what's happening" }).click();
+  await page.getByRole('button', { name: 'Too much / overloaded' }).click();
+  await page.getByRole('radio', { name: 'Strong' }).check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Skip to the end' }).click();
+  await page.getByRole('button', { name: 'Skip', exact: true }).click();
+  expect(meRequests).toEqual([]);
+
+  const puts = watchDayNotePuts(page);
+  await page.getByRole('button', { name: 'Reflect on it' }).click();
+  await expect(page.getByText("Saving adds this to today's private note.")).toBeVisible();
+  expect(meRequests).toEqual(['GET']);
+  await page.getByLabel('What set it off').fill('Synthetic trigger: a cold start');
+
+  await page.getByRole('button', { name: 'Leave' }).click();
+  const confirm = page.getByRole('group', { name: 'Leave without saving this note?' });
+  await expect(confirm).toBeFocused();
+  await confirm.getByRole('button', { name: 'Keep writing' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(page.getByLabel('What set it off')).toHaveValue('Synthetic trigger: a cold start');
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText(savedText)).toBeVisible();
+  expect(puts.bodies).toHaveLength(1);
+  expect(Object.keys(puts.bodies[0] as object)).toEqual(['encrypted']);
+  expect(meRequests).toEqual(['GET']);
 });

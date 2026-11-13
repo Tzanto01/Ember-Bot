@@ -111,7 +111,7 @@ export default function LandingPage() {
               height={760}
               loading="lazy"
               decoding="async"
-              alt="Ember's Today screen: five habits, three of them checked in today, with their streaks."
+              alt="Ember's Today screen: the “I need a moment” door above the habits, three of them checked in today."
               className="block h-auto max-h-[40rem] w-full rounded-[1.75rem] border-[length:max(1px,var(--border-width))] border-border object-cover object-top shadow-card"
             />
           </picture>
