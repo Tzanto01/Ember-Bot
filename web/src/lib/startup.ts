@@ -4,6 +4,8 @@ import { env } from './env';
 import { deviceToday, forgetUnreachable, rememberMe } from './guards';
 import type { OfflineCache } from './http';
 import type { Habit, Me } from './models';
+import { listenForMoment, takeMomentLaunch } from './native/moment-launch';
+import { navigate } from './navigation';
 import { auth, deviceStore, deviceSync, http, localMode, push } from './services';
 import { Store } from './store';
 
@@ -85,12 +87,15 @@ function registerServiceWorker(): void {
  * for a user who chose to stay signed in; the habit list is deleted when the user signs out or the session ends),
  * registers the service worker once the page has loaded (offering a reload when a new version waits), reloads (at most once a
  * minute) when a lazy chunk of a replaced version fails to load, and re-claims this browser's push subscription for whoever
- * signs in to an account. Never throws.
+ * signs in to an account. In the Android app, a moment door's launch opens `/moment` before the router exists and a
+ * warm start navigates there. Never throws.
  */
 export async function startApp(): Promise<void> {
   await localMode.init();
   if (localMode.mode.get() !== 'local') void auth.refreshAntiforgery();
   deviceSync.start();
+  await takeMomentLaunch(env.native);
+  void listenForMoment(env.native, () => navigate('/moment'));
   if (env.native) return;
   http.offlineCache = habitsCache(deviceStore, keptUser);
   let shownUser = auth.me.get()?.id ?? null;

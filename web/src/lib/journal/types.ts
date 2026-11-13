@@ -46,6 +46,13 @@ export interface JournalApi {
   /** Saves (encrypting when private) or, with both null, deletes the day's entry. Offline it is queued. */
   save(date: LocalDateString, entry: { text: string | null; mood: DayNote['mood'] }): Promise<{ queued: boolean }>;
 
+  /**
+   * Appends `block` after a blank line to that day's entry, encrypted (contract companion-v1 `appendPrivate`). Throws
+   * unless the private journal is on, not turning off and unlocked; throws while offline and when the result would
+   * pass 2000 characters. Never sends plaintext and never queues.
+   */
+  appendPrivate(date: LocalDateString, block: string): Promise<void>;
+
   /** Own moods, archived included; empty while locked. */
   moods(): Promise<OwnMood[]>;
   addMood(mood: { label: string; emoji: string | null }): Promise<OwnMood>;

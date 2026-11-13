@@ -157,6 +157,29 @@ export class JournalService implements JournalApi {
     return { queued };
   }
 
+  async appendPrivate(date: LocalDateString, block: string): Promise<void> {
+    const me = this.requireMe();
+    if (!me.journal.encrypted || me.journal.turningOff) throw new Error('The private journal is off.');
+    const key = this.requireKey();
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Offline.');
+    const addition = block.trim();
+    if (!addition) throw new RangeError('Nothing to add.');
+    const [stored] = (await this.api.listDayNotes(date, date)).filter((n) => n.date === date);
+    let current: { text: string | null; mood: MoodKey | null } = { text: null, mood: null };
+    if (stored) {
+      current = isEncrypted(stored)
+        ? await decryptNote(key, date, stored.encrypted)
+        : { text: stored.text, mood: stored.mood };
+    }
+    const before = current.text?.trim() ?? '';
+    const text = before ? `${before}\n\n${addition}` : addition;
+    if (text.length > maxText) throw new RangeError('Keep the entry to 2000 characters or fewer.');
+    if (this.key !== key || this.session.me.get()?.id !== me.id) throw new JournalLockedError();
+    const encrypted = await encryptNote(key, date, { text, mood: current.mood ?? null });
+    await this.api.sendNoteEdit({ kind: 'note', date, body: { encrypted } });
+    this.bump();
+  }
+
   async moods(): Promise<OwnMood[]> {
     if (this.session.me.get()?.journal.encrypted && !this.key) return [];
     const key = this.key;

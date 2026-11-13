@@ -25,6 +25,7 @@ export function fakeJournal({
       hidden: 0,
     })),
     save: vi.fn(async (_date: string, _entry: Pick<DayNote, 'text' | 'mood'>) => ({ queued: false })),
+    appendPrivate: vi.fn(async (_date: string, _block: string) => undefined),
     moods: vi.fn(async () => moods),
     addMood: vi.fn(async (mood: { label: string; emoji: string | null }): Promise<OwnMood> => ({
       id: 99,

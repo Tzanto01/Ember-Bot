@@ -31,6 +31,10 @@ export interface EmberWidgetPlugin {
   clear(): Promise<void>;
   /** A tapped widget row (`habitId`, `date`, `userId`, validated natively) or `{}` for "open Today". */
   addListener(event: 'widgetTap', listener: (tap: unknown) => void): Promise<PluginListenerHandle>;
+  /** A moment door was used while the app was running (warm start). */
+  addListener(event: 'openMoment', listener: () => void): Promise<PluginListenerHandle>;
+  /** Returns and clears the pending launch action (cold start from a moment door); missing on older native builds. */
+  takeLaunchAction?(): Promise<{ action: 'moment' | null }>;
 }
 
 /** Rows the widget shows before "+N more". */
