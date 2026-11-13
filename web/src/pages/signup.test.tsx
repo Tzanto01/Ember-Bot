@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
-import { api, auth } from '@/lib/services';
+import { auth } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SignupPage from './signup';
 
