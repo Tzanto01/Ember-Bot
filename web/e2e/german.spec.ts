@@ -39,8 +39,8 @@ test.describe('signed out with a German browser', () => {
     await click('Überspringen');
     await expect(heading('Das war’s fürs Erste.').or(heading("Das war's fürs Erste."))).toBeVisible();
 
-    await click('Zurückschauen');
-    await expect(heading('Zurückschauen, wenn du magst')).toBeVisible();
+    await click('Verarbeiten');
+    await expect(heading('Verarbeiten, wenn du magst')).toBeVisible();
     await expect(page.getByText('Nichts aus diesem Moment wurde gespeichert.')).toBeVisible();
     await click('Dringende Hilfe');
     await expect(lines).toBeVisible();
