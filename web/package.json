@@ -43,6 +43,7 @@
     "workbox-window": "^7.4.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@capacitor/cli": "^8.6.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
