@@ -1,3 +1,4 @@
+using System.Globalization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -114,7 +115,7 @@ public static class AppHost
 
                     services.AddSingleton(socketConfig);
                     services.AddSingleton<DiscordSocketClient>();
-                    services.AddSingleton(sp => new InteractionService(sp.GetRequiredService<DiscordSocketClient>()));
+                    services.AddSingleton(sp => new InteractionService(sp.GetRequiredService<DiscordSocketClient>(), InteractionConfig()));
                     services.AddSingleton<IDiscordDmSender, DiscordDmSender>();
                     services.AddHostedService<BotService>();
                 }
@@ -126,6 +127,12 @@ public static class AppHost
                 options.ConfigureServices?.Invoke(services, context);
             });
     }
+
+    /// <summary>The interaction service's settings: German command descriptions from <c>Resources/Commands.de.resx</c>.</summary>
+    internal static InteractionServiceConfig InteractionConfig() => new()
+    {
+        LocalizationManager = new ResxLocalizationManager("Ember.Bot.Resources.Commands", typeof(AppHost).Assembly, new CultureInfo("de")),
+    };
 
     public static async Task InitializeAsync(IHost host, CancellationToken cancellationToken = default)
     {

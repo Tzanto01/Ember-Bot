@@ -1,4 +1,5 @@
 using Discord;
+using Ember.Core.Localization;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Core.Models;
@@ -27,9 +28,10 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
     [ComponentInteraction("freq:weekly:*:*")]
     public async Task SetWeeklyTargetAsync(string habitIdStr, string targetStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!int.TryParse(habitIdStr, out var habitId) || !int.TryParse(targetStr, out var target))
         {
-            await RespondAsync("Something went wrong — try `/habit frequency` again.", ephemeral: true);
+            await BadIdAsync(t);
             return;
         }
 
@@ -37,14 +39,14 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
 
         if (habit is null)
         {
-            await RespondAsync("Couldn't find that habit.", ephemeral: true);
+            await NotFoundAsync(t);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"**{habit.Name}** set to **{target}× per week** — check in any days you choose.";
+                m.Content    = t.Format("freq.weekly-set", habit.Name, target);
                 m.Components = new ComponentBuilder().Build();
             });
     }
@@ -52,32 +54,34 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
     [ComponentInteraction("freq:menu:*")]
     public async Task ShowMenuAsync(string habitIdStr)
     {
-        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(t); return; }
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
-        await RespondAsync($"How often do you want to track **{habit.Name}**?",
-            components: HabitSelectModule.FrequencyComponents(habitId), ephemeral: true);
+        await RespondAsync(t.Format("habit.frequency.question", habit.Name),
+            components: HabitSelectModule.FrequencyComponents(t, habitId), ephemeral: true);
     }
 
     [ComponentInteraction("freq:weekdays:*")]
     public async Task ShowWeekdaysAsync(string habitIdStr)
     {
-        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(t); return; }
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var menu = new SelectMenuBuilder()
             .WithCustomId($"freq:days:{habitId}")
-            .WithPlaceholder("Pick 1 to 6 days")
+            .WithPlaceholder(t.Get("freq.days.placeholder"))
             .WithMinValues(1)
             .WithMaxValues(6);
         foreach (var name in ScheduleDayNames.All)
-            menu.AddOption(char.ToUpperInvariant(name[0]) + name[1..], name);
+            menu.AddOption(HabitModule.DayName(t, name), name);
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = $"Which days is **{habit.Name}** for? The other days are rest days.";
+            m.Content    = t.Format("freq.days.question", habit.Name);
             m.Components = new ComponentBuilder().WithSelectMenu(menu).Build();
         });
     }
@@ -85,40 +89,42 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
     [ComponentInteraction("freq:days:*")]
     public async Task SetWeekdaysAsync(string habitIdStr, string[] values)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!int.TryParse(habitIdStr, out var habitId) || values.Length is < 1 or > 6
             || !ScheduleDayNames.TryParse(values, out var days))
         {
-            await BadIdAsync();
+            await BadIdAsync(t);
             return;
         }
 
         var current = await _habits.GetHabitAsync(Context.User.Id, habitId);
         var habit = current is null ? null
             : await _habits.SetScheduleAsync(Context.User.Id, habitId, FrequencyType.Weekdays, null, days, current.TimesPerDay);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
-        await DoneAsync($"**{habit.Name}** is now on **{HabitModule.FrequencyLabel(habit)}**. The other days are rest days. 💤");
+        await DoneAsync(t.Format("freq.days.set", habit.Name, HabitModule.FrequencyLabel(t, habit)));
     }
 
     [ComponentInteraction("freq:times:*")]
     public async Task ShowTimesAsync(string habitIdStr)
     {
-        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(habitIdStr, out var habitId)) { await BadIdAsync(t); return; }
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
-        if (habit.FrequencyType == FrequencyType.Weekly) { await WeeklyOnlyOnceAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
+        if (habit.FrequencyType == FrequencyType.Weekly) { await WeeklyOnlyOnceAsync(t); return; }
 
         var menu = new SelectMenuBuilder()
             .WithCustomId($"freq:tpd:{habitId}")
-            .WithPlaceholder("Times per day")
+            .WithPlaceholder(t.Get("freq.times.placeholder"))
             .WithMinValues(1)
             .WithMaxValues(1);
         for (var n = 1; n <= HabitService.MaxTimesPerDay; n++)
-            menu.AddOption(n == 1 ? "Once a day" : $"{n}× a day", n.ToString(), isDefault: n == habit.TimesPerDay);
+            menu.AddOption(n == 1 ? t.Get("freq.times.once") : t.Format("freq.times.option", n), n.ToString(), isDefault: n == habit.TimesPerDay);
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = $"How many times a day do you want to do **{habit.Name}**?";
+            m.Content    = t.Format("freq.times.question", habit.Name);
             m.Components = new ComponentBuilder().WithSelectMenu(menu).Build();
         });
     }
@@ -126,23 +132,24 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
     [ComponentInteraction("freq:tpd:*")]
     public async Task SetTimesAsync(string habitIdStr, string[] values)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!int.TryParse(habitIdStr, out var habitId) || !int.TryParse(values[0], out var times)
             || times is < 1 or > HabitService.MaxTimesPerDay)
         {
-            await BadIdAsync();
+            await BadIdAsync(t);
             return;
         }
 
         var current = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (current is null) { await NotFoundAsync(); return; }
-        if (current.FrequencyType == FrequencyType.Weekly) { await WeeklyOnlyOnceAsync(); return; }
+        if (current is null) { await NotFoundAsync(t); return; }
+        if (current.FrequencyType == FrequencyType.Weekly) { await WeeklyOnlyOnceAsync(t); return; }
 
         var habit = await _habits.SetScheduleAsync(Context.User.Id, habitId, current.FrequencyType, null, current.Days, times);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         await DoneAsync(times == 1
-            ? $"**{habit.Name}** is back to once a day."
-            : $"**{habit.Name}** is now **{times}× a day**. Each check-in counts towards it.");
+            ? t.Format("freq.times.once-set", habit.Name)
+            : t.Format("freq.times.set", habit.Name, times));
     }
 
     private async Task DoneAsync(string text) =>
@@ -152,12 +159,12 @@ public class FrequencyButtonModule : InteractionModuleBase<SocketInteractionCont
             m.Components = new ComponentBuilder().Build();
         });
 
-    private async Task WeeklyOnlyOnceAsync() =>
-        await RespondAsync("Times per day works for daily and weekday habits. Switch this one to daily or specific weekdays first.", ephemeral: true);
+    private async Task WeeklyOnlyOnceAsync(Texts t) =>
+        await RespondAsync(t.Get("freq.times.weekly"), ephemeral: true);
 
-    private async Task BadIdAsync() =>
-        await RespondAsync("Something went wrong — try `/habit frequency` again.", ephemeral: true);
+    private async Task BadIdAsync(Texts t) =>
+        await RespondAsync(t.Get("freq.retry"), ephemeral: true);
 
-    private async Task NotFoundAsync() =>
-        await RespondAsync("Couldn't find that habit.", ephemeral: true);
+    private async Task NotFoundAsync(Texts t) =>
+        await RespondAsync(t.Get("common.not-found"), ephemeral: true);
 }

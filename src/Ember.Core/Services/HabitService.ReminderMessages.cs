@@ -83,8 +83,8 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.SecondReminderMinutes, minutes));
     }
 
-    public async Task SetSecondReminderMinutesAsync(ulong discordUserId, int minutes)
-        => await SetSecondReminderMinutesAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), minutes);
+    public async Task SetSecondReminderMinutesAsync(ulong discordUserId, int minutes, string? language = null)
+        => await SetSecondReminderMinutesAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), minutes);
 
     /// <summary>The account's <see cref="User.ShowStreaks"/>; false when there is no account.</summary>
     public async Task<bool> GetShowStreaksAsync(Guid userId)
@@ -101,6 +101,6 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.ShowStreaks, show));
     }
 
-    public async Task SetShowStreaksAsync(ulong discordUserId, bool show)
-        => await SetShowStreaksAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), show);
+    public async Task SetShowStreaksAsync(ulong discordUserId, bool show, string? language = null)
+        => await SetShowStreaksAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), show);
 }

@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Modules;
+using Ember.Core.Localization;
 using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -145,13 +146,13 @@ public class BotService : IHostedService
             if (result.Error == InteractionCommandError.UnknownCommand && interaction is not SocketAutocompleteInteraction)
             {
                 _logger.LogWarning("No handler for interaction {InteractionId} ({Type}).", interaction.Id, interaction.Type);
-                await ReplyWithErrorAsync(interaction, GenericErrorMessage, _logger);
+                await ReplyWithErrorAsync(interaction, await GenericErrorMessageAsync(interaction), _logger);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception in interaction handler.");
-            await ReplyWithErrorAsync(interaction, GenericErrorMessage, _logger);
+            await ReplyWithErrorAsync(interaction, await GenericErrorMessageAsync(interaction), _logger);
         }
     }
 
@@ -164,12 +165,25 @@ public class BotService : IHostedService
 
         var msg = result.Error == InteractionCommandError.UnmetPrecondition
             ? result.ErrorReason
-            : GenericErrorMessage;
+            : await GenericErrorMessageAsync(ctx.Interaction);
 
         await ReplyWithErrorAsync(ctx.Interaction, msg, _logger);
     }
 
-    private const string GenericErrorMessage = "Something went wrong on my side. Please try again in a moment. 🌿";
+    /// <summary>"Something went wrong on my side" in the user's language; by their Discord locale when the account can't be read.</summary>
+    private async Task<string> GenericErrorMessageAsync(IDiscordInteraction interaction)
+    {
+        try
+        {
+            using var scope = _services.CreateScope();
+            return (await BotTexts.ForAsync(scope.ServiceProvider.GetRequiredService<HabitService>(), interaction)).Get("error.generic");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not look up the language for interaction {InteractionId}.", interaction.Id);
+            return BotTexts.For(Languages.FromLocale(interaction.UserLocale)).Get("error.generic");
+        }
+    }
 
     /// <summary>
     /// Tells the user about a failed interaction: a follow-up if the interaction was already

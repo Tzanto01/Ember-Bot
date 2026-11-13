@@ -134,7 +134,7 @@ public class ReminderMessageTests
             .WithButton("Skip for today", $"checkin:skip:1:{sent}", ButtonStyle.Secondary)
             .Build().Components;
         Task<string?> ExpiredLine(string timestamp) => host.WithScopeAsync(sp =>
-            CheckInButtonModule.ExpiredLineAsync(sp.GetRequiredService<HabitService>(), time, DiscordUser, timestamp, buttons));
+            CheckInButtonModule.ExpiredLineAsync(Ember.Bot.BotTexts.English, sp.GetRequiredService<HabitService>(), time, DiscordUser, timestamp, buttons));
 
         time.SetUtcNow(new DateTimeOffset(2027, 1, 16, 8, 59, 0, TimeSpan.Zero));
         (await ExpiredLine(sent)).Should().BeNull();

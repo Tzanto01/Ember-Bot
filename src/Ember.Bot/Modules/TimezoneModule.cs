@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 
@@ -44,22 +45,19 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
         var tz = TimezoneHelper.Find(tzId);
         if (tz is null)
         {
-            await RespondAsync(
-                $"Couldn't find timezone `{tzId}`.\n" +
-                "Use an IANA timezone name, e.g. `Europe/Amsterdam`, `America/New_York`, `Asia/Tokyo`.\n" +
-                "Full list: <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>",
-                ephemeral: true);
+            await RespondAsync((await BotTexts.ForAsync(_habits, Context.Interaction)).Format("timezone.not-found", tzId), ephemeral: true);
             return;
         }
 
-        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id);
+        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id, Languages.FromLocale(Context.Interaction.UserLocale));
 
         var rescheduled = await _habits.RescheduleRemindersAsync(Context.User.Id);
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
 
         await RespondAsync(
-            $"Timezone set to **{tz.Id}**." +
+            t.Format("timezone.set", tz.Id) +
             (rescheduled > 0
-                ? $"\nRescheduled {rescheduled} reminder(s) to match."
+                ? "\n" + t.Format("timezone.rescheduled", rescheduled)
                 : ""),
             ephemeral: true);
     }
@@ -70,7 +68,7 @@ public class TimezoneModule : InteractionModuleBase<SocketInteractionContext>
         var tz = await _habits.GetUserTzAsync(Context.User.Id);
 
         await RespondAsync(
-            $"Your timezone is currently **{tz.Id}**.",
+            (await BotTexts.ForAsync(_habits, Context.Interaction)).Format("timezone.show", tz.Id),
             ephemeral: true);
     }
 }

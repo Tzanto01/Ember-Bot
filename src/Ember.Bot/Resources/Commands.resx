@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -12,4 +12,103 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="export.description" xml:space="preserve">
+    <value>Export your habits, check-ins and settings to your DMs</value>
+  </data>
+  <data name="export.format.description" xml:space="preserve">
+    <value>File format (default CSV)</value>
+  </data>
+  <data name="export.format.csv (spreadsheet).name" xml:space="preserve">
+    <value>CSV (spreadsheet)</value>
+  </data>
+  <data name="export.format.json.name" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="feedback.description" xml:space="preserve">
+    <value>Tell the Ember team what would make Ember better</value>
+  </data>
+  <data name="habit.description" xml:space="preserve">
+    <value>Track your habits</value>
+  </data>
+  <data name="habit.add.description" xml:space="preserve">
+    <value>Add a new habit to track</value>
+  </data>
+  <data name="habit.template.description" xml:space="preserve">
+    <value>Start a habit from a pre-built template</value>
+  </data>
+  <data name="habit.list.description" xml:space="preserve">
+    <value>See all your habits and their recent progress</value>
+  </data>
+  <data name="habit.checkin.description" xml:space="preserve">
+    <value>Log today's check-in for a habit</value>
+  </data>
+  <data name="habit.history.description" xml:space="preserve">
+    <value>See and fill in the last two weeks of a habit, and mark low days</value>
+  </data>
+  <data name="habit.streak.description" xml:space="preserve">
+    <value>See your personal habit stats</value>
+  </data>
+  <data name="habit.share.description" xml:space="preserve">
+    <value>Share a habit card publicly in this channel</value>
+  </data>
+  <data name="habit.delete.description" xml:space="preserve">
+    <value>Remove a habit and stop tracking it</value>
+  </data>
+  <data name="habit.edit.description" xml:space="preserve">
+    <value>Edit a habit's name or reminder time</value>
+  </data>
+  <data name="habit.frequency.description" xml:space="preserve">
+    <value>Change how often a habit needs to be done</value>
+  </data>
+  <data name="habit.pause.description" xml:space="preserve">
+    <value>Pause a habit temporarily — reminders stop while it's paused</value>
+  </data>
+  <data name="habit.grace.description" xml:space="preserve">
+    <value>Set how many flex days per week you get before a streak breaks</value>
+  </data>
+  <data name="habit.second-reminder.description" xml:space="preserve">
+    <value>Get one more nudge after a reminder if you haven't checked in yet</value>
+  </data>
+  <data name="habit.second-reminder.delay.description" xml:space="preserve">
+    <value>How long after a reminder</value>
+  </data>
+  <data name="habit.second-reminder.delay.off.name" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="habit.second-reminder.delay.15 minutes.name" xml:space="preserve">
+    <value>15 minutes</value>
+  </data>
+  <data name="habit.second-reminder.delay.30 minutes.name" xml:space="preserve">
+    <value>30 minutes</value>
+  </data>
+  <data name="habit.second-reminder.delay.1 hour.name" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="habit.second-reminder.delay.2 hours.name" xml:space="preserve">
+    <value>2 hours</value>
+  </data>
+  <data name="help.description" xml:space="preserve">
+    <value>See everything Ember can do</value>
+  </data>
+  <data name="link.description" xml:space="preserve">
+    <value>Use Ember in your browser, or link Discord to an email account</value>
+  </data>
+  <data name="privacy.description" xml:space="preserve">
+    <value>Control your privacy settings</value>
+  </data>
+  <data name="privacy.delete.description" xml:space="preserve">
+    <value>Permanently delete all your Ember data</value>
+  </data>
+  <data name="timezone.description" xml:space="preserve">
+    <value>Manage your timezone settings</value>
+  </data>
+  <data name="timezone.set.description" xml:space="preserve">
+    <value>Set your local timezone</value>
+  </data>
+  <data name="timezone.set.timezone.description" xml:space="preserve">
+    <value>Start typing your city or region</value>
+  </data>
+  <data name="timezone.show.description" xml:space="preserve">
+    <value>Show your current timezone setting</value>
+  </data>
 </root>

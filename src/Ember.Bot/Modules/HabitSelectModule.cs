@@ -1,4 +1,5 @@
 using Discord;
+using Ember.Core.Localization;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
@@ -25,23 +26,24 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:checkin")]
     public async Task OnSelectCheckinAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var components = new ComponentBuilder()
-            .WithButton("✅ Done!", $"habitaction:checkin:done:{habitId}", ButtonStyle.Success)
-            .WithButton(Ember.Bot.Services.DiscordDmReminderChannel.SkipLabel(BotTexts.English), $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
+            .WithButton(t.Get("habit.checkin.done-button"), $"habitaction:checkin:done:{habitId}", ButtonStyle.Success)
+            .WithButton(Ember.Bot.Services.DiscordDmReminderChannel.SkipLabel(t), $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
             .Build();
 
         var progress = habit.TimesPerDay > 1
-            ? $" So far: {HabitModule.DayMark(habit, await _habits.GetLocalTodayAsync(Context.User.Id))}"
+            ? " " + t.Format("habit.checkin.so-far", HabitModule.DayMark(habit, await _habits.GetLocalTodayAsync(Context.User.Id)))
             : "";
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"How did **{habit.Name}** go today?{progress}";
+                m.Content    = t.Format("habit.checkin.question", habit.Name) + progress;
                 m.Components = components;
             });
     }
@@ -51,15 +53,16 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:share")]
     public async Task OnSelectShareAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
         var grace = await _habits.GetGraceDaysAsync(Context.User.Id);
 
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var today = await _habits.GetLocalTodayAsync(Context.User.Id);
-        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id),
+        var embed = BuildShareEmbed(t, habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id),
             await _habits.GetShowStreaksAsync(Context.User.Id));
         var component = (SocketMessageComponent)Context.Interaction;
 
@@ -68,11 +71,11 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         try
         {
             await component.FollowupAsync(embed: embed);
-            reply = "Habit card posted! 🔥";
+            reply = t.Get("habit.share.posted");
         }
         catch (HttpException)
         {
-            reply = "I couldn't post the card here. 💙 Try again in a moment, or in another channel.";
+            reply = t.Get("habit.share.failed");
         }
 
         await component.ModifyOriginalResponseAsync(m =>
@@ -87,20 +90,21 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:delete")]
     public async Task OnSelectDeleteAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var components = new ComponentBuilder()
-            .WithButton("Yes, delete it", $"habitaction:delete:confirm:{habitId}", ButtonStyle.Danger)
-            .WithButton("Cancel", "habitaction:delete:cancel", ButtonStyle.Secondary)
+            .WithButton(t.Get("habit.delete.confirm-button"), $"habitaction:delete:confirm:{habitId}", ButtonStyle.Danger)
+            .WithButton(t.Get("common.cancel"), "habitaction:delete:cancel", ButtonStyle.Secondary)
             .Build();
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"Are you sure you want to delete **{habit.Name}**? This can't be undone.";
+                m.Content    = t.Format("habit.delete.confirm", habit.Name);
                 m.Components = components;
             });
     }
@@ -110,22 +114,23 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:edit")]
     public async Task OnSelectEditAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var components = new ComponentBuilder()
-            .WithButton("Rename",          $"habitaction:edit:rename:{habitId}",   ButtonStyle.Primary, new Emoji("✏️"))
-            .WithButton("Change reminder", $"reminder:set:{habitId}",              ButtonStyle.Secondary, new Emoji("⏰"))
-            .WithButton("Remove reminder", $"reminder:clear:{habitId}",            ButtonStyle.Danger)
-            .WithButton("Cancel",          $"reminder:cancel:{habitId}",           ButtonStyle.Secondary)
+            .WithButton(t.Get("habit.edit.rename"),          $"habitaction:edit:rename:{habitId}",   ButtonStyle.Primary, new Emoji("✏️"))
+            .WithButton(t.Get("habit.edit.change-reminder"), $"reminder:set:{habitId}",              ButtonStyle.Secondary, new Emoji("⏰"))
+            .WithButton(t.Get("habit.edit.remove-reminder"), $"reminder:clear:{habitId}",            ButtonStyle.Danger)
+            .WithButton(t.Get("common.cancel"),              $"reminder:cancel:{habitId}",           ButtonStyle.Secondary)
             .Build();
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"What would you like to change about **{habit.Name}**?";
+                m.Content    = t.Format("habit.edit.question", habit.Name);
                 m.Components = components;
             });
     }
@@ -135,26 +140,27 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:pause")]
     public async Task OnSelectPauseAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
         var isPaused = habit.PausedUntil.HasValue &&
                        habit.PausedUntil >= await _habits.GetLocalTodayAsync(Context.User.Id);
 
         var builder = new ComponentBuilder()
-            .WithButton("Today only", $"habitaction:pause:{habitId}:today",    ButtonStyle.Secondary)
-            .WithButton("3 days",     $"habitaction:pause:{habitId}:3days",    ButtonStyle.Secondary)
-            .WithButton("1 week",     $"habitaction:pause:{habitId}:1week",    ButtonStyle.Primary);
+            .WithButton(t.Get("habit.pause.today"), $"habitaction:pause:{habitId}:today",    ButtonStyle.Secondary)
+            .WithButton(t.Get("habit.pause.3days"), $"habitaction:pause:{habitId}:3days",    ButtonStyle.Secondary)
+            .WithButton(t.Get("habit.pause.1week"), $"habitaction:pause:{habitId}:1week",    ButtonStyle.Primary);
 
         if (isPaused)
-            builder.WithButton("Resume now", $"habitaction:pause:{habitId}:resume", ButtonStyle.Success);
+            builder.WithButton(t.Get("habit.pause.resume-button"), $"habitaction:pause:{habitId}:resume", ButtonStyle.Success);
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"How long do you want to pause **{habit.Name}**?";
+                m.Content    = t.Format("habit.pause.question", habit.Name);
                 m.Components = builder.Build();
             });
     }
@@ -164,44 +170,45 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("habit:select:frequency")]
     public async Task OnSelectFrequencyAsync(string[] values)
     {
-        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!int.TryParse(values[0], out var habitId)) { await BadIdAsync(t); return; }
 
         var habit = await _habits.GetHabitAsync(Context.User.Id, habitId);
-        if (habit is null) { await NotFoundAsync(); return; }
+        if (habit is null) { await NotFoundAsync(t); return; }
 
-        var components = FrequencyComponents(habitId);
+        var components = FrequencyComponents(t, habitId);
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content    = $"How often do you want to track **{habit.Name}**?";
+                m.Content    = t.Format("habit.frequency.question", habit.Name);
                 m.Components = components;
             });
     }
 
     /// <summary>The schedule buttons: daily, 1–6× per week, specific weekdays and times per day.</summary>
-    internal static MessageComponent FrequencyComponents(int habitId) =>
+    internal static MessageComponent FrequencyComponents(Texts t, int habitId) =>
         new ComponentBuilder()
-            .WithButton("Daily",      $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary,    row: 0)
-            .WithButton("1× / week",  $"freq:weekly:{habitId}:1",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("2× / week",  $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("3× / week",  $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("4× / week",  $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary,  row: 0)
-            .WithButton("5× / week",  $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary,  row: 1)
-            .WithButton("6× / week",  $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary,  row: 1)
-            .WithButton("Specific weekdays", $"freq:weekdays:{habitId}",     ButtonStyle.Secondary,  new Emoji("📅"), row: 2)
-            .WithButton("Times per day",     $"freq:times:{habitId}",        ButtonStyle.Secondary,  new Emoji("🔁"), row: 2)
+            .WithButton(t.Get("freq.button.daily"),        $"habitaction:freq:{habitId}:daily",   ButtonStyle.Primary,    row: 0)
+            .WithButton(t.Format("freq.button.weekly", 1), $"freq:weekly:{habitId}:1",            ButtonStyle.Secondary,  row: 0)
+            .WithButton(t.Format("freq.button.weekly", 2), $"freq:weekly:{habitId}:2",            ButtonStyle.Secondary,  row: 0)
+            .WithButton(t.Format("freq.button.weekly", 3), $"freq:weekly:{habitId}:3",            ButtonStyle.Secondary,  row: 0)
+            .WithButton(t.Format("freq.button.weekly", 4), $"freq:weekly:{habitId}:4",            ButtonStyle.Secondary,  row: 0)
+            .WithButton(t.Format("freq.button.weekly", 5), $"freq:weekly:{habitId}:5",            ButtonStyle.Secondary,  row: 1)
+            .WithButton(t.Format("freq.button.weekly", 6), $"freq:weekly:{habitId}:6",            ButtonStyle.Secondary,  row: 1)
+            .WithButton(t.Get("freq.button.weekdays"),     $"freq:weekdays:{habitId}",     ButtonStyle.Secondary,  new Emoji("📅"), row: 2)
+            .WithButton(t.Get("freq.button.times"),        $"freq:times:{habitId}",        ButtonStyle.Secondary,  new Emoji("🔁"), row: 2)
             .Build();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private async Task BadIdAsync() =>
-        await RespondAsync("Something went wrong — please try again.", ephemeral: true);
+    private async Task BadIdAsync(Texts t) =>
+        await RespondAsync(t.Get("common.retry.dash"), ephemeral: true);
 
-    private async Task NotFoundAsync() =>
-        await RespondAsync("Couldn't find that habit.", ephemeral: true);
+    private async Task NotFoundAsync(Texts t) =>
+        await RespondAsync(t.Get("common.not-found"), ephemeral: true);
 
-    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
+    private static EmbedBuilder BuildShareEmbedBase(Texts t, Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
         bool showStreaks)
     {
         var from  = today.AddDays(-29);
@@ -233,14 +240,14 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         {
             var (done, target) = HabitService.WeeklyProgress(habit, today);
             var total = habit.Logs.Count(l => l.Completed);
-            titleLine = $"**{done}/{target} this week**";
-            statsLine = $"Last 28 days: **{HabitService.FlexibleStreak(habit, today, 28)}/28** · Total: **{total}**";
+            titleLine = t.Format("habit.share.weekly.title", done, target);
+            statsLine = t.Format("habit.share.weekly.stats", HabitService.FlexibleStreak(habit, today, 28), total);
         }
         else if (!showStreaks)
         {
             var last30 = HabitService.FlexibleStreak(habit, today, 30);
-            titleLine = $"**{last30} of the last 30 days**";
-            statsLine = $"Last 30 days: **{last30}/30** · Total: **{habit.Logs.Count(l => l.Completed)}**";
+            titleLine = t.Format("habit.share.flexible.title", last30);
+            statsLine = t.Format("habit.share.flexible.stats", last30, habit.Logs.Count(l => l.Completed));
         }
         else
         {
@@ -248,21 +255,21 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             var best   = HabitService.BestStreak(habit, today, grace, lowDays);
             var last30 = HabitService.FlexibleStreak(habit, today, 30);
             var total  = habit.Logs.Count(l => l.Completed);
-            var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
+            var graceStr = graceUsed > 0 ? " " + t.Plural("habit.progress.grace", graceUsed) : "";
             var fireCount = Math.Min(streak / 7 + 1, 5);
-            titleLine = $"**{streak}-day streak**{graceStr} {string.Concat(Enumerable.Repeat("🔥", fireCount))}";
-            statsLine = $"Last 30 days: **{last30}/30** · Best ever: **{best}** · Total: **{total}**";
+            titleLine = $"{t.Format("habit.share.streak", streak)}{graceStr} {string.Concat(Enumerable.Repeat("🔥", fireCount))}";
+            statsLine = t.Format("habit.share.streak.stats", last30, best, total);
         }
 
         return new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle($"🔥 {habit.Name} _({HabitModule.FrequencyLabel(habit)})_")
+            .WithTitle($"🔥 {habit.Name} _({HabitModule.FrequencyLabel(t, habit)})_")
             .WithDescription($"{titleLine}\n\n{grid}\n\n{statsLine}")
-            .WithFooter($"Tracked by {username} via Ember 🔥")
+            .WithFooter(t.Format("habit.share.footer", username))
             .WithTimestamp(DateTimeOffset.UtcNow);
     }
 
-    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
+    internal static Embed BuildShareEmbed(Texts t, Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
         bool showStreaks) =>
-        BuildShareEmbedBase(habit, grace, username, today, lowDays, showStreaks).Build();
+        BuildShareEmbedBase(t, habit, grace, username, today, lowDays, showStreaks).Build();
 }

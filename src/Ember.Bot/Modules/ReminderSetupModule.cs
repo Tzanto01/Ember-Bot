@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Services;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 
@@ -22,39 +23,40 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:set:*")]
     public async Task OnSetReminderAsync(string habitIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!await _habits.HasTimezoneSetAsync(Context.User.Id))
         {
             await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
             {
-                m.Content    = "Reminders follow your local time, so which timezone are you in? 🌍";
+                m.Content    = t.Get("reminder.need-timezone");
                 m.Embed      = null;
                 m.Components = new ComponentBuilder()
-                    .WithButton("Set my timezone", $"onboard:timezone:{habitIdStr}", ButtonStyle.Primary, new Emoji("🌍"))
-                    .WithButton("I'm on UTC", $"reminder:time:{habitIdStr}", ButtonStyle.Secondary)
-                    .WithButton("Not now", $"reminder:skip:{habitIdStr}", ButtonStyle.Secondary)
+                    .WithButton(t.Get("reminder.set-timezone"), $"onboard:timezone:{habitIdStr}", ButtonStyle.Primary, new Emoji("🌍"))
+                    .WithButton(t.Get("reminder.on-utc"), $"reminder:time:{habitIdStr}", ButtonStyle.Secondary)
+                    .WithButton(t.Get("common.not-now"), $"reminder:skip:{habitIdStr}", ButtonStyle.Secondary)
                     .Build();
             });
             return;
         }
 
-        await OpenTimeModalAsync(habitIdStr);
+        await OpenTimeModalAsync(t, habitIdStr);
     }
 
     /// <summary>"I'm on UTC": the time modal without asking for a timezone first.</summary>
     [ComponentInteraction("reminder:time:*")]
-    public async Task OnKeepUtcAsync(string habitIdStr) => await OpenTimeModalAsync(habitIdStr);
+    public async Task OnKeepUtcAsync(string habitIdStr) => await OpenTimeModalAsync(await BotTexts.ForAsync(_habits, Context.Interaction), habitIdStr);
 
-    private async Task OpenTimeModalAsync(string habitIdStr)
+    private async Task OpenTimeModalAsync(Texts t, string habitIdStr)
     {
         // Embed the source message ID in the modal custom ID so the modal
         // handler can update the original button message after confirming.
         var sourceMessageId = ((SocketMessageComponent)Context.Interaction).Message.Id;
 
         var modal = new ModalBuilder()
-            .WithTitle("Set a daily reminder")
+            .WithTitle(t.Get("reminder.modal.title"))
             .WithCustomId($"reminder:modal:{habitIdStr}:{sourceMessageId}")
-            .AddTextInput("What time? (your local time)", "reminder_time",
-                placeholder: "e.g. 09:00, 21:30 or 9pm",
+            .AddTextInput(t.Get("reminder.modal.label"), "reminder_time",
+                placeholder: t.Get("reminder.modal.placeholder"),
                 minLength: 3, maxLength: 8, required: true)
             .Build();
 
@@ -70,19 +72,21 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:preset:*:*:*")]
     public async Task OnPresetReminderAsync(string habitIdStr, string hour, string minute)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         var replaced = int.TryParse(habitIdStr, out var id) ? (await _habits.GetHabitAsync(Context.User.Id, id))?.ReminderTimes.ToList() ?? [] : [];
         var habit = await SetPresetReminderAsync(_habits, Context.User.Id, habitIdStr, $"{hour}:{minute}");
         if (habit is null)
         {
-            await RespondAsync("Couldn't find that habit. It may have been deleted.", ephemeral: true);
+            await RespondAsync(t.Get("reminder.not-found"), ephemeral: true);
             return;
         }
 
-        var discordNote = await DiscordRemindersNoteAsync(_habits, Context.User.Id);
+        var discordNote = await DiscordRemindersNoteAsync(t, _habits, Context.User.Id);
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = $"⏰ Reminder set! I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{habit.ReminderTime:HH\\:mm}** your time. You've got this." + ReplacedText(replaced) + discordNote;
+                m.Content = t.Get("reminder.set.title") + " " + t.Format("reminder.set.line", habit.Name, ScheduleText(t, habit), $"{habit.ReminderTime:HH\\:mm}")
+                    + " " + t.Get("reminder.set.got-this") + ReplacedText(t, replaced) + discordNote;
                 m.Embed = null;
                 m.Components = new ComponentBuilder().Build();
             });
@@ -91,29 +95,29 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     /// <summary>
     /// For a reminder set from Discord, which keeps one time: a note naming the earlier times it replaced, when there were several.
     /// </summary>
-    internal static string ReplacedText(IReadOnlyList<TimeOnly> replaced)
+    internal static string ReplacedText(Texts t, IReadOnlyList<TimeOnly> replaced)
         => replaced.Count > 1
-            ? $"\nThis replaces your earlier reminders at {HabitModule.FormatTimes(replaced)}. To get several reminders a day, set the times in the Ember web app."
+            ? "\n" + t.Format("reminder.replaced", HabitModule.FormatTimes(replaced))
             : "";
 
     /// <summary>
     /// For a reminder time set through the bot: turns Discord reminders on when the user never answered the ask
     /// (<see cref="HabitService.DefaultDiscordRemindersOnAsync"/>), and returns the note that they are off when the user said no.
     /// </summary>
-    internal static async Task<string> DiscordRemindersNoteAsync(HabitService habits, ulong userId)
-        => await habits.DefaultDiscordRemindersOnAsync(userId) ? "" : DiscordRemindersModule.OffText;
+    internal static async Task<string> DiscordRemindersNoteAsync(Texts t, HabitService habits, ulong userId)
+        => await habits.DefaultDiscordRemindersOnAsync(userId) ? "" : DiscordRemindersModule.OffText(t);
 
     /// <summary>
     /// "every day", "on Mon, Wed" for a habit on set weekdays, or for a weekly habit the days without a check-in until the
     /// week's target is met.
     /// </summary>
-    internal static string ScheduleText(Habit habit)
+    internal static string ScheduleText(Texts t, Habit habit)
         => habit.FrequencyType switch
         {
-            FrequencyType.Weekdays => "on " + string.Join(", ", ScheduleDayNames.ToNames(habit.Days.GetValueOrDefault())
-                .Select(n => char.ToUpperInvariant(n[0]) + n[1..])),
-            FrequencyType.Weekly => $"on days you haven't checked in yet, until you've done it {habit.WeeklyTarget ?? 3} time{(habit.WeeklyTarget == 1 ? "" : "s")} this week,",
-            _ => "every day",
+            FrequencyType.Weekdays => t.Format("reminder.schedule.weekdays", string.Join(", ", ScheduleDayNames.ToNames(habit.Days.GetValueOrDefault())
+                .Select(n => HabitModule.DayName(t, n)))),
+            FrequencyType.Weekly => t.Plural("reminder.schedule.weekly", habit.WeeklyTarget ?? 3),
+            _ => t.Get("reminder.schedule.daily"),
         };
 
     /// <summary>A reminder time typed as 24-hour (<c>21:30</c>, <c>9:05</c>) or 12-hour (<c>9pm</c>, <c>9:30 PM</c>) clock time.</summary>
@@ -135,10 +139,11 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:skip:*")]
     public async Task OnSkipReminderAsync(string habitIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = "No problem — you can always add one later with `/habit edit`. 💙";
+                m.Content = t.Get("reminder.skipped");
                 m.Embed = null;
                 m.Components = new ComponentBuilder().Build();
             });
@@ -149,9 +154,10 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:clear:*")]
     public async Task OnClearReminderAsync(string habitIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!int.TryParse(habitIdStr, out var habitId))
         {
-            await RespondAsync("Something went wrong. Please try again.", ephemeral: true);
+            await RespondAsync(t.Get("common.retry.period"), ephemeral: true);
             return;
         }
 
@@ -159,14 +165,14 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
 
         if (habit is null)
         {
-            await RespondAsync("Couldn't find that habit. It may have been deleted.", ephemeral: true);
+            await RespondAsync(t.Get("reminder.not-found"), ephemeral: true);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = $"Reminder removed from **{habit.Name}**. 💙";
+                m.Content = t.Format("reminder.removed", habit.Name);
                 m.Components = new ComponentBuilder().Build();
             });
     }
@@ -176,10 +182,11 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ComponentInteraction("reminder:cancel:*")]
     public async Task OnCancelEditAsync(string habitIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         await ((SocketMessageComponent)Context.Interaction)
             .UpdateAsync(m =>
             {
-                m.Content = "No changes made.";
+                m.Content = t.Get("reminder.no-changes");
                 m.Components = new ComponentBuilder().Build();
             });
     }
@@ -189,16 +196,17 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
     [ModalInteraction("reminder:modal:*:*")]
     public async Task OnReminderModalAsync(string habitIdStr, string sourceMessageIdStr, ReminderModal modal)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!int.TryParse(habitIdStr, out var habitId))
         {
-            await RespondAsync("Something went wrong. Please try again.", ephemeral: true);
+            await RespondAsync(t.Get("common.retry.period"), ephemeral: true);
             return;
         }
 
         if (!TryParseTime(modal.ReminderTime, out var parsed))
         {
-            await RespondAsync("I couldn't read that time. Try something like `09:00`, `21:30` or `9pm`. 💙",
-                components: new ComponentBuilder().WithButton("Try again", $"reminder:set:{habitId}", ButtonStyle.Primary, new Emoji("⏰")).Build(),
+            await RespondAsync(t.Get("reminder.bad-time"),
+                components: new ComponentBuilder().WithButton(t.Get("reminder.try-again"), $"reminder:set:{habitId}", ButtonStyle.Primary, new Emoji("⏰")).Build(),
                 ephemeral: true);
             return;
         }
@@ -208,17 +216,17 @@ public class ReminderSetupModule : InteractionModuleBase<SocketInteractionContex
 
         if (habit is null)
         {
-            await RespondAsync("Couldn't find that habit. It may have been deleted.", ephemeral: true);
+            await RespondAsync(t.Get("reminder.not-found"), ephemeral: true);
             return;
         }
 
-        var discordNote = await DiscordRemindersNoteAsync(_habits, Context.User.Id);
+        var discordNote = await DiscordRemindersNoteAsync(t, _habits, Context.User.Id);
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle("⏰ Reminder set!")
-            .WithDescription($"I'll remind you to **{habit.Name}** {ScheduleText(habit)} at **{parsed:HH\\:mm}** your time."
-                + ReplacedText(replaced) + discordNote)
-            .WithFooter("You've got this. One day at a time.")
+            .WithTitle(t.Get("reminder.set.title"))
+            .WithDescription(t.Format("reminder.set.line", habit.Name, ScheduleText(t, habit), $"{parsed:HH\\:mm}")
+                + ReplacedText(t, replaced) + discordNote)
+            .WithFooter(t.Get("reminder.set.footer"))
             .Build();
 
         await RespondAsync(embed: embed, ephemeral: true);

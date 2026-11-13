@@ -31,27 +31,25 @@ public class DmRetryModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("dmretry:*")]
     public async Task OnRetryAsync(string userIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!ulong.TryParse(userIdStr, out var userId) || userId != Context.User.Id)
         {
-            await RespondAsync("This button isn't for you.", ephemeral: true);
+            await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
             return;
         }
 
-        var outcome = await _discord.SendMessageAsync(userId,
-            "Hi! This is Ember checking that I can reach you. Your reminders are back on. 🔥");
+        var outcome = await _discord.SendMessageAsync(userId, t.Get("dmretry.check"));
 
         if (outcome != DeliveryOutcome.Delivered)
         {
-            await RespondAsync(
-                "I still can't reach you by DM. No rush: once DMs are on, tap **Try again** whenever you like.",
-                ephemeral: true);
+            await RespondAsync(t.Get("dmretry.still-blocked"), ephemeral: true);
             return;
         }
 
         await _habits.ResumeDmRemindersAsync(userId);
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = "That worked! Your reminders are back on. 💙";
+            m.Content    = t.Get("dmretry.worked");
             m.Components = new ComponentBuilder().Build();
         });
     }

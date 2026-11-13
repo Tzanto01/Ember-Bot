@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Ember.Bot.Services;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 
@@ -23,22 +24,6 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
 
     internal const string AnonymousValue = "anonymous";
 
-    internal const string ThanksText = "Thank you, that really helps. 💙 Your feedback is on its way to the Ember team.";
-
-    internal const string CooldownText = "You've sent a lot of feedback this hour. 💙 Try again a little later.";
-
-    internal const string DailyLimitText = "Ember has had a lot of feedback today. 💙 Try again tomorrow.";
-
-    internal const string InvalidText = "That feedback came through empty or with characters Ember can't keep. 💙 Try again with plain text.";
-
-    internal const string TooManyPicturesText = "That's more pictures than Ember can take. 💙 Up to 5, 10 MB together.";
-
-    internal const string PictureText = "One of those pictures didn't work for Ember. 💙 It takes still JPEG, PNG or WebP pictures up to 4096 pixels per side.";
-
-    internal const string FetchFailedText = "Ember couldn't fetch your pictures. 💙 Try again in a moment.";
-
-    internal const string PictureBudgetText = "You've sent a lot of pictures today. 💙 Try again tomorrow, or send it without pictures.";
-
     private static readonly string[] AttachmentHosts = ["cdn.discordapp.com", "media.discordapp.net"];
 
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(15);
@@ -57,36 +42,61 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("feedback", "Tell the Ember team what would make Ember better")]
     public async Task FeedbackAsync()
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!_cooldown.CanSend(Context.User.Id))
         {
-            await RespondAsync(CooldownText, ephemeral: true);
+            await RespondAsync(t.Get("feedback.cooldown"), ephemeral: true);
             return;
         }
 
-        await RespondWithModalAsync<FeedbackModal>(ModalId);
+        await RespondWithModalAsync(Modal(t));
+    }
+
+    /// <summary>The <see cref="FeedbackModal"/> form (same custom ids and limits) with its labels in the user's language.</summary>
+    internal static Modal Modal(Texts t)
+    {
+        var identity = new SelectMenuBuilder()
+            .WithCustomId("feedback_identity")
+            .WithMinValues(1)
+            .WithMaxValues(1)
+            .AddOption(t.Get("feedback.modal.account"), "account", isDefault: true)
+            .AddOption(t.Get("feedback.modal.anonymous"), AnonymousValue);
+
+        return new ModalBuilder()
+            .WithTitle(t.Get("feedback.modal.title"))
+            .WithCustomId(ModalId)
+            .AddTextInput(t.Get("feedback.modal.feedback-title"), "feedback_title", TextInputStyle.Short,
+                minLength: 1, maxLength: HabitService.MaxFeedbackTitleLength, required: true)
+            .AddTextInput(t.Get("feedback.modal.text"), "feedback_text", TextInputStyle.Paragraph,
+                minLength: 1, maxLength: HabitService.MaxFeedbackLength, required: true)
+            .AddFileUpload(t.Get("feedback.modal.pictures"), "feedback_pictures", 0, FeedbackImages.MaxCount, false,
+                description: t.Get("feedback.modal.pictures-hint"))
+            .AddSelectMenu(t.Get("feedback.modal.identity"), identity)
+            .Build();
     }
 
     [ModalInteraction(ModalId)]
     public async Task OnModalAsync(FeedbackModal modal)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         var title = modal.FeedbackTitle.Trim();
         var text = modal.Text.Trim();
         if (HabitService.FeedbackTitleError(title) is not null || HabitService.FeedbackTextError(text) is not null)
         {
-            await RespondAsync(InvalidText, ephemeral: true);
+            await RespondAsync(t.Get("feedback.invalid"), ephemeral: true);
             return;
         }
 
         var pictures = modal.Pictures ?? [];
         if (pictures.Length > FeedbackImages.MaxCount || pictures.Sum(p => (long)p.Size) > FeedbackImages.MaxTotalBytes)
         {
-            await RespondAsync(TooManyPicturesText, ephemeral: true);
+            await RespondAsync(t.Get("feedback.too-many-pictures"), ephemeral: true);
             return;
         }
 
         if (!_cooldown.TryRecord(Context.User.Id))
         {
-            await RespondAsync(CooldownText, ephemeral: true);
+            await RespondAsync(t.Get("feedback.cooldown"), ephemeral: true);
             return;
         }
 
@@ -99,13 +109,13 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
             {
                 if (await DownloadAsync(_httpClients, picture.Url, picture.Size) is not { } data)
                 {
-                    await FollowupAsync(FetchFailedText, ephemeral: true);
+                    await FollowupAsync(t.Get("feedback.fetch-failed"), ephemeral: true);
                     return;
                 }
 
                 if (FeedbackImages.Sanitize(data, out _) is not { } image)
                 {
-                    await FollowupAsync(PictureText, ephemeral: true);
+                    await FollowupAsync(t.Get("feedback.picture"), ephemeral: true);
                     return;
                 }
 
@@ -115,7 +125,7 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
 
             if (!_cooldown.TryRecordBytes(Context.User.Id, bytes))
             {
-                await FollowupAsync(PictureBudgetText, ephemeral: true);
+                await FollowupAsync(t.Get("feedback.picture-budget"), ephemeral: true);
                 return;
             }
         }
@@ -123,8 +133,9 @@ public class FeedbackModule : InteractionModuleBase<SocketInteractionContext>
         Guid? userId = null;
         if (modal.Identity != AnonymousValue && await _habits.FindDiscordUserAsync(Context.User.Id) is var found && found != Guid.Empty) userId = found;
         var saved = await _habits.SaveFeedbackAsync(userId, "discord", null, text, default, title, images);
-        if (Context.Interaction.HasResponded) await FollowupAsync(saved ? ThanksText : DailyLimitText, ephemeral: true);
-        else await RespondAsync(saved ? ThanksText : DailyLimitText, ephemeral: true);
+        var reply = t.Get(saved ? "feedback.thanks" : "feedback.daily-limit");
+        if (Context.Interaction.HasResponded) await FollowupAsync(reply, ephemeral: true);
+        else await RespondAsync(reply, ephemeral: true);
     }
 
     /// <summary>
