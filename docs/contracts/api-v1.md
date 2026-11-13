@@ -1,4 +1,6 @@
-# Ember API contract v1.15
+# Ember API contract v1.16
+
+v1.16 (2026-11-13, Nico chose "Full pivot now": "The moment flow plus repositioning Ember as a companion now: new pitch on both sites and in-app, streaks off by default, legal check started."): Ember becomes a companion with an "I need a moment" flow that runs entirely on the device; streaks become an account setting, off for new accounts; a journal entry for today no longer needs a habit. See "Companion v1.16" and docs/contracts/companion-v1.md.
 
 v1.14 (2026-11-12, Nico: "what if we just make it so that every habit always reminds you everywhere you have allowed it?" and "I believe we should not limit to one device."): reminders go to every destination the user allowed: Discord DMs (after the bot asks once), each browser and each phone running the app, each switched on or off in Settings (`GET`/`PATCH /api/me/reminder-destinations`, `POST /api/me/phones`); habits and routines store only the destinations they skip (`reminderExclusions`); `reminderChannels` is derived and deprecated; logging anywhere closes the browser notification. See "Reminder destinations v1.14".
 
@@ -576,3 +578,23 @@ Run from the Ember compose directory on the homeserver; documented in the README
 - `docker compose exec -T api dotnet Ember.Api.dll --list-feedback [--all]`: open reports (all with `--all`), oldest first, as text: id, created and resolved time (UTC), platform, version, `user {id}` or `anonymous`, quoted title and text, picture ids. Read-only.
 - `tools/feedback-images.sh <out-dir> <id>...` (wraps `--feedback-images <id>...`): each id is a report id or a picture id; writes `{out-dir}/{reportId}/{pictureId}.{jpg|png|webp}`. Unknown ids are named on stderr; exit 1 when nothing was found.
 - `docker compose exec -T api dotnet Ember.Api.dll --resolve-feedback <reportId>...`: marks reports handled now (a second call keeps the first time); unknown ids → exit 1.
+
+## Companion v1.16
+
+Additive. Older clients keep working (they ignore `showStreaks` and keep showing streaks).
+
+### Streaks setting
+
+- `Me` gains `"showStreaks": bool`. `PATCH /api/me` accepts `showStreaks?: bool` (absent leaves it unchanged; a non-bool → 400 `validation` on `showStreaks`).
+- Stored as `User.ShowStreaks`. The migration adds it and sets it `true` for every existing row; every account created afterwards (email, Discord, bot-only) starts `false`. Reversible (Down drops the column).
+- The API keeps computing and returning streak stats unchanged; clients hide streaks when `showStreaks` is false. The Discord bot reads the same setting: with it off, `/habit list`, `/habit streak`, the weekly summary and `/habit share` show no streak lines (last 7/30 days and totals stay), and the `/habit streak` reply carries a "Show streaks" / "Hide streaks" button that flips it. Copy that promises "your streak is safe" is reworded neutrally for everyone.
+- Export: `settings.show_streaks` (bool). Import: optional; absent leaves the account's value.
+- Local (no-account) profiles: a missing field reads as `true` (existing device profiles), a new profile writes `false`.
+
+### Day notes without habits
+
+- `PUT /api/day-notes/{date}`: a new entry for the user's local today is allowed even when the account has no habits (no `before_habit_start`). Every other date keeps the existing rules; `in_future`, consent and the encrypted-only rule of the private journal are unchanged.
+
+### Moments (client only)
+
+- There is no moments endpoint. Choosing a feeling, the intensity and the practice never leave the device's memory. The only thing that can reach the server is a reflection the user explicitly saves, appended to today's day note, and only while the private journal is on (not turning off) and unlocked: the server sees day-note ciphertext only. Nothing about moments goes to Discord, notifications, the weekly summary, feedback or logs.
