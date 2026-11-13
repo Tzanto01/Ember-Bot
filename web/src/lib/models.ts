@@ -43,6 +43,8 @@ export interface Me {
   showStreaks: boolean;
   /** v1.17: the account's language; missing from servers before v1.17. */
   language?: Language;
+  /** v1.17: calm mode (no motion, softer colours, fewer decorations); missing from servers before v1.17. */
+  calmMode?: boolean;
 }
 
 /** `PATCH /api/me` body. */
@@ -56,6 +58,8 @@ export interface MePatch {
   showStreaks?: boolean;
   /** v1.17. */
   language?: Language;
+  /** v1.17. */
+  calmMode?: boolean;
 }
 
 /** The `secondReminderMinutes` choices; 0 is off. */
@@ -208,6 +212,8 @@ export interface Credentials {
   twoFactorCode?: string;
   /** v1.7: one of the recovery codes instead of `twoFactorCode`. */
   twoFactorRecoveryCode?: string;
+  /** v1.17, sign-up only: the language the new account starts with. */
+  language?: Language;
 }
 
 /**
