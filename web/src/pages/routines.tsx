@@ -107,7 +107,7 @@ export default function RoutinesPage() {
                 ) : members.length > 0 ? (
                   <ol aria-label={t('routines.habitsIn', { name: routine.name })} className="flex flex-wrap gap-2">
                     {members.map((name, i) => (
-                      <li key={`${i}-${name}`} className="rounded-full bg-secondary px-3 py-1 text-[14px] text-secondary-foreground">
+                      <li key={`${i}-${name}`} className="min-w-0 rounded-full bg-secondary px-3 py-1 text-[14px] text-secondary-foreground [overflow-wrap:anywhere]">
                         {name}
                       </li>
                     ))}

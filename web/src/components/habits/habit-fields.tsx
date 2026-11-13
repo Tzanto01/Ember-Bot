@@ -302,13 +302,13 @@ export function HabitFields({
             role="group"
             aria-labelledby={daysId}
             aria-describedby={daysError ? `${daysId}-error` : allDays ? `${daysId}-hint` : undefined}
-            className="grid grid-cols-4 gap-2 sm:grid-cols-7"
+            className="grid grid-cols-[repeat(auto-fit,minmax(max(3.5rem,calc(25%-0.5rem)),1fr))] gap-2 sm:grid-cols-7"
           >
             {weekdays.map((day, i) => (
               <Label
                 key={day}
                 htmlFor={`${id}-day-${day}`}
-                className={`${optionClass} min-h-[48px] justify-center gap-2 px-2`}
+                className={`${optionClass} min-h-[48px] flex-wrap content-center justify-center gap-2 gap-y-1 px-2`}
               >
                 <Checkbox
                   id={`${id}-day-${day}`}

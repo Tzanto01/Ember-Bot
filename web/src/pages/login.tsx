@@ -305,17 +305,17 @@ export default function LoginPage() {
           {(field) => <PasswordInput {...field} {...password.input} autoComplete="current-password" />}
         </FormField>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex min-h-[44px] items-center gap-3">
+          <div className="flex min-h-[44px] min-w-0 items-center gap-3">
             <Checkbox
               id="stay-signed-in"
               checked={staySignedIn}
               onCheckedChange={(checked) => setStaySignedIn(checked === true)}
             />
-            <Label htmlFor="stay-signed-in" className="font-normal whitespace-nowrap">
+            <Label htmlFor="stay-signed-in" className="min-w-0 font-normal">
               {t('login.staySignedIn')}
             </Label>
           </div>
-          <TapLink to="/forgot-password" className="whitespace-nowrap">
+          <TapLink to="/forgot-password" className="min-w-0">
             {t('login.forgot')}
           </TapLink>
         </div>

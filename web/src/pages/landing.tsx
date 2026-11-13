@@ -104,7 +104,7 @@ export default function LandingPage() {
             </div>
             <p className="text-muted-foreground">{t('landing.madeBy')}</p>
           </div>
-          <picture className="mx-auto block w-full max-w-[22rem] lg:col-span-5">
+          <picture className="mx-auto block w-full max-w-[20.5rem] lg:col-span-5">
             <source srcSet={`/landing/today-dark${shot}.webp`} media="(prefers-color-scheme: dark)" />
             <img
               src={`/landing/today-light${shot}.webp`}

@@ -90,6 +90,7 @@
     font-family: var(--ember-font-sans);
     font-size: 1rem;
     line-height: 1.55;
+    overflow-wrap: break-word;
   }
   h1,
   h2,

@@ -184,9 +184,9 @@ function MoodRow({
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="flex min-w-0 flex-[1_1_10rem] items-center gap-2">
         {mood.emoji && <span aria-hidden="true">{mood.emoji}</span>}
-        <span className="truncate">{mood.label}</span>
+        <span className="[overflow-wrap:anywhere]">{mood.label}</span>
       </span>
       <Button ref={changeRef} variant="ghost" onClick={() => setEditing(true)} aria-label={t('moods.changeLabel', { label: mood.label })}>
         {t('moods.change')}

@@ -288,7 +288,7 @@ export function FeedbackForm() {
       {canAttach ? (
         <div className="flex flex-col gap-2">
           {pictures.length > 0 && (
-            <ul aria-label={t('feedback.pictures.list')} className="flex flex-wrap gap-3 pt-2">
+            <ul aria-label={t('feedback.pictures.list')} className="flex flex-wrap gap-3 pt-2 pr-3">
               {pictures.map((picture, index) => (
                 <li key={picture.key} className="relative">
                   <img

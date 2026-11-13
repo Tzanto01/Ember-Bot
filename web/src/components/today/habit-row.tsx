@@ -150,7 +150,7 @@ export function HabitRow({
         <div className="flex min-w-0 flex-col">
           <Heading className="text-[18px] break-words">{habit.name}</Heading>
           <div className="flex items-center justify-between gap-2">
-            <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-muted-foreground">
+            <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-muted-foreground [overflow-wrap:anywhere]">
               {meta}
             </p>
             <div className="flex shrink-0">

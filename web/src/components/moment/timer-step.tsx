@@ -64,7 +64,7 @@ export function TimerStep({ seconds, halted = false }: { seconds: number; halted
           {clock(left)}
         </span>
       </p>
-      <Button type="button" variant="secondary" className="min-w-[10rem]" onClick={toggle}>
+      <Button type="button" variant="secondary" className="min-w-[min(10rem,100%)]" onClick={toggle}>
         {running
           ? momentCopy.pause
           : left === 0

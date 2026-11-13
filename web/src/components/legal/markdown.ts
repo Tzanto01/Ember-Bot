@@ -22,6 +22,10 @@ const legalMarked = new Marked({
     html({ text }) {
       return escapeHtml(text);
     },
+    blockquote({ tokens, text }) {
+      if (!/^\W*English summary\b/.test(text)) return false;
+      return `<blockquote lang="en">\n${this.parser.parse(tokens)}</blockquote>\n`;
+    },
     link({ href, title, tokens }) {
       const text = this.parser.parseInline(tokens);
       if (!safeHref(href)) return text;

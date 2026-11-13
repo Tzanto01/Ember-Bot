@@ -142,7 +142,7 @@ export function BreathingPlayer({
       <Button
         type="button"
         variant="secondary"
-        className="min-w-[10rem]"
+        className="min-w-[min(10rem,100%)]"
         onClick={() => dispatch('toggle')}
       >
         {player.running

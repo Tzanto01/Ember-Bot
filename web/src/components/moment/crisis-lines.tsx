@@ -51,17 +51,17 @@ export function CrisisLines() {
         {lines.map((line) => (
           <li
             key={`${line.region}-${line.name}`}
-            className="flex flex-col gap-2 rounded-xl border-[length:var(--border-width)] border-border bg-card p-4 text-card-foreground"
+            className="flex flex-col gap-2 rounded-xl border-[length:var(--border-width)] border-border bg-card p-4 text-card-foreground [overflow-wrap:anywhere]"
           >
             <p className="font-semibold">{line.name}</p>
-            <p className="text-[14px] text-muted-foreground">{line.hours}</p>
+            <p className="text-[0.875rem] text-muted-foreground">{line.hours}</p>
             <div className="flex flex-wrap gap-2">
               {line.numbers.map((number) => (
                 <a
                   key={number}
                   href={`tel:${number.replace(/[^\d+]/g, '')}`}
                   aria-label={t('crisis.call', { name: line.name, number })}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[18px] font-semibold max-w-full text-secondary-foreground no-underline"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[1.125rem] font-semibold max-w-full text-secondary-foreground no-underline"
                 >
                   <Phone aria-hidden className="size-[18px] shrink-0" />
                   {number}
@@ -73,7 +73,7 @@ export function CrisisLines() {
                 href={line.url}
                 target="_blank"
                 rel="noopener"
-                className="inline-flex min-h-[44px] items-center gap-2 self-start font-medium text-primary underline underline-offset-4"
+                className="inline-flex min-h-[44px] max-w-full items-center gap-2 self-start font-medium text-primary underline underline-offset-4"
               >
                 {new URL(line.url).hostname.replace(/^www\./, '')}
                 <span className="sr-only">{t('crisis.newTab')}</span>
@@ -83,7 +83,7 @@ export function CrisisLines() {
           </li>
         ))}
       </ul>
-      <p className="text-[14px] text-muted-foreground">{t('crisis.notice')}</p>
+      <p className="text-[0.875rem] text-muted-foreground">{t('crisis.notice')}</p>
       <LiveRegion message={announce} />
     </div>
   );

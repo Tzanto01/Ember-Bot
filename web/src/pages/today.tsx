@@ -404,7 +404,7 @@ export default function TodayPage() {
                 <div className="flex items-center justify-between gap-2">
                   <h2
                     id={routine ? `routine-${routine.id}` : 'routine-other'}
-                    className="text-[20px] break-words"
+                    className="min-w-0 text-[20px] [overflow-wrap:anywhere]"
                   >
                     {routine?.name ?? t('today.otherHabits')}
                   </h2>
@@ -484,7 +484,7 @@ export default function TodayPage() {
         <Button
           id="mark-low-day"
           variant="ghost"
-          className="-mt-3 self-start"
+          className="-mt-3 self-start md:-ml-4"
           aria-disabled={lowDayBusy || undefined}
           onClick={() => void toggleLowDay()}
         >
