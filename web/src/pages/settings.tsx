@@ -536,8 +536,8 @@ export default function SettingsPage() {
     ...(local
       ? []
       : [
-          { id: 'discord', title: 'Discord' },
           { id: 'two-factor', title: 'Two-step sign-in' },
+          { id: 'discord', title: 'Discord' },
           { id: 'journal', title: 'Private journal' },
           { id: 'export', title: 'Your data' },
         ]),
@@ -854,7 +854,7 @@ export default function SettingsPage() {
                       {!(env.native || pushAvailable) && (
                         <>
                           {' '}
-                          You can link Discord in{' '}
+                          If you use Discord, you can link it in{' '}
                           <Link
                             to={{ pathname: '/settings', hash: 'discord' }}
                             className="text-primary underline underline-offset-4"
@@ -1125,6 +1125,12 @@ export default function SettingsPage() {
               </SettingsCard>
             )}
 
+            {shown('two-factor') && (
+              <SettingsCard id="two-factor" title={title('two-factor')}>
+                <TwoFactorSettings me={me} />
+              </SettingsCard>
+            )}
+
             {shown('discord') && (
               <SettingsCard id="discord" title={title('discord')}>
                 {me.discord.linked ? (
@@ -1144,7 +1150,7 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <>
-                    <p>Link your Discord account to sign in with it and to use the Ember bot with the same habits.</p>
+                    <p>Use Discord? Link it to sign in with Discord and to use the Ember bot with the same habits.</p>
                     {linkingDiscord ? (
                       <ConfirmForm
                         kind="password"
@@ -1185,12 +1191,6 @@ export default function SettingsPage() {
                   </>
                 )}
                 {outcome('discord')}
-              </SettingsCard>
-            )}
-
-            {shown('two-factor') && (
-              <SettingsCard id="two-factor" title={title('two-factor')}>
-                <TwoFactorSettings me={me} />
               </SettingsCard>
             )}
 

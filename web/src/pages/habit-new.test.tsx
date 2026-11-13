@@ -328,7 +328,7 @@ describe('HabitNewPage', () => {
 
     await user.click(await screen.findByRole('button', { name: /Walk/ }));
 
-    expect(await screen.findByText(/Reminders reach you through Discord or notifications on this device/)).toBeInTheDocument();
+    expect(await screen.findByText(/Reminders reach you through notifications on this device, or Discord if you use it/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Turn one on in Settings.' })).toHaveAttribute('href', '/settings#discord');
   });
 

@@ -412,7 +412,10 @@ export default function TodayPage() {
           )}
           {remindersUnheard && (
             <Notice tone="info" heading="Your reminders can't reach you yet">
-              <p>Turn on notifications for this device, or link Discord, and Ember can nudge you at the times you picked.</p>
+              <p>
+                Turn on notifications for this device and Ember can nudge you at the times you picked. If you use
+                Discord, linking it works too.
+              </p>
               <TapLink to={{ pathname: '/settings', hash: reminderHash }}>Turn on reminders in Settings</TapLink>
             </Notice>
           )}

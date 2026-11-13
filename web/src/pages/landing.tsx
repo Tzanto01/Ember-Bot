@@ -1,4 +1,4 @@
-import { BellRing, LockKeyhole, Moon, NotebookPen, Palette, Smartphone } from 'lucide-react';
+import { BellRing, LockKeyhole, MessageCircle, Moon, NotebookPen, Palette, Smartphone } from 'lucide-react';
 import { Link } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
 import { FlameMark } from '@/components/flame-mark';
@@ -9,8 +9,8 @@ import { Card } from '@/components/ui/card';
 const features = [
   {
     icon: BellRing,
-    title: 'Reminders in your Discord DMs',
-    text: 'A nudge at your local time with Done, Skip and Snooze buttons. Forgot yesterday? A gentle check-in lets you log it the next day.',
+    title: 'Reminders that nudge, not nag',
+    text: 'A notification at the times you pick, with a Done button right in it. Yesterday stays open, so a forgotten check-in is easy to fill in.',
   },
   {
     icon: Smartphone,
@@ -39,6 +39,11 @@ const extras = [
     icon: Palette,
     title: 'Four themes, light and dark',
     text: 'Hearthlight, Fieldnotes, Tidepool and Marigold, each in light and dark. Pick the one that feels like yours.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'Use Discord? Bring Ember along',
+    text: 'If you like, add the Ember bot for reminders in your DMs and quick check-ins there. You can sign in with Discord too.',
   },
 ];
 
@@ -121,7 +126,7 @@ export default function LandingPage() {
           <h2 id="landing-extras" className="text-[24px] md:text-[28px]">
             Make it yours
           </h2>
-          <ul className="grid gap-4 md:grid-cols-2">
+          <ul className="grid gap-4 md:grid-cols-3">
             {extras.map(({ icon: Icon, title, text }) => (
               <li key={title}>
                 <Card className="h-full">

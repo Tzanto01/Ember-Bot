@@ -84,13 +84,13 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     notificationPermission.display = 'granted';
   });
 
-  it('Account & security starts with who is signed in, then Discord and two-step, and sends a change-password link', async () => {
+  it('Account & security starts with who is signed in, then two-step and Discord, and sends a change-password link', async () => {
     const user = userEvent.setup();
     const { fetch } = await open('/settings/account');
 
     const cards = document.querySelectorAll('section');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Account & security');
-    expect([...cards].map((card) => card.getAttribute('id'))).toEqual(['account', 'discord', 'two-factor']);
+    expect([...cards].map((card) => card.getAttribute('id'))).toEqual(['account', 'two-factor', 'discord']);
     expect(cards[0]).toHaveAccessibleName('Account');
     const account = within(cards[0] as HTMLElement);
     expect(account.getByText(/Signed in as/)).toHaveTextContent('Signed in as a@example.test');

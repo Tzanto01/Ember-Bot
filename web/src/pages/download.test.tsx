@@ -35,12 +35,12 @@ describe('DownloadPage', () => {
 
   it('puts the browser route first on a desktop', () => {
     visit(desktop);
-    expect(sections()).toEqual(['iPhone and any other device', 'Android', 'Discord']);
+    expect(sections()).toEqual(['iPhone and any other device', 'Android', 'If you use Discord']);
   });
 
   it('puts the APK first in an Android browser', () => {
     visit(androidPhone);
-    expect(sections()).toEqual(['Android', 'iPhone and any other device', 'Discord']);
+    expect(sections()).toEqual(['Android', 'iPhone and any other device', 'If you use Discord']);
   });
 
   it('hides the APK inside the Android app and keeps the rest', () => {
@@ -48,6 +48,6 @@ describe('DownloadPage', () => {
     visit(androidPhone);
 
     expect(screen.queryByRole('link', { name: 'Download for Android' })).toBeNull();
-    expect(sections()).toEqual(['iPhone and any other device', 'Discord']);
+    expect(sections()).toEqual(['iPhone and any other device', 'If you use Discord']);
   });
 });

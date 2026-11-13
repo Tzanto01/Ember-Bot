@@ -205,7 +205,7 @@ export default function HabitNewPage() {
                 reminderNote={
                   reach === 'none' && (
                     <>
-                      Reminders reach you through Discord or notifications on this device.{' '}
+                      Reminders reach you through notifications on this device, or Discord if you use it.{' '}
                       <Link to={{ pathname: '/settings', hash: reminderHash }}>Turn one on in Settings.</Link>
                     </>
                   )

@@ -55,7 +55,7 @@ function DiscordSection() {
   return (
     <section aria-labelledby="download-discord" className="flex flex-col gap-3">
       <h2 id="download-discord" className="text-[22px]">
-        Discord
+        If you use Discord
       </h2>
       <Button asChild variant="secondary" className="self-start">
         <a href={downloads.discordInvite} target="_blank" rel="noopener">
@@ -63,7 +63,10 @@ function DiscordSection() {
           <ExternalLink aria-hidden />
         </a>
       </Button>
-      <p className="text-muted-foreground">The slash commands work in any server and in your DMs.</p>
+      <p className="text-muted-foreground">
+        Optional: the Ember bot can remind you in your DMs and lets you check in with slash commands, in any server or
+        in your DMs.
+      </p>
     </section>
   );
 }

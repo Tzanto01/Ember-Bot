@@ -13,13 +13,14 @@ describe('SignupPage', () => {
     localStorage.clear();
   });
 
-  it('offers Discord as the other way in', () => {
+  it('offers Discord as the other way in, after the email sign-up', () => {
     mockFetch();
     renderPage('/signup', SignupPage, '/signup');
 
-    expect(screen.getByRole('link', { name: 'Continue with Discord' })).toHaveAttribute(
-      'href',
-      api.discordLoginUrl('/today'),
+    const discord = screen.getByRole('link', { name: 'Continue with Discord' });
+    expect(discord).toHaveAttribute('href', api.discordLoginUrl('/today'));
+    expect(screen.getByRole('button', { name: 'Create account' }).compareDocumentPosition(discord)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });
 

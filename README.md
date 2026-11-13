@@ -19,7 +19,7 @@
 
 Ember is a habit tracker for people who find consistency hard, for example with ADHD, autism or executive dysfunction. Missing a day doesn't wipe out your progress, and Ember never scolds you for it.
 
-There are three ways in: a Discord bot, a web app and an Android app. Use the same account in all of them and they share your habits and check-ins, so a check-in in Discord shows up in the web app and on your phone.
+Ember is a web app and an Android app. If you use Discord, you can add the Ember bot too. Use the same account everywhere and your habits and check-ins stay in sync, so a check-in on your phone shows up in the web app (and in Discord, if you use it).
 
 Ember is in public beta at [beta.ember-glow.app](https://beta.ember-glow.app).
 
@@ -27,11 +27,11 @@ Ember is in public beta at [beta.ember-glow.app](https://beta.ember-glow.app).
 
 | Way in | What it is | Get it |
 |---|---|---|
-| **Web app** | Runs in your browser. Sign in with Discord or email, or use it without an account on one device. | [beta.ember-glow.app](https://beta.ember-glow.app) |
+| **Web app** | Runs in your browser. Sign in with email or Discord, or use it without an account on one device. | [beta.ember-glow.app](https://beta.ember-glow.app) |
 | **Android app** | The web app as an Android app, with a home screen widget and phone reminders. It is an APK file from the download page, not a Google Play app. | [Download page](https://beta.ember-glow.app/download) |
-| **Discord bot** | Slash commands and reminder DMs in Discord. | [Download page](https://beta.ember-glow.app/download), which has the invite link |
+| **Discord bot** (optional) | If you use Discord: slash commands and reminder DMs there. | [Download page](https://beta.ember-glow.app/download), which has the invite link |
 
-On the web and in the Android app you can sign in with Discord, or create an account with an email address and a password. An email address has to be confirmed before you can sign in. `/link` in Discord shows you how to open the web app. If you already have an email account, you can link Discord to it in Settings, and Ember offers to move your Discord habits over.
+On the web and in the Android app you create an account with an email address and a password, or sign in with Discord if you use it. An email address has to be confirmed before you can sign in. `/link` in Discord shows you how to open the web app. If you already have an email account, you can link Discord to it in Settings, and Ember offers to move your Discord habits over.
 
 You can also use the web app and the Android app without an account. Your data then stays on that device.
 

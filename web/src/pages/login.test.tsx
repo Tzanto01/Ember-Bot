@@ -101,6 +101,16 @@ describe('LoginPage', () => {
     expect(confirm.body).toEqual({ email: 'a@example.test', code: '123456' });
   });
 
+  it('puts email sign-in first and Discord after it as the secondary option', () => {
+    renderPage('/login', LoginPage, '/login');
+
+    const discord = screen.getByRole('link', { name: 'Sign in with Discord' });
+    expect(screen.getByRole('button', { name: 'Sign in' }).compareDocumentPosition(discord)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByLabelText('Email').compareDocumentPosition(discord)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('ignores an off-site returnUrl: Discord and the email sign-in both return to /today', async () => {
     const router = renderPage('/login', LoginPage, '/login?returnUrl=//evil.example');
     expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toHaveAttribute(
