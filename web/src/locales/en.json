@@ -1206,7 +1206,7 @@
   "journalSettings.recovery.hint": "8 groups of 4 letters and numbers. Spaces and dashes are fine.",
   "journalSettings.loginPassword.required": "Please enter your login password.",
   "journalSettings.loginPassword.label": "Your login password",
-  "journalSettings.loginPassword.hint": "Ember checks it before changing your journal key.",
+  "journalSettings.loginPassword.hint": "Ember checks it to make sure it’s you.",
   "journalSettings.loginPassword.mismatch": "That login password doesn't match. Try again.",
   "journalSettings.problem.locked": "Your journal is locked on this device again. Unlock it, then try once more.",
   "journalSettings.problem.device": "Something went wrong on this device. You can try again.",

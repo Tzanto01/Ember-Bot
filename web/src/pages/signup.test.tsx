@@ -46,7 +46,7 @@ describe('SignupPage', () => {
     const fetch = mockFetch();
     renderPage('/signup', SignupPage, '/signup');
 
-    expect(screen.getByRole('link', { name: 'Mit Discord anmelden' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Weiter mit Discord' })).toHaveAttribute(
       'href',
       '/api/auth/discord/login?returnUrl=%2Ftoday&language=de',
     );

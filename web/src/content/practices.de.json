@@ -18,7 +18,7 @@
       { "kind": "breath", "inhale": 4, "hold": 0, "exhale": 6, "rounds": 6 },
       {
         "kind": "text",
-        "text": "Spür nach, wie es dir jetzt geht. Jede Veränderung ist okay, und keine auch."
+        "text": "Spür nach, wie es dir jetzt geht. Jede Veränderung ist okay, und wenn sich nichts verändert, auch."
       },
       { "kind": "text", "text": "Wenn dir schwindlig wird, atme einfach normal." }
     ],
@@ -73,7 +73,7 @@
       { "kind": "text", "text": "Hör hin. Nenn 3 Dinge, die du hören kannst." },
       {
         "kind": "text",
-        "text": "Find 2 Dinge, die du riechen kannst, oder denk an 2 Gerüche, die du magst."
+        "text": "Finde 2 Dinge, die du riechen kannst, oder denk an 2 Gerüche, die du magst."
       },
       {
         "kind": "text",
@@ -125,7 +125,7 @@
     "steps": [
       {
         "kind": "text",
-        "text": "Starke Gefühle und Impulse steigen wie eine Welle an, erreichen ihren Höhepunkt und ebben wieder ab. Du musst ihm nicht nachgeben."
+        "text": "Starke Gefühle und Impulse steigen wie eine Welle an, erreichen ihren Höhepunkt und ebben wieder ab. Du musst nicht nach ihnen handeln."
       },
       {
         "kind": "text",
