@@ -188,8 +188,8 @@ public partial class HabitService
             return false;
         }
 
-        await _db.UserHelps.Where(h => h.UserId == userId).ExecuteDeleteAsync();
         await _db.JournalKeys.Where(k => k.UserId == userId).ExecuteDeleteAsync();
+        await _db.UserHelps.Where(h => h.UserId == userId).ExecuteDeleteAsync();
         await transaction.CommitAsync();
         return true;
     }
