@@ -32,6 +32,28 @@
     "checked": "2026-11-13"
   },
   {
+    "region": "GB",
+    "name": "Emergency number",
+    "numbers": ["999"],
+    "hours": "Day and night",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "IE",
+    "name": "Samaritans",
+    "numbers": ["116 123"],
+    "hours": "Free, day and night",
+    "url": "https://www.samaritans.org",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "IE",
+    "name": "Emergency number",
+    "numbers": ["999"],
+    "hours": "Day and night",
+    "checked": "2026-11-13"
+  },
+  {
     "region": "US",
     "name": "988 Suicide & Crisis Lifeline",
     "numbers": ["988"],
@@ -40,8 +62,15 @@
     "checked": "2026-11-13"
   },
   {
-    "region": "EU",
+    "region": "US",
     "name": "Emergency number",
+    "numbers": ["911"],
+    "hours": "Day and night",
+    "checked": "2026-11-13"
+  },
+  {
+    "region": "EU",
+    "name": "Emergency number (EU)",
     "numbers": ["112"],
     "hours": "Day and night",
     "checked": "2026-11-13"

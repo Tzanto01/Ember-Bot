@@ -20,7 +20,7 @@ The "I need a moment" flow and the shared names between teams. Server side: "Com
 ## The flow
 
 1. **Catch**: dim campfire, "You're here. That's enough for now.", two big buttons: "Name what's happening" and "Just breathe with me" (straight to paced breathing). A persistent header has Leave and "Urgent help" (opens `CrisisLines` in place, keeping the flow's state).
-2. **Name**: tiles "Rejected / not enough", "Too much / overloaded", "Racing / panicky", "Can't stop replaying", "Not sure" (leads to breathing). Then an optional intensity: 5 worded options in a radiogroup ("a little" … "a lot") with Skip.
+2. **Name**: tiles "Rejected / not enough", "Too much / overloaded", "Racing / on edge", "Can't stop replaying", "Not sure" (leads to breathing). Then an optional intensity: 5 worded options in a radiogroup ("a little" … "a lot") with Skip.
 3. **Ride it out**: the first practice whose `states` include the named state, in file order; "Try another" cycles. One step at a time, big text, Next/Back, every step skippable. At the end, optionally "How is it now?" on the same scale.
 4. **Reflect** (optional, never a gate): "what set it off" (up to 300 characters), "what helped" preselected to the practice, "how it is now". Save depends on the journal state, checked before the user types:
    - private journal on and unlocked: Save offered; the block goes through `appendPrivate`;
@@ -54,7 +54,7 @@ type PracticeStep =
 
 ## Crisis lines (`web/src/content/crisis-lines.json`, bundled by import)
 
-- `{ region, name, numbers: string[], hours, url?, checked: "YYYY-MM-DD" }[]`. Regions: DE (TelefonSeelsorge 0800 111 0 111, 0800 111 0 222, 116 123), AT, CH, GB, US (988, call or text), EU (112) and INTL (call your local emergency number; 112 in the EU).
+- `{ region, name, numbers: string[], hours, url?, checked: "YYYY-MM-DD" }[]`. Regions: DE (TelefonSeelsorge 0800 111 0 111, 0800 111 0 222, 116 123), AT, CH, GB (emergency 999), IE (Samaritans 116 123; emergency 999; plus the EU 112 row), US (988, call or text; emergency 911), EU (112, named "Emergency number (EU)") and INTL (call your local emergency number; 112 in the EU).
 - Region: `Intl.Locale(navigator.languages[i]).region`, else a timezone map, else INTL. EU regions always show 112 too. Numbers are `tel:` links.
 - Shown in the moment header panel (every step), on `/help`, and in Settings under "Help right now".
 

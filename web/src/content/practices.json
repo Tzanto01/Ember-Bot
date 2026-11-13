@@ -17,7 +17,7 @@
       { "kind": "text", "text": "If you feel dizzy, breathe normally." }
     ],
     "a11y": { "motion": "gentle", "languageLevel": "plain" },
-    "basis": "Paced breathing with a longer exhale (resonance-style slow breathing)"
+    "basis": "paced breathing"
   },
   {
     "id": "kind-voice",
@@ -43,7 +43,7 @@
       { "kind": "text", "text": "Try these words: I'm allowed to feel this. I still matter." }
     ],
     "a11y": { "motion": "none", "languageLevel": "plain" },
-    "basis": "Self-compassion break (Kristin Neff) with a perceived-rejection check (alternative explanations, the friend question)"
+    "basis": "self-compassion break"
   },
   {
     "id": "grounding-54321",
@@ -67,7 +67,7 @@
       }
     ],
     "a11y": { "motion": "none", "languageLevel": "plain" },
-    "basis": "5-4-3-2-1 sensory grounding"
+    "basis": "5-4-3-2-1 grounding"
   },
   {
     "id": "cool-and-here",
@@ -77,6 +77,7 @@
     "type": "orientation",
     "minutes": 2,
     "steps": [
+      { "kind": "text", "text": "Skip this one if cold feels uncomfortable for you." },
       {
         "kind": "text",
         "text": "If you can, run cool water over your hands, or hold something cool for a moment."
@@ -91,7 +92,7 @@
       { "kind": "text", "text": "You're here, in this place, on this day." }
     ],
     "a11y": { "motion": "none", "languageLevel": "plain" },
-    "basis": "Temperature change (cool water) followed by orientation to place, day and surroundings"
+    "basis": "cool water and orientation"
   },
   {
     "id": "ride-the-wave",
@@ -117,7 +118,7 @@
       { "kind": "text", "text": "Notice how the wave is now. Whatever it's doing is okay." }
     ],
     "a11y": { "motion": "none", "languageLevel": "plain" },
-    "basis": "Urge surfing (Marlatt), observing an urge rise and fall over about 90 seconds"
+    "basis": "urge surfing"
   },
   {
     "id": "set-it-down",
@@ -142,6 +143,6 @@
       }
     ],
     "a11y": { "motion": "none", "languageLevel": "plain" },
-    "basis": "Labelling plus worry postponement (scheduled worry time) and one slow breath"
+    "basis": "labelling and worry postponement"
   }
 ]

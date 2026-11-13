@@ -15,7 +15,7 @@ describe('CrisisLines', () => {
     expect(
       within(lines).getByRole('link', { name: 'Call TelefonSeelsorge, 0800 111 0 111' }),
     ).toHaveAttribute('href', 'tel:08001110111');
-    expect(within(lines).getByRole('link', { name: 'Call Emergency number, 112' })).toHaveAttribute(
+    expect(within(lines).getByRole('link', { name: 'Call Emergency number (EU), 112' })).toHaveAttribute(
       'href',
       'tel:112',
     );

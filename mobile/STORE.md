@@ -21,7 +21,7 @@ A calm companion for hard moments and gentle days. And on the other days: gentle
 
 ## 0. Blockers before anything is published
 
-1. **Public URLs.** Play needs a privacy policy URL and an account-deletion URL that open without the app. The policy text is rewritten for v2 (`web/public/legal/datenschutzerklaerung.md`) and still has open `[PRÜFEN: ...]` notes. TODO (Nico): confirm the public URL on the final domain.
+1. **Public URLs.** Play needs a privacy policy URL and an account-deletion URL that open without the app. The policy text is rewritten for v2 (`web/public/legal/datenschutzerklaerung.md`) and still has open points (the questions in `docs/legal/README.md`). TODO (Nico): confirm the public URL on the final domain.
 2. **No public account-deletion page** (section 2.4).
 
 ## 1. Summary: what Nico must do, pay or decide
@@ -31,7 +31,7 @@ A calm companion for hard moments and gentle days. And on the other days: gentle
 | 1 | Google Play Console account | Nico, $25 once | TODO (Nico) | Personal accounts may need ID checks and a closed test (12 testers, 14 days) before production access. Check at sign-up. |
 | 2 | Apple Developer Program | Nico, $99 per year | Parked | Only for iOS (section 3). |
 | 3 | Application ID | free | Set: `app.ember.habits` | In `web/capacitor.config.ts` and `mobile/android/app/build.gradle`. Play fixes it on the first upload. TODO (Nico): confirm. |
-| 4 | Privacy policy public URL | Nico | Blocker (section 0) | Resolve the `[PRÜFEN: ...]` notes first. |
+| 4 | Privacy policy public URL | Nico | Blocker (section 0) | Resolve the open points in `docs/legal/README.md` first. |
 | 5 | Upload signing key | free | Build wired (section 5) | Use Play App Signing. Keep the upload keystore and its passwords outside the repo, backed up. |
 | 6 | Content rating (IARC questionnaire) | free | Open | No user-to-user content in the app. |
 | 7 | Target audience and minimum age | Nico | TODO (Nico) | Do not target children (Play's Families policy would apply). Match section 10 of the policy. |
@@ -64,7 +64,7 @@ A calm companion for hard moments and gentle days. And on the other days: gentle
 Notes:
 
 - **Private journal.** Notes and own moods encrypted on the device are unreadable for Ember. From memory, Play does not count end-to-end encrypted data as collected. TODO (Nico): check the current Play wording; listing day notes and moods as collected is the safe answer either way.
-- **Shared.** The app talks only to Ember's API. The Discord bot sends reminder DMs that can name the habit, so Play may treat Health info and User IDs as shared with Discord. Email delivery (Brevo) and hosting are service providers acting for Ember, which Play does not count as sharing. TODO (Nico): decide the Discord answer.
+- **Shared.** The app talks only to Ember's API. The Discord bot sends reminder DMs that can name the habit, so Play may treat Health info and User IDs as shared with Discord. Email delivery (Resend, Inc., USA) and hosting are service providers acting for Ember, which Play does not count as sharing. TODO (Nico): decide the Discord answer.
 - **Widget and phone reminders** read app-private storage on the device; nothing leaves the phone for them.
 - **Security practices.** Encrypted in transit: Yes (HTTPS only, cleartext off). Users can request deletion: Yes (in the app and on the web, section 2.4). Independent security review: No.
 
@@ -109,7 +109,7 @@ Provisional until Nico picks the pitch (`docs/contracts/companion-v1.md`, Copy d
 ```text
 A calm companion for hard moments and gentle days.
 
-When it gets too much, tap "I need a moment". Ember walks you through a few quiet steps: notice what is happening, name it, breathe and ride it out, and reflect afterwards if you want to. It runs on your phone, works without an account and offline, and keeps nothing you write. Crisis lines are always one tap away. Ember is not a crisis service: if you are in danger, call your local emergency number.
+When it gets too much, tap "I need a moment". Ember walks you through a few quiet steps: notice what is happening, name it, breathe and ride it out, and reflect afterwards if you want to. It runs on your phone, works without an account and offline. Nothing from a moment is kept unless you choose to save a reflection to your private journal. Crisis lines are always one tap away. Ember is not a crisis service: if you are in danger, call your local emergency number.
 
 Reach the moment from a launcher shortcut, a small home-screen widget, or the Today widget.
 
@@ -131,7 +131,7 @@ Do not submit. Kept for when iOS starts.
 ## 4. Open items
 
 - Public URLs for the policy and the deletion page (section 0).
-- The `[PRÜFEN: ...]` notes in the policy, including that no Google push is active (the Gradle file only applies the Google Services plugin when a `google-services.json` exists; the repo has none).
+- The open points in `docs/legal/README.md`, including that no Google push is active (the Gradle file only applies the Google Services plugin when a `google-services.json` exists; the repo has none).
 - Play account type, identity checks, trader status, support email, listing language. TODO (Nico).
 - Health apps category and the Discord sharing answer (sections 2.1 and 2.2). TODO (Nico).
 - Play target API level at upload: the app targets API 36. TODO: check the Console's current requirement.

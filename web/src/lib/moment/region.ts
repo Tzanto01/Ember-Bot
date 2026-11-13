@@ -1,7 +1,7 @@
 import crisisLines from '@/content/crisis-lines.json';
 
 /** A region with its own entry in `content/crisis-lines.json`. */
-export type CrisisRegion = 'DE' | 'AT' | 'CH' | 'GB' | 'US' | 'EU' | 'INTL';
+export type CrisisRegion = 'DE' | 'AT' | 'CH' | 'GB' | 'IE' | 'US' | 'EU' | 'INTL';
 
 /** One entry of `content/crisis-lines.json`. */
 export interface CrisisLine {
@@ -23,12 +23,13 @@ export const CRISIS_REGIONS: readonly { region: CrisisRegion; label: string }[] 
   { region: 'AT', label: 'Austria' },
   { region: 'CH', label: 'Switzerland' },
   { region: 'GB', label: 'United Kingdom' },
+  { region: 'IE', label: 'Ireland' },
   { region: 'US', label: 'United States' },
   { region: 'EU', label: 'Elsewhere in the EU' },
   { region: 'INTL', label: 'Somewhere else' },
 ];
 
-const listed = new Set<string>(['DE', 'AT', 'CH', 'GB', 'US']);
+const listed = new Set<string>(['DE', 'AT', 'CH', 'GB', 'IE', 'US']);
 
 const euMembers = new Set([
   'AT',
@@ -81,7 +82,6 @@ const euZones = [
   'Europe/Bucharest',
   'Europe/Budapest',
   'Europe/Copenhagen',
-  'Europe/Dublin',
   'Europe/Helsinki',
   'Europe/Lisbon',
   'Europe/Ljubljana',
@@ -109,6 +109,7 @@ const zoneRegions = new Map<string, CrisisRegion>([
   ['Europe/Vienna', 'AT'],
   ['Europe/Zurich', 'CH'],
   ['Europe/London', 'GB'],
+  ['Europe/Dublin', 'IE'],
   ...usZones.map((zone) => [zone, 'US'] as const),
   ...euZones.map((zone) => [zone, 'EU'] as const),
 ]);

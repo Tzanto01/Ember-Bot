@@ -312,6 +312,9 @@ export function FeedbackForm() {
           <p id={`${picturesId}-why`} className="text-[14px] text-muted-foreground">
             Pictures you add help us fix the problem; we keep them until it's handled.
           </p>
+          <p id={`${picturesId}-check`} className="text-[14px] text-muted-foreground">
+            Check your screenshot first: please don't send notes, moods or anything about your health or other people.
+          </p>
           <input
             ref={fileRef}
             type="file"
@@ -331,7 +334,7 @@ export function FeedbackForm() {
               variant="outline"
               busy={preparing}
               busyLabel="Preparing pictures…"
-              aria-describedby={cn(`${picturesId}-why`, `${picturesId}-count`, pictureError && `${picturesId}-error`)}
+              aria-describedby={cn(`${picturesId}-why`, `${picturesId}-check`, `${picturesId}-count`, pictureError && `${picturesId}-error`)}
               onClick={pickPictures}
             >
               <ImagePlus aria-hidden />

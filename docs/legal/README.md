@@ -6,9 +6,7 @@
 
 - **Source of truth:** `web/public/legal/`. The web app serves these files at `/legal/privacy`, `/legal/terms` and `/legal/imprint`. The Settings page links them, and the consent page links the privacy policy. Edit them only there.
 - `docs/legal/*.md` are pointers only. They keep older links (for example in `mobile/STORE.md`) working. Do not copy the texts here.
-- **Before the web build goes live:** the files are public once the web app is deployed. They still contain `[PRÜFEN: ...]` markers. Do not deploy them as they are.
-
-To list every open marker: `grep -n "PRÜFEN" web/public/legal/*.md`
+- **Before the web build goes live:** the files are public once the web app is deployed. The inline `[PRÜFEN]` markers were removed on 2026-11-14. Every open point is a question below, listed by section under "Open points by section". Do not deploy until those questions are settled.
 
 ## Status
 
@@ -70,37 +68,46 @@ Also changed:
 - **Android:** no Google/Firebase push. Reminders are local notifications, planned up to 14 days ahead.
 - **Leaderboard:** removed in v1.6. The drafts no longer mention it.
 
-## Placeholders
+## Open points by section
 
-The markers are inline. Each category has a question below.
+The inline `[PRÜFEN]` markers are gone. Each open point is a question below. Find the section, then the question number.
 
-| Marker | Where | Question |
+| Section | Open point | Question |
 |---|---|---|
-| Mindestalter | Privacy policy, section 10 | 4 |
-| Frist festlegen | Terms, section 9 | 14 (notice period) |
-| Routinen und Umbenennen unter Einwilligung | Privacy policy, sections 2, 4 and 5 | 12 |
-| Bestehende Gesundheitsdaten ohne Einwilligung | Privacy policy, section 4 | 2 |
-| Deutsche Fassung der Abfrage | Privacy policy, section 4 | 1 |
-| Logs, IP-Adressen | Privacy policy, sections 3.6 and 3.7 | 8 |
-| Backups, Proton Drive | Privacy policy, section 7 | 9 |
-| Sitzungen und Signup-Adresse auf dem Gerät | Privacy policy, sections 3.8 and 7 | 17 |
-| Export-Lücken | Privacy policy, section 9 | 16 |
-| Resend, Tracking | Privacy policy, section 6.3 | 7 |
-| Feedback: Gesundheitsangaben, Export, Einwilligungsversion | Privacy policy, section 3.10 | 23 |
-| Feedback-E-Mails im Postfach | Privacy policy, section 7 | 23 |
-| Cloudflare | Privacy policy, section 6.2 | 6 |
-| Discord als Verantwortlicher, Drittlandübermittlung | Privacy policy, section 6.1 and 6.4 | 5 |
-| Android-Push | Privacy policy, section 3.5 | (check before release) |
-| Widerruf ohne Kontolöschung | Privacy policy, section 4 | 3 |
-| Einstufung nach § 25 TDDDG | Privacy policy, section 3.8 | 15 |
-| Aufsichtsbehörde | Privacy policy, section 9 | (check address) |
-| Verbraucherstreitbeilegung | Impressum | (confirm or delete) |
-| Stand-Datum | Privacy policy and terms, top | (set on publish) |
-| Momente: Reflexion und Einwilligungsversion | Privacy policy, sections 3.12 and 4 | 26 |
-| Momente: Datenschutz-Folgenabschätzung | Privacy policy, section 3.12 | 27 |
-| Medizinprodukt, Zweckbestimmung, Werbung | Terms, section 6 | 24, 25, 32 |
-| Krisenrufnummern je Land | Terms, section 6 | 29 |
-| Sicherheit der Übungsinhalte | Terms, section 6 | 30 |
+| Privacy policy and Terms, top | Stand date on publish | 38 |
+| Privacy policy, section 2 | Routine names not under consent | 12 |
+| Privacy policy, section 3.2 | Routine names may hold health data | 12 |
+| Privacy policy, section 3.5 | Device sign-in: legal basis, § 25 TDDDG, consent version | 15 |
+| Privacy policy, section 3.5 | Android app before release, no Google push | 34 |
+| Privacy policy, section 3.6 | IP addresses in access logs and proxy logs | 8 |
+| Privacy policy, section 3.7 | Log retention period | 8 |
+| Privacy policy, section 3.8 | Device settings under § 25 TDDDG | 15 |
+| Privacy policy, sections 3.8 and 7 | Sessions and signup address on the device | 17 |
+| Privacy policy, section 3.10 | Feedback text, screenshots, consent version, anonymous feedback | 23 |
+| Privacy policy, section 3.12 | Reflections: consent coverage and version | 26 |
+| Privacy policy, section 3.12 | DPIA for the moment flow | 27 |
+| Privacy policy, section 4 | Routine names and habit renames under consent | 12 |
+| Privacy policy, section 4 | Existing users and health data without consent | 2 |
+| Privacy policy, section 4 | German text of the consent prompt | 1 |
+| Privacy policy, section 4 | Consent version 2026-11 and the moment flow | 26 |
+| Privacy policy, section 4 | Withdrawal without deleting the account | 3 |
+| Privacy policy, section 5 | Routines, renames and push subscriptions | 12 |
+| Privacy policy, section 6.1 | Discord as controller, EU entity, transfer basis | 5 |
+| Privacy policy, section 6.2 | Cloudflare: DPF and SCC fallback (DPA accepted) | 6 |
+| Privacy policy, section 6.3 | Resend: transfer basis and retention (DPA, EU region and tracking confirmed) | 7 |
+| Privacy policy, section 6.4 | Push services: transfers, own controllers | 33 |
+| Privacy policy, section 7 | Proton Drive as a processor (backup cycle confirmed) | 9 |
+| Privacy policy, section 7 | Feedback digest emails in the mailbox | 23 |
+| Privacy policy, section 9 | Export gaps (sessions, lockout, reminder entries) | 16 |
+| Privacy policy, section 9 | Supervisory authority address and website | 35 |
+| Privacy policy, section 10 | Minimum age, and minimum age for moments | 4, 28 |
+| Terms, section 2 | Android app named before release | 34 |
+| Terms, section 3 | Minimum age 16 | 4 |
+| Terms, section 6 | Wording: EU MDR, HWG, UWG | 24, 25, 32 |
+| Terms, section 6 | Safety of exercise content | 30 |
+| Terms, section 6 | Crisis numbers per country | 29 |
+| Terms, section 9 | Notice period (now 30 days) | 14 |
+| Impressum | Consumer dispute resolution sentence | 36 |
 
 ## Checks before publishing: code must match the texts
 
@@ -116,7 +123,7 @@ The markers are inline. Each category has a question below.
 | No analytics, no ads, no external scripts or fonts | Done. Fonts are self-hosted and precached (`v2/fix-platform`) |
 | Habit names stay out of logs | Done for the bot and API log calls. Logs do contain Discord user IDs, push subscription IDs and stack traces (section 3.7). Checked by search, not line by line for every service |
 | Logs deleted after 30 days | Open. Logs rotate by size only (3 x 10 MB per service, `docker-compose.yml`). Question 8 |
-| Backups daily, kept 30 days | Open. No backup job is defined in this repository (`docs/v2-plan.md`, Phase 8.3). Question 9 |
+| Backups nightly, 7 daily plus 4 weekly, encrypted copy on Proton Drive | Confirmed by Nico on 2026-11-13. Not defined in this repository. Question 9 |
 | Policy link in the consent prompt | Partly. `docker-compose.yml` passes `Ember__PrivacyPolicyUrl` from `PRIVACY_POLICY_URL`. The value must be set (question 19) |
 | Imprint link in `/help` | Done on `v2/fix-bot`, when the privacy URL ends with `/legal/privacy` (the imprint URL is derived from it). The bot profile link is open (question 19) |
 | Android app sends no Google push | Verified for now. No Firebase messaging dependency; the Google services plugin applies only with `google-services.json`. Recheck before release |
@@ -125,7 +132,7 @@ The markers are inline. Each category has a question below.
 | Sessions end as described (logout, sign out everywhere, reset, 2FA, merge) | Done on `v2/fix-api` (`SessionTests.cs`). Expired sessions are purged only at the next sign-in (question 17) |
 | Signup address is kept on the device only until confirmation | Done on `v2/fix-account` (`ember.signupEmail`). Not cleared if the account is never confirmed (question 17) |
 | Offline copy of the account and habits only with "Stay signed in" | Done on `v2/fix-platform` (`ember.offlineMe`, IndexedDB `cache`). Confirmation signs the user in with "Stay signed in" on (question 18) |
-| Mail tracking off at Resend; Resend agreement; Proton Drive; Cloudflare DPA | Not in the repository. Check by hand (questions 6, 7, 9) |
+| Mail tracking off at Resend; Resend agreement and EU region; Proton Drive; Cloudflare DPA | Confirmed by Nico on 2026-11-13, not in the repository (questions 6, 7, 9) |
 | Moment flow stores and sends nothing: no API call, no Local Storage, IndexedDB or query cache | Done by search of `web/src/components/moment`, `web/src/lib/moment` and `web/src/pages/moment.tsx` on `v2/companion-web`. Not yet run with the network off |
 | Moment reflections need the private journal on, unlocked, and consent | Done (`reflect.tsx`, `appendPrivate` in `web/src/lib/journal/journal.ts`) |
 | Turning off the private journal re-uploads moment notes as plain text | Done (copy in `journal-settings.tsx`) |
@@ -139,18 +146,18 @@ The markers are inline. Each category has a question below.
 1. **Art. 9 consent basis and language.** The drafts rely on explicit consent (Art. 9(2)(a)) for habit names, check-ins, low days, day notes and moods. Get a ruling. The prompts are English ("I agree", "No thanks", web "One quick question", "Not now"). Decide whether German versions are needed.
 2. **Existing users and "No thanks".** Check-ins on habits created before consent are not gated, and reminders keep running until the user answers. The bot pauses its prompt for 30 days after "No thanks". The web app asks again in the next session. Decide: may Ember keep processing existing health data without consent (the "decline-vs-processing" question)? Accept the text as written, stop processing until consent (code change), or time-box it?
 3. **Withdrawal equals deletion.** The only way to withdraw consent is to delete the account. Accept this, or add a withdraw-only action?
-4. **Minimum age.** Set `[PRÜFEN: Mindestalter]` (suggestion 16). Ember cannot verify age.
-5. **Discord's role.** The drafts treat Discord as an independent controller. Check whether a joint-controllership argument applies to a bot, which Discord entity to name for EEA users, and the transfer basis (DPF or SCCs). Fill the `[PRÜFEN]` markers in sections 6.1 and 6.4.
-6. **Cloudflare (before launch).** Accept Cloudflare's DPA in the Cloudflare dashboard before the public launch. At launch, confirm the Data Privacy Framework certification and the SCC fallback, and confirm section 6.2. Cloudflare ends TLS, so it can read request content.
-7. **Resend.** Check the processing agreement (AVV) and its transfer basis (SCCs, DPF), the processing region chosen for ember-glow.app, Resend's retention period, and that click and open tracking are off for the domain. Otherwise links are rewritten and codes pass through a redirect. Section 6.3.
+4. **Minimum age.** The default in the texts is 16: Terms section 3, privacy section 10, and "Ember is for people 16 and older." on the signup and consent pages. Confirm it. Ember cannot verify age.
+5. **Discord's role.** The drafts treat Discord as an independent controller. Check whether a joint-controllership argument applies to a bot, which Discord entity to name for EEA users, and the transfer basis (DPF or SCCs). Section 6.1 depends on this answer. Push services in section 6.4 are question 33.
+6. **Cloudflare.** The DPA is accepted (Nico, 2026-11-13), and section 6.2 says so. Still to check: confirm the Data Privacy Framework certification and the SCC fallback, and confirm section 6.2. Cloudflare ends TLS, so it can read request content.
+7. **Resend.** Confirmed by Nico on 2026-11-13 and stated in section 6.3: open and click tracking are off (no tracking subdomain), the ember-glow.app sending domain is in Resend's EU region (Ireland), and the DPA applies through Resend's terms (resend.com/legal/dpa asks for no signature). Still to check: the transfer basis (SCCs, DPF) and Resend's retention period.
 8. **Logs and retention.** Logs rotate by size only, with no time limit. Decide: add a cleanup that keeps the 30-day promise, or change section 3.7 to the period you choose. The same goes for reverse-proxy and Cloudflare access logs, which can hold IP addresses.
-9. **Backups.** The repository defines no backup job. Confirm the cycle (the draft says daily, 7 days plus 4 weekly), where the off-site copy lives (Proton Drive is named), the encryption, and whether a cloud provider is involved (that would make it a processor). Publish only what actually runs.
+9. **Backups.** Confirmed by Nico on 2026-11-13: a nightly dump, 7 daily and 4 weekly copies, an encrypted copy synced to Proton Drive, and pre-deploy dumps deleted after 5 weeks. Section 7 matches. The backup job is not in this repository. Still to check: whether Proton Drive makes Proton a processor that needs a DPA.
 10. **Backups after deletion.** Deleted accounts stay in backups until they rotate out. A restored backup brings them back. Decide whether a re-deletion process is needed, and how to do it without keeping a list of deleted Discord IDs.
 11. **Inactive accounts.** Data stays until the user deletes it. Check whether storage limitation (Art. 5(1)(e)) requires an automatic deletion after long inactivity.
-12. **Routines, habit renames and push subscriptions.** Not gated by consent. Routine names can say something about health. Decide: gate them (code change in routine create and edit, habit rename and push subscribe), or accept and justify it in the text. The text currently says they need no consent and marks that.
+12. **Routines, habit renames and push subscriptions.** Not gated by consent. Routine names can say something about health. Decide: gate them (code change in routine create and edit, habit rename and push subscribe), or accept and justify it in the text. The text currently says they need no consent.
 13. **DPIA and records of processing.** Health data may trigger a DPIA (Art. 35). A record of processing activities (Art. 30) is probably needed. Ask whether either is required for a private project of this size.
-14. **Liability and term.** The liability clause is the standard German B2C wording. For a free service, §§ 521 and 599 BGB may already limit liability to intent and gross negligence. Check which wording is cleaner. Also set the notice period in the Terms, section 9.
-15. **Legal basis of the consent record.** The draft names Art. 6(1)(c) with Art. 7(1). Check whether Art. 6(1)(f) fits better. Also decide whether the § 25 TDDDG basis for the device settings (theme, mode, reminder names) holds.
+14. **Liability and term.** The liability clause is the standard German B2C wording. For a free service, §§ 521 and 599 BGB may already limit liability to intent and gross negligence. Check which wording is cleaner. The notice period in the Terms, section 9, is now 30 days. Confirm it.
+15. **Legal basis of the consent record.** The draft names Art. 6(1)(c) with Art. 7(1). Check whether Art. 6(1)(f) fits better. Also decide whether the § 25 TDDDG basis for the device settings (theme, mode, reminder names) holds. Device registration of browsers and phones (installation ID, device label from the user agent, on/off) is new: confirm Art. 6(1)(b) as its basis and how § 25 TDDDG classifies the installation ID, and whether the consent version has to go up for it (privacy section 3.5).
 16. **Export completeness (Art. 15).** Not in the export: the Discord reminder entries (channel, message, day), the failed sign-in count, the lockout end, and the sign-in sessions. Add them to the export (code change), or answer requests by hand? Section 9 says which applies today.
 17. **Retention of sessions.** Expired sign-in sessions are deleted by the daily cleanup job, and an account keeps at most 50 sessions. The signup address is now removed on confirmation, on sign-out and after one day at the latest. Check the privacy text names both.
 18. **Confirmation sign-in.** Resolved in code: after confirming a new account the web app signs in for the browser session only, without "Stay signed in" and without the offline copy.
@@ -164,10 +171,16 @@ The markers are inline. Each category has a question below.
 26. **Art. 9 consent and moments.** Section 3.12 says a saved reflection becomes part of that day's note. The day-note consent (policy version `2026-11`) then covers it, and the flow itself needs no consent because it stores nothing. Get a ruling. Decide: does the current consent cover reflections, or is a separate notice or consent step needed? If the consent text changes, the version must go up and every user is asked again (section 4 of the policy).
 27. **DPIA for moments.** The flow adds free text about hard moments, which can be health data. It is encrypted before it reaches the server when the private journal is on. Check whether the DPIA question in question 13 becomes mandatory, and whether that changes the answer.
 28. **Minimum age for moments.** Question 4 sets the minimum age for consenting to health data. The moment flow is aimed at people in distress, so decide whether the same age applies, or whether a higher age or a note for parents is needed. Ember cannot verify age.
-29. **Crisis numbers, per locale.** `web/src/content/crisis-lines.json` lists DE, AT, CH, GB, US, EU and INTL. Its `checked` field says 2026-11-13, the day the list was compiled. The numbers, hours and links have not been checked against official sources. Before launch: check each one against the official source, set `checked` to the real check date, and set a recheck schedule (for example every six months and before each release). Decide the schedule and who owns it.
+29. **Crisis numbers, per locale.** `web/src/content/crisis-lines.json` lists DE, AT, CH, GB, US, EU and INTL. The list now also has IE (Samaritans 116 123, emergency 999, plus the EU 112 row) and emergency rows for GB (999) and US (911). Its `checked` field says 2026-11-13, the day the list was compiled. The numbers, hours and links have not been checked against official sources. Before launch: check each one against the official source, set `checked` to the real check date, and set a recheck schedule (for example every six months and before each release). Decide the schedule and who owns it.
 30. **Safety review of practice content.** `web/src/content/practices.json` holds six practices: breathing, a grounding exercise, a cool-water or cool-object step, a timed urge-surfing practice and two short reframes. Have a qualified person review each step for safety, including breathing steps, dizziness and cold water. Decide whether any warning is needed, and who signs off. The `basis` field is the public technique, kept for this review and never shown in the app.
 31. **Play health-apps declaration and Data Safety form.** The Android app is an APK today, not a Google Play app (see the README). Before any Play release, answer Play's health apps declaration and the Data Safety form so they match section 3.12 of the policy and the store copy in `mobile/STORE.md`. Decide the answers with a lawyer before publishing.
 32. **Terms disclaimer wording.** Section 6 of the terms says Ember is a wellness tool, not a medical device. It makes no diagnosis or treatment, does not replace professional help, asks people to call 112 in an emergency, and asks them to stop any exercise that does not feel right. Check the wording. Check also how the liability in section 10 and the rules for standard terms (§ 309 BGB) apply to free exercises.
+33. **Push services (privacy section 6.4).** Web push goes through the push service of the user's browser: Google, Mozilla, Microsoft or Apple. Check whether these services transfer data to third countries, on what basis, and whether they act as their own controllers. Then update section 6.4.
+34. **Android app before release (privacy section 3.5, Terms section 2).** The app is not published yet, so the Terms sentence that names it holds only from release. Before release, confirm that no Google push is active for Ember. The build includes the Google services plugin, but the app uses no Firebase messaging.
+35. **Supervisory authority (privacy section 9).** Check the address and the website of the Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen (www.ldi.nrw.de) before publishing.
+36. **Consumer dispute resolution (Impressum).** The Impressum says the operator is not willing or obliged to take part in a consumer arbitration procedure. Confirm that sentence, or delete it.
+37. **Operator status.** Resolved (Nico, 2026-11-13): the Impressum keeps the Kleinunternehmer line (§ 19 UStG), and "privat und nicht kommerziell" is gone from Terms section 1 and privacy section 1 (and "privately" from the privacy summary).
+38. **Stand date on publish.** The Stand dates in the privacy policy and the Terms are 14 November 2026. Set both to the real publish date when the moments and streaks changes go live.
 
 ## What changed on 2026-11-13
 
@@ -177,3 +190,12 @@ Companion drafts, from `v2/companion-web` and `docs/contracts/companion-v1.md`:
 - **Terms:** section 2 (streaks are shown only when turned on, and the moment flow is named), section 6 (wellness tool, no diagnosis or treatment, call 112, stop any exercise that does not feel right, crisis numbers are not guaranteed).
 - **Questions 24 to 32** added.
 - **Release notes:** `0.9.0-beta.7` added with a placeholder date (2026-11-20). Not published.
+
+## What changed on 2026-11-14
+
+- Inline `[PRÜFEN]` markers removed from the three legal files. Each one's content moved to an existing question or to new questions 33 to 38. Questions 4, 5, 14 and 29 were updated.
+- Stand dates set to 14 November 2026 (privacy policy and Terms). Question 38 covers the publish date.
+- Beta wording in Terms section 5, the Terms summary and the privacy policy.
+- Terms section 6: 112 (EU) or the local emergency number, a sentence that Ember does not help with thoughts of harming yourself, and a note to ask a doctor before breathing or cold exercises.
+- Minimum age 16 (Terms section 3, privacy section 10) and notice period 30 days (Terms section 9). Questions 4 and 14 hold the decisions.
+- Facts confirmed by Nico on 2026-11-13: Cloudflare DPA accepted (6.2); Resend tracking off, EU region (Ireland) and DPA through its terms (6.3); backup cycle (7); operator wording without "privat und nicht kommerziell" (Terms and privacy section 1). Questions 6, 7, 9 and 37 updated.

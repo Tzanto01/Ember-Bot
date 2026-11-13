@@ -24,4 +24,4 @@ Kleinunternehmer im Sinne von § 19 UStG. Es liegt keine Umsatzsteuer-Identifika
 
 ## Verbraucherstreitbeilegung
 
-Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. [PRÜFEN: Satz bestätigen oder streichen.]
+Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
