@@ -34,7 +34,7 @@
     <value>Hey! Ein sanfter Schubs für **{0}**. Du machst das richtig gut 🔥</value>
   </data>
   <data name="reminder.intro.some" xml:space="preserve">
-    <value>Hey! Kleine Erinnerung an **{0}**. Kein Druck, schon dranbleiben zählt 💙</value>
+    <value>Hey! Kleine Erinnerung an **{0}**. Kein Druck, schon das Dranbleiben zählt 💙</value>
   </data>
   <data name="reminder.intro.fresh" xml:space="preserve">
     <value>Hey 👋 Wie steht's mit **{0}**? Ist ein Weilchen her, und das ist okay. Heute ist ein neuer Anfang, wann immer du so weit bist.</value>
