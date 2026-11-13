@@ -59,6 +59,7 @@ export type JournalSource = Pick<
   | 'deleteJournalKey'
   | 'turnOffJournal'
   | 'listHabits'
+  | 'getHelps'
 >;
 
 /** The signed-in user, as `AuthService` provides it. */
@@ -423,7 +424,9 @@ export class JournalService implements JournalApi {
       );
       return false;
     });
-    const file = { exportedAt: new Date().toISOString(), entries, moods };
+    const sealedHelps = me.journal.encrypted && !me.journal.turningOff ? await this.api.getHelps() : null;
+    const helps = sealedHelps ? (await this.openHelps(sealedHelps.encrypted)).items : [];
+    const file = { exportedAt: new Date().toISOString(), entries, moods, helps };
     return {
       blob: new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),
       fileName: `ember-journal-${me.localToday}.json`,

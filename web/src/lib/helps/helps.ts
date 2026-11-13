@@ -182,13 +182,19 @@ export class HelpsService {
   }
 
   private run(op: Op, done?: (list: HelpItem[]) => void): Promise<void> {
-    const next = this.queue.then(() => this.change(op, done));
+    const epoch = this.epoch;
+    const next = this.queue.then(() => this.change(op, epoch, done));
     this.queue = next.catch(() => undefined);
     return next;
   }
 
-  private async change(op: Op, done?: (list: HelpItem[]) => void): Promise<void> {
+  private async change(op: Op, epoch: number, done?: (list: HelpItem[]) => void): Promise<void> {
+    const sameOwner = () => {
+      if (epoch !== this.epoch) throw new Error('The list changed hands.');
+    };
+    sameOwner();
     if (this.items.get() === null) await this.load();
+    sameOwner();
     const current = this.items.get() ?? [];
     const next = apply(current, op);
     if (!next) return void done?.(current);
@@ -197,6 +203,7 @@ export class HelpsService {
       saved = await this.write(next);
     } catch (error) {
       if (asApiError(error).status !== 409) throw error;
+      sameOwner();
       const fresh = await this.read();
       const merged = apply(fresh, op);
       if (!merged) return void done?.(fresh);
