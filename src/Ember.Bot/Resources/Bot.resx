@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="discordreminders.ask" xml:space="preserve">
+    <value>Want me to send your reminders here as Discord DMs? 🔥
+You can change this any time in Ember's Settings.</value>
+  </data>
+  <data name="discordreminders.ask.yes" xml:space="preserve">
+    <value>Yes, remind me here</value>
+  </data>
+  <data name="discordreminders.ask.no" xml:space="preserve">
+    <value>No thanks</value>
+  </data>
+  <data name="consent.title" xml:space="preserve">
+    <value>One quick question 💙</value>
+  </data>
+  <data name="consent.body" xml:space="preserve">
+    <value>Your habit names, check-ins, low days, day notes and moods can say something about your health (think "take my meds" or "sleep 8 hours"). Ember stores them only to run Ember for you. They're never sold or used for ads, and reach only the services that run Ember, like Discord. The privacy policy lists them.
+
+Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.</value>
+  </data>
+  <data name="consent.policy-link" xml:space="preserve">
+    <value>[Privacy policy]({0})</value>
+  </data>
+  <data name="consent.agree" xml:space="preserve">
+    <value>I agree</value>
+  </data>
+  <data name="consent.decline" xml:space="preserve">
+    <value>No thanks</value>
+  </data>
+  <data name="dmretry.notice" xml:space="preserve">
+    <value>Hey, I couldn't deliver your last few reminders by DM, so I've paused them for now. 💙
+This usually happens when DMs from server members are turned off (server menu → Privacy Settings → Direct Messages). Once they're on, tap below and I'll send you a quick test message.</value>
+  </data>
+  <data name="dmretry.try-again" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="habit.streak.one" xml:space="preserve">
+    <value>Streak: **{0}** day</value>
+  </data>
+  <data name="habit.streak.other" xml:space="preserve">
+    <value>Streak: **{0}** days</value>
+  </data>
+</root>

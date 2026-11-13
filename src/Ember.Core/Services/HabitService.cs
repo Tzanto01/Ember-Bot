@@ -1,4 +1,5 @@
 using Ember.Core.Data;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -818,6 +819,18 @@ public partial class HabitService
         await _db.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.GraceDaysPerWeek, graceDays));
+    }
+
+    /// <summary>The user's <see cref="User.Language"/>; <see cref="Languages.English"/> when the user doesn't exist.</summary>
+    public async Task<string> GetLanguageAsync(Guid userId)
+        => await _db.Users.Where(u => u.Id == userId).Select(u => u.Language).FirstOrDefaultAsync() ?? Languages.English;
+
+    /// <summary>Sets <see cref="User.Language"/>; the caller passes one of <see cref="Languages.All"/>.</summary>
+    public async Task SetLanguageAsync(Guid userId, string language)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Language, language));
     }
 
     public async Task SetThemeAsync(Guid userId, string theme)

@@ -32,7 +32,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
 
         var components = new ComponentBuilder()
             .WithButton("✅ Done!", $"habitaction:checkin:done:{habitId}", ButtonStyle.Success)
-            .WithButton(Ember.Bot.Services.DiscordDmReminderChannel.SkipLabel, $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
+            .WithButton(Ember.Bot.Services.DiscordDmReminderChannel.SkipLabel(BotTexts.English), $"habitaction:checkin:skip:{habitId}", ButtonStyle.Secondary)
             .Build();
 
         var progress = habit.TimesPerDay > 1

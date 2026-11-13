@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -29,33 +30,29 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
         _habits = habits;
     }
 
-    internal static Embed PromptEmbed(IConfiguration config)
+    internal static Embed PromptEmbed(Texts t, IConfiguration config)
     {
-        var description =
-            "Your habit names, check-ins, low days, day notes and moods can say something about your health " +
-            "(think \"take my meds\" or \"sleep 8 hours\"). " +
-            "Ember stores them only to run Ember for you. They're never sold or used for ads, and reach only the services that run Ember, like Discord. The privacy policy lists them.\n\n" +
-            "Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.";
+        var description = t.Get("consent.body");
 
         if (config[PolicyUrlKey] is { Length: > 0 } url)
-            description += $"\n\n[Privacy policy]({url})";
+            description += "\n\n" + t.Format("consent.policy-link", url);
 
         return new EmbedBuilder()
             .WithColor(0x5865F2)
-            .WithTitle("One quick question 💙")
+            .WithTitle(t.Get("consent.title"))
             .WithDescription(description)
             .Build();
     }
 
-    internal static MessageComponent PromptButtons(ulong userId) => new ComponentBuilder()
-        .WithButton("I agree", $"consent:agree:{userId}", ButtonStyle.Success)
-        .WithButton("No thanks", $"consent:decline:{userId}", ButtonStyle.Secondary)
+    internal static MessageComponent PromptButtons(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("consent.agree"), $"consent:agree:{userId}", ButtonStyle.Success)
+        .WithButton(t.Get("consent.decline"), $"consent:decline:{userId}", ButtonStyle.Secondary)
         .Build();
 
     /// <summary>Answers the interaction with the consent prompt and notes that it was shown today.</summary>
     internal static async Task RespondWithPromptAsync(IInteractionContext context, IConfiguration config, HabitService habits)
     {
-        await context.Interaction.RespondAsync(embed: PromptEmbed(config), components: PromptButtons(context.User.Id), ephemeral: true);
+        await context.Interaction.RespondAsync(embed: PromptEmbed(BotTexts.English, config), components: PromptButtons(BotTexts.English, context.User.Id), ephemeral: true);
         await habits.MarkConsentPromptedAsync(context.User.Id);
     }
 

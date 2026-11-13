@@ -41,8 +41,8 @@ public class DiscordReminderAskJob : IJob
             try
             {
                 await habits.MarkDiscordRemindersAskedAsync(userId, cancellationToken);
-                var outcome = await _discord.SendMessageAsync(discordUserId, DiscordRemindersModule.AskText,
-                    components: DiscordRemindersModule.AskButtons(discordUserId), cancellationToken: cancellationToken);
+                var outcome = await _discord.SendMessageAsync(discordUserId, DiscordRemindersModule.AskText(BotTexts.English),
+                    components: DiscordRemindersModule.AskButtons(BotTexts.English, discordUserId), cancellationToken: cancellationToken);
                 if (outcome != DeliveryOutcome.Delivered)
                     _logger.LogInformation("Could not ask user {UserId} about Discord reminders: {Outcome}.", userId, outcome);
             }

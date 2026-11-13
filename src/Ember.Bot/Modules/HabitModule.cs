@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Ember.Core.Models;
@@ -32,7 +33,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         => string.Join(", ", times.Select(t => t.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)));
 
     /// <summary>"Streak: **1** day" or "Streak: **n** days".</summary>
-    internal static string StreakText(int streak) => $"Streak: **{streak}** {(streak == 1 ? "day" : "days")}";
+    internal static string StreakText(Texts t, int streak) => t.Plural("habit.streak", streak);
 
     internal static string FrequencyLabel(Habit h)
     {
@@ -319,7 +320,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
                     var total  = h.Logs.Count(l => l.Completed);
                     var graceStr = graceUsed > 0 ? $"\n_({graceUsed} flex day{(graceUsed > 1 ? "s" : "")} used)_" : "";
                     statsText =
-                        $"{StreakText(streak)}{graceStr}\n" +
+                        $"{StreakText(BotTexts.English, streak)}{graceStr}\n" +
                         $"Last 7: **{last7}/7** · Last 30: **{last30}/30**\n" +
                         $"Best: **{best}** · Total: **{total}**";
                 }
@@ -352,7 +353,7 @@ public class HabitModule : InteractionModuleBase<SocketInteractionContext>
         if (!showStreaks) return last7;
         var (streak, graceUsed) = HabitService.ConsecutiveStreak(h, today, grace, lowDays);
         var graceStr = graceUsed > 0 ? $" _(+{graceUsed} flex)_" : "";
-        return $"{StreakText(streak)}{graceStr} · {last7}";
+        return $"{StreakText(BotTexts.English, streak)}{graceStr} · {last7}";
     }
 
     // ── /habit share ──────────────────────────────────────────────────────────

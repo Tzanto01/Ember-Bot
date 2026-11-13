@@ -252,7 +252,7 @@ public class ReminderDispatchJob : IJob
                 if (!done && !expired) continue;
 
                 await _discord.CloseMessageAsync(message.ChannelId, message.MessageId,
-                    done ? DiscordDmReminderChannel.LoggedLine : DiscordDmReminderChannel.ClosedLine, cancellationToken);
+                    done ? DiscordDmReminderChannel.LoggedLine(BotTexts.English) : DiscordDmReminderChannel.ClosedLine(BotTexts.English), cancellationToken);
                 await habits.DeleteReminderMessageAsync(message.Id, CancellationToken.None);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

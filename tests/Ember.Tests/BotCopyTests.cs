@@ -40,7 +40,7 @@ public class BotCopyTests
     [Fact]
     public void Streak_OfOneDay_IsSingular()
     {
-        HabitModule.StreakText(1).Should().Be("Streak: **1** day");
-        HabitModule.StreakText(2).Should().Be("Streak: **2** days");
+        HabitModule.StreakText(Ember.Bot.BotTexts.English, 1).Should().Be("Streak: **1** day");
+        HabitModule.StreakText(Ember.Bot.BotTexts.English, 2).Should().Be("Streak: **2** days");
     }
 }

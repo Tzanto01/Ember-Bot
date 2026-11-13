@@ -129,6 +129,6 @@ public class WeeklySummaryJob : IJob
             return $"{h.DotString} **{h.Done}/{h.Possible}**";
 
         var graceStr = h.GraceUsed > 0 ? $" _(+{h.GraceUsed} flex)_" : "";
-        return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(h.CurrentStreak)}{graceStr}";
+        return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(BotTexts.English, h.CurrentStreak)}{graceStr}";
     }
 }

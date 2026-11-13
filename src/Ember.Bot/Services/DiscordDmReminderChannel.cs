@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Ember.Core.Models;
 using Ember.Core.Services;
@@ -14,13 +15,13 @@ namespace Ember.Bot.Services;
 public class DiscordDmReminderChannel : IReminderChannel
 {
     /// <summary>Label of the reminder's Skip button; calm, with no red mark.</summary>
-    public const string SkipLabel = "Skip for today";
+    public static string SkipLabel(Texts t) => t.Get("reminder.skip");
 
     /// <summary>Subtext added to a closed reminder whose habits are done for its day.</summary>
-    public const string LoggedLine = "-# ✅ Logged.";
+    public static string LoggedLine(Texts t) => t.Get("reminder.logged-line");
 
     /// <summary>Subtext added to a closed reminder whose habits are not all done for its day.</summary>
-    public const string ClosedLine = "-# This reminder has closed.";
+    public static string ClosedLine(Texts t) => t.Get("reminder.closed-line");
 
     private readonly IDiscordDmSender _discord;
     private readonly TimeProvider _time;
@@ -68,7 +69,7 @@ public class DiscordDmReminderChannel : IReminderChannel
         var now = _time.GetUtcNow().ToUnixTimeSeconds();
         var components = new ComponentBuilder()
             .WithButton("Done ✅", $"checkin:done:{reminder.HabitId}:{now}", ButtonStyle.Success)
-            .WithButton(SkipLabel, $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
+            .WithButton(SkipLabel(BotTexts.English), $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .WithButton("Snooze 1h ⏰", $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .Build();
 
@@ -137,7 +138,7 @@ public class DiscordDmReminderChannel : IReminderChannel
             foreach (var old in superseded)
             {
                 if (!await _discord.DeleteMessageAsync(old.ChannelId, old.MessageId))
-                    await _discord.CloseMessageAsync(old.ChannelId, old.MessageId, ClosedLine);
+                    await _discord.CloseMessageAsync(old.ChannelId, old.MessageId, ClosedLine(BotTexts.English));
                 await habits.DeleteReminderMessageAsync(old.Id);
             }
         }

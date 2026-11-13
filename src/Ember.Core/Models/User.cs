@@ -31,6 +31,12 @@ public class User : IdentityUser<Guid>
     /// </summary>
     public bool ShowStreaks { get; set; }
 
+    /// <summary>
+    /// The account's language (one of <see cref="Localization.Languages.All"/>) for the app, emails, notifications and the bot.
+    /// A new account takes it from the sign-up request or the Discord interaction's locale.
+    /// </summary>
+    public string Language { get; set; } = Localization.Languages.English;
+
     /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
     public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
 

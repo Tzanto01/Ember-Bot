@@ -148,7 +148,7 @@ public class ConsentTests
     [Fact]
     public void Prompt_NamesEveryKindOfHealthDataEmberStores()
     {
-        var embed = ConsentModule.PromptEmbed(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var embed = ConsentModule.PromptEmbed(Ember.Bot.BotTexts.English, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
 
         embed.Description.Should().ContainEquivalentOf("your habit names, check-ins, low days, day notes and moods");
     }

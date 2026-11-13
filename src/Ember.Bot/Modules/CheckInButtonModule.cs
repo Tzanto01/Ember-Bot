@@ -38,8 +38,8 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
 
     /// <summary>
     /// For a Done or Skip tap on a reminder sent at <paramref name="timestampStr"/>: null while the reminder is usable, otherwise the
-    /// subtext its message closes with: <see cref="DiscordDmReminderChannel.LoggedLine"/> when every habit with a Done button in
-    /// <paramref name="components"/> is done for that day, <see cref="DiscordDmReminderChannel.ClosedLine"/> otherwise.
+    /// subtext its message closes with: <see cref="DiscordDmReminderChannel.LoggedLine(BotTexts.English)"/> when every habit with a Done button in
+    /// <paramref name="components"/> is done for that day, <see cref="DiscordDmReminderChannel.ClosedLine(BotTexts.English)"/> otherwise.
     /// </summary>
     internal static async Task<string?> ExpiredLineAsync(HabitService habits, TimeProvider time, ulong userId, string timestampStr,
         IEnumerable<IMessageComponent> components)
@@ -55,8 +55,8 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
             .ToList();
         foreach (var habitId in habitIds)
             if ((await habits.GetHabitAsync(userId, habitId))?.Logs.Any(l => l.Date == day && l.Completed) != true)
-                return DiscordDmReminderChannel.ClosedLine;
-        return habitIds.Count > 0 ? DiscordDmReminderChannel.LoggedLine : DiscordDmReminderChannel.ClosedLine;
+                return DiscordDmReminderChannel.ClosedLine(BotTexts.English);
+        return habitIds.Count > 0 ? DiscordDmReminderChannel.LoggedLine(BotTexts.English) : DiscordDmReminderChannel.ClosedLine(BotTexts.English);
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public class CheckInButtonModule : InteractionModuleBase<SocketInteractionContex
                 var others = RoutineButtonsAfterDone(component.Message.Components, component.Data.CustomId, done: true);
                 await component.UpdateAsync(msg =>
                 {
-                    if (others is null) msg.Content = $"{component.Message.Content}\n{DiscordDmReminderChannel.ClosedLine}";
+                    if (others is null) msg.Content = $"{component.Message.Content}\n{DiscordDmReminderChannel.ClosedLine(BotTexts.English)}";
                     msg.Components = others ?? new ComponentBuilder().Build();
                 });
                 await FollowupAsync("That habit isn't in Ember anymore, so there's nothing to log. 💙", ephemeral: true);

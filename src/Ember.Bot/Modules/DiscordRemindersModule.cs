@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -11,9 +12,7 @@ namespace Ember.Bot.Modules;
 /// </summary>
 public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionContext>
 {
-    internal const string AskText =
-        "Want me to send your reminders here as Discord DMs? 🔥\n" +
-        "You can change this any time in Ember's Settings.";
+    internal static string AskText(Texts t) => t.Get("discordreminders.ask");
 
     internal const string OffText =
         "\nDiscord reminders are off for you, so I won't DM this one. You can turn them back on in Ember's Settings or with the button in my earlier message.";
@@ -31,9 +30,9 @@ public class DiscordRemindersModule : InteractionModuleBase<SocketInteractionCon
         _habits = habits;
     }
 
-    internal static MessageComponent AskButtons(ulong userId) => new ComponentBuilder()
-        .WithButton("Yes, remind me here", $"discordreminders:yes:{userId}", ButtonStyle.Primary)
-        .WithButton("No thanks", $"discordreminders:no:{userId}", ButtonStyle.Secondary)
+    internal static MessageComponent AskButtons(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("discordreminders.ask.yes"), $"discordreminders:yes:{userId}", ButtonStyle.Primary)
+        .WithButton(t.Get("discordreminders.ask.no"), $"discordreminders:no:{userId}", ButtonStyle.Secondary)
         .Build();
 
     internal static MessageComponent TurnOnButton(ulong userId) => new ComponentBuilder()

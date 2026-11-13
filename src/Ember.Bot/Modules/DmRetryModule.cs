@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -12,10 +13,7 @@ namespace Ember.Bot.Modules;
 /// </summary>
 public class DmRetryModule : InteractionModuleBase<SocketInteractionContext>
 {
-    internal const string NoticeText =
-        "Hey, I couldn't deliver your last few reminders by DM, so I've paused them for now. 💙\n" +
-        "This usually happens when DMs from server members are turned off (server menu → Privacy Settings → Direct Messages). " +
-        "Once they're on, tap below and I'll send you a quick test message.";
+    internal static string NoticeText(Texts t) => t.Get("dmretry.notice");
 
     private readonly HabitService _habits;
     private readonly IDiscordDmSender _discord;
@@ -26,8 +24,8 @@ public class DmRetryModule : InteractionModuleBase<SocketInteractionContext>
         _discord = discord;
     }
 
-    internal static MessageComponent RetryButton(ulong userId) => new ComponentBuilder()
-        .WithButton("Try again", $"dmretry:{userId}", ButtonStyle.Primary)
+    internal static MessageComponent RetryButton(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("dmretry.try-again"), $"dmretry:{userId}", ButtonStyle.Primary)
         .Build();
 
     [ComponentInteraction("dmretry:*")]
