@@ -607,3 +607,19 @@ Additive. Older clients keep working (they ignore `showStreaks` and keep showing
 - Stored as `User.Language` (non-null, default `en`; the migration sets `en` for existing rows). A new account takes it from the sign-up request's `Accept-Language` (any `de` or `de-*` first match → `de`, else `en`); an account the Discord bot creates takes it from the interaction's `UserLocale` the same way.
 - The server uses `User.Language` for everything it writes to the user: emails (sign-up code, confirmation, password reset, and any other mail to the user), web push and phone reminder texts, the Discord bot's replies, DMs, reminders, weekly summary and share card. Mail before an account exists (none today) would use `Accept-Language`. The operator's feedback digest stays English.
 - Validation messages in 400 responses stay English; clients show their own translated text for known errors.
+
+## Companion extras v1.17
+
+Nico (2026-11-13), on "Your moments", "What helps me" and a calm mode: "Add it to this version as well please. Before the entire design review".
+
+### Calm mode
+
+- `Me` gains `"calmMode": bool` (default `false`; the migration sets `false`). `PATCH /api/me` accepts `calmMode?: bool` (non-bool → 400 `validation`). Export `settings.calm_mode`; import optional. No-account profiles keep it on the device.
+
+### What helps me (end-to-end encrypted)
+
+- `GET /api/me/helps` → 200 `{ "encrypted": string, "version": int }`, or 404 when there is none.
+- `PUT /api/me/helps` `{ "encrypted": string, "version": int }` → 200 `{ "version": int }`. `version` is the version the client last read (0 when there was none); a mismatch → 409 `conflict` (another device saved first; the client re-reads and merges). Only while the private journal is on and not turning off, else 409 `conflict`. `encrypted` is the same envelope as an encrypted day note, at most 16 KiB → 400 `validation` beyond. Writes need consent (`consent_required`).
+- `DELETE /api/me/helps` → 204.
+- The server never sees plaintext. Finishing a private-journal turn-off (`DELETE /api/me/journal-key`) and discarding the journal also delete it. Deleted with the account. The account export includes the ciphertext as `helps_encrypted`; the app's decrypted export includes the list.
+- Stored as one row per account (`UserHelps`: user id, ciphertext, version, updated at).

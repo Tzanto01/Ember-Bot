@@ -70,3 +70,21 @@ type PracticeStep =
 - Door label: "I need a moment".
 - Pitch (Nico picked "Campfire + companion", 2026-11-13): hero "A small campfire for big moments."; meta, store and descriptions "A calm companion for hard moments and gentle days." Habits come second: "And on the other days: gentle habits."
 - Streak setting: "Show streaks" in Settings → Habits & days, off for new accounts.
+
+## Companion extras (0.10.0-beta.1)
+
+### Your moments (`/moments`)
+
+- Signed in with the private journal on and unlocked: lists every saved moment reflection of the last 12 months, newest first, grouped by month, decrypted on the device from the day notes (`GET /api/day-notes` over the range). Each shows the date and time, the tile, the intensity change, what set it off and what helped, and "Add to What helps me". Nothing new is stored. Locked: the unlock form; no private journal or no account: a calm explanation and a link to Settings → Privacy & data.
+- Parsing reads reflection blocks in both languages: a block starts with a line `Moment HH:MM · …` (the word "Moment" is the same in English and German) and its label lines are matched in English and German.
+- Linked from the moment end screen after a save, from Settings → Privacy & data, and from History's day panel when the day holds a moment note.
+
+### What helps me
+
+- An end-to-end encrypted list (plaintext `{ "v": 1, "items": [{ "id", "text", "practiceId"?, "addedAt" }] }`, at most 20 items, text at most 80 characters) stored through `/api/me/helps`. Items come from "Add to What helps me" (from a reflection: the practice, or the user's own "what helped" words) or are added by hand in Settings → "What helps me" (add, edit, remove, reorder).
+- In the moment flow, Catch shows up to 3 items as quiet chips under the two buttons ("What helped before"); one with a `practiceId` opens that practice, one without shows its text as a gentle reminder step. **Loading rule:** the list is loaded and decrypted only when the app starts signed in with the journal unlocked (with the rest of the account data), kept in memory, never written to device storage in plaintext. The moment flow only reads memory and makes no request for it; after a cold start into `/moment` it simply shows no chips.
+- No account or no private journal: Settings explains that the list needs the private journal.
+
+### Calm mode
+
+- One switch in Settings → Appearance ("Calm mode"), on the account (`Me.calmMode`) or on the device without an account. When on: no motion anywhere (as with reduced motion, including the breathing circle, which shows text only), softer contrast-safe colours from a calm token set (still WCAG AA), decorative illustrations and embers hidden, fewer elements on Today (no What's new card, no stats tiles), the moment flow without the campfire. The system's reduced-motion setting still applies on its own.
