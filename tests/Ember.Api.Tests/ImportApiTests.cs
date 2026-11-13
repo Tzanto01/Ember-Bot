@@ -96,7 +96,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var source = await Host.SignedInAsync();
         var sourceId = await source.IdAsync();
         var today = Host.Today;
-        await (await source.Patch("/api/me", new { graceDaysPerWeek = 2, theme = "tidepool", secondReminderMinutes = 30, showStreaks = true })).Expect(HttpStatusCode.OK);
+        await (await source.Patch("/api/me", new { graceDaysPerWeek = 2, theme = "tidepool", secondReminderMinutes = 30, showStreaks = true, language = "de", calmMode = true })).Expect(HttpStatusCode.OK);
         int Id(JsonElement e) => e.GetProperty("id").GetInt32();
         var water = Id(await (await source.Post("/api/habits", new { name = "Water", frequency = "daily", timesPerDay = 3, reminderTimes = new[] { "20:00", "09:00" } }))
             .ExpectJson(HttpStatusCode.Created));
@@ -138,7 +138,8 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         JsonNode.Parse(expected)!["logs"]!.AsArray().Should().HaveCount(5);
         expected.Should().Contain("\"completed\":true,\"guild_id\":null,\"count\":3").And.Contain("\"routine_position\":1")
             .And.Contain("\"archived\":true").And.Contain("\"reminder_times\":[\"09:00:00\",\"20:00:00\"]").And.Contain("\"paused_until\"").And.Contain("\"next_reminder_utc\":\"20")
-            .And.Contain("\"second_reminder_minutes\":30").And.Contain("\"show_streaks\":true");
+            .And.Contain("\"second_reminder_minutes\":30").And.Contain("\"show_streaks\":true")
+            .And.Contain("\"language\":\"de\"").And.Contain("\"calm_mode\":true");
         Comparable(reexported).Should().Be(expected);
     }
 
@@ -319,5 +320,35 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         (await HabitCountAsync(await user.IdAsync())).Should().Be(0);
         await (await Import(user, Doc())).Expect(HttpStatusCode.NoContent);
         (await (await user.Get("/api/me")).ExpectJson()).GetProperty("showStreaks").GetBoolean().Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task Missing_language_and_calm_mode_keep_the_accounts_values_and_invalid_ones_are_a_400()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { language = "de", calmMode = true })).Expect(HttpStatusCode.OK);
+
+        var language = await ErrorsAsync(await Import(user, Doc(settings: new { language = "fr" })));
+        var calmMode = await ErrorsAsync(await Import(user, Doc(settings: new { calm_mode = "yes" })));
+
+        language.Has("settings.language").Should().BeTrue();
+        calmMode.Has("settings.calm_mode").Should().BeTrue();
+        (await HabitCountAsync(await user.IdAsync())).Should().Be(0);
+        await (await Import(user, Doc())).Expect(HttpStatusCode.NoContent);
+        var me = await (await user.Get("/api/me")).ExpectJson();
+        me.GetProperty("language").GetString().Should().Be("de");
+        me.GetProperty("calmMode").GetBoolean().Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task Imported_language_and_calm_mode_replace_the_accounts_values()
+    {
+        var user = await Host.SignedInAsync();
+
+        await (await Import(user, Doc(settings: new { language = "de", calm_mode = true }))).Expect(HttpStatusCode.NoContent);
+
+        var me = await (await user.Get("/api/me")).ExpectJson();
+        me.GetProperty("language").GetString().Should().Be("de");
+        me.GetProperty("calmMode").GetBoolean().Should().BeTrue();
     }
 }

@@ -1,4 +1,5 @@
 using Ember.Core.Data;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -695,7 +696,7 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.DmPauseNoticeSentAt, now)) == 1;
     }
 
-    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods and journal key (reminders live on the habits and routines).</summary>
+    /// <summary>Permanently deletes the user; the database cascades to all their habits, logs, day marks, routines, journal entries, own moods, journal key and "What helps me" list (reminders live on the habits and routines).</summary>
     public async Task DeleteUserDataAsync(Guid userId)
     {
         await _db.Users
@@ -820,6 +821,26 @@ public partial class HabitService
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.GraceDaysPerWeek, graceDays));
     }
 
+    /// <summary>The user's <see cref="User.Language"/>; <see cref="Languages.English"/> when the user doesn't exist.</summary>
+    public async Task<string> GetLanguageAsync(Guid userId)
+        => await _db.Users.Where(u => u.Id == userId).Select(u => u.Language).FirstOrDefaultAsync() ?? Languages.English;
+
+    /// <summary>Sets <see cref="User.Language"/>; the caller passes one of <see cref="Languages.All"/>.</summary>
+    public async Task SetLanguageAsync(Guid userId, string language)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Language, language));
+    }
+
+    /// <summary>Sets <see cref="User.CalmMode"/>.</summary>
+    public async Task SetCalmModeAsync(Guid userId, bool calmMode)
+    {
+        await _db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.CalmMode, calmMode));
+    }
+
     public async Task SetThemeAsync(Guid userId, string theme)
     {
         await _db.Users
@@ -857,7 +878,7 @@ public partial class HabitService
 
     /// <summary>
     /// The user with their logins, push subscriptions, phones, every habit, log, day mark, routine, journal entry and own mood, and the
-    /// journal key (untracked), or null when Ember stores nothing about them.
+    /// journal key and "What helps me" list (untracked), or null when Ember stores nothing about them.
     /// </summary>
     public Task<User?> GetUserForExportAsync(Guid userId)
         => _db.Users
@@ -871,6 +892,7 @@ public partial class HabitService
             .Include(u => u.DayNotes)
             .Include(u => u.Moods)
             .Include(u => u.JournalKey)
+            .Include(u => u.Helps)
             .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.Id == userId);
 

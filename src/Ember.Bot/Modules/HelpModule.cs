@@ -1,5 +1,7 @@
 using Discord;
 using Discord.Interactions;
+using Ember.Core.Localization;
+using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Ember.Bot.Modules;
@@ -8,70 +10,41 @@ public class HelpModule : InteractionModuleBase<SocketInteractionContext>
 {
     private const string PrivacyPath = "/legal/privacy";
 
+    private readonly HabitService _habits;
     private readonly IConfiguration _config;
 
-    public HelpModule(IConfiguration config)
+    public HelpModule(HabitService habits, IConfiguration config)
     {
+        _habits = habits;
         _config = config;
     }
 
     [SlashCommand("help", "See everything Ember can do")]
     public async Task HelpAsync()
     {
-        await RespondAsync(embed: HelpEmbed(_config), ephemeral: true);
+        await RespondAsync(embed: HelpEmbed(await BotTexts.ForAsync(_habits, Context.Interaction), _config), ephemeral: true);
     }
 
     /// <summary>
     /// The command guide. With a configured privacy policy URL it ends with a link to it, plus an imprint link when that URL is
     /// the web app's <c>/legal/privacy</c> page (the web app serves the imprint at <c>/legal/imprint</c>).
     /// </summary>
-    internal static Embed HelpEmbed(IConfiguration config)
+    internal static Embed HelpEmbed(Texts t, IConfiguration config)
     {
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle("Ember — Command Guide")
-            .WithDescription("A calm companion for hard moments and gentle days.\nHabits are one part of it: no guilt, no pressure.")
-            .AddField("Getting started",
-                "`/habit add` — create a new habit\n" +
-                "`/habit template` — pick from pre-built habits\n" +
-                "`/timezone set` — set your local timezone (needed for reminders)\n" +
-                "`/timezone show` — see which timezone Ember uses for you",
-                inline: false)
-            .AddField("Daily use",
-                "`/habit checkin` — log today's check-in\n" +
-                "`/habit history` — fill in past days and mark low days\n" +
-                "`/habit list` — see all habits + recent progress\n" +
-                "`/habit streak` — view your personal stats",
-                inline: false)
-            .AddField("Managing habits",
-                "`/habit edit` — rename or change reminder time\n" +
-                "`/habit delete` — remove a habit\n" +
-                "`/habit pause` — pause temporarily, reminders rest too\n" +
-                "`/habit frequency` — daily, weekly or set weekdays, and times per day\n" +
-                "`/habit grace` — set how many flex days you get per week\n" +
-                "`/habit second-reminder` — get one more nudge if you haven't checked in yet",
-                inline: false)
-            .AddField("Share",
-                "`/habit share` — post a habit card in this channel",
-                inline: false)
-            .AddField("Web app",
-                "`/link` — use Ember in your browser, or add Discord to an email account",
-                inline: false)
-            .AddField("Privacy",
-                "`/export` — get your habits, check-ins and settings by DM\n" +
-                "`/privacy delete` — permanently delete all your Ember data",
-                inline: false)
-            .AddField("Feedback",
-                "`/feedback` — tell the Ember team what would make Ember better",
-                inline: false)
-            .WithFooter("Go at your own pace. Every small step counts.");
+            .WithTitle(t.Get("help.title"))
+            .WithDescription(t.Get("help.description"));
+        foreach (var section in new[] { "start", "daily", "manage", "share", "web", "privacy", "feedback" })
+            embed.AddField(t.Get($"help.{section}.title"), t.Get($"help.{section}.body"), inline: false);
+        embed.WithFooter(t.Get("help.footer"));
 
         if (config[ConsentModule.PolicyUrlKey] is { Length: > 0 } url)
         {
-            var links = $"[Privacy policy]({url})";
+            var links = t.Format("help.legal.privacy", url);
             if (url.TrimEnd('/').EndsWith(PrivacyPath, StringComparison.OrdinalIgnoreCase))
-                links += $" · [Imprint]({url.TrimEnd('/')[..^PrivacyPath.Length]}/legal/imprint)";
-            embed.AddField("Legal", links, inline: false);
+                links += " · " + t.Format("help.legal.imprint", $"{url.TrimEnd('/')[..^PrivacyPath.Length]}/legal/imprint");
+            embed.AddField(t.Get("help.legal.title"), links, inline: false);
         }
 
         return embed.Build();

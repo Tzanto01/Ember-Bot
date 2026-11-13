@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Ember.Bot.Jobs;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
@@ -29,7 +30,8 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
     [ComponentInteraction("reflect:dismiss:*")]
     public async Task DismissAsync(string userId)
     {
-        await RespondAsync("Noted. Today is a fresh start. 💙", ephemeral: true);
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        await RespondAsync(t.Get("reflect.dismissed"), ephemeral: true);
 
         // Delete the original DM message so the user's DMs stay clean.
         try
@@ -43,13 +45,14 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
     [ComponentInteraction("reflect:log:*:*")]
     public async Task LogAsync(string ownerIdStr, string dateStr)
     {
-        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(); return; }
-        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(t); return; }
+        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(t); return; }
 
         var open = await OpenHabitsAsync(_habits, Context.User.Id, date);
         if (open.Count == 0)
         {
-            await CloseAsync("That day is already logged. 💙");
+            await CloseAsync(t.Get("reflect.already-logged"));
             return;
         }
 
@@ -57,16 +60,16 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
         {
             if (await _habits.AddCheckInAsync(Context.User.Id, open[0].Id, date) != DayEditResult.Saved)
             {
-                await RespondAsync("Couldn't find that habit.", ephemeral: true);
+                await RespondAsync(t.Get("common.not-found"), ephemeral: true);
                 return;
             }
-            await CloseAsync($"Logged **{open[0].Name}** for {Label(date)}. Nice. ✅");
+            await CloseAsync(t.Format("reflect.logged-one", open[0].Name, Label(t, date)));
             return;
         }
 
         var menu = new SelectMenuBuilder()
             .WithCustomId($"reflect:pick:{Context.User.Id}:{dateStr}")
-            .WithPlaceholder("Which ones did you do?")
+            .WithPlaceholder(t.Get("reflect.pick.placeholder"))
             .WithMinValues(1)
             .WithMaxValues(Math.Min(open.Count, 25));
         foreach (var habit in open.Take(25))
@@ -74,12 +77,12 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
 
         var components = new ComponentBuilder()
             .WithSelectMenu(menu)
-            .WithButton("It was a low day", $"reflect:low:{Context.User.Id}:{dateStr}", ButtonStyle.Secondary, new Emoji("🌙"), row: 1)
-            .WithButton("That's ok, move on", $"reflect:dismiss:{Context.User.Id}", ButtonStyle.Secondary, row: 1)
+            .WithButton(t.Get("reflect.low-button"), $"reflect:low:{Context.User.Id}:{dateStr}", ButtonStyle.Secondary, new Emoji("🌙"), row: 1)
+            .WithButton(t.Get("reflect.move-on"), $"reflect:dismiss:{Context.User.Id}", ButtonStyle.Secondary, row: 1)
             .Build();
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = $"Which habits did you do on {Label(date)}?";
+            m.Content    = t.Format("reflect.pick.question", Label(t, date));
             m.Embed      = null;
             m.Components = components;
         });
@@ -88,8 +91,9 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
     [ComponentInteraction("reflect:pick:*:*")]
     public async Task PickAsync(string ownerIdStr, string dateStr, string[] values)
     {
-        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(); return; }
-        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(t); return; }
+        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(t); return; }
 
         var logged = 0;
         foreach (var value in values)
@@ -97,14 +101,15 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
                 && await _habits.AddCheckInAsync(Context.User.Id, habitId, date) == DayEditResult.Saved)
                 logged++;
 
-        await CloseAsync($"Logged {logged} habit{(logged == 1 ? "" : "s")} for {Label(date)}. Nice. ✅");
+        await CloseAsync(t.Plural("reflect.logged", logged, Label(t, date)));
     }
 
     [ComponentInteraction("reflect:low:*:*")]
     public async Task LowDayAsync(string ownerIdStr, string dateStr)
     {
-        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(); return; }
-        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(); return; }
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (!IsOwner(ownerIdStr)) { await NotYoursAsync(t); return; }
+        if (!TryParseDate(dateStr, out var date)) { await BadIdAsync(t); return; }
 
         if (await _habits.SetLowDayAsync(Context.User.Id, date) == DayEditResult.ConsentRequired)
         {
@@ -112,7 +117,7 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
             return;
         }
 
-        await CloseAsync($"Marked {Label(date)} as a low day. Go easy on yourself. 💙");
+        await CloseAsync(t.Format("reflect.low-marked", Label(t, date)));
     }
 
     /// <summary>The user's daily and weekdays habits that are still open to log as done on <paramref name="date"/>, in creation order.</summary>
@@ -130,16 +135,16 @@ public class ReflectDismissModule : InteractionModuleBase<SocketInteractionConte
             m.Components = new ComponentBuilder().Build();
         });
 
-    private static string Label(DateOnly date) => date.ToString("dddd d MMM", CultureInfo.InvariantCulture);
+    private static string Label(Texts t, DateOnly date) => date.ToString(t.Get("date.long"), t.Culture);
 
     private bool IsOwner(string ownerIdStr) => ulong.TryParse(ownerIdStr, out var ownerId) && ownerId == Context.User.Id;
 
     private static bool TryParseDate(string value, out DateOnly date) =>
         DateOnly.TryParseExact(value, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
 
-    private async Task NotYoursAsync() =>
-        await RespondAsync("This button isn't for you.", ephemeral: true);
+    private async Task NotYoursAsync(Texts t) =>
+        await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
 
-    private async Task BadIdAsync() =>
-        await RespondAsync("Something went wrong, please try again.", ephemeral: true);
+    private async Task BadIdAsync(Texts t) =>
+        await RespondAsync(t.Get("common.retry.comma"), ephemeral: true);
 }

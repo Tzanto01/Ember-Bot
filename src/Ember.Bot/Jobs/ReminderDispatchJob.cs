@@ -214,7 +214,7 @@ public class ReminderDispatchJob : IJob
                     }
                     if (user is not null && push is not null
                         && ReminderDestinations.Resolve(user, exclusions).PushSubscriptionIds is { Count: > 0 } ids)
-                        await push.SendClearAsync(user.Id, ids, tag, cancellationToken);
+                        await push.SendClearAsync(user.Id, ids, tag, user.Language, cancellationToken);
                 }
                 await habits.DeletePushReminderAsync(reminder.Id, CancellationToken.None);
             }
@@ -235,11 +235,11 @@ public class ReminderDispatchJob : IJob
     /// </summary>
     private async Task CloseReminderMessagesAsync(CancellationToken cancellationToken)
     {
-        List<(ReminderMessage Message, string Timezone, bool HabitDone)> open;
+        List<(ReminderMessage Message, string Timezone, bool HabitDone, string Language)> open;
         using (var scope = _services.CreateScope())
             open = await scope.ServiceProvider.GetRequiredService<HabitService>().GetOpenReminderMessagesAsync(cancellationToken);
 
-        foreach (var (message, timezone, habitDone) in open)
+        foreach (var (message, timezone, habitDone, language) in open)
         {
             if (cancellationToken.IsCancellationRequested) return;
             var expired = IsExpired(message.Date, TimezoneHelper.LocalNow(timezone, _time).DateTime);
@@ -252,7 +252,8 @@ public class ReminderDispatchJob : IJob
                 if (!done && !expired) continue;
 
                 await _discord.CloseMessageAsync(message.ChannelId, message.MessageId,
-                    done ? DiscordDmReminderChannel.LoggedLine : DiscordDmReminderChannel.ClosedLine, cancellationToken);
+                    done ? DiscordDmReminderChannel.LoggedLine(BotTexts.For(language)) : DiscordDmReminderChannel.ClosedLine(BotTexts.For(language)),
+                    cancellationToken);
                 await habits.DeleteReminderMessageAsync(message.Id, CancellationToken.None);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -308,7 +309,7 @@ public class ReminderDispatchJob : IJob
         {
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, today.AddDays(-7), today, cancellationToken);
             delivery = await DeliverAsync(targets, new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, false, today, Second: true,
-                PushSubscriptionIds: pushIds),
+                PushSubscriptionIds: pushIds, Language: user.Language),
                 user, now, (SecondHabitKind, habit.Id, dueAt), cancellationToken);
         }
 
@@ -347,7 +348,7 @@ public class ReminderDispatchJob : IJob
         var send = pending.Count > 0;
         var delivery = send
             ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending, Second: true,
-                PushSubscriptionIds: pushIds),
+                PushSubscriptionIds: pushIds, Language: user.Language),
                 user, now, (SecondRoutineKind, routine.Id, dueAt), cancellationToken)
             : Delivery.NotDelivered;
 
@@ -417,7 +418,8 @@ public class ReminderDispatchJob : IJob
             var weekAgo = today.AddDays(-7);
             var recent = await habits.CountCompletedBetweenAsync(habit.Id, weekAgo, today, cancellationToken);
             var snoozed = TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, dueAt.AddTicks(-1)) != dueAt;
-            var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed, today, PushSubscriptionIds: pushIds);
+            var reminder = new Reminder(user.Id, discordId, habit.Id, habit.Name, recent, snoozed, today, PushSubscriptionIds: pushIds,
+                Language: user.Language);
             delivery = await DeliverAsync(targets, reminder, user, now, (HabitKind, habit.Id, dueAt), cancellationToken);
             if (delivery == Delivery.Delivered && !snoozed && SecondReminderAt(user, tz, today, now) is { } second
                 && (TimezoneHelper.NextOccurrenceUtc(habit.ReminderTimes, tz, now) is not { } next || next > second))
@@ -455,7 +457,7 @@ public class ReminderDispatchJob : IJob
         var send = pending.Count > 0;
         var delivery = send
             ? await DeliverAsync(targets, new Reminder(user.Id, discordId, routine.Id, routine.Name, 0, false, today, pending,
-                PushSubscriptionIds: pushIds), user, now,
+                PushSubscriptionIds: pushIds, Language: user.Language), user, now,
                 (RoutineKind, routine.Id, dueAt), cancellationToken)
             : Delivery.NotDelivered;
         routine.SecondReminderUtc = delivery == Delivery.Delivered ? SecondReminderAt(user, tz, today, now) : null;

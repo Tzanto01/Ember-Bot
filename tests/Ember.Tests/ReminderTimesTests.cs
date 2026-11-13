@@ -136,12 +136,12 @@ public class ReminderTimesTests
     [Fact]
     public void Discord_lists_all_times_and_names_the_times_a_single_time_replaced()
     {
-        HabitModule.FormatReminder(At("08:00", "13:00", "20:00")).Should().Be("Reminders: 08:00, 13:00, 20:00 your time");
-        HabitModule.FormatReminder(At("09:05")).Should().Be("Reminder: 09:05 your time");
-        HabitModule.FormatReminder(At()).Should().Be("Reminder: None set");
+        HabitModule.FormatReminder(Ember.Bot.BotTexts.English, At("08:00", "13:00", "20:00")).Should().Be("Reminders: 08:00, 13:00, 20:00 your time");
+        HabitModule.FormatReminder(Ember.Bot.BotTexts.English, At("09:05")).Should().Be("Reminder: 09:05 your time");
+        HabitModule.FormatReminder(Ember.Bot.BotTexts.English, At()).Should().Be("Reminder: None set");
 
-        ReminderSetupModule.ReplacedText(At("08:00", "20:00")).Should().Contain("replaces your earlier reminders at 08:00, 20:00");
-        ReminderSetupModule.ReplacedText(At("08:00")).Should().BeEmpty();
+        ReminderSetupModule.ReplacedText(Ember.Bot.BotTexts.English, At("08:00", "20:00")).Should().Contain("replaces your earlier reminders at 08:00, 20:00");
+        ReminderSetupModule.ReplacedText(Ember.Bot.BotTexts.English, At("08:00")).Should().BeEmpty();
     }
 
     [Fact]

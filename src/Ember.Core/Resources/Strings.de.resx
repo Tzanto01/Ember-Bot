@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="weekly.tone.quiet.headline" xml:space="preserve">
+    <value>Eine ruhige Woche, und das ist okay. 💙
+Wann immer du so weit bist, deine Habits warten hier auf dich.</value>
+  </data>
+  <data name="weekly.tone.quiet.footer" xml:space="preserve">
+    <value>Kein Druck. Fortschritt hat sein eigenes Tempo.</value>
+  </data>
+  <data name="weekly.tone.all.headline" xml:space="preserve">
+    <value>Du hast diese Woche jeden einzelnen Check-in geschafft 🔥 Das sind {0}. Großartig.</value>
+  </data>
+  <data name="weekly.tone.all.footer" xml:space="preserve">
+    <value>Du bist richtig in Fahrt. Weiter so.</value>
+  </data>
+  <data name="weekly.tone.some.headline" xml:space="preserve">
+    <value>Diese Woche hast du **{0}** geschafft. Jeder davon zählt. 💪</value>
+  </data>
+  <data name="weekly.tone.half.footer" xml:space="preserve">
+    <value>Mehr als die Hälfte, das ist ein Erfolg. Bleib dran.</value>
+  </data>
+  <data name="weekly.tone.small.footer" xml:space="preserve">
+    <value>Auch kleine Schritte bringen dich weiter. Du schaffst das.</value>
+  </data>
+  <data name="weekly.checkins.one" xml:space="preserve">
+    <value>{0} Check-in</value>
+  </data>
+  <data name="weekly.checkins.other" xml:space="preserve">
+    <value>{0} Check-ins</value>
+  </data>
+</root>

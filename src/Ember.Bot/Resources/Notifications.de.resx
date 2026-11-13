@@ -1,0 +1,146 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="reminder.skip" xml:space="preserve">
+    <value>Heute auslassen</value>
+  </data>
+  <data name="reminder.logged-line" xml:space="preserve">
+    <value>-# ✅ Eingetragen.</value>
+  </data>
+  <data name="reminder.closed-line" xml:space="preserve">
+    <value>-# Diese Erinnerung ist abgelaufen.</value>
+  </data>
+  <data name="reminder.done" xml:space="preserve">
+    <value>Erledigt ✅</value>
+  </data>
+  <data name="reminder.snooze" xml:space="preserve">
+    <value>1 Std. später ⏰</value>
+  </data>
+  <data name="reminder.intro.snoozed" xml:space="preserve">
+    <value>⏰ Wie versprochen, noch mal: **{0}**. Ganz in deinem Tempo!</value>
+  </data>
+  <data name="reminder.intro.great" xml:space="preserve">
+    <value>Hey! Ein sanfter Schubs für **{0}**. Du machst das richtig gut 🔥</value>
+  </data>
+  <data name="reminder.intro.some" xml:space="preserve">
+    <value>Hey! Kleine Erinnerung an **{0}**. Kein Druck, schon das Dranbleiben zählt 💙</value>
+  </data>
+  <data name="reminder.intro.fresh" xml:space="preserve">
+    <value>Hey 👋 Wie steht's mit **{0}**? Ist ein Weilchen her, und das ist okay. Heute ist ein neuer Anfang, wann immer du so weit bist.</value>
+  </data>
+  <data name="reminder.habit" xml:space="preserve">
+    <value>{0}
+
+Hast du diesen Habit heute gemacht?</value>
+  </data>
+  <data name="reminder.second" xml:space="preserve">
+    <value>🔔 Noch ein kleiner Schubs für **{0}**, falls der erste untergegangen ist. Bist du heute dazu gekommen?</value>
+  </data>
+  <data name="reminder.routine" xml:space="preserve">
+    <value>Hey 👋 Zeit für deine Routine **{0}**. Heute noch offen:
+{1}
+
+Tipp bei allem, was du geschafft hast, auf Erledigt. Kein Druck 💙</value>
+  </data>
+  <data name="reminder.routine.second" xml:space="preserve">
+    <value>🔔 Noch ein kleiner Schubs für deine Routine **{0}**. Heute noch offen:
+{1}</value>
+  </data>
+  <data name="reminder.routine.more" xml:space="preserve">
+    <value>und {0} weitere</value>
+  </data>
+  <data name="reminder.routine.done-button" xml:space="preserve">
+    <value>Erledigt: {0}</value>
+  </data>
+  <data name="push.reminder.first" xml:space="preserve">
+    <value>Ein sanfter Schubs von Ember</value>
+  </data>
+  <data name="push.reminder.second" xml:space="preserve">
+    <value>Noch ein Schubs, falls der erste untergegangen ist.</value>
+  </data>
+  <data name="push.logged" xml:space="preserve">
+    <value>Eingetragen. Gut gemacht. ✅</value>
+  </data>
+  <data name="weekly.title" xml:space="preserve">
+    <value>🗓️ Deine Woche mit deinen Habits</value>
+  </data>
+  <data name="weekly.link" xml:space="preserve">
+    <value>[Deine Woche in der Ember Web-App ansehen]({0})</value>
+  </data>
+  <data name="weekly.overflow.title" xml:space="preserve">
+    <value>…und mehr</value>
+  </data>
+  <data name="weekly.overflow" xml:space="preserve">
+    <value>Dazu **{0}** weitere Habits. Alle siehst du mit `/habit list`.</value>
+  </data>
+  <data name="weekly.goal" xml:space="preserve">
+    <value>{0} **{1}/{2}** · Wochenziel: **{3}**/Woche</value>
+  </data>
+  <data name="weekly.grace.one" xml:space="preserve">
+    <value>_(+{0} Gnadentag)_</value>
+  </data>
+  <data name="weekly.grace.other" xml:space="preserve">
+    <value>_(+{0} Gnadentage)_</value>
+  </data>
+  <data name="missedday.title" xml:space="preserve">
+    <value>💙 Ein sanfter Check-in</value>
+  </data>
+  <data name="missedday.open.one" xml:space="preserve">
+    <value>Gestern ist noch offen: magst du **{0}** eintragen?</value>
+  </data>
+  <data name="missedday.open.many" xml:space="preserve">
+    <value>Gestern ist noch offen: magst du etwas davon eintragen?
+{0}</value>
+  </data>
+  <data name="missedday.weekly.one" xml:space="preserve">
+    <value>Bei **{1}** stehst du diese Woche bei {0}.</value>
+  </data>
+  <data name="missedday.weekly.many" xml:space="preserve">
+    <value>So stehen deine Wochen-Habits:
+{0}</value>
+  </data>
+  <data name="missedday.weekly.line" xml:space="preserve">
+    <value>• **{0}**: {1} diese Woche</value>
+  </data>
+  <data name="missedday.closing.0" xml:space="preserve">
+    <value>Kein Druck, und du musst nicht antworten.</value>
+  </data>
+  <data name="missedday.closing.1" xml:space="preserve">
+    <value>So ist das Leben. Du bist noch da, und das zählt.</value>
+  </data>
+  <data name="missedday.closing.2" xml:space="preserve">
+    <value>Ein ruhiger Tag nimmt dir nichts von dem, was du geschafft hast.</value>
+  </data>
+  <data name="missedday.closing.3" xml:space="preserve">
+    <value>Ausruhen gehört auch dazu. Sei sanft zu dir.</value>
+  </data>
+  <data name="missedday.closing.4" xml:space="preserve">
+    <value>War es ein schwerer Tag, kannst du ihn als Tief markieren.</value>
+  </data>
+  <data name="missedday.footer.open" xml:space="preserve">
+    <value>Trag es ein, markier ein Tief oder mach einfach weiter.</value>
+  </data>
+  <data name="missedday.footer" xml:space="preserve">
+    <value>Markier ein Tief oder mach einfach weiter.</value>
+  </data>
+  <data name="missedday.log" xml:space="preserve">
+    <value>Gestern eintragen</value>
+  </data>
+  <data name="missedday.low" xml:space="preserve">
+    <value>Es war ein Tief</value>
+  </data>
+  <data name="missedday.dismiss" xml:space="preserve">
+    <value>Passt schon, weiter</value>
+  </data>
+</root>

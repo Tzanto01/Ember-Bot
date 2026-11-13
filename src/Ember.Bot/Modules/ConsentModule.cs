@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -14,14 +15,6 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
 {
     internal const string PolicyUrlKey = "Ember:PrivacyPolicyUrl";
 
-    internal const string AgreedText =
-        "Thank you, you're all set. 💙 If you were adding a habit, just run the command again.";
-
-    internal const string DeclinedText =
-        "No problem. 💙 Ember can only store habits with your OK, so I won't create any new ones. " +
-        "Anything you already have here stays as it is until you decide. You can say yes any time by adding a habit, " +
-        "or remove everything Ember stores about you below.";
-
     private readonly HabitService _habits;
 
     public ConsentModule(HabitService habits)
@@ -29,44 +22,42 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
         _habits = habits;
     }
 
-    internal static Embed PromptEmbed(IConfiguration config)
+    internal static Embed PromptEmbed(Texts t, IConfiguration config)
     {
-        var description =
-            "Your habit names, check-ins, low days, day notes and moods can say something about your health " +
-            "(think \"take my meds\" or \"sleep 8 hours\"). " +
-            "Ember stores them only to run Ember for you. They're never sold or used for ads, and reach only the services that run Ember, like Discord. The privacy policy lists them.\n\n" +
-            "Is that OK with you? You can withdraw any time with `/privacy delete`, which removes everything.";
+        var description = t.Get("consent.body");
 
         if (config[PolicyUrlKey] is { Length: > 0 } url)
-            description += $"\n\n[Privacy policy]({url})";
+            description += "\n\n" + t.Format("consent.policy-link", url);
 
         return new EmbedBuilder()
             .WithColor(0x5865F2)
-            .WithTitle("One quick question 💙")
+            .WithTitle(t.Get("consent.title"))
             .WithDescription(description)
             .Build();
     }
 
-    internal static MessageComponent PromptButtons(ulong userId) => new ComponentBuilder()
-        .WithButton("I agree", $"consent:agree:{userId}", ButtonStyle.Success)
-        .WithButton("No thanks", $"consent:decline:{userId}", ButtonStyle.Secondary)
+    internal static MessageComponent PromptButtons(Texts t, ulong userId) => new ComponentBuilder()
+        .WithButton(t.Get("consent.agree"), $"consent:agree:{userId}", ButtonStyle.Success)
+        .WithButton(t.Get("consent.decline"), $"consent:decline:{userId}", ButtonStyle.Secondary)
         .Build();
 
     /// <summary>Answers the interaction with the consent prompt and notes that it was shown today.</summary>
     internal static async Task RespondWithPromptAsync(IInteractionContext context, IConfiguration config, HabitService habits)
     {
-        await context.Interaction.RespondAsync(embed: PromptEmbed(config), components: PromptButtons(context.User.Id), ephemeral: true);
+        var t = await BotTexts.ForAsync(habits, context.Interaction);
+        await context.Interaction.RespondAsync(embed: PromptEmbed(t, config), components: PromptButtons(t, context.User.Id), ephemeral: true);
         await habits.MarkConsentPromptedAsync(context.User.Id);
     }
 
     /// <summary>
     /// Applies the owner's answer only when the person clicking is that owner: agreeing records consent, declining only
     /// holds back the next automatic prompt (<see cref="HabitService.ConsentDeclineBackoffDays"/>). Returns whether the clicker is the owner.
+    /// An account created by agreeing gets <paramref name="language"/>.
     /// </summary>
-    internal static async Task<bool> TryAnswerAsync(HabitService habits, string ownerIdStr, ulong clickerId, bool agreed)
+    internal static async Task<bool> TryAnswerAsync(HabitService habits, string ownerIdStr, ulong clickerId, bool agreed, string? language = null)
     {
         if (!ulong.TryParse(ownerIdStr, out var ownerId) || ownerId != clickerId) return false;
-        if (agreed) await habits.GiveHealthDataConsentAsync(clickerId);
+        if (agreed) await habits.GiveHealthDataConsentAsync(clickerId, language);
         else await habits.DeclineConsentPromptAsync(clickerId);
         return true;
     }
@@ -74,15 +65,16 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("consent:agree:*")]
     public async Task OnAgreeAsync(string ownerIdStr)
     {
-        if (!await TryAnswerAsync(_habits, ownerIdStr, Context.User.Id, agreed: true))
+        if (!await TryAnswerAsync(_habits, ownerIdStr, Context.User.Id, agreed: true, Languages.FromLocale(Context.Interaction.UserLocale)))
         {
-            await RespondAsync("This button isn't for you.", ephemeral: true);
+            await RespondAsync((await BotTexts.ForAsync(_habits, Context.Interaction)).Get("common.not-yours"), ephemeral: true);
             return;
         }
 
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = AgreedText;
+            m.Content    = t.Get("consent.agreed");
             m.Embed      = null;
             m.Components = new ComponentBuilder().Build();
         });
@@ -91,18 +83,19 @@ public class ConsentModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("consent:decline:*")]
     public async Task OnDeclineAsync(string ownerIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         if (!await TryAnswerAsync(_habits, ownerIdStr, Context.User.Id, agreed: false))
         {
-            await RespondAsync("This button isn't for you.", ephemeral: true);
+            await RespondAsync(t.Get("common.not-yours"), ephemeral: true);
             return;
         }
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = DeclinedText;
+            m.Content    = t.Get("consent.declined");
             m.Embed      = null;
             m.Components = new ComponentBuilder()
-                .WithButton("Delete my data", $"privacy:delete:start:{Context.User.Id}", ButtonStyle.Secondary)
+                .WithButton(t.Get("consent.delete-button"), $"privacy:delete:start:{Context.User.Id}", ButtonStyle.Secondary)
                 .Build();
         });
     }

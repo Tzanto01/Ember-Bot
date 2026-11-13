@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Ember.Core.Localization;
 using Ember.Core.Services;
 
 namespace Ember.Bot.Modules;
@@ -25,132 +26,132 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
 
     // ── Static timezone data ──────────────────────────────────────────────────
 
-    private static readonly (string Id, string Label, string Emoji)[] Regions =
+    private static readonly (string Id, string Emoji)[] Regions =
     [
-        ("americas", "Americas",             "🌎"),
-        ("europe",   "Europe",               "🌍"),
-        ("asia",     "Asia",                 "🌏"),
-        ("pacific",  "Pacific & Oceania",    "🌏"),
-        ("africa",   "Africa & Middle East", "🌍"),
-        ("utc",      "UTC / Fixed Offset",   "🌐"),
+        ("americas", "🌎"),
+        ("europe",   "🌍"),
+        ("asia",     "🌏"),
+        ("pacific",  "🌏"),
+        ("africa",   "🌍"),
+        ("utc",      "🌐"),
     ];
 
-    private static readonly Dictionary<string, (string Id, string Label)[]> Timezones = new()
+    private static readonly Dictionary<string, string[]> Timezones = new()
     {
         ["americas"] =
         [
-            ("America/New_York",               "Eastern Time — New York"),
-            ("America/Chicago",                "Central Time — Chicago"),
-            ("America/Denver",                 "Mountain Time — Denver"),
-            ("America/Los_Angeles",            "Pacific Time — Los Angeles"),
-            ("America/Anchorage",              "Alaska Time"),
-            ("Pacific/Honolulu",               "Hawaii Time"),
-            ("America/Toronto",                "Toronto"),
-            ("America/Vancouver",              "Vancouver"),
-            ("America/Mexico_City",            "Mexico City"),
-            ("America/Bogota",                 "Bogotá"),
-            ("America/Lima",                   "Lima"),
-            ("America/Caracas",                "Caracas"),
-            ("America/Santiago",               "Santiago"),
-            ("America/Sao_Paulo",              "São Paulo"),
-            ("America/Argentina/Buenos_Aires", "Buenos Aires"),
+            "America/New_York",
+            "America/Chicago",
+            "America/Denver",
+            "America/Los_Angeles",
+            "America/Anchorage",
+            "Pacific/Honolulu",
+            "America/Toronto",
+            "America/Vancouver",
+            "America/Mexico_City",
+            "America/Bogota",
+            "America/Lima",
+            "America/Caracas",
+            "America/Santiago",
+            "America/Sao_Paulo",
+            "America/Argentina/Buenos_Aires",
         ],
         ["europe"] =
         [
-            ("Europe/London",     "London"),
-            ("Europe/Dublin",     "Dublin"),
-            ("Europe/Lisbon",     "Lisbon"),
-            ("Europe/Paris",      "Paris"),
-            ("Europe/Berlin",     "Berlin"),
-            ("Europe/Amsterdam",  "Amsterdam"),
-            ("Europe/Brussels",   "Brussels"),
-            ("Europe/Madrid",     "Madrid"),
-            ("Europe/Rome",       "Rome"),
-            ("Europe/Zurich",     "Zurich"),
-            ("Europe/Stockholm",  "Stockholm"),
-            ("Europe/Oslo",       "Oslo"),
-            ("Europe/Copenhagen", "Copenhagen"),
-            ("Europe/Helsinki",   "Helsinki"),
-            ("Europe/Warsaw",     "Warsaw"),
-            ("Europe/Prague",     "Prague"),
-            ("Europe/Vienna",     "Vienna"),
-            ("Europe/Athens",     "Athens"),
-            ("Europe/Bucharest",  "Bucharest"),
-            ("Europe/Kiev",       "Kyiv"),
-            ("Europe/Istanbul",   "Istanbul"),
-            ("Europe/Moscow",     "Moscow"),
+            "Europe/London",
+            "Europe/Dublin",
+            "Europe/Lisbon",
+            "Europe/Paris",
+            "Europe/Berlin",
+            "Europe/Amsterdam",
+            "Europe/Brussels",
+            "Europe/Madrid",
+            "Europe/Rome",
+            "Europe/Zurich",
+            "Europe/Stockholm",
+            "Europe/Oslo",
+            "Europe/Copenhagen",
+            "Europe/Helsinki",
+            "Europe/Warsaw",
+            "Europe/Prague",
+            "Europe/Vienna",
+            "Europe/Athens",
+            "Europe/Bucharest",
+            "Europe/Kiev",
+            "Europe/Istanbul",
+            "Europe/Moscow",
         ],
         ["asia"] =
         [
-            ("Asia/Jerusalem",   "Jerusalem"),
-            ("Asia/Beirut",      "Beirut"),
-            ("Asia/Riyadh",      "Riyadh"),
-            ("Asia/Dubai",       "Dubai"),
-            ("Asia/Tehran",      "Tehran"),
-            ("Asia/Karachi",     "Karachi"),
-            ("Asia/Kolkata",     "India — IST"),
-            ("Asia/Kathmandu",   "Nepal"),
-            ("Asia/Dhaka",       "Bangladesh"),
-            ("Asia/Bangkok",     "Bangkok"),
-            ("Asia/Jakarta",     "Jakarta"),
-            ("Asia/Singapore",   "Singapore"),
-            ("Asia/Kuala_Lumpur","Kuala Lumpur"),
-            ("Asia/Manila",      "Manila"),
-            ("Asia/Shanghai",    "China — CST"),
-            ("Asia/Hong_Kong",   "Hong Kong"),
-            ("Asia/Taipei",      "Taipei"),
-            ("Asia/Seoul",       "Seoul"),
-            ("Asia/Tokyo",       "Tokyo"),
-            ("Asia/Vladivostok", "Vladivostok"),
+            "Asia/Jerusalem",
+            "Asia/Beirut",
+            "Asia/Riyadh",
+            "Asia/Dubai",
+            "Asia/Tehran",
+            "Asia/Karachi",
+            "Asia/Kolkata",
+            "Asia/Kathmandu",
+            "Asia/Dhaka",
+            "Asia/Bangkok",
+            "Asia/Jakarta",
+            "Asia/Singapore",
+            "Asia/Kuala_Lumpur",
+            "Asia/Manila",
+            "Asia/Shanghai",
+            "Asia/Hong_Kong",
+            "Asia/Taipei",
+            "Asia/Seoul",
+            "Asia/Tokyo",
+            "Asia/Vladivostok",
         ],
         ["pacific"] =
         [
-            ("Australia/Perth",    "Perth"),
-            ("Australia/Adelaide", "Adelaide"),
-            ("Australia/Brisbane", "Brisbane"),
-            ("Australia/Sydney",   "Sydney"),
-            ("Australia/Melbourne","Melbourne"),
-            ("Pacific/Auckland",   "Auckland"),
-            ("Pacific/Fiji",       "Fiji"),
-            ("Pacific/Guam",       "Guam"),
+            "Australia/Perth",
+            "Australia/Adelaide",
+            "Australia/Brisbane",
+            "Australia/Sydney",
+            "Australia/Melbourne",
+            "Pacific/Auckland",
+            "Pacific/Fiji",
+            "Pacific/Guam",
         ],
         ["africa"] =
         [
-            ("Africa/Casablanca",   "Casablanca"),
-            ("Africa/Accra",        "Accra — UTC+0"),
-            ("Africa/Lagos",        "Lagos"),
-            ("Africa/Cairo",        "Cairo"),
-            ("Africa/Nairobi",      "Nairobi"),
-            ("Africa/Johannesburg", "Johannesburg"),
-            ("Indian/Mauritius",    "Mauritius"),
+            "Africa/Casablanca",
+            "Africa/Accra",
+            "Africa/Lagos",
+            "Africa/Cairo",
+            "Africa/Nairobi",
+            "Africa/Johannesburg",
+            "Indian/Mauritius",
         ],
         ["utc"] =
         [
-            ("UTC",      "UTC — Coordinated Universal Time"),
-            ("Etc/GMT+12","UTC−12"),
-            ("Etc/GMT+11","UTC−11"),
-            ("Etc/GMT+10","UTC−10"),
-            ("Etc/GMT+9", "UTC−9"),
-            ("Etc/GMT+8", "UTC−8"),
-            ("Etc/GMT+7", "UTC−7"),
-            ("Etc/GMT+6", "UTC−6"),
-            ("Etc/GMT+5", "UTC−5"),
-            ("Etc/GMT+4", "UTC−4"),
-            ("Etc/GMT+3", "UTC−3"),
-            ("Etc/GMT+2", "UTC−2"),
-            ("Etc/GMT+1", "UTC−1"),
-            ("Etc/GMT-1", "UTC+1"),
-            ("Etc/GMT-2", "UTC+2"),
-            ("Etc/GMT-3", "UTC+3"),
-            ("Etc/GMT-4", "UTC+4"),
-            ("Etc/GMT-5", "UTC+5"),
-            ("Etc/GMT-6", "UTC+6"),
-            ("Etc/GMT-7", "UTC+7"),
-            ("Etc/GMT-8", "UTC+8"),
-            ("Etc/GMT-9", "UTC+9"),
-            ("Etc/GMT-10","UTC+10"),
-            ("Etc/GMT-11","UTC+11"),
-            ("Etc/GMT-12","UTC+12"),
+            "UTC",
+            "Etc/GMT+12",
+            "Etc/GMT+11",
+            "Etc/GMT+10",
+            "Etc/GMT+9",
+            "Etc/GMT+8",
+            "Etc/GMT+7",
+            "Etc/GMT+6",
+            "Etc/GMT+5",
+            "Etc/GMT+4",
+            "Etc/GMT+3",
+            "Etc/GMT+2",
+            "Etc/GMT+1",
+            "Etc/GMT-1",
+            "Etc/GMT-2",
+            "Etc/GMT-3",
+            "Etc/GMT-4",
+            "Etc/GMT-5",
+            "Etc/GMT-6",
+            "Etc/GMT-7",
+            "Etc/GMT-8",
+            "Etc/GMT-9",
+            "Etc/GMT-10",
+            "Etc/GMT-11",
+            "Etc/GMT-12",
         ],
     };
 
@@ -159,16 +160,17 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
     [ComponentInteraction("onboard:timezone:*")]
     public async Task OnTimezoneButtonAsync(string habitIdStr)
     {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
         var menu = new SelectMenuBuilder()
             .WithCustomId($"onboard:region:{habitIdStr}")
-            .WithPlaceholder("Pick your region…");
+            .WithPlaceholder(t.Get("onboard.region.placeholder"));
 
-        foreach (var (id, label, emoji) in Regions)
-            menu.AddOption(label, id, emote: new Emoji(emoji));
+        foreach (var (id, emoji) in Regions)
+            menu.AddOption(t.Get($"onboard.region.{id}"), id, emote: new Emoji(emoji));
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = "Which region are you in?";
+            m.Content    = t.Get("onboard.region.question");
             m.Embed      = null;
             m.Components = new ComponentBuilder().WithSelectMenu(menu).Build();
         });
@@ -180,23 +182,24 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
     public async Task OnRegionSelectAsync(string habitIdStr, string[] selected)
     {
         var region = selected[0];
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
 
         if (!Timezones.TryGetValue(region, out var tzList))
         {
-            await RespondAsync("Unknown region — please try again.", ephemeral: true);
+            await RespondAsync(t.Get("onboard.region.unknown"), ephemeral: true);
             return;
         }
 
         var menu = new SelectMenuBuilder()
             .WithCustomId($"onboard:tz:{habitIdStr}")
-            .WithPlaceholder("Pick your timezone…");
+            .WithPlaceholder(t.Get("onboard.tz.placeholder"));
 
-        foreach (var (id, label) in tzList)
-            menu.AddOption(label, id);
+        foreach (var id in tzList)
+            menu.AddOption(t.Get($"onboard.tz.{id}"), id);
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>
         {
-            m.Content    = "Which timezone?";
+            m.Content    = t.Get("onboard.tz.question");
             m.Embed      = null;
             m.Components = new ComponentBuilder().WithSelectMenu(menu).Build();
         });
@@ -212,22 +215,23 @@ public class OnboardingModule : InteractionModuleBase<SocketInteractionContext>
 
         if (tz is null)
         {
-            await RespondAsync("Couldn't resolve that timezone — please try again.", ephemeral: true);
+            await RespondAsync((await BotTexts.ForAsync(_habits, Context.Interaction)).Get("onboard.tz.unknown"), ephemeral: true);
             return;
         }
 
-        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id);
+        await _habits.SetTimezoneAsync(Context.User.Id, tz.Id, Languages.FromLocale(Context.Interaction.UserLocale));
         await _habits.RescheduleRemindersAsync(Context.User.Id);
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
 
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle("🌍 Timezone saved!")
-            .WithDescription($"Set to **{tz.Id}**.\n\nWant me to nudge you at a set time each day?")
+            .WithTitle(t.Get("onboard.tz.saved.title"))
+            .WithDescription(t.Format("onboard.tz.saved.body", tz.Id))
             .Build();
 
         var components = new ComponentBuilder()
-            .WithButton("⏰ Set a reminder", $"reminder:set:{habitIdStr}", ButtonStyle.Primary)
-            .WithButton("Skip for now",      $"reminder:skip:{habitIdStr}", ButtonStyle.Secondary)
+            .WithButton(t.Get("onboard.set-reminder"),   $"reminder:set:{habitIdStr}", ButtonStyle.Primary)
+            .WithButton(t.Get("common.skip-for-now"),    $"reminder:skip:{habitIdStr}", ButtonStyle.Secondary)
             .Build();
 
         await ((SocketMessageComponent)Context.Interaction).UpdateAsync(m =>

@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,10 @@ public partial class HabitService
     /// The Ember user ID linked to this Discord user, creating a bot-only user (no email, no password) when there is none.
     /// Safe against concurrent calls: losing the insert race to another request is not an error.
     /// </summary>
-    public async Task<Guid> ResolveOrCreateDiscordUserAsync(ulong discordUserId, CancellationToken cancellationToken = default)
+    /// <param name="discordUserId">The Discord user.</param>
+    /// <param name="language">The new user's <see cref="User.Language"/> (one of <see cref="Languages.All"/>); ignored for an existing user.</param>
+    /// <param name="cancellationToken">Cancels the lookup and the insert.</param>
+    public async Task<Guid> ResolveOrCreateDiscordUserAsync(ulong discordUserId, string? language = null, CancellationToken cancellationToken = default)
     {
         var existing = await FindDiscordUserAsync(discordUserId, cancellationToken);
         if (existing != Guid.Empty) return existing;
@@ -43,6 +47,7 @@ public partial class HabitService
             NormalizedUserName = userName.ToUpperInvariant(),
             SecurityStamp = Guid.NewGuid().ToString("N").ToUpperInvariant(),
             ConcurrencyStamp = Guid.NewGuid().ToString(),
+            Language = language is not null && Languages.All.Contains(language) ? language : Languages.English,
         };
         user.Logins.Add(new IdentityUserLogin<Guid>
         {
@@ -67,11 +72,24 @@ public partial class HabitService
         }
     }
 
+    /// <summary>
+    /// The language to speak to this Discord user in: the linked account's <see cref="User.Language"/>, or for someone Ember stores
+    /// nothing about, their Discord locale (<see cref="Languages.FromLocale"/>).
+    /// </summary>
+    public async Task<string> GetDiscordLanguageAsync(ulong discordUserId, string? discordLocale)
+    {
+        var key = DiscordLogin.Key(discordUserId);
+        return await _db.UserLogins
+            .Where(l => l.LoginProvider == DiscordLogin.Provider && l.ProviderKey == key)
+            .Join(_db.Users, l => l.UserId, u => u.Id, (_, u) => u.Language)
+            .FirstOrDefaultAsync() ?? Languages.FromLocale(discordLocale);
+    }
+
     public async Task<bool> HasHealthDataConsentAsync(ulong discordUserId)
         => await HasHealthDataConsentAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task GiveHealthDataConsentAsync(ulong discordUserId)
-        => await GiveHealthDataConsentAsync(await ResolveOrCreateDiscordUserAsync(discordUserId));
+    public async Task GiveHealthDataConsentAsync(ulong discordUserId, string? language = null)
+        => await GiveHealthDataConsentAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language));
 
     public async Task<bool> ClaimConsentPromptAsync(ulong discordUserId)
         => await ClaimConsentPromptAsync(await FindDiscordUserAsync(discordUserId));
@@ -148,8 +166,8 @@ public partial class HabitService
     public async Task<int> GetGraceDaysAsync(ulong discordUserId)
         => await GetGraceDaysAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays)
-        => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), graceDays);
+    public async Task SetGraceDaysAsync(ulong discordUserId, int graceDays, string? language = null)
+        => await SetGraceDaysAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), graceDays);
 
     public async Task<TimeZoneInfo> GetUserTzAsync(ulong discordUserId)
         => await GetUserTzAsync(await FindDiscordUserAsync(discordUserId));
@@ -160,8 +178,8 @@ public partial class HabitService
     public async Task<bool> HasTimezoneSetAsync(ulong discordUserId)
         => await HasTimezoneSetAsync(await FindDiscordUserAsync(discordUserId));
 
-    public async Task SetTimezoneAsync(ulong discordUserId, string timezoneId)
-        => await SetTimezoneAsync(await ResolveOrCreateDiscordUserAsync(discordUserId), timezoneId);
+    public async Task SetTimezoneAsync(ulong discordUserId, string timezoneId, string? language = null)
+        => await SetTimezoneAsync(await ResolveOrCreateDiscordUserAsync(discordUserId, language), timezoneId);
 
     public async Task<User?> GetUserForExportAsync(ulong discordUserId)
         => await GetUserForExportAsync(await FindDiscordUserAsync(discordUserId));

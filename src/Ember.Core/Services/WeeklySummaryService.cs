@@ -1,3 +1,4 @@
+using Ember.Core.Localization;
 using Ember.Core.Models;
 
 namespace Ember.Core.Services;
@@ -76,36 +77,24 @@ public static class WeeklySummaryService
 
     /// <summary>
     /// Picks the headline + footer matching how the week went: zero check-ins → gentle
-    /// nudge, everything done → celebration, otherwise encouragement scaled to the rate.
+    /// nudge, everything done → celebration, otherwise encouragement scaled to the rate. In <paramref name="t"/>, English when null.
     /// </summary>
-    public static (string Headline, string Footer) ToneLines(int totalDone, int totalPossible)
+    public static (string Headline, string Footer) ToneLines(int totalDone, int totalPossible, Texts? t = null)
     {
+        t ??= new Texts(Languages.English, Texts.CoreResources);
         if (totalDone == 0)
-        {
-            return (
-                "It's been a quiet week, and that's okay. 💙\nWhenever you're ready, your habits are here waiting.",
-                "No pressure. Progress happens at its own pace.");
-        }
+            return (t.Get("weekly.tone.quiet.headline"), t.Get("weekly.tone.quiet.footer"));
 
         // >= (not ==) also keeps degenerate inputs (possible < done) out of the
         // division below — this is a public helper, callers shouldn't be able to
         // hit a DivideByZeroException.
+        var checkIns = t.Plural("weekly.checkins", totalDone);
         if (totalDone >= totalPossible)
-        {
-            return (
-                $"You nailed every single check-in this week 🔥 That's {CheckIns(totalDone)}. Incredible.",
-                "You're on fire. Keep going.");
-        }
+            return (t.Format("weekly.tone.all.headline", checkIns), t.Get("weekly.tone.all.footer"));
 
         var pct = (int)Math.Round(100.0 * totalDone / totalPossible);
-        var headline = $"This week you showed up for **{CheckIns(totalDone)}**. Every one of those counts. 💪";
-        var footer = pct >= 50
-            ? "More than half, that's a win. Keep it up."
-            : "Small steps still move forward. You've got this.";
-        return (headline, footer);
+        return (t.Format("weekly.tone.some.headline", checkIns), t.Get(pct >= 50 ? "weekly.tone.half.footer" : "weekly.tone.small.footer"));
     }
-
-    private static string CheckIns(int count) => count == 1 ? "1 check-in" : $"{count} check-ins";
 
     /// <summary>
     /// Builds a 7-dot string like ✅⬜✅🔸▫️✅✅ for the window, oldest→newest: ✅ done, 🔸 partial,

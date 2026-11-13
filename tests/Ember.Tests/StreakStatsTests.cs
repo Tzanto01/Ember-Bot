@@ -32,7 +32,7 @@ public class StreakStatsTests
         {
             var service = sp.GetRequiredService<HabitService>();
             if (customId is not null) await service.SetShowStreaksAsync(UserId, customId == "habit:streaks:on");
-            var (pages, toggle) = await HabitModule.RenderStatsAsync(service, UserId);
+            var (pages, toggle) = await HabitModule.RenderStatsAsync(Ember.Bot.BotTexts.English, service, UserId);
             return (pages.Single(), Button(toggle), await service.GetShowStreaksAsync(UserId));
         });
 

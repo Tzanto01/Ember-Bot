@@ -42,9 +42,10 @@ public class DmPauseNotifier
 
         try
         {
+            var t = await BotTexts.ForAsync(habits, context.Interaction);
             await context.Interaction.FollowupAsync(
-                DmRetryModule.NoticeText,
-                components: DmRetryModule.RetryButton(context.User.Id),
+                DmRetryModule.NoticeText(t),
+                components: DmRetryModule.RetryButton(t, context.User.Id),
                 ephemeral: true);
         }
         catch (Exception ex)

@@ -118,6 +118,24 @@ And on the other days: gentle habits. Check in on the habits you choose, plan lo
 Use Ember with an account to sync, or without one and keep everything on your phone. No ads, no analytics, no tracking.
 ```
 
+German listing (de-DE), same wording rules:
+
+- **Title:** Ember
+- **Short description** (Play limit 80 characters, this is 58): Ein ruhiger Begleiter für schwere Momente und sanfte Tage.
+- **Full description** (Play limit 4000 characters, this is 1107):
+
+```text
+Ein ruhiger Begleiter für schwere Momente und sanfte Tage.
+
+Wenn es zu viel wird, tippe auf „Ich brauche einen Moment“. Ember führt dich durch ein paar ruhige Schritte: wahrnehmen, was gerade passiert, es benennen, atmen und es vorbeiziehen lassen, und danach nachspüren, wenn du magst. Das läuft auf deinem Handy, ohne Konto und offline. Von einem Moment bleibt nichts gespeichert, außer du hältst eine Reflexion in deinem privaten Tagebuch fest. Krisentelefone sind immer nur einen Tipp entfernt. Ember ist kein Krisendienst: Wenn du in Gefahr bist, ruf deine örtliche Notrufnummer an.
+
+Den Moment erreichst du über eine Verknüpfung am App-Symbol, ein kleines Widget auf dem Startbildschirm oder das Widget „Heute in Ember“.
+
+Und an den anderen Tagen: sanfte Habits. Mach deinen Check-in bei den Habits, die du dir aussuchst, plane Tiefs und Pausen, schreib eine Tagesnotiz und halte deine Stimmung fest. Streaks sind optional und aus, bis du sie einschaltest.
+
+Nutze Ember mit Konto, um zu synchronisieren, oder ohne Konto, dann bleibt alles auf deinem Handy. Keine Werbung, keine Analyse, kein Tracking.
+```
+
 ## 3. Apple App Store (parked)
 
 Do not submit. Kept for when iOS starts.

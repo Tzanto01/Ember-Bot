@@ -1,6 +1,7 @@
 using Discord;
 using Ember.Bot.Modules;
 using Ember.Bot.Services;
+using Ember.Core.Localization;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.Extensions.Configuration;
@@ -93,14 +94,15 @@ public class WeeklySummaryJob : IJob
             return;
         }
 
-        var (headline, footer) = WeeklySummaryService.ToneLines(summary.TotalDone, summary.TotalPossible);
+        var t = BotTexts.For(user.Language);
+        var (headline, footer) = WeeklySummaryService.ToneLines(summary.TotalDone, summary.TotalPossible, t);
 
         if (_config[LinkModule.WebOriginKey] is { Length: > 0 } origin)
-            headline += $"\n\n[See your week in the Ember web app]({origin.TrimEnd('/')}/today)";
+            headline += "\n\n" + t.Format("weekly.link", $"{origin.TrimEnd('/')}/today");
 
         var embed = new EmbedBuilder()
             .WithColor(0xE8873A)
-            .WithTitle("🗓️ Your weekly habit summary")
+            .WithTitle(t.Get("weekly.title"))
             .WithDescription(headline);
 
         // Discord caps embeds at EmbedBuilder.MaxFieldCount (25) fields; exceeding it
@@ -112,23 +114,23 @@ public class WeeklySummaryJob : IJob
             : 0;
 
         foreach (var h in habits.Take(overflow > 0 ? EmbedBuilder.MaxFieldCount - 1 : habits.Count))
-            embed.AddField(h.Habit.Name, FormatHabitLine(h, user.ShowStreaks), inline: false);
+            embed.AddField(h.Habit.Name, FormatHabitLine(t, h, user.ShowStreaks), inline: false);
 
         if (overflow > 0)
-            embed.AddField("…and more", $"Plus **{overflow}** more habits — see them all with `/habit list`.", inline: false);
+            embed.AddField(t.Get("weekly.overflow.title"), t.Format("weekly.overflow", overflow), inline: false);
 
         embed.WithFooter(footer);
         await _discord.SendMessageAsync(discordId, embed: embed.Build());
     }
 
-    private static string FormatHabitLine(WeeklySummaryService.HabitSummary h, bool showStreaks)
+    private static string FormatHabitLine(Texts t, WeeklySummaryService.HabitSummary h, bool showStreaks)
     {
         if (h.Habit.FrequencyType == FrequencyType.Weekly)
-            return $"{h.DotString} **{h.Done}/{h.Possible}** · Weekly goal: **{h.Habit.WeeklyTarget ?? 3}**/wk";
+            return t.Format("weekly.goal", h.DotString, h.Done, h.Possible, h.Habit.WeeklyTarget ?? 3);
         if (!showStreaks)
             return $"{h.DotString} **{h.Done}/{h.Possible}**";
 
-        var graceStr = h.GraceUsed > 0 ? $" _(+{h.GraceUsed} flex)_" : "";
-        return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(h.CurrentStreak)}{graceStr}";
+        var graceStr = h.GraceUsed > 0 ? " " + t.Plural("weekly.grace", h.GraceUsed) : "";
+        return $"{h.DotString} **{h.Done}/{h.Possible}** · {HabitModule.StreakText(t, h.CurrentStreak)}{graceStr}";
     }
 }

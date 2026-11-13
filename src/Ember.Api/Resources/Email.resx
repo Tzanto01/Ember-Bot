@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="email.confirm.subject" xml:space="preserve">
+    <value>Confirm your Ember email address</value>
+  </data>
+  <data name="email.confirm.body" xml:space="preserve">
+    <value>Welcome to Ember.
+
+Your code:
+
+{0}
+
+Enter it in Ember to confirm your email address and sign in, or open this link:
+{1}
+
+The code works for 15 minutes. If you didn't create an Ember account, you can ignore this email.</value>
+  </data>
+  <data name="email.reset.subject" xml:space="preserve">
+    <value>Reset your Ember password</value>
+  </data>
+  <data name="email.reset.body" xml:space="preserve">
+    <value>Someone asked to reset the password of your Ember account.
+
+Choose a new password here:
+{0}
+
+If this wasn't you, you can ignore this email; your password stays the same.</value>
+  </data>
+  <data name="email.registered.subject" xml:space="preserve">
+    <value>Your Ember account</value>
+  </data>
+  <data name="email.registered.body" xml:space="preserve">
+    <value>Someone tried to create an Ember account with this email address, but it already has one.
+
+Sign in: {0}
+Forgot your password? {1}
+
+If this wasn't you, you can ignore this email.</value>
+  </data>
+</root>
