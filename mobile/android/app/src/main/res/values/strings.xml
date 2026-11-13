@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Ember Beta</string>
-    <string name="title_activity_main">Ember Beta</string>
-    <string name="package_name">app.ember.habits</string>
-    <string name="custom_url_scheme">app.ember.habits</string>
+    <string name="app_name" translatable="false">Ember Beta</string>
+    <string name="title_activity_main" translatable="false">Ember Beta</string>
+    <string name="package_name" translatable="false">app.ember.habits</string>
+    <string name="custom_url_scheme" translatable="false">app.ember.habits</string>
     <string name="widget_name">Today in Ember</string>
     <string name="widget_description">Today\'s habits at a glance. Tap one to check in.</string>
     <string name="widget_signed_out">Open Ember to see today</string>

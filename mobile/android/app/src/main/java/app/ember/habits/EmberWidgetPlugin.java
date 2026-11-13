@@ -48,6 +48,18 @@ public class EmberWidgetPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Stores the app's language for native text ({@code language} "de", anything else or missing is "en"), then
+     * redraws both widgets in it. Always resolves.
+     */
+    @PluginMethod
+    public void setLanguage(PluginCall call) {
+        AppLanguage.set(getContext(), call.getString("language"));
+        TodayWidget.refresh(getContext());
+        MomentWidget.refresh(getContext());
+        call.resolve();
+    }
+
     /** Resolves {@code { action: 'moment' }} or {@code { action: null }} and clears the pending launch action. */
     @PluginMethod
     public void takeLaunchAction(PluginCall call) {

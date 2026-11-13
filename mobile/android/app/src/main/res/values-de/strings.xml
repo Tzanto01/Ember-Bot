@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="widget_name">Heute in Ember</string>
+    <string name="widget_description">Deine Habits von heute auf einen Blick. Tipp eins an für deinen Check-in.</string>
+    <string name="widget_signed_out">Öffne Ember, um deinen Tag zu sehen</string>
+    <string name="widget_stale">Öffne Ember zum Aktualisieren</string>
+    <string name="widget_nothing_today">Heute ist nichts geplant. Genieß den Tag.</string>
+    <string name="widget_state_done">Erledigt</string>
+    <string name="widget_state_partial">%1$d von %2$d</string>
+    <string name="widget_state_open">Noch offen</string>
+    <string name="widget_state_rest">Tief</string>
+    <string name="widget_row_description">Check-in für %1$s, %2$s</string>
+    <string name="widget_more">+%1$d weitere</string>
+    <string name="moment_label">Ich brauche einen Moment</string>
+    <string name="moment_short_label">Ein Moment</string>
+    <string name="moment_widget_name">Ich brauche einen Moment</string>
+    <string name="moment_widget_description">Mit einem Tipp zu einem ruhigen Moment. Zeigt nichts über dich.</string>
+</resources>

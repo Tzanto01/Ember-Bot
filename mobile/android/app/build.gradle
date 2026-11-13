@@ -52,6 +52,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 def releaseRequested = gradle.startParameter.taskNames.any { it.tokenize(':').last() in ['assembleRelease', 'bundleRelease', 'assembleBetaRelease', 'bundleBetaRelease', 'bundlePlayRelease'] }
