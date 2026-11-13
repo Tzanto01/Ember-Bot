@@ -2,6 +2,7 @@ import { ImagePlus, Info, X } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
+import { Button } from '@/components/ui/button';
 import { fieldMessages, FormField, focusFirstInvalid } from '@/components/form-field';
 import { controlClass, Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +66,7 @@ export function FeedbackForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
   const sentId = useId();
   const picturesId = useId();
   const me = useStore(auth.me);
@@ -98,6 +100,10 @@ export function FeedbackForm() {
   }, [remaining]);
 
   useEffect(() => () => picturesRef.current.forEach((picture) => URL.revokeObjectURL(picture.url)), []);
+
+  useEffect(() => {
+    if (sent) moreRef.current?.focus();
+  }, [sent]);
 
   function clearPictures() {
     picturesRef.current.forEach((picture) => URL.revokeObjectURL(picture.url));
@@ -210,6 +216,26 @@ export function FeedbackForm() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function sendMore() {
+    flushSync(() => setSent(false));
+    formRef.current?.querySelector('input')?.focus();
+  }
+
+  if (sent) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Notice tone="success" heading="Thank you, that really helps.">
+          <p>Your feedback is on its way to the Ember team.</p>
+        </Notice>
+        <div>
+          <Button ref={moreRef} type="button" variant="outline" onClick={sendMore}>
+            Send more feedback
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -342,26 +368,21 @@ export function FeedbackForm() {
           />
         </div>
       )}
-      <p id={sentId} className="text-[14px] text-muted-foreground">
+      <div id={sentId} className="flex flex-col items-start text-[14px] text-muted-foreground">
         {canAttach ? (
-          <>
+          <p>
             Ember sends the title, description and any pictures, the app version, the time and whether you use the web
             or the Android app. Your account goes with it unless you send anonymously. Never your habits or check-ins,
-            and please keep private entries and other people out of pictures.{' '}
-          </>
+            and please keep private entries and other people out of pictures.
+          </p>
         ) : (
-          <>
+          <p>
             Ember sends the title, description, the app version, the time and whether you use the web or the Android
-            app, plus your account if you're signed in. Never your habits or check-ins.{' '}
-          </>
+            app, plus your account if you're signed in. Never your habits or check-ins.
+          </p>
         )}
         <TapLink to="/legal/privacy">Privacy notice</TapLink>
-      </p>
-      {sent && (
-        <Notice tone="success" heading="Thank you, that really helps.">
-          <p>Your feedback is on its way to the Ember team.</p>
-        </Notice>
-      )}
+      </div>
       {problem && (
         <Notice tone="notice" heading="That wasn't sent yet">
           <p>{problem}</p>

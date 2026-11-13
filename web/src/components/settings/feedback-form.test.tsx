@@ -43,7 +43,15 @@ describe('FeedbackForm', () => {
     expect(call.body).toEqual({ title: 'Note', text: 'Dark mode flickers', platform: 'web' });
     call.respond(204);
     await screen.findByText('Thank you, that really helps.');
-    expect(field).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Send more feedback' })).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: 'Send more feedback' }));
+
+    expect(screen.getByRole('textbox', { name: /Title/ })).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: /Title/ })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: /Description/ })).toHaveValue('');
+    expect(screen.queryByText('Please fill this in.')).toBeNull();
   });
 
   it('adds the app version and the android platform when native', async () => {
@@ -237,8 +245,9 @@ describe('FeedbackForm', () => {
       expect(call.body).toEqual({ title: 'Note', text: 'See the screenshot', platform: 'web', images: [btoa('webp')] });
       call.respond(204);
       await screen.findByText('Thank you, that really helps.');
+      await user.click(screen.getByRole('button', { name: 'Send more feedback' }));
       expect(screen.queryByRole('img', { name: /Picture/ })).toBeNull();
-      expect(field).toHaveValue('');
+      expect(screen.getByRole('textbox', { name: /Description/ })).toHaveValue('');
     });
 
     it('retries once with a fresh session when the server took the pictures as too large', async () => {

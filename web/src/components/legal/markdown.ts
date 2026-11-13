@@ -28,6 +28,17 @@ const legalMarked = new Marked({
       const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
       return `<a href="${escapeHtml(href)}"${titleAttr}>${text}</a>`;
     },
+    table({ header, rows }) {
+      const labels = header.map((cell) => escapeHtml(cell.text));
+      const head = header.map((cell) => `<th>${this.parser.parseInline(cell.tokens)}</th>`).join('');
+      const body = rows
+        .map(
+          (row) =>
+            `<tr>${row.map((cell, i) => `<td data-label="${labels[i] ?? ''}">${this.parser.parseInline(cell.tokens)}</td>`).join('')}</tr>`,
+        )
+        .join('');
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>\n`;
+    },
   },
 });
 
