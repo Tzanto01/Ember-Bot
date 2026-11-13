@@ -172,7 +172,7 @@ async function saveReflectionAndCheckBody(page: Page): Promise<void> {
   expect(Object.keys(puts.bodies[0] as object)).toEqual(['encrypted']);
 }
 
-test.fixme('unlocked private journal and no habits: saving a reflection sends only the encrypted body (needs Companion v1.16 day-notes rule from v2/companion-server)', async ({
+test('unlocked private journal and no habits: saving a reflection sends only the encrypted body', async ({
   page,
 }) => {
   await createWebUser(page);

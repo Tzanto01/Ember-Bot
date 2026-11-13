@@ -8,6 +8,7 @@ import {
   uniqueDiscordId,
 } from './support/accounts';
 import { editDay, expectDayState } from './support/history';
+import { openSettingsGroup } from './support/security';
 
 test('last week is backfilled in History and survives a reload', async ({ page }) => {
   const discordId = uniqueDiscordId();
@@ -38,6 +39,12 @@ test('last week is backfilled in History and survives a reload', async ({ page }
   await expectDayState(page, addDays(today, -4), 'lowday');
   await expectDayState(page, addDays(today, -5), 'notdone');
   await expectDayState(page, addDays(today, -6), 'done');
+
+  await openSettingsGroup(page, 'Habits & days');
+  const showStreaks = page.getByRole('switch', { name: 'Show streaks' });
+  await showStreaks.click();
+  await expect(showStreaks).toBeChecked();
+  await expect(page.getByText('Saved.').first()).toBeVisible();
 
   await page.goto('/today');
   const streak = page.getByText(/\d+-day streak/).first();
