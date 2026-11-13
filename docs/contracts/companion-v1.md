@@ -5,6 +5,7 @@ The "I need a moment" flow and the shared names between teams. Server side: "Com
 ## Ground rules
 
 - The moment flow works signed out, offline and without an account. It makes no API call, writes nothing to localStorage, IndexedDB or the query cache, and shows no streaks.
+- One exception, only after the user opens Reflect: when a session exists but the account isn't loaded yet (a cold start straight into `/moment`), the app may load `GET /api/me` once and restore a remembered journal key, so Save can be offered. Nothing about the moment is sent; Save itself writes only through `appendPrivate`.
 - Wellness wording only, in-app and outside. Never: treat, cure, therapy/therapist, heal, clinical(ly), diagnose, prevent, relieve, reduce (a condition), proven. Safe: notice, name, ground, breathe, ride it out, settle, steady, reflect.
 - No automated reading of what the user writes. Crisis lines are always one tap away inside the flow.
 
