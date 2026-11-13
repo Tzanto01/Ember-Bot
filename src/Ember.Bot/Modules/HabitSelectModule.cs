@@ -59,7 +59,8 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
         if (habit is null) { await NotFoundAsync(); return; }
 
         var today = await _habits.GetLocalTodayAsync(Context.User.Id);
-        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id));
+        var embed = BuildShareEmbed(habit, grace, Context.User.Username, today, await _habits.GetLowDaysAsync(Context.User.Id),
+            await _habits.GetShowStreaksAsync(Context.User.Id));
         var component = (SocketMessageComponent)Context.Interaction;
 
         await component.DeferAsync();
@@ -200,7 +201,8 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
     private async Task NotFoundAsync() =>
         await RespondAsync("Couldn't find that habit.", ephemeral: true);
 
-    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays)
+    private static EmbedBuilder BuildShareEmbedBase(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
+        bool showStreaks)
     {
         var from  = today.AddDays(-29);
 
@@ -234,6 +236,12 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             titleLine = $"**{done}/{target} this week**";
             statsLine = $"Last 28 days: **{HabitService.FlexibleStreak(habit, today, 28)}/28** · Total: **{total}**";
         }
+        else if (!showStreaks)
+        {
+            var last30 = HabitService.FlexibleStreak(habit, today, 30);
+            titleLine = $"**{last30} of the last 30 days**";
+            statsLine = $"Last 30 days: **{last30}/30** · Total: **{habit.Logs.Count(l => l.Completed)}**";
+        }
         else
         {
             var (streak, graceUsed) = HabitService.ConsecutiveStreak(habit, today, grace, lowDays);
@@ -254,6 +262,7 @@ public class HabitSelectModule : InteractionModuleBase<SocketInteractionContext>
             .WithTimestamp(DateTimeOffset.UtcNow);
     }
 
-    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays) =>
-        BuildShareEmbedBase(habit, grace, username, today, lowDays).Build();
+    internal static Embed BuildShareEmbed(Habit habit, int grace, string username, DateOnly today, IReadOnlySet<DateOnly> lowDays,
+        bool showStreaks) =>
+        BuildShareEmbedBase(habit, grace, username, today, lowDays, showStreaks).Build();
 }

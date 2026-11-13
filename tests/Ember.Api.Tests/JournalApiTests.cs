@@ -125,11 +125,12 @@ public class JournalApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
-    public async Task Date_rules_follow_low_days()
+    public async Task Date_rules_follow_low_days_but_today_needs_no_habit()
     {
         var noHabits = await Host.SignedInAsync();
         var today = await TodayAsync(noHabits);
-        await (await noHabits.Put($"/api/day-notes/{today.Iso()}", new { text = "Hi" }))
+        await (await noHabits.Put($"/api/day-notes/{today.Iso()}", new { text = "Hi" })).Expect(HttpStatusCode.OK);
+        await (await noHabits.Put($"/api/day-notes/{today.AddDays(-1).Iso()}", new { text = "Hi" }))
             .ExpectProblem(HttpStatusCode.UnprocessableEntity, "before_habit_start");
 
         var user = await WithHabitAsync(Host);
@@ -261,6 +262,17 @@ public class JournalApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         await ExpectFieldError(await user.Put($"/api/day-notes/{today}", new { encrypted = new { v = 2, iv = B64(12), ct = B64(32) } }), "encrypted.v");
         await ExpectFieldError(await user.Put($"/api/day-notes/{today}", new { encrypted = new { v = 1, iv = B64(12), ct = B64(30) + "\n   " } }), "encrypted.ct");
         await (await user.Put($"/api/day-notes/{today}", new { encrypted = new { v = 1, iv = B64(12), ct = B64(12288) } })).Expect(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
+    public async Task With_the_private_journal_on_todays_entry_without_habits_must_still_be_encrypted()
+    {
+        var user = await Host.SignedInAsync();
+        var today = (await TodayAsync(user)).Iso();
+        await (await user.Put("/api/me/journal-key", KeyBody())).Expect(HttpStatusCode.OK);
+
+        await ExpectFieldError(await user.Put($"/api/day-notes/{today}", new { text = "Plain" }), "encrypted");
+        await (await user.Put($"/api/day-notes/{today}", new { encrypted = Blob })).Expect(HttpStatusCode.OK);
     }
 
     [DockerFact]

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Ember.Core.Data;
 using Ember.Core.Models;
 using Ember.Core.Services;
@@ -17,9 +18,9 @@ internal static class MeEndpoints
     public sealed record MeDto(
         Guid Id, string? Email, bool EmailConfirmed, bool HasPassword, DiscordDto Discord,
         string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, string? Theme, int SecondReminderMinutes,
-        ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal);
+        bool ShowStreaks, ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal);
 
-    public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes);
+    public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes, bool? ShowStreaks);
     public sealed record ConsentRequest(string? PolicyVersion);
     public sealed record DeleteRequest(string? Password, string? Confirm);
 
@@ -28,9 +29,20 @@ internal static class MeEndpoints
         api.MapGet("/me", async (ClaimsPrincipal principal, UserManager<User> users, HabitService habits, TimeProvider time) =>
             await LoadMe(principal, users, habits, time) is { } me ? Results.Ok(me) : Problems.Unauthenticated());
 
-        api.MapPatch("/me", async (MePatch patch, ClaimsPrincipal principal, UserManager<User> users, HabitService habits,
+        api.MapPatch("/me", async (JsonElement body, ClaimsPrincipal principal, UserManager<User> users, HabitService habits,
             EmberDbContext db, TimeProvider time) =>
         {
+            MePatch? patch;
+            try
+            {
+                patch = body.Deserialize<MePatch>(JsonSerializerOptions.Web);
+            }
+            catch (JsonException e)
+            {
+                return Problems.Validation(e.Path is { Length: > 2 } path ? path[2..] : "body", "Has the wrong type or format.");
+            }
+            if (patch is null) return Problems.Validation("body", "Must be a JSON object.");
+
             var errors = new Dictionary<string, string[]>();
             TimeZoneInfo? zone = null;
             if (patch.Timezone is not null && (!TimeZoneInfo.TryFindSystemTimeZoneById(patch.Timezone, out zone) || !zone.HasIanaId))
@@ -44,6 +56,7 @@ internal static class MeEndpoints
             if (patch.GraceDaysPerWeek is { } grace) await habits.SetGraceDaysAsync(userId, grace);
             if (patch.Theme is { } theme) await habits.SetThemeAsync(userId, theme);
             if (patch.SecondReminderMinutes is { } second) await habits.SetSecondReminderMinutesAsync(userId, second);
+            if (patch.ShowStreaks is { } showStreaks) await habits.SetShowStreaksAsync(userId, showStreaks);
             if (zone is not null)
             {
                 await habits.SetTimezoneAsync(userId, zone.Id);
@@ -132,7 +145,7 @@ internal static class MeEndpoints
             user.Id, user.Email, user.EmailConfirmed, await users.HasPasswordAsync(user),
             new DiscordDto(discordId is not null, discordId),
             user.Timezone, await habits.HasTimezoneSetAsync(user.Id), TimezoneHelper.LocalToday(user.Timezone, time),
-            user.GraceDaysPerWeek, user.Theme, user.SecondReminderMinutes,
+            user.GraceDaysPerWeek, user.Theme, user.SecondReminderMinutes, user.ShowStreaks,
             new ConsentDto(await habits.HasHealthDataConsentAsync(user.Id), user.ConsentPolicyVersion, HabitService.CurrentConsentPolicyVersion),
             new DmRemindersDto(user.DmRemindersPausedAt is not null),
             await habits.GetJournalStateAsync(user.Id));

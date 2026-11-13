@@ -96,7 +96,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var source = await Host.SignedInAsync();
         var sourceId = await source.IdAsync();
         var today = Host.Today;
-        await (await source.Patch("/api/me", new { graceDaysPerWeek = 2, theme = "tidepool", secondReminderMinutes = 30 })).Expect(HttpStatusCode.OK);
+        await (await source.Patch("/api/me", new { graceDaysPerWeek = 2, theme = "tidepool", secondReminderMinutes = 30, showStreaks = true })).Expect(HttpStatusCode.OK);
         int Id(JsonElement e) => e.GetProperty("id").GetInt32();
         var water = Id(await (await source.Post("/api/habits", new { name = "Water", frequency = "daily", timesPerDay = 3, reminderTimes = new[] { "20:00", "09:00" } }))
             .ExpectJson(HttpStatusCode.Created));
@@ -138,7 +138,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         JsonNode.Parse(expected)!["logs"]!.AsArray().Should().HaveCount(5);
         expected.Should().Contain("\"completed\":true,\"guild_id\":null,\"count\":3").And.Contain("\"routine_position\":1")
             .And.Contain("\"archived\":true").And.Contain("\"reminder_times\":[\"09:00:00\",\"20:00:00\"]").And.Contain("\"paused_until\"").And.Contain("\"next_reminder_utc\":\"20")
-            .And.Contain("\"second_reminder_minutes\":30");
+            .And.Contain("\"second_reminder_minutes\":30").And.Contain("\"show_streaks\":true");
         Comparable(reexported).Should().Be(expected);
     }
 
@@ -305,5 +305,19 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         (await HabitCountAsync(await user.IdAsync())).Should().Be(0);
         await (await Import(user, Doc())).Expect(HttpStatusCode.NoContent);
         (await (await user.Get("/api/me")).ExpectJson()).GetProperty("secondReminderMinutes").GetInt32().Should().Be(0);
+    }
+
+    [DockerFact]
+    public async Task A_missing_show_streaks_setting_keeps_the_accounts_value_and_a_non_bool_is_a_400()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Patch("/api/me", new { showStreaks = true })).Expect(HttpStatusCode.OK);
+
+        var errors = await ErrorsAsync(await Import(user, Doc(settings: new { show_streaks = "yes" })));
+
+        errors.Has("settings.show_streaks").Should().BeTrue();
+        (await HabitCountAsync(await user.IdAsync())).Should().Be(0);
+        await (await Import(user, Doc())).Expect(HttpStatusCode.NoContent);
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("showStreaks").GetBoolean().Should().BeTrue();
     }
 }
