@@ -5,7 +5,9 @@ import type { Page } from '@playwright/test';
 /**
  * Visual review checks for one screen state, on top of the layout spec's sideways checks: text cut off vertically,
  * text and controls overlapping each other, content hidden under the fixed bottom bar, graphics clipped by a parent
- * (or by their own SVG viewport) and truncated text.
+ * (or by their own SVG viewport) and truncated text. An inline link that wraps over several lines is measured per line
+ * (its bounding box would cover the text next to it). Not reported as overlap: an absolutely positioned button that
+ * sits on a picture it shares a parent with (the remove badge on a thumbnail), and a text field with an overlaid control.
  *
  * By default a state is measured at 360 and 1280 px in light mode. `REVIEW_FULL=1` measures the whole matrix (eight
  * widths, light and dark, calm mode on and off, 200 percent root text at 360 and 1280, the other three themes at
@@ -169,12 +171,17 @@ function reviewMeasure(): string[] {
   for (const element of Array.from(document.body.querySelectorAll(controls))) {
     if (hiddenTree(element) || element.closest('[aria-hidden="true"]') || !visible(element))
       continue;
-    items.push({
-      element,
-      rect: element.getBoundingClientRect(),
-      kind: element.tagName.toLowerCase(),
-      fixed: pinned(element),
-    });
+    const lines = Array.from(element.getClientRects()).filter(
+      (rect) => rect.width > 1 && rect.height > 1,
+    );
+    const wrapped = getComputedStyle(element).display === 'inline' && lines.length > 1;
+    for (const rect of wrapped ? lines : [element.getBoundingClientRect()])
+      items.push({
+        element,
+        rect,
+        kind: element.tagName.toLowerCase(),
+        fixed: pinned(element),
+      });
   }
   const related = (a: Element, b: Element) => a === b || a.contains(b) || b.contains(a);
   const clipRect = (element: Element): DOMRect | null => {
@@ -236,6 +243,12 @@ function reviewMeasure(): string[] {
       const field = (item: Item) => ['input', 'select', 'textarea'].includes(item.kind);
       const overlay = (item: Item) => getComputedStyle(item.element).position === 'absolute';
       if ((field(a) && overlay(b)) || (field(b) && overlay(a))) continue;
+      const badge = (image: Item, button: Item) =>
+        image.kind === 'img' &&
+        button.kind === 'button' &&
+        overlay(button) &&
+        image.element.parentElement === button.element.parentElement;
+      if (badge(a, b) || badge(b, a)) continue;
       if (
         a.kind === 'text' &&
         b.kind === 'text' &&
