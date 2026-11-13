@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './themes/index.css';
+@import './calm.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 

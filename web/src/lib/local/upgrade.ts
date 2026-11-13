@@ -156,6 +156,7 @@ export class UpgradeService implements UpgradeApi {
             timezone: profile.timezone,
             graceDaysPerWeek: profile.graceDaysPerWeek,
             showStreaks: profile.showStreaks ?? true,
+            calmMode: profile.calmMode ?? false,
             language: deviceLanguage(),
             ...(profile.theme ? { theme: profile.theme } : {}),
           });

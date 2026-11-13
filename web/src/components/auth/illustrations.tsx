@@ -7,6 +7,7 @@ export function EnvelopeSpark({ className }: { className?: string }) {
       viewBox="0 0 96 72"
       aria-hidden="true"
       focusable="false"
+      data-calm-hide
       className={cn('h-[72px] w-[96px] shrink-0', className)}
     >
       <rect x="8" y="20" width="64" height="44" rx="6" className="fill-muted stroke-muted-foreground" strokeWidth="2" />
@@ -24,6 +25,7 @@ export function ShieldLeaf({ className }: { className?: string }) {
       viewBox="0 0 80 80"
       aria-hidden="true"
       focusable="false"
+      data-calm-hide
       className={cn('size-[64px] shrink-0', className)}
     >
       <path

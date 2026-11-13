@@ -10,6 +10,7 @@ import { applyLanguage, currentLanguage, deviceLanguage, heldLanguage, isLanguag
 import { navigate } from './navigation';
 import { auth, deviceStore, deviceSync, http, localMode, push } from './services';
 import { Store } from './store';
+import { applyCalm, calmMode } from './theme';
 
 const preloadReloadKey = 'ember.preloadReload';
 
@@ -120,6 +121,35 @@ function followLanguage(): void {
 }
 
 /**
+ * Shows calm mode as the signed-in account (or the device profile in no-account mode) has it, and turns it off once the
+ * user is signed out; before the first `me` the device keeps what `/theme-init.js` showed. While it is on, Motion's
+ * animations jump to their end.
+ */
+function followCalm(): void {
+  let seen = false;
+  const show = () => {
+    const me = auth.me.get();
+    if (me) seen = true;
+    if (me || seen) applyCalm(me?.calmMode === true);
+  };
+  let motionTouched = false;
+  const still = () => {
+    const on = calmMode.get();
+    if (!on && !motionTouched) return;
+    motionTouched = true;
+    void import('motion/react')
+      .then(({ MotionGlobalConfig }) => {
+        MotionGlobalConfig.skipAnimations = calmMode.get();
+      })
+      .catch(() => undefined);
+  };
+  auth.me.subscribe(show);
+  calmMode.subscribe(still);
+  show();
+  still();
+}
+
+/**
  * App start, called once by `main.tsx` before the first render: restores no-account mode, asks for the antiforgery
  * token without waiting for it (web, not in no-account mode; `Http` refreshes and retries on a 403 `antiforgery`),
  * starts the device sync, and on the web keeps `me` and the habit list on the device for an offline cold start (only
@@ -132,6 +162,7 @@ function followLanguage(): void {
 export async function startApp(): Promise<void> {
   await localMode.init();
   followLanguage();
+  followCalm();
   if (localMode.mode.get() !== 'local') void auth.refreshAntiforgery();
   deviceSync.start();
   await takeMomentLaunch(env.native);

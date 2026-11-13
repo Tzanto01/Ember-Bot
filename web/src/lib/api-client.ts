@@ -1,5 +1,6 @@
 import { type DayEdit, type NoteEdit, withDayEdit } from './device-store';
 import { type Http, longRequestTimeoutMs } from './http';
+import { currentLanguage } from './i18n';
 import type {
   Credentials,
   DayEntry,
@@ -148,9 +149,12 @@ export class ApiClient {
     return this.http.request('POST', '/api/auth/logout-everywhere');
   }
 
-  /** URL for a full-page navigation to Discord sign-in. `returnUrl` must already be a safe local path. */
+  /**
+   * URL for a full-page navigation to Discord sign-in, with the shown language for a new account. `returnUrl` must already
+   * be a safe local path.
+   */
   discordLoginUrl(returnUrl: string): string {
-    return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}`;
+    return `/api/auth/discord/login?returnUrl=${seg(returnUrl)}&language=${currentLanguage()}`;
   }
 
   /** `POST /api/auth/discord/2fa`: finishes a Discord sign-in that ended on `/login?step=2fa`. */

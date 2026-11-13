@@ -357,6 +357,22 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.queryByRole('heading', { name: 'Grace days' })).toBeNull();
   });
 
+  it('turns calm mode on through PATCH /api/me from Appearance', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/appearance');
+    const toggle = screen.getByRole('switch', { name: 'Calm mode' });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toHaveAccessibleDescription('No motion, softer colors and fewer decorations. Breathing shows text only.');
+
+    await user.click(toggle);
+
+    const sent = await fetch.next('PATCH', '/api/me');
+    expect(sent.body).toEqual({ calmMode: true });
+    sent.respond(200, { ...me, calmMode: true });
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(toggle).toBeChecked();
+  });
+
   it('Help right now shows the crisis lines and sends nothing', async () => {
     const { fetch } = await open('/settings/help');
 

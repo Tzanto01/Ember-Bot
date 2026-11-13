@@ -6,9 +6,10 @@ const links = [
   { to: '/legal/terms', label: 'legalLinks.terms' },
   { to: '/legal/imprint', label: 'legalLinks.imprint' },
   { to: '/help', label: 'legalLinks.help' },
+  { to: '/about', label: 'about.link' },
 ] as const;
 
-/** Footer navigation to the three legal pages and the crisis lines page. */
+/** Footer navigation to the three legal pages, the crisis lines page and About Ember. */
 export function LegalLinks() {
   const { t } = useTranslation();
   return (

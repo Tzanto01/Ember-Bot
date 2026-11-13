@@ -1,4 +1,4 @@
-import { Store } from './store';
+import { Store, useStore } from './store';
 
 /**
  * One selectable theme (docs/contracts/design-tokens-v1.md); `description` is its description's translation key,
@@ -50,6 +50,7 @@ export type ThemeId = (typeof themes)[number]['id'];
 const storageKey = 'ember.theme';
 const accountKey = 'ember.accountTheme';
 const schemeKey = 'ember.colorScheme';
+const calmKey = 'ember.calm';
 
 /** Light or dark on this device; `system` follows `prefers-color-scheme`. Never synced to the account. */
 export type ColorScheme = 'system' | 'light' | 'dark';
@@ -158,10 +159,27 @@ export function adoptAccountTheme(account: ThemeId | null, picksBefore: number):
   return local && local !== account ? local : null;
 }
 
-/** Forgets this device's theme and the account's, and shows the default (for sign-out). */
+/** Whether calm mode is on (`<html data-calm>`, set by `/theme-init.js` and `applyCalm`). */
+export const calmMode = new Store(document.documentElement.dataset['calm'] !== undefined);
+
+/** True while calm mode is on; follows changes live. */
+export function useCalmMode(): boolean {
+  return useStore(calmMode);
+}
+
+/** Turns calm mode on or off now and remembers it on this device for `/theme-init.js`. */
+export function applyCalm(on: boolean): void {
+  if (on) document.documentElement.dataset['calm'] = '';
+  else delete document.documentElement.dataset['calm'];
+  write(calmKey, on ? '1' : null);
+  calmMode.set(on);
+}
+
+/** Forgets this device's theme and the account's and calm mode, and shows the default (for sign-out). */
 export function resetTheme(): void {
   write(storageKey, null);
   write(accountKey, null);
+  applyCalm(false);
   document.documentElement.dataset['theme'] = themes[0].id;
   syncThemeColor();
   themeApplied.update((count) => count + 1);

@@ -61,6 +61,7 @@ type Section =
   | 'timezone'
   | 'grace'
   | 'streaks'
+  | 'calm'
   | 'second'
   | 'discord'
   | 'dm'
@@ -196,6 +197,7 @@ export default function SettingsPage() {
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const graceRef = useRef<number | null>(null);
   const streaksRef = useRef<boolean | null>(null);
+  const calmRef = useRef<boolean | null>(null);
   const secondRef = useRef<SecondReminderMinutes | null>(null);
   const scrolled = useRef<string | null>(null);
   const tzForm = useRef<HTMLFormElement>(null);
@@ -211,6 +213,7 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [grace, setGrace] = useState<number | null>(null);
   const [streaks, setStreaks] = useState<boolean | null>(null);
+  const [calm, setCalm] = useState<boolean | null>(null);
   const [second, setSecond] = useState<SecondReminderMinutes | null>(null);
   const [zone, setZone] = useState<string | null>(null);
   const [zoneTouched, setZoneTouched] = useState(false);
@@ -324,6 +327,17 @@ export default function SettingsPage() {
       streaksRef.current = null;
       setStreaks(null);
       if (error) fail('streaks', error);
+    });
+  }
+
+  function changeCalm(value: boolean): void {
+    calmRef.current = value;
+    setCalm(value);
+    void patch('calm', { calmMode: value }).then((error) => {
+      if (calmRef.current !== value) return;
+      calmRef.current = null;
+      setCalm(null);
+      if (error) fail('calm', error);
     });
   }
 
@@ -848,6 +862,22 @@ export default function SettingsPage() {
                 <ColorSchemePicker />
                 <ThemePicker labelledBy="appearance-heading" describedBy="appearance-hint" onChoose={saveTheme} />
                 {outcome('appearance')}
+                <div className="flex min-h-[44px] items-center justify-between gap-4">
+                  <Label htmlFor="calm-mode" className="min-w-0 font-normal">
+                    {t('settings.calm.label')}
+                  </Label>
+                  <Switch
+                    id="calm-mode"
+                    aria-describedby="calm-mode-hint"
+                    checked={calm ?? me?.calmMode === true}
+                    onCheckedChange={changeCalm}
+                  />
+                </div>
+                <p id="calm-mode-hint" className="text-[14px] text-muted-foreground">
+                  {t('settings.calm.hint')}
+                </p>
+                {savedStatus('calm')}
+                {outcome('calm')}
               </SettingsCard>
             )}
 
@@ -1373,6 +1403,9 @@ export default function SettingsPage() {
             {shown('help') && (
               <SettingsCard id="help" title={title('help')}>
                 <CrisisLines />
+                <p>
+                  <TapLink to="/about">{t('about.link')}</TapLink>
+                </p>
               </SettingsCard>
             )}
           </>

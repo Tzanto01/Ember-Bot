@@ -53,10 +53,11 @@ const extras = [
 
 /**
  * `/` for signed-out visitors on the web: the companion pitch with the moment door first, the ways in, a real Today
- * screenshot (light or dark with the system), then the habits.
+ * screenshot (light or dark with the system, German when the page is), then the habits.
  */
 export default function LandingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const shot = i18n.language === 'de' ? '.de' : '';
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header className="mx-auto flex w-full max-w-[72rem] px-4 pt-4 lg:px-6">
@@ -104,9 +105,9 @@ export default function LandingPage() {
             <p className="text-muted-foreground">{t('landing.madeBy')}</p>
           </div>
           <picture className="mx-auto block w-full max-w-[22rem] lg:col-span-5">
-            <source srcSet="/landing/today-dark.webp" media="(prefers-color-scheme: dark)" />
+            <source srcSet={`/landing/today-dark${shot}.webp`} media="(prefers-color-scheme: dark)" />
             <img
-              src="/landing/today-light.webp"
+              src={`/landing/today-light${shot}.webp`}
               width={390}
               height={760}
               loading="lazy"

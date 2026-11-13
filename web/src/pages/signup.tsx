@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { pitch } from '@/content/pitch';
+import { currentLanguage } from '@/lib/i18n';
 import type { Credentials } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
@@ -42,7 +43,10 @@ export default function SignupPage() {
     if (register.isPending) return;
     if (!validateAll(form.current, [email, password])) return;
     setProblem(null);
-    register.mutate({ body: { email: email.value.trim(), password: password.value }, signupKey: newSignupKey() });
+    register.mutate({
+      body: { email: email.value.trim(), password: password.value, language: currentLanguage() },
+      signupKey: newSignupKey(),
+    });
   }
 
   if (sentTo !== null) {

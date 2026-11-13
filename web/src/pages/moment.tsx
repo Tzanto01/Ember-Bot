@@ -119,7 +119,7 @@ export default function MomentPage() {
     case 'catch':
       body = (
         <div className="flex flex-col items-center gap-8 text-center">
-          <div className="opacity-80">
+          <div className="opacity-80" data-calm-hide>
             <HearthIllustration />
           </div>
           <Heading>{momentCopy.catchHeading}</Heading>

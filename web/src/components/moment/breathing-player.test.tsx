@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { applyCalm } from '@/lib/theme';
 import { BreathingPlayer } from './breathing-player';
 
 function liveRegion(): HTMLElement {
@@ -84,6 +85,19 @@ describe('BreathingPlayer', () => {
     second();
     expect(circle().style.transform).toBe('');
     expect(circle().closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('keeps the circle still in calm mode', () => {
+    applyCalm(true);
+    try {
+      render(<BreathingPlayer inhale={4} hold={0} exhale={6} rounds={6} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+      second();
+      expect(circle().style.transform).toBe('');
+      expect(screen.getByText('Breathe in, 3')).toBeInTheDocument();
+    } finally {
+      applyCalm(false);
+    }
   });
 
   it('pauses without speaking while halted and resumes only when asked', () => {

@@ -6,6 +6,9 @@
     theme = localStorage.getItem('ember.theme');
   } catch (e) {}
   root.setAttribute('data-theme', themes.indexOf(theme) >= 0 ? theme : 'hearthlight');
+  try {
+    if (localStorage.getItem('ember.calm') === '1') root.setAttribute('data-calm', '');
+  } catch (e) {}
   var query = window.matchMedia('(prefers-color-scheme: dark)');
   function apply() {
     var scheme = null;

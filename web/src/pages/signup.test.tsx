@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
-import { api, auth } from '@/lib/services';
+import { auth } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SignupPage from './signup';
 
@@ -18,7 +18,7 @@ describe('SignupPage', () => {
     renderPage('/signup', SignupPage, '/signup');
 
     const discord = screen.getByRole('link', { name: 'Continue with Discord' });
-    expect(discord).toHaveAttribute('href', api.discordLoginUrl('/today'));
+    expect(discord).toHaveAttribute('href', '/api/auth/discord/login?returnUrl=%2Ftoday&language=en');
     expect(screen.getByRole('button', { name: 'Create account' }).compareDocumentPosition(discord)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
@@ -32,7 +32,9 @@ describe('SignupPage', () => {
     await user.type(screen.getByLabelText('Email'), 'new@example.test');
     await user.type(screen.getByLabelText('Password'), 'a long sign-up phrase');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
-    (await fetch.next('POST', '/api/auth/register')).respond(200);
+    const register = await fetch.next('POST', '/api/auth/register');
+    expect(register.body).toEqual({ email: 'new@example.test', password: 'a long sign-up phrase', language: 'en' });
+    register.respond(200);
 
     expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('ember.signupEmail') ?? '{}').email).toBe('new@example.test');

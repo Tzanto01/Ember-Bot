@@ -48,6 +48,7 @@ describe('native Discord sign-in', () => {
     const opened = new URL(native.opened[0], 'https://origin.test');
     expect(opened.pathname).toBe('/api/auth/discord/login');
     expect(opened.searchParams.get('client')).toBe('native');
+    expect(opened.searchParams.get('language')).toBe('en');
     const result = takeDiscordRedirect(`app.ember.habits://auth/discord?code=${code}`);
     if (!result || result === 'error') throw new Error('expected a code');
     expect(result.code).toBe(code);

@@ -233,7 +233,7 @@ describe('LoginPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continue with Discord' }));
     await waitFor(() => expect(native.opened).toHaveLength(1));
-    expect(native.opened[0]).toMatch(/^\/api\/auth\/discord\/login\?client=native&challenge=[A-Za-z0-9_-]{43}$/);
+    expect(native.opened[0]).toMatch(/^\/api\/auth\/discord\/login\?client=native&challenge=[A-Za-z0-9_-]{43}&language=en$/);
     await waitFor(() => expect(native.appUrlOpen).not.toBeNull());
     const code = 'C'.repeat(43);
     native.appUrlOpen!({ url: `app.ember.habits://auth/discord?code=${code}` });
