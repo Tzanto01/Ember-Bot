@@ -76,6 +76,16 @@ describe('TodayPage', () => {
     localMode.mode.set('account');
   });
 
+  it('marks both ember summaries as hidden in calm mode', async () => {
+    renderToday();
+    await answerLoad(f, [habit]);
+    await checkButton();
+
+    const summaries = screen.getAllByText('Nothing checked in yet today');
+    expect(summaries.length).toBeGreaterThan(0);
+    for (const summary of summaries) expect(summary.closest('[data-calm-hide]')).not.toBeNull();
+  });
+
   it('looks up low days for the local day reloaded from the server, not the stale cached one', async () => {
     renderToday();
 

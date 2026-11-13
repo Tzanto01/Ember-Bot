@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderPage } from '@/test-utils';
+import { inGerman, renderPage } from '@/test-utils';
 import { auth } from '@/lib/services';
 import { type FetchMock, me, mockFetch } from '@/lib/test-support';
 import SignupPage from './signup';
@@ -38,6 +38,23 @@ describe('SignupPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('ember.signupEmail') ?? '{}').email).toBe('new@example.test');
+  });
+
+  it('registers with the German app language and sends Discord the same language', async () => {
+    await inGerman();
+    const user = userEvent.setup();
+    const fetch = mockFetch();
+    renderPage('/signup', SignupPage, '/signup');
+
+    expect(screen.getByRole('link', { name: 'Mit Discord anmelden' })).toHaveAttribute(
+      'href',
+      '/api/auth/discord/login?returnUrl=%2Ftoday&language=de',
+    );
+    await user.type(screen.getByLabelText('E-Mail'), 'neu@example.test');
+    await user.type(screen.getByLabelText('Passwort'), 'a long sign-up phrase');
+    await user.click(screen.getByRole('button', { name: 'Konto erstellen' }));
+    const register = await fetch.next('POST', '/api/auth/register');
+    expect(register.body).toMatchObject({ email: 'neu@example.test', language: 'de' });
   });
 
   async function signUp(fetch: FetchMock) {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { confirmEmail, localToday, setAccountLanguage, signUp, SECRET, uniqueEmail } from './support/accounts';
+import { confirmEmail, createWebUser, localToday, setAccountLanguage, signUp, SECRET, uniqueEmail } from './support/accounts';
+import { enableRememberedJournal, reflectionTrigger, saveMomentReflection, signUpAndConfirmLocalized } from './support/extras';
 import { languages, translator } from './support/locales';
 
 const widths = [320, 1280];
@@ -108,6 +109,7 @@ for (const { code, locale, strings } of languages) {
       const found: string[] = [];
       await visit(page, '/', /./, found);
       await visit(page, '/login', tr('login.title'), found);
+      await expect(page.getByText(tr('about.intro'))).toBeVisible();
       await visit(page, '/signup', tr('signup.title'), found);
 
       await page.getByLabel(tr('auth.email'), { exact: true }).fill(uniqueEmail());
@@ -130,6 +132,8 @@ for (const { code, locale, strings } of languages) {
       await check(page, '/reset-password (rejected code)', code, found);
 
       await visit(page, '/local', tr('local.start.title'), found);
+      await expect(page.getByText(tr('about.intro'))).toBeVisible();
+      await visit(page, '/about', tr('title.about'), found);
       await visit(page, '/feedback', tr('title.feedback'), found);
       await visit(page, '/download', /./, found);
       await visit(page, '/legal/privacy', /./, found);
@@ -293,5 +297,79 @@ for (const { code, locale, strings } of languages) {
       await visit(page, '/no-such-page', tr('notFound.title'), found);
       expect(found).toEqual([]);
     });
+
+    test('Your moments, What helps me and calm mode fit at 320 and 1280', async ({ page }) => {
+      test.setTimeout(300_000);
+      const found: string[] = [];
+      const longHelp = 'Ein langer Spaziergang an der Donaudampfschifffahrtsgesellschaft vorbei';
+
+      await createWebUser(page);
+      await setAccountLanguage(page, code);
+      await visit(page, '/moments', tr('title.moments'), found);
+      await expect(page.getByText(tr('moments.needsPrivate'))).toBeVisible();
+      await check(page, '/moments (no private journal)', code, found);
+      await visit(page, '/settings/privacy', /./, found);
+      await expect(page.getByText(tr('helps.needsPrivate'))).toBeVisible();
+      await check(page, '/settings/privacy (What helps me needs the journal)', code, found);
+
+      await setAccountLanguage(page, 'en');
+      await enableRememberedJournal(page);
+      await saveMomentReflection(page);
+      await page.getByRole('link', { name: 'See your moments' }).click();
+      await page.getByRole('button', { name: 'Add “Slow breathing” to What helps me' }).click();
+      await expect(page.getByText('In What helps me')).toBeVisible();
+      await setAccountLanguage(page, code);
+
+      await visit(page, '/moments', tr('title.moments'), found);
+      await expect(page.getByText(reflectionTrigger)).toBeVisible();
+      await check(page, '/moments (one moment)', code, found);
+
+      await visit(page, '/settings/privacy', /./, found);
+      const card = page.getByRole('region', { name: tr('settings.card.helps') });
+      await card.getByLabel(tr('helps.new')).fill(longHelp);
+      await card.getByRole('button', { name: tr('helps.add'), exact: true }).click();
+      await expect(card.getByText(longHelp, { exact: true })).toBeVisible();
+      await check(page, '/settings/privacy (What helps me with a long item)', code, found);
+      await card.getByRole('button', { name: tr('helps.editLabel', { text: longHelp }) }).click();
+      await check(page, '/settings/privacy (What helps me editing)', code, found);
+
+      await visit(page, '/today', tr('today.title'), found);
+      await page.getByRole('link', { name: tr('moment.door.label') }).click();
+      await expect(page.getByRole('heading', { name: tr('moment.catch.heading') })).toBeVisible();
+      await expect(page.getByRole('button', { name: longHelp })).toBeVisible();
+      await check(page, '/moment catch (with What helped before chips)', code, found);
+
+      await visit(page, '/settings/appearance', /./, found);
+      await page.getByRole('switch', { name: tr('settings.calm.label') }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-calm', '');
+      await check(page, '/settings/appearance (calm on)', code, found);
+      await visit(page, '/today', tr('today.title'), found);
+      await page.getByRole('link', { name: tr('moment.door.label') }).click();
+      await expect(page.getByRole('heading', { name: tr('moment.catch.heading') })).toBeVisible();
+      await check(page, '/moment catch (calm on)', code, found);
+      await page.getByRole('button', { name: tr('moment.catch.breathe') }).click();
+      await check(page, '/moment practice (calm on)', code, found);
+
+      await visit(page, '/settings/privacy', /./, found);
+      await page.getByRole('button', { name: tr('journalSettings.lock') }).click();
+      await visit(page, '/moments', tr('title.moments'), found);
+      await expect(page.getByText(tr('moments.locked'))).toBeVisible();
+      await check(page, '/moments (locked)', code, found);
+      expect(found).toEqual([]);
+    });
   });
+
+  if (code === 'de') {
+    test.describe('layout de, consent', () => {
+      test.use({ locale: 'de-DE' });
+
+      test('the consent page fits at 320 and 1280 for a German account before consent', async ({ page }) => {
+        const found: string[] = [];
+        await signUpAndConfirmLocalized(page, tr);
+        await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+        await check(page, '/consent (German, before consent)', code, found);
+        expect(found).toEqual([]);
+      });
+    });
+  }
 }

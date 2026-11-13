@@ -10,6 +10,10 @@ test.describe('signed out with a German browser', () => {
     await expect(
       page.getByRole('heading', { name: 'Ein kleines Lagerfeuer für große Momente.' }),
     ).toBeVisible();
+    const shot = page.getByRole('img', { name: /Heute-Bildschirm|Today screen/ });
+    await shot.scrollIntoViewIfNeeded();
+    await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toContain('today-light.de.webp');
+    await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(780);
 
     await page.goto('/login');
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');

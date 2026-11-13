@@ -216,6 +216,8 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Privacy & data');
     expect([...document.querySelectorAll('section')].map((card) => card.getAttribute('id'))).toEqual([
       'journal',
+      'moments',
+      'helps',
       'export',
       'delete',
     ]);

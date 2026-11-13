@@ -34,9 +34,13 @@ async function setup() {
     stored: null as { encrypted: string; version: number } | null,
     puts: [] as { encrypted: string; version: number }[],
     conflicts: 0,
+    onGet: null as (() => void) | null,
   };
   const api = {
-    getHelps: async () => server.stored,
+    getHelps: async () => {
+      server.onGet?.();
+      return server.stored;
+    },
     putHelps: async (body: { encrypted: string; version: number }) => {
       server.puts.push(body);
       if (server.conflicts > 0 || body.version !== (server.stored?.version ?? 0)) {
@@ -121,6 +125,44 @@ describe('HelpsService', () => {
     expect(await helps.add({ text: 'Langsam atmen', practiceId: 'paced-breathing' })).toBe(false);
     await expect(helps.add({ text: 'one more' })).rejects.toBeInstanceOf(HelpsError);
     expect(server.puts).toHaveLength(0);
+  });
+
+  it('seals the list as a {v,iv,ct} envelope that shows no item text or id', async () => {
+    const { helps, server } = await setup();
+    await helps.ensureLoaded();
+    await helps.add({ text: 'Cold water on my wrists', practiceId: 'paced-breathing' });
+
+    const envelope = JSON.parse(server.puts[0]!.encrypted) as Record<string, unknown>;
+    expect(Object.keys(envelope).sort()).toEqual(['ct', 'iv', 'v']);
+    const id = helps.items.get()![0]!.id;
+    for (const secret of ['Cold water', 'wrists', 'paced-breathing', id, 'practiceId'])
+      expect(server.puts[0]!.encrypted).not.toContain(secret);
+  });
+
+  it('on 409 keeps the other device\'s item and adds the new one exactly once', async () => {
+    const { helps, server, storeOnServer } = await setup();
+    await storeOnServer([item('a', 'tea')], 1);
+    await helps.ensureLoaded();
+    await storeOnServer([item('a', 'tea'), item('x', 'from the phone')], 2);
+
+    expect(await helps.add({ text: 'a bath' })).toBe(true);
+
+    expect(helps.items.get()?.map((i) => i.text)).toEqual(['tea', 'from the phone', 'a bath']);
+    expect(server.puts.map((p) => p.version)).toEqual([1, 2]);
+  });
+
+  it('stops a 409 retry when the user switches while it re-reads, and never writes to the new list', async () => {
+    const { helps, server, session, storeOnServer } = await setup();
+    await storeOnServer([item('a', 'tea')], 1);
+    await helps.ensureLoaded();
+    await storeOnServer([item('a', 'tea'), item('x', 'music')], 2);
+    server.onGet = () => session.me.set({ ...baseMe, id: 'u2' });
+
+    await expect(helps.remove('a')).rejects.toThrow();
+
+    expect(server.puts).toHaveLength(1);
+    expect(helps.items.get()).toBeNull();
+    expect(server.stored?.version).toBe(2);
   });
 
   it('surfaces a second 409 gently', async () => {

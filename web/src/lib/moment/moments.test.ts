@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { inGerman } from '@/test-utils';
+import { reflectionBlock } from './reflection';
 import { hasMoments, helpedPractice, helpedSomething, parseMoments } from './moments';
 
 describe('parseMoments', () => {
@@ -52,6 +54,73 @@ describe('parseMoments', () => {
     expect(parseMoments('2026-11-03', 'Moments like this are nice.\nWhat helped: tea')).toEqual([]);
     expect(hasMoments(null)).toBe(false);
     expect(hasMoments('Moment 08:00')).toBe(true);
+  });
+});
+
+describe('reflection blocks round trip', () => {
+  const reflection = {
+    time: '09:05',
+    tile: 'Too much / overloaded',
+    before: 'A lot',
+    after: 'Some',
+    trigger: 'the inbox',
+    helped: 'Slow breathing',
+  };
+  const expected = {
+    date: '2026-11-01',
+    time: '09:05',
+    tile: 'Too much / overloaded',
+    before: 'A lot',
+    after: 'Some',
+    setItOff: 'the inbox',
+    helped: 'Slow breathing',
+  };
+
+  it('reads back what reflectionBlock wrote in English', () => {
+    const block = reflectionBlock(reflection);
+    expect(block).toBe(
+      'Moment 09:05 · Too much / overloaded · A lot → Some\nWhat set it off: the inbox\nWhat helped: Slow breathing',
+    );
+    expect(parseMoments('2026-11-01', block)).toEqual([expected]);
+  });
+
+  it('reads back what reflectionBlock wrote with the app in German, to the same fields', async () => {
+    await inGerman();
+    const block = reflectionBlock(reflection);
+    expect(block).toContain('Was es ausgelöst hat: the inbox');
+    expect(block).toContain('Was geholfen hat: Slow breathing');
+    expect(parseMoments('2026-11-01', block)).toEqual([expected]);
+  });
+
+  it('reads German intensity words as the intensity, not as a tile', async () => {
+    await inGerman();
+    const block = reflectionBlock({ time: '07:30', before: 'Stark', after: 'Etwas' });
+    expect(parseMoments('2026-11-01', block)).toEqual([
+      { date: '2026-11-01', time: '07:30', before: 'Stark', after: 'Etwas' },
+    ]);
+  });
+
+  it('finds several blocks in one note, free text before and after, in note order and in both languages', async () => {
+    const english = reflectionBlock({ time: '08:00', tile: 'Racing / on edge', helped: 'a walk' });
+    await inGerman();
+    const german = reflectionBlock({ time: '20:15', trigger: 'Lärm', helped: 'Nichts so richtig' });
+    const note = ['Before: my own words.', '', english, '', 'Between blocks.', '', german, '', 'The end.'].join(
+      '\n',
+    );
+
+    expect(parseMoments('2026-11-01', note)).toEqual([
+      { date: '2026-11-01', time: '08:00', tile: 'Racing / on edge', helped: 'a walk' },
+      { date: '2026-11-01', time: '20:15', setItOff: 'Lärm', helped: 'Nichts so richtig' },
+    ]);
+  });
+
+  it('does not swallow the free text that follows a block directly after a blank line', () => {
+    const note = `${reflectionBlock({ time: '08:00', trigger: 'noise' })}\n\nWhat helped: tea, I think.`;
+    expect(parseMoments('2026-11-01', note)[0]).toEqual({
+      date: '2026-11-01',
+      time: '08:00',
+      setItOff: 'noise',
+    });
   });
 });
 

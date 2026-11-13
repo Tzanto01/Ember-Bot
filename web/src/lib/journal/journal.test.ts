@@ -38,6 +38,7 @@ class FakeServer {
   moods = new Map<number, StoredMood>();
   key: JournalKey | null = null;
   turningOff = false;
+  helps: { encrypted: string; version: number } | null = null;
   dayEdits = 0;
   private nextMood = 1;
   private timer: ReturnType<typeof setInterval>;
@@ -141,6 +142,9 @@ class FakeServer {
       }
       this.moods.set(id, next as unknown as StoredMood);
       return call.respond(200, next);
+    }
+    if (route === 'GET /api/me/helps') {
+      return this.helps ? call.respond(200, this.helps) : call.respond(404);
     }
     if (route === 'GET /api/me/journal-key') {
       if (!this.key) return call.respond(404);
@@ -513,6 +517,31 @@ describe('JournalService', () => {
     expect(server.key).toBeNull();
     expect(journal.state.get()).toBe('off');
     expect(journal.turningOff.get()).toBe(false);
+  });
+
+  it('puts the "What helps me" list into the decrypted export, and an empty list when there is none', async () => {
+    const { journal } = await device();
+    await journal.enable(passphrase, false, loginPassword);
+    server.notes.set('2026-10-30', { date: '2026-10-30', text: 'ignored', mood: null });
+    expect(JSON.parse(await (await journal.exportDecrypted()).blob.text()).helps).toEqual([]);
+
+    const items = [
+      { id: 'a', text: 'Cold water', addedAt: '2026-11-01T10:00:00.000Z' },
+      { id: 'b', text: 'Slow breathing', practiceId: 'paced-breathing', addedAt: '2026-11-01T10:01:00.000Z' },
+    ];
+    server.helps = { encrypted: await journal.sealHelps({ v: 1, items }), version: 1 };
+
+    const file = JSON.parse(await (await journal.exportDecrypted()).blob.text());
+    expect(file.helps).toEqual(items);
+    expect(file.entries).toHaveLength(1);
+    expect(server.helps.encrypted).not.toContain('Cold water');
+  });
+
+  it('exports no list, and asks for none, with the plain journal', async () => {
+    const { journal } = await device();
+    const file = JSON.parse(await (await journal.exportDecrypted()).blob.text());
+    expect(file.helps).toEqual([]);
+    expect(mock.all.some((c) => c.url === '/api/me/helps')).toBe(false);
   });
 
   it('reports from memory whether the keyring stored the key on this device', async () => {
