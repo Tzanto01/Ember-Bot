@@ -119,7 +119,7 @@ Das passiert meistens, wenn DMs von Servermitgliedern ausgeschaltet sind (Server
     <value>dddd, d. MMMM</value>
   </data>
   <data name="date.short" xml:space="preserve">
-    <value>ddd, d. MMM</value>
+    <value>ddd d. MMM</value>
   </data>
   <data name="date.button" xml:space="preserve">
     <value>ddd d.</value>
@@ -826,7 +826,7 @@ Vorschlag für die Erinnerung: **{3}**. Stell sie unten ein, wenn das für dich 
     <value>Keine Erinnerung</value>
   </data>
   <data name="template.morning_routine.name" xml:space="preserve">
-    <value>☀️ Guter Start</value>
+    <value>☀️ Morgenstart</value>
   </data>
   <data name="template.morning_routine.description" xml:space="preserve">
     <value>Beginne den Tag bewusst</value>
