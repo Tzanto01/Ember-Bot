@@ -67,5 +67,5 @@ type PracticeStep =
 ## Copy deck
 
 - Door label: "I need a moment".
-- Pitch *(provisional until Nico picks)*: hero "A small campfire for big moments."; meta, store and descriptions "A calm companion for hard moments and gentle days." Habits come second: "And on the other days: gentle habits."
+- Pitch (Nico picked "Campfire + companion", 2026-11-13): hero "A small campfire for big moments."; meta, store and descriptions "A calm companion for hard moments and gentle days." Habits come second: "And on the other days: gentle habits."
 - Streak setting: "Show streaks" in Settings → Habits & days, off for new accounts.
