@@ -164,6 +164,7 @@ export class JournalService implements JournalApi {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Offline.');
     const addition = block.trim();
     if (!addition) throw new RangeError('Nothing to add.');
+    await this.replayingHeld?.catch(() => undefined);
     const [stored] = (await this.api.listDayNotes(date, date)).filter((n) => n.date === date);
     let current: { text: string | null; mood: MoodKey | null } = { text: null, mood: null };
     if (stored) {
@@ -172,10 +173,11 @@ export class JournalService implements JournalApi {
         : { text: stored.text, mood: stored.mood };
     }
     const before = current.text?.trim() ?? '';
+    if (before.endsWith(addition)) return;
     const text = before ? `${before}\n\n${addition}` : addition;
     if (text.length > maxText) throw new RangeError('Keep the entry to 2000 characters or fewer.');
-    if (this.key !== key || this.session.me.get()?.id !== me.id) throw new JournalLockedError();
     const encrypted = await encryptNote(key, date, { text, mood: current.mood ?? null });
+    if (this.key !== key || this.session.me.get()?.id !== me.id) throw new JournalLockedError();
     await this.api.sendNoteEdit({ kind: 'note', date, body: { encrypted } });
     this.bump();
   }

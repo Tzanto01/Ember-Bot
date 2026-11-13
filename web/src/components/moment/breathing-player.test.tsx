@@ -53,10 +53,13 @@ describe('BreathingPlayer', () => {
     second();
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     act(() => vi.advanceTimersByTime(20_000));
-    expect(screen.getByText('Breathe in, 3')).toBeInTheDocument();
-    expect(liveRegion()).toHaveTextContent('Round 1 of 3. Breathe in, 4');
+    expect(
+      screen.getByText('Breathe in, 3', { selector: 'p:not([aria-live])' }),
+    ).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent('Paused');
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(liveRegion()).toHaveTextContent('Breathe in, 3');
     second();
     second();
     second();
@@ -81,5 +84,25 @@ describe('BreathingPlayer', () => {
     second();
     expect(circle().style.transform).toBe('');
     expect(circle().closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('pauses without speaking while halted and resumes only when asked', () => {
+    const { rerender } = render(<BreathingPlayer inhale={4} hold={0} exhale={6} rounds={6} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    second();
+    rerender(<BreathingPlayer inhale={4} hold={0} exhale={6} rounds={6} halted />);
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(liveRegion()).toHaveTextContent('Round 1 of 6. Breathe in, 4');
+    expect(
+      screen.getByText('Breathe in, 3', { selector: 'p:not([aria-live])' }),
+    ).toBeInTheDocument();
+
+    rerender(<BreathingPlayer inhale={4} hold={0} exhale={6} rounds={6} />);
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(
+      screen.getByText('Breathe in, 3', { selector: 'p:not([aria-live])' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(liveRegion()).toHaveTextContent('Breathe in, 3');
   });
 });

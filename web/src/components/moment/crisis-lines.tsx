@@ -1,7 +1,9 @@
 import { ExternalLink, Phone } from 'lucide-react';
 import { useId, useState } from 'react';
+import { LiveRegion } from '@/components/live-region';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/select';
+import { momentCopy } from '@/lib/moment/copy';
 import {
   CRISIS_REGIONS,
   type CrisisRegion,
@@ -18,6 +20,7 @@ let sessionRegion: CrisisRegion | null = null;
 export function CrisisLines() {
   const selectId = useId();
   const [region, setRegion] = useState<CrisisRegion>(() => sessionRegion ?? detectRegion());
+  const [announce, setAnnounce] = useState('');
   const lines = linesForRegion(region);
 
   return (
@@ -31,6 +34,8 @@ export function CrisisLines() {
             const next = event.target.value as CrisisRegion;
             sessionRegion = next;
             setRegion(next);
+            const place = CRISIS_REGIONS.find((option) => option.region === next)?.label;
+            if (place) setAnnounce(momentCopy.showingLines(place));
           }}
         >
           {CRISIS_REGIONS.map((option) => (
@@ -52,7 +57,7 @@ export function CrisisLines() {
               {line.numbers.map((number) => (
                 <a
                   key={number}
-                  href={`tel:${number.replace(/\D/g, '')}`}
+                  href={`tel:${number.replace(/[^\d+]/g, '')}`}
                   aria-label={`Call ${line.name}, ${number}`}
                   className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[18px] font-semibold whitespace-nowrap text-secondary-foreground no-underline"
                 >
@@ -79,6 +84,7 @@ export function CrisisLines() {
       <p className="text-[14px] text-muted-foreground">
         Ember isn't a crisis service and doesn't read what you write.
       </p>
+      <LiveRegion message={announce} />
     </div>
   );
 }

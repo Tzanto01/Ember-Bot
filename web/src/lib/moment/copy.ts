@@ -5,7 +5,6 @@ import type { Intensity, MomentState } from './types';
  * in `content/crisis-lines.json`). One module so the content test can scan it for claim words.
  */
 export const momentCopy = {
-  pageTitle: 'A moment',
   leave: 'Leave',
   urgentHelp: 'Urgent help',
   done: 'Done for now',
@@ -62,6 +61,8 @@ export const momentCopy = {
   setItOffHint: 'A few words are plenty.',
   charactersLeft: (left: number) => `${left} characters left`,
   timerLabel: 'Time left',
+  timerResumed: 'Resumed',
+  limitReached: 'Limit reached',
   helped: 'What helped',
   nothingHelped: 'Nothing really',
   howNow: 'How it is now',
@@ -71,6 +72,7 @@ export const momentCopy = {
   savesPrivate: "Saving adds this to today's private note. Only you can read it.",
   savesAfterUnlock:
     "Your private journal is locked on this device. Unlock it to save this to today's private note.",
+  showingLines: (place: string) => `Showing crisis lines for ${place}`,
   newPassphraseLater: 'You can set a new passphrase later in Settings, Privacy & data.',
   needsPrivate:
     'Saving a reflection needs the private journal. Nothing from this moment was saved.',

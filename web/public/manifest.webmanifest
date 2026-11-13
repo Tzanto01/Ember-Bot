@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Ember",
   "short_name": "Ember",
-  "description": "A gentle habit tracker.",
+  "description": "A calm companion for hard moments and gentle days.",
   "display": "standalone",
   "scope": "/",
   "start_url": "/today",

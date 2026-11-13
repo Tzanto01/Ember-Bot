@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, PasswordInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { pitch } from '@/content/pitch';
 import type { Credentials } from '@/lib/models';
 import { asApiError, type FriendlyProblem, problemToMessage } from '@/lib/problem';
 import { api } from '@/lib/services';
@@ -59,7 +60,7 @@ export default function SignupPage() {
 
   return (
     <>
-      <PageHeader title="Create your account" lede="A calm place for your habits. It takes a minute." />
+      <PageHeader title="Create your account" lede={`${pitch.description} It takes a minute.`} />
       <UpgradingNotice />
       <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Email" error={email.error ?? problem?.fields['email'] ?? null}>

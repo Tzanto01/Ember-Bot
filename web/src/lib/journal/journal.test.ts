@@ -614,10 +614,15 @@ describe('JournalService', () => {
   describe('appendPrivate', () => {
     const day = '2026-11-02';
     const block = 'Moment note: breathing in the hallway.';
-    const dayPuts = () => mock.all.filter((c) => c.method === 'PUT' && c.url.startsWith('/api/day-notes/'));
+    const dayPuts = () =>
+      mock.all.filter((c) => c.method === 'PUT' && c.url.startsWith('/api/day-notes/'));
     const sealed = async (date: string) => {
       const stored = server.notes.get(date) as unknown as { encrypted: EncryptedBlob };
-      return decryptNote(await importJournalKey(fromBase64(await rawKey())), date, stored.encrypted);
+      return decryptNote(
+        await importJournalKey(fromBase64(await rawKey())),
+        date,
+        stored.encrypted,
+      );
     };
 
     it('throws without any request while the private journal is off', async () => {
@@ -676,6 +681,18 @@ describe('JournalService', () => {
 
       expect(dayPuts()).toHaveLength(before);
       expect((await sealed(day)).text).toBe('a'.repeat(1990));
+    });
+
+    it('adds nothing when the entry already ends with the block (a retry after a save that landed)', async () => {
+      const { journal } = await device();
+      await journal.enable(passphrase, false, loginPassword);
+      await journal.appendPrivate(day, block);
+      const before = dayPuts().length;
+
+      await journal.appendPrivate(day, block);
+
+      expect(dayPuts()).toHaveLength(before);
+      expect((await sealed(day)).text).toBe(block);
     });
 
     it('sends one ciphertext-only PUT whose plaintext is the old entry, a blank line and the block, keeping the mood', async () => {

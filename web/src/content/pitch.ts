@@ -1,6 +1,7 @@
 /**
- * Ember's pitch, in one place so it can be swapped. `web/index.html` repeats `title` and `description` as plain text
- * (it can't import this module); keep them identical.
+ * Ember's pitch, in one place so it can be swapped. `web/index.html` (title and meta tags) and
+ * `web/public/manifest.webmanifest` (`description`) repeat `title` and `description` as plain text (they can't import
+ * this module); keep them identical.
  */
 export const pitch = {
   hero: 'A small campfire for big moments.',

@@ -4,6 +4,7 @@ import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { Card } from '@/components/ui/card';
+import { pitch } from '@/content/pitch';
 import type { DayState } from '@/lib/models';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +47,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
             className="hidden flex-col items-start justify-center gap-6 rounded-xl bg-secondary p-10 text-secondary-foreground lg:col-span-5 lg:flex"
           >
             <FlameMark className="size-[96px]" />
-            <p className="font-display text-[28px] leading-tight">A calm place for your habits.</p>
+            <p className="font-display text-[28px] leading-tight">{pitch.hero}</p>
             <div className="flex [--day-gap:8px] gap-[8px]">
               {sampleWeek.map((state, i) => (
                 <DayCell

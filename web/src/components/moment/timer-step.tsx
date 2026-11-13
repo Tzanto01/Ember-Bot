@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { LiveRegion } from '@/components/live-region';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
@@ -7,8 +7,12 @@ function clock(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-/** A timer with explicit Start and Pause and the remaining time on screen; announces only its start and its end. */
-export function TimerStep({ seconds }: { seconds: number }) {
+/**
+ * A timer with explicit Start and Pause and the remaining time on screen; announces start, pause, resume and end.
+ * While `halted` (urgent help open) a running timer pauses silently; the user resumes.
+ */
+export function TimerStep({ seconds, halted = false }: { seconds: number; halted?: boolean }) {
+  const labelId = useId();
   const [left, setLeft] = useState(seconds);
   const [running, setRunning] = useState(false);
   const [announce, setAnnounce] = useState('');
@@ -20,6 +24,10 @@ export function TimerStep({ seconds }: { seconds: number }) {
   }, [running]);
 
   useEffect(() => {
+    if (halted) setRunning(false);
+  }, [halted]);
+
+  useEffect(() => {
     if (left > 0 || !running) return;
     setRunning(false);
     setAnnounce(momentCopy.timerDone);
@@ -28,11 +36,14 @@ export function TimerStep({ seconds }: { seconds: number }) {
   function toggle(): void {
     if (running) {
       setRunning(false);
+      setAnnounce(momentCopy.breathPaused);
       return;
     }
     if (left === 0 || left === seconds) {
       setLeft(seconds);
       setAnnounce(momentCopy.timerStarted(`${seconds} seconds`));
+    } else {
+      setAnnounce(momentCopy.timerResumed);
     }
     setRunning(true);
   }
@@ -40,8 +51,14 @@ export function TimerStep({ seconds }: { seconds: number }) {
   return (
     <div className="flex flex-col items-center gap-6">
       <p className="flex flex-col items-center gap-1">
-        <span className="text-muted-foreground">{momentCopy.timerLabel}</span>
-        <span role="timer" className="font-display text-[44px] font-semibold tabular-nums">
+        <span id={labelId} className="text-muted-foreground">
+          {momentCopy.timerLabel}
+        </span>
+        <span
+          role="timer"
+          aria-labelledby={labelId}
+          className="font-display text-[44px] font-semibold tabular-nums"
+        >
           {clock(left)}
         </span>
       </p>

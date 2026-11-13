@@ -7,7 +7,7 @@ const links = [
   { to: '/help', label: 'Help right now' },
 ];
 
-/** Footer navigation to the three legal pages. */
+/** Footer navigation to the three legal pages and the crisis lines page. */
 export function LegalLinks() {
   return (
     <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[14px]">

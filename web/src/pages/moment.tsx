@@ -59,6 +59,7 @@ export default function MomentPage() {
   const [after, setAfter] = useState<Intensity>();
   const [practice, setPractice] = useState<Practice>(breathingPractice);
   const [tried, setTried] = useState<Practice[]>([]);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useFocusHeadingOnChange(
     step.kind === 'practice' ? `practice:${practice.id}:${step.index}` : step.kind,
@@ -82,6 +83,7 @@ export default function MomentPage() {
 
   function tryAnother(): void {
     const list = candidates();
+    setAfter(undefined);
     begin(list[(list.indexOf(practice) + 1) % list.length]!);
   }
 
@@ -206,10 +208,14 @@ export default function MomentPage() {
             {current.kind === 'breath' ? momentCopy.breathHeading : current.text}
           </Heading>
           {current.kind === 'breath' && (
-            <BreathingPlayer key={`${practice.id}:${step.index}`} {...current} />
+            <BreathingPlayer key={`${practice.id}:${step.index}`} {...current} halted={helpOpen} />
           )}
           {current.kind === 'timer' && (
-            <TimerStep key={`${practice.id}:${step.index}`} seconds={current.seconds} />
+            <TimerStep
+              key={`${practice.id}:${step.index}`}
+              seconds={current.seconds}
+              halted={helpOpen}
+            />
           )}
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
@@ -287,7 +293,11 @@ export default function MomentPage() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <MomentHeader onLeave={leave} />
+      <MomentHeader
+        onLeave={leave}
+        open={helpOpen}
+        onToggle={() => setHelpOpen((value) => !value)}
+      />
       {body}
     </div>
   );

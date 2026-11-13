@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { FormField } from '@/components/form-field';
+import { LiveRegion } from '@/components/live-region';
 import { useJournal } from '@/components/journal/journal-context';
 import { UnlockForm } from '@/components/settings/journal-forms';
 import { Button } from '@/components/ui/button';
@@ -10,13 +12,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { momentCopy } from '@/lib/moment/copy';
 import { momentTime, reflectionBlock } from '@/lib/moment/reflection';
 import type { Intensity, Practice } from '@/lib/moment/types';
-import { auth, localMode } from '@/lib/services';
+import { deviceToday } from '@/lib/guards';
+import { auth, deviceSync, localMode, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { IntensityScale } from './intensity-scale';
 
 const maxTrigger = 300;
 const nothing = 'nothing';
+const announceFrom = 20;
 
 type SaveCase = 'unlocked' | 'locked' | 'plain' | 'consent' | 'none';
 
@@ -73,11 +77,20 @@ export function Reflect({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const savedRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLTextAreaElement>(null);
+  const left = maxTrigger - trigger.length;
 
   useEffect(() => {
     if (saved) savedRef.current?.focus();
   }, [saved]);
+
+  useEffect(() => {
+    if (!unlocked || saveCase !== 'unlocked') return;
+    setUnlocked(false);
+    triggerRef.current?.focus();
+  }, [unlocked, saveCase]);
 
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -86,16 +99,17 @@ export function Reflect({
     setBusy(true);
     setProblem(null);
     try {
+      if (offlineQueue.pending.get() > 0) await deviceSync.sync();
+      if (offlineQueue.pending.get() > 0) throw new Error('Offline.');
       await journal.appendPrivate(
-        me.localToday,
+        deviceToday(me.timezone) ?? me.localToday,
         reflectionBlock({
           time: momentTime(startedAt, me.timezone),
           tile,
           before: before && momentCopy.intensity[before],
           after: now && momentCopy.intensity[now],
           trigger,
-          helped:
-            tried.find((practice) => practice.id === helped)?.title ?? momentCopy.nothingHelped,
+          helped: tried.find((practice) => practice.id === helped)?.title,
         }),
       );
       setSaved(true);
@@ -125,9 +139,14 @@ export function Reflect({
       </h1>
       {saved ? (
         <>
-          <Notice tone="success" ref={savedRef} tabIndex={-1} className="focus:outline-none">
+          <div
+            ref={savedRef}
+            tabIndex={-1}
+            className="flex items-start gap-3 rounded-md border border-transparent bg-success px-4 py-3 text-success-foreground focus:outline-none"
+          >
+            <Check aria-hidden className="mt-[3px] size-[18px] shrink-0" />
             <p>{momentCopy.saved}</p>
-          </Notice>
+          </div>
           {done}
         </>
       ) : (
@@ -146,7 +165,12 @@ export function Reflect({
           {saveCase === 'locked' && (
             <section aria-labelledby={`${id}-unlock`} className="flex flex-col gap-4">
               <p id={`${id}-unlock`}>{momentCopy.savesAfterUnlock}</p>
-              <UnlockForm onUnlocked={setNewPassphrase} />
+              <UnlockForm
+                onUnlocked={(needsNewPassphrase) => {
+                  setNewPassphrase(needsNewPassphrase);
+                  setUnlocked(true);
+                }}
+              />
             </section>
           )}
           {saveCase === 'plain' && (
@@ -172,6 +196,7 @@ export function Reflect({
                 <>
                   <textarea
                     {...field}
+                    ref={triggerRef}
                     aria-describedby={cn(field['aria-describedby'], `${field.id}-count`)}
                     value={trigger}
                     rows={3}
@@ -183,8 +208,17 @@ export function Reflect({
                     id={`${field.id}-count`}
                     className="self-end text-[14px] text-muted-foreground"
                   >
-                    {momentCopy.charactersLeft(maxTrigger - trigger.length)}
+                    {momentCopy.charactersLeft(left)}
                   </p>
+                  <LiveRegion
+                    message={
+                      left === 0
+                        ? momentCopy.limitReached
+                        : left <= announceFrom
+                          ? momentCopy.charactersLeft(announceFrom)
+                          : ''
+                    }
+                  />
                 </>
               )}
             </FormField>

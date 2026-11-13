@@ -1,13 +1,20 @@
 import { LifeBuoy } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { CrisisLines } from '@/components/moment/crisis-lines';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
 
 /** The moment flow's persistent header: Leave, and "Urgent help" opening the crisis lines in place. */
-export function MomentHeader({ onLeave }: { onLeave: () => void }) {
+export function MomentHeader({
+  onLeave,
+  open,
+  onToggle,
+}: {
+  onLeave: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const panelId = useId();
-  const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -19,7 +26,7 @@ export function MomentHeader({ onLeave }: { onLeave: () => void }) {
           variant="outline"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen((value) => !value)}
+          onClick={onToggle}
         >
           <LifeBuoy aria-hidden />
           {momentCopy.urgentHelp}

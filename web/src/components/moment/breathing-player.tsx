@@ -42,11 +42,14 @@ export function BreathingPlayer({
   hold,
   exhale,
   rounds,
+  halted = false,
 }: {
   inhale: number;
   hold: number;
   exhale: number;
   rounds: number;
+  /** While true (urgent help open), a running player pauses silently; the user resumes. */
+  halted?: boolean;
 }) {
   const phases = phasesOf(inhale, hold, exhale);
   const reduce = useReduceMotion();
@@ -64,10 +67,16 @@ export function BreathingPlayer({
   }
 
   const [player, dispatch] = useReducer(
-    (state: Player, action: 'toggle' | 'tick'): Player => {
+    (state: Player, action: 'toggle' | 'tick' | 'halt'): Player => {
+      if (action === 'halt') return state.running ? { ...state, running: false } : state;
       if (action === 'toggle') {
-        if (state.running) return { ...state, running: false };
-        if (state.started && !state.finished) return { ...state, running: true };
+        if (state.running) return { ...state, running: false, announce: momentCopy.breathPaused };
+        if (state.started && !state.finished)
+          return {
+            ...state,
+            running: true,
+            announce: `${phases[state.phase]!.label}, ${state.left}`,
+          };
         return enter({ ...state, running: true, started: true, finished: false }, 0, 1);
       }
       if (!state.running) return state;
@@ -78,6 +87,10 @@ export function BreathingPlayer({
     },
     { running: false, started: false, finished: false, phase: 0, round: 1, left: 0, announce: '' },
   );
+
+  useEffect(() => {
+    if (halted) dispatch('halt');
+  }, [halted]);
 
   useEffect(() => {
     if (!player.running) return;

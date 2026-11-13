@@ -1,10 +1,11 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { fakeJournal } from '@/components/journal/fake-journal';
 import { JournalContext } from '@/components/journal/journal-context';
 import type { JournalState } from '@/lib/journal/types';
-import { auth, localMode } from '@/lib/services';
+import { deviceToday } from '@/lib/guards';
+import { auth, deviceSync, localMode, offlineQueue } from '@/lib/services';
 import { me } from '@/lib/test-support';
 import { renderPage } from '@/test-utils';
 import MomentPage from './moment';
@@ -14,6 +15,8 @@ vi.mock('@/lib/services', async (original) => {
   return {
     ...(await original<typeof import('@/lib/services')>()),
     localMode: { mode: new Store('account') },
+    offlineQueue: { pending: new Store(0) },
+    deviceSync: { sync: vi.fn(async () => undefined) },
   };
 });
 
@@ -37,6 +40,10 @@ async function heading(name: string | RegExp) {
   return h1;
 }
 
+function announced(): string[] {
+  return [...document.querySelectorAll('[aria-live="polite"]')].map((el) => el.textContent ?? '');
+}
+
 async function quickToReflect() {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Just breathe with me' }));
@@ -54,6 +61,8 @@ describe('MomentPage', () => {
   afterEach(() => {
     auth.me.set(null);
     localMode.mode.set('account');
+    offlineQueue.pending.set(0);
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -94,7 +103,7 @@ describe('MomentPage', () => {
     expect(await screen.findByText("Saved to today's private note.")).toBeInTheDocument();
     expect(journal.appendPrivate).toHaveBeenCalledTimes(1);
     const [date, block] = journal.appendPrivate.mock.calls[0]!;
-    expect(date).toBe('2026-11-01');
+    expect(date).toBe(deviceToday(me.timezone));
     expect(block).toMatch(
       /^Moment \d\d:\d\d · Too much \/ overloaded · Strong → Some\nWhat set it off: A long day\nWhat helped: Slow breathing$/,
     );
@@ -155,7 +164,9 @@ describe('MomentPage', () => {
 
     await user.type(screen.getByLabelText('Journal passphrase'), 'correct horse battery');
     await user.click(screen.getByRole('button', { name: 'Unlock' }));
-    await user.type(await screen.findByRole('textbox', { name: /What set it off/ }), 'Noise');
+    const box = await screen.findByRole('textbox', { name: /What set it off/ });
+    expect(box).toHaveFocus();
+    await user.type(box, 'Noise');
     await user.click(await screen.findByRole('button', { name: 'Save' }));
 
     expect(journal.unlock).toHaveBeenCalledTimes(1);
@@ -245,5 +256,98 @@ describe('MomentPage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: "What's happening?" }),
     ).toBeInTheDocument();
+  });
+
+  it('writes to the device day past midnight and leaves out "What helped" for Nothing really', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-01T23:30:00Z'));
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    const { journal } = open('unlocked');
+    const user = await quickToReflect();
+    await user.click(screen.getByRole('radio', { name: 'Nothing really' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("Saved to today's private note.")).toBeInTheDocument();
+    expect(journal.appendPrivate).toHaveBeenCalledWith('2026-11-02', 'Moment 00:30');
+  });
+
+  it('syncs queued edits before saving and keeps the draft when they stay queued', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    offlineQueue.pending.set(2);
+    const { journal } = open('unlocked');
+    const user = await quickToReflect();
+    const box = screen.getByRole('textbox', { name: /What set it off/ });
+    await user.type(box, 'Late train');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText("You're offline, so nothing was saved. Your words are still here."),
+    ).toBeInTheDocument();
+    expect(deviceSync.sync).toHaveBeenCalled();
+    expect(journal.appendPrivate).not.toHaveBeenCalled();
+    expect(box).toHaveValue('Late train');
+
+    vi.mocked(deviceSync.sync).mockImplementationOnce(async () => offlineQueue.pending.set(0));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("Saved to today's private note.")).toBeInTheDocument();
+    expect(journal.appendPrivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces the character limit only at its thresholds', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    open('unlocked');
+    const user = await quickToReflect();
+    const box = screen.getByRole('textbox', { name: /What set it off/ });
+    await user.click(box);
+    await user.paste('x'.repeat(279));
+    expect(screen.getByText('21 characters left')).toBeInTheDocument();
+    expect(announced()).not.toContain('21 characters left');
+    await user.type(box, 'xx');
+    expect(announced()).toContain('20 characters left');
+    expect(announced()).not.toContain('19 characters left');
+    await user.paste('x'.repeat(19));
+    expect(announced()).toContain('Limit reached');
+  });
+
+  it('clears the earlier "How is it now?" answer when trying another practice', async () => {
+    auth.me.set({ ...me, journal: { ...me.journal, encrypted: true } });
+    const { journal } = open('unlocked');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Just breathe with me' }));
+    await heading(/Slow breathing, step 1 of 5/);
+    await user.click(screen.getByRole('button', { name: 'Skip to the end' }));
+    await heading('How is it now?');
+    await user.click(screen.getByRole('radio', { name: 'Strong' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await heading("That's it for now.");
+    await user.click(screen.getByRole('button', { name: 'Try another' }));
+    await heading(/^A kind voice, step 1 of 5/);
+    await user.click(screen.getByRole('button', { name: 'Skip to the end' }));
+    await heading('How is it now?');
+    expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await heading("That's it for now.");
+    await user.click(screen.getByRole('button', { name: 'Reflect on it' }));
+    await heading('Reflect, if you like');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("Saved to today's private note.")).toBeInTheDocument();
+    expect(journal.appendPrivate.mock.calls[0]![1]).not.toContain('→');
+  }, 15_000);
+
+  it('pauses the breathing player silently while urgent help is open', async () => {
+    open('off');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Just breathe with me' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await heading(/^Slow breathing, step 3 of 5/);
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    expect(announced()).toContain('Round 1 of 6. Breathe in, 4');
+    await user.click(screen.getByRole('button', { name: 'Urgent help' }));
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1200)));
+    expect(
+      screen.getByText('Breathe in, 4', { selector: 'p:not([aria-live])' }),
+    ).toBeInTheDocument();
+    expect(announced()).toContain('Round 1 of 6. Breathe in, 4');
+    expect(announced()).not.toContain('Paused');
   });
 });
