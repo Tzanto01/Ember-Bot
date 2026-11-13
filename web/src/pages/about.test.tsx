@@ -13,7 +13,7 @@ describe('AboutPage', () => {
     expect(screen.getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
     expect(screen.getByText(/In an emergency, call 112/)).toBeInTheDocument();
     const site = screen.getByRole('link', { name: /Visit the Ember website/ });
-    expect(site).toHaveAttribute('href', 'https://beta.ember-glow.app');
+    expect(site).toHaveAttribute('href', 'https://ember.nicowoellnitz.de');
     expect(site).toHaveAttribute('target', '_blank');
     expect(site).toHaveAccessibleName(/Visit the Ember website.*opens in a new tab/);
   });
@@ -25,7 +25,7 @@ describe('AboutPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Über Ember' })).toBeInTheDocument();
     expect(screen.getByText(/Im Notfall ruf die 112 an/)).toBeInTheDocument();
     const site = screen.getByRole('link', { name: /Zur Ember-Website/ });
-    expect(site).toHaveAttribute('href', 'https://beta.ember-glow.app');
+    expect(site).toHaveAttribute('href', 'https://ember.nicowoellnitz.de');
     expect(screen.queryByText(/When a moment gets too big/)).toBeNull();
   });
 

@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { pitch } from '@/content/pitch';
 
 /** Ember's product site. */
-const productSite = 'https://beta.ember-glow.app';
+const productSite = 'https://ember.nicowoellnitz.de';
 
 const sections = ['moment', 'habits', 'privacy'] as const;
 
