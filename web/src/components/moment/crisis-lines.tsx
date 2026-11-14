@@ -51,7 +51,7 @@ export function CrisisLines() {
         {lines.map((line) => (
           <li
             key={`${line.region}-${line.name}`}
-            className="flex flex-col gap-2 rounded-xl border-[length:var(--border-width)] border-border bg-card p-4 text-card-foreground [overflow-wrap:anywhere]"
+            className="flex flex-col gap-2 rounded-xl border-[length:var(--border-width)] border-border bg-card p-4 text-card-foreground shadow-[var(--shadow-card)] [overflow-wrap:anywhere] hyphens-auto"
           >
             <p className="font-semibold">{line.name}</p>
             <p className="text-[0.875rem] text-muted-foreground">{line.hours}</p>
@@ -61,7 +61,7 @@ export function CrisisLines() {
                   key={number}
                   href={`tel:${number.replace(/[^\d+]/g, '')}`}
                   aria-label={t('crisis.call', { name: line.name, number })}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[1.125rem] font-semibold max-w-full text-secondary-foreground no-underline"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-secondary px-4 py-2 text-[1.125rem] font-semibold max-w-full whitespace-nowrap text-secondary-foreground no-underline"
                 >
                   <Phone aria-hidden className="size-[18px] shrink-0" />
                   {number}
