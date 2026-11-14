@@ -311,6 +311,12 @@
 
 .ember-sheen {
   --ember-sheen-alpha: 18%;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .dark .ember-sheen {
