@@ -1,4 +1,4 @@
-# Ember design tokens v1.2
+# Ember design tokens v1.3
 
 v1.2 (2026-11-02, Nico): the theme follows the account across devices (`Me.theme`, api-v1.md v1.4); `localStorage` keeps a per-device copy for first paint.
 
@@ -66,3 +66,18 @@ Layout and information architecture (designed once by team `design` in `design/l
 ## Product rules every theme keeps
 
 From `docs/v2-plan.md` "Product principles": no red anywhere, no "missed" color or counter, never shaming. Low days and paused days read as rest, not failure.
+
+## Screens we support
+
+Nico (2026-11-14): "We want at least 21:9 to also be properly supported. Obviously the focus will still be on 16:9, but 21:9 matters as well. 32:9 can also at least be briefly visited, but only if it doesn't mean a massive rebuild." This applies to every layout change and every layout test from now on.
+
+| Class | Viewports (CSS px) | Level |
+| --- | --- | --- |
+| Phones | 320, 360, 390, 412 wide | Full: nothing clips or overflows, also at 200% text. |
+| Tablets | 768, 1024 wide | Full. |
+| 16:9 desktop | 1280×720, 1920×1080 | Full, the main desktop target. |
+| 21:9 ultrawide | 2560×1080, 3440×1440 | Full: content uses the width sensibly (wide layouts such as Today's two columns stay balanced, no stretched lines of text past a readable measure, no huge empty bands), nothing floats oddly in the corners. |
+| 32:9 super-ultrawide | 3840×1080, 5120×1440 | Looked at: no breakage (no overflow, no broken backgrounds or decorations, header and content aligned); centring with empty sides is fine. Fixes only when small. |
+
+- Layout tests (`web/e2e/layout.spec.ts`) cover a phone width, 1280 and both 21:9 sizes; the full review matrix (`web/e2e/support/review.ts`) adds 2560×1080 and 3440×1440 in light and dark and one 32:9 pass (5120×1440, light).
+- Legal pages keep a readable text measure at every width.
