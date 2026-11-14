@@ -110,7 +110,7 @@ export default function HabitEditPage() {
     );
   } else {
     content = (
-      <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
+      <div className="flex max-w-[40rem] flex-col gap-6">
         <p role="status" className="sr-only">
           {t('habitEdit.loading')}
         </p>
@@ -121,7 +121,7 @@ export default function HabitEditPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 2xl:mx-auto 2xl:w-full 2xl:max-w-[59.5rem]">
       <PageHeader title={t('habitEdit.title')} lede={habit?.name} />
       {content}
     </div>

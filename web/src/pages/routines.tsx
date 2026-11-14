@@ -31,7 +31,7 @@ export default function RoutinesPage() {
       {t('routines.limit')}
     </p>
   ) : (
-    <Button asChild variant={list?.length ? 'secondary' : 'default'} className="w-full sm:w-auto sm:self-start">
+    <Button asChild variant={list?.length ? 'secondary' : 'default'} className={list?.length ? 'w-full sm:w-auto sm:self-start' : 'w-full sm:w-auto'}>
       <Link to="/routines/new">
         <Plus aria-hidden />
         {t('routines.new')}
