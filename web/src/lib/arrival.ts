@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 export const arrivalWindowMs = 1200;
 
 /**
- * True from the first render on a new `pathname` until `arrivalWindowMs` later, so the arrival animation runs once per
- * navigation and never again on re-renders or refetches.
+ * True from the first render in a new section (the first segment of `path`) until `arrivalWindowMs` later, so the arrival
+ * animation runs once per navigation between sections and never again on re-renders, refetches or moves inside one
+ * section (Settings groups, History habits).
  */
-export function useArrival(pathname: string): boolean {
+export function useArrival(path: string): boolean {
+  const pathname = `/${path.split('/')[1] ?? ''}`;
   const [arrival, setArrival] = useState({ pathname, on: true });
   if (arrival.pathname !== pathname) setArrival({ pathname, on: true });
 

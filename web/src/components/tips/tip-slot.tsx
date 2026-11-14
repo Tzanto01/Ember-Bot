@@ -223,7 +223,7 @@ function LinkTip({ me, id }: { me: Me; id: Exclude<TipId, 'streaks'> }) {
       id={id}
       heading={t(`tips.${id}.heading`)}
       dismiss={
-        <Button type="button" variant="ghost" size="icon" className="-my-2 -mr-2 shrink-0" aria-label={t('tips.dismiss')} onClick={dismiss}>
+        <Button type="button" variant="ghost" size="icon" className="-my-2 -mr-2 ml-auto shrink-0" aria-label={t('tips.dismiss')} onClick={dismiss}>
           <X aria-hidden />
         </Button>
       }
