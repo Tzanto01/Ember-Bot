@@ -42,11 +42,14 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         });
 
     [DockerFact]
-    public async Task Merging_brings_the_bots_discord_answer_and_its_phones_to_an_account_that_never_answered()
+    public async Task Merging_brings_the_bots_discord_answer_its_phones_and_its_seen_tips_to_an_account_that_never_answered()
     {
         var user = await Host.SignedInAsync();
         var userId = await user.IdAsync();
         var bot = await BotOnlyAsync([]);
+        await (await user.Put("/api/me/tips/routines")).Expect(HttpStatusCode.NoContent);
+        await Host.Run(s => s.MarkTipSeenAsync(bot.UserId, "streaks"));
+        await Host.Run(s => s.MarkTipSeenAsync(bot.UserId, "routines"));
         var askedAt = Host.Time.GetUtcNow().UtcDateTime.AddDays(-3);
         await BotAnsweredDiscordWithAPhoneAsync(bot.UserId, askedAt);
         await StartMergeAsync(user, bot.DiscordId);
@@ -56,6 +59,7 @@ public class MergeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var merged = await Host.Db(db => db.Users.Include(u => u.ReminderPhones).SingleAsync(u => u.Id == userId));
         (merged.DiscordReminders, merged.DiscordRemindersAskedAt).Should().Be((true, askedAt));
         merged.ReminderPhones.Should().ContainSingle(p => p.Label == "Pixel 8" && p.SessionId != null);
+        merged.TipsSeen.Should().Equal("routines", "streaks");
     }
 
     [DockerFact]

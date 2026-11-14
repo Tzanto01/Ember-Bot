@@ -33,7 +33,8 @@ public partial class HabitService
     /// routines, day marks (one per day and kind when both have it), journal entries (the target's wins on a date both have),
     /// own moods, journal key, push subscriptions and phones (one without a session joins <paramref name="sessionId"/>; each kept at
     /// most at its per-user limit), feedback and Discord login to the target, gives the target the source's Discord reminder answer
-    /// (<see cref="User.DiscordReminders"/>, <see cref="User.DiscordRemindersAskedAt"/>) when the target has none, deletes the source and gives
+    /// (<see cref="User.DiscordReminders"/>, <see cref="User.DiscordRemindersAskedAt"/>) when the target has none and the union of both
+    /// accounts' <see cref="User.TipsSeen"/>, deletes the source and gives
     /// the target a new security stamp. A plaintext source mood whose trimmed label matches a plaintext target mood
     /// (ignoring case) is combined into it: the source's entries pointing at it point at the target's mood and the source mood
     /// is dropped (skipped when the source has encrypted entries, which may reference it inside the ciphertext).
@@ -102,13 +103,14 @@ public partial class HabitService
             await TrimReminderPhonesAsync(targetUserId, cancellationToken);
 
             var source = await _db.Users.Where(u => u.Id == sourceUserId)
-                .Select(u => new { u.DiscordReminders, u.DiscordRemindersAskedAt })
+                .Select(u => new { u.DiscordReminders, u.DiscordRemindersAskedAt, u.TipsSeen })
                 .FirstAsync(cancellationToken);
             await _db.Users
                 .Where(u => u.Id == targetUserId && u.DiscordReminders == null)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(u => u.DiscordReminders, source.DiscordReminders)
                     .SetProperty(u => u.DiscordRemindersAskedAt, source.DiscordRemindersAskedAt), cancellationToken);
+            foreach (var tip in source.TipsSeen) await MarkTipSeenAsync(targetUserId, tip);
 
             var key = DiscordLogin.Key(discordUserId);
             await _db.UserLogins

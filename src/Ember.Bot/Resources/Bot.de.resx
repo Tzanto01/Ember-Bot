@@ -217,6 +217,22 @@ Das passiert meistens, wenn DMs von Servermitgliedern ausgeschaltet sind (Server
   <data name="habit.stats.show-streaks" xml:space="preserve">
     <value>Streaks einblenden</value>
   </data>
+  <data name="habit.streaks-tip.question" xml:space="preserve">
+    <value>**Möchtest du Streaks sehen?**
+Ein Streak zählt, an wie vielen Tagen hintereinander du einen Habit geschafft hast. Manche finden das motivierend, andere eher stressig. Du kannst das jederzeit mit `/habit streak` oder in den Einstellungen ändern.</value>
+  </data>
+  <data name="habit.streaks-tip.show" xml:space="preserve">
+    <value>Streaks anzeigen</value>
+  </data>
+  <data name="habit.streaks-tip.not-for-me" xml:space="preserve">
+    <value>Nichts für mich</value>
+  </data>
+  <data name="habit.streaks-tip.on" xml:space="preserve">
+    <value>Streaks sind an. Du kannst sie jederzeit mit `/habit streak` oder in den Einstellungen ausschalten.</value>
+  </data>
+  <data name="habit.streaks-tip.off" xml:space="preserve">
+    <value>Streaks bleiben aus. Du kannst sie jederzeit mit `/habit streak` oder in den Einstellungen einschalten.</value>
+  </data>
   <data name="habit.stats.title" xml:space="preserve">
     <value>Deine Habit-Statistik</value>
   </data>

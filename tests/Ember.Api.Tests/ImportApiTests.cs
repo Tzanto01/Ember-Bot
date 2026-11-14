@@ -138,7 +138,7 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         JsonNode.Parse(expected)!["logs"]!.AsArray().Should().HaveCount(5);
         expected.Should().Contain("\"completed\":true,\"guild_id\":null,\"count\":3").And.Contain("\"routine_position\":1")
             .And.Contain("\"archived\":true").And.Contain("\"reminder_times\":[\"09:00:00\",\"20:00:00\"]").And.Contain("\"paused_until\"").And.Contain("\"next_reminder_utc\":\"20")
-            .And.Contain("\"second_reminder_minutes\":30").And.Contain("\"show_streaks\":true")
+            .And.Contain("\"second_reminder_minutes\":30").And.Contain("\"show_streaks\":true").And.Contain("\"tips_seen\":[\"streaks\"]")
             .And.Contain("\"language\":\"de\"").And.Contain("\"calm_mode\":true");
         Comparable(reexported).Should().Be(expected);
     }
@@ -350,5 +350,22 @@ public class ImportApiTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var me = await (await user.Get("/api/me")).ExpectJson();
         me.GetProperty("language").GetString().Should().Be("de");
         me.GetProperty("calmMode").GetBoolean().Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task Imported_tips_seen_join_the_accounts_own_known_ids_only_and_a_missing_list_keeps_them()
+    {
+        var user = await Host.SignedInAsync();
+        var keeps = await Host.SignedInAsync();
+        foreach (var account in new[] { user, keeps })
+            await (await account.Put("/api/me/tips/routines")).Expect(HttpStatusCode.NoContent);
+
+        await (await Import(user, Doc(settings: new { tips_seen = new[] { "android", "leaderboard", "routines" } }))).Expect(HttpStatusCode.NoContent);
+        await (await Import(keeps, Doc())).Expect(HttpStatusCode.NoContent);
+
+        (await (await user.Get("/api/me")).ExpectJson()).GetProperty("tipsSeen").EnumerateArray().Select(e => e.GetString())
+            .Should().Equal("routines", "android");
+        (await (await keeps.Get("/api/me")).ExpectJson()).GetProperty("tipsSeen").EnumerateArray().Select(e => e.GetString())
+            .Should().Equal("routines");
     }
 }

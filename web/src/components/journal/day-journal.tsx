@@ -29,6 +29,8 @@ const longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', 
 
 /** Query key prefix of every journal read, so writes elsewhere can refresh them. */
 export const journalKey = ['journal'] as const;
+/** Whether the account has any saved day note (the private-journal tip); a save here sets it. */
+export const anyNoteKey = [...journalKey, 'any'] as const;
 
 /** "Your private journal is locked on this device" with the way to Settings. Shows no journal data. */
 export function JournalLocked({ children }: { children?: string }) {
@@ -202,6 +204,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
       const { queued } = await journal.save(date, entry);
       const saved: DayNote | null = entry.text === null && entry.mood === null ? null : { date, ...entry };
       queryClient.setQueryData<typeof query.data>(queryKey, (old) => (old ? { ...old, note: saved } : old));
+      if (saved) queryClient.setQueryData(anyNoteKey, true);
       if (onMood) {
         setDraft((current) => (current && current.text !== base ? { ...current, mood: entry.mood } : null));
         setStatus(queued ? 'queued' : entry.mood ? 'mood' : 'moodCleared');

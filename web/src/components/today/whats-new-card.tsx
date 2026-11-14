@@ -8,6 +8,18 @@ import { Notice } from '@/components/ui/notice';
 import { markVersionSeen, readSeenVersion, releaseNotesQuery } from '@/lib/release-notes';
 
 /**
+ * Whether Today shows the What's new card now: undefined while the release notes load (or `enabled` is false), false
+ * when they fail or this version is already seen (or nothing is recorded yet).
+ */
+export function useWhatsNewShowing(enabled = true): boolean | undefined {
+  const notes = useQuery({ ...releaseNotesQuery, enabled });
+  if (notes.isPending) return undefined;
+  const latest = notes.data?.[0]?.version;
+  const seen = readSeenVersion();
+  return !!latest && !!seen && seen !== latest;
+}
+
+/**
  * Today's one-time "Ember <version> is here" note after an update, once per version on this device. The very first
  * visit only records the current version; nothing shows when storage fails or the notes don't load. Dismissing it,
  * or opening What's new, records the version.

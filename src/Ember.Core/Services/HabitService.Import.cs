@@ -11,7 +11,8 @@ namespace Ember.Core.Services;
 public sealed record ImportData(
     IReadOnlyList<Routine> Routines, IReadOnlyList<Habit> Habits, IReadOnlyList<DayMark> DayMarks, IReadOnlyList<Mood> Moods,
     IReadOnlyList<(DayNote Note, Mood? CustomMood)> DayNotes, JournalKey? JournalKey, int? GraceDaysPerWeek, string? Theme,
-    int SecondReminderMinutes, bool? ShowStreaks = null, string? Language = null, bool? CalmMode = null);
+    int SecondReminderMinutes, bool? ShowStreaks = null, string? Language = null, bool? CalmMode = null,
+    IReadOnlyList<string>? TipsSeen = null);
 
 /// <summary>Outcome of <see cref="HabitService.ImportAsync"/>.</summary>
 public enum ImportResult
@@ -102,6 +103,7 @@ public partial class HabitService
                 .SetProperty(u => u.ShowStreaks, u => showStreaks ?? u.ShowStreaks)
                 .SetProperty(u => u.Language, u => language ?? u.Language)
                 .SetProperty(u => u.CalmMode, u => calmMode ?? u.CalmMode));
+        foreach (var tip in data.TipsSeen ?? []) await MarkTipSeenAsync(userId, tip);
         await transaction.CommitAsync();
         return ImportResult.Imported;
     }

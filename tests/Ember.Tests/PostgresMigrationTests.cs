@@ -261,6 +261,35 @@ public class PostgresMigrationTests(PostgresFixture postgres)
         (await db.Database.SqlQueryRaw<int>("SELECT count(*)::int AS \"Value\" FROM \"AspNetUsers\"").ToListAsync()).Should().Equal(1);
     }
 
+    [DockerFact]
+    public async Task TipsSeenMigration_MarksStreaksSeenForExistingAccounts_NewAccountsStartEmpty_AndGoesBackDown()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var options = new DbContextOptionsBuilder<EmberDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new EmberDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+        const string previous = "20261113152127_AddLanguageCalmModeAndHelps";
+        const string insert =
+            "INSERT INTO \"AspNetUsers\" (\"Id\", \"Timezone\", \"GraceDaysPerWeek\", \"DmFailureCount\", \"EmailConfirmed\", " +
+            "\"PhoneNumberConfirmed\", \"TwoFactorEnabled\", \"LockoutEnabled\", \"AccessFailedCount\", \"SecondReminderMinutes\", " +
+            "\"ShowStreaks\", \"Language\", \"CalmMode\") VALUES ({0}, 'Europe/Berlin', 1, 0, FALSE, FALSE, FALSE, FALSE, 0, 0, FALSE, 'en', FALSE)";
+
+        await migrator.MigrateAsync(previous);
+        await db.Database.ExecuteSqlRawAsync(insert, Guid.Parse("00000000-0000-0000-0000-000000000001"));
+
+        await migrator.MigrateAsync();
+        await db.Database.ExecuteSqlRawAsync(insert, Guid.Parse("00000000-0000-0000-0000-000000000002"));
+        db.Users.Add(new User { Id = Guid.Parse("00000000-0000-0000-0000-000000000003") });
+        await db.SaveChangesAsync();
+
+        (await db.Users.AsNoTracking().OrderBy(u => u.Id).Select(u => u.TipsSeen).ToListAsync())
+            .Should().BeEquivalentTo(new List<string>[] { ["streaks"], [], [] }, o => o.WithStrictOrdering());
+
+        await migrator.MigrateAsync(previous);
+        (await db.Database.SqlQueryRaw<int>("SELECT count(*)::int AS \"Value\" FROM information_schema.columns " +
+            "WHERE table_name = 'AspNetUsers' AND column_name = 'TipsSeen'").ToListAsync()).Should().Equal(0);
+    }
+
     private static async Task<DateOnly> CurrentDateAsync(EmberDbContext db)
         => (await db.Database.SqlQueryRaw<DateOnly>("SELECT CURRENT_DATE AS \"Value\"").ToListAsync()).Single();
 

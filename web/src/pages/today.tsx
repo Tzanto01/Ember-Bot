@@ -14,6 +14,7 @@ import { LiveRegion } from '@/components/live-region';
 import { MomentDoor } from '@/components/moment/moment-door';
 import { PageHeader } from '@/components/page-header';
 import { routineTitle } from '@/components/routines/routine-title';
+import { TipSlot } from '@/components/tips/tip-slot';
 import { checkButtonId } from '@/components/today/check-button';
 import { HabitRow } from '@/components/today/habit-row';
 import { HearthIllustration } from '@/components/today/hearth-illustration';
@@ -366,6 +367,7 @@ export default function TodayPage() {
           </EmptyState>
         </Card>
         {today && <DayJournal date={today} />}
+        <TipSlot place="journal" habits={data.habits} routines={data.routines} />
       </>
     );
   } else {
@@ -431,6 +433,7 @@ export default function TodayPage() {
               <TapLink to={{ pathname: '/settings', hash: reminderHash }}>{t('today.unheard.link')}</TapLink>
             </Notice>
           )}
+          <TipSlot place="below" habits={data.habits} routines={data.routines} />
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
             <Button asChild variant="secondary" className="w-full lg:w-auto">
               <Link to="/habits/new">
@@ -462,6 +465,7 @@ export default function TodayPage() {
             </section>
           )}
           {today && <DayJournal date={today} />}
+          <TipSlot place="journal" habits={data.habits} routines={data.routines} />
         </div>
       </div>
     );
@@ -501,6 +505,7 @@ export default function TodayPage() {
       )}
       <DeviceNotices />
       <WhatsNewCard />
+      <TipSlot place="top" habits={data?.habits} routines={data?.routines} />
       {body}
     </div>
   );

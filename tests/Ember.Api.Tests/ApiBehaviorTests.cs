@@ -289,4 +289,48 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
         word.GetProperty("errors").Has("calmMode").Should().BeTrue();
         off.GetProperty("calmMode").GetBoolean().Should().BeFalse();
     }
+
+    private static async Task<string[]> TipsSeenAsync(ApiClient user)
+        => (await (await user.Get("/api/me")).ExpectJson()).GetProperty("tipsSeen").EnumerateArray().Select(e => e.GetString()!).ToArray();
+
+    [DockerFact]
+    public async Task A_new_account_has_seen_no_tips_and_marking_one_without_consent_adds_it_once()
+    {
+        var user = await Host.SignedInAsync(consent: false);
+        (await TipsSeenAsync(user)).Should().BeEmpty();
+
+        await (await user.Put("/api/me/tips/routines")).Expect(HttpStatusCode.NoContent);
+        await (await user.Put("/api/me/tips/routines")).Expect(HttpStatusCode.NoContent);
+        var unknown = await (await user.Put("/api/me/tips/leaderboard")).ExpectProblem(HttpStatusCode.BadRequest, "validation");
+
+        (await TipsSeenAsync(user)).Should().Equal("routines");
+        unknown.GetProperty("errors").Has("id").Should().BeTrue();
+    }
+
+    [DockerFact]
+    public async Task Choosing_streaks_either_way_marks_the_streaks_tip_seen()
+    {
+        var user = await Host.SignedInAsync();
+        await (await user.Put("/api/me/tips/android")).Expect(HttpStatusCode.NoContent);
+
+        var me = await (await user.Patch("/api/me", new { showStreaks = false })).ExpectJson();
+
+        me.GetProperty("tipsSeen").EnumerateArray().Select(e => e.GetString()).Should().Equal("android", "streaks");
+        var userId = await user.IdAsync();
+        (await Host.Service(s => s.NeedsStreaksQuestionAsync(userId))).Should().BeFalse();
+    }
+
+    [DockerFact]
+    public async Task The_bot_asks_the_streaks_question_only_while_streaks_are_off_and_the_tip_is_unseen()
+    {
+        var fresh = await Host.SignedInAsync();
+        var freshId = await fresh.IdAsync();
+        var streaksOn = await Host.SignedInAsync();
+        var streaksOnId = await streaksOn.IdAsync();
+        await Host.Db(db => db.Users.Where(u => u.Id == streaksOnId).ExecuteUpdateAsync(s => s.SetProperty(u => u.ShowStreaks, true)));
+
+        (await Host.Service(s => s.NeedsStreaksQuestionAsync(freshId))).Should().BeTrue();
+        (await Host.Service(s => s.NeedsStreaksQuestionAsync(streaksOnId))).Should().BeFalse();
+        (await Host.Service(s => s.NeedsStreaksQuestionAsync(Guid.NewGuid()))).Should().BeFalse();
+    }
 }

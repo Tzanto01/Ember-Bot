@@ -40,6 +40,18 @@ public class User : IdentityUser<Guid>
     /// <summary>Whether the app shows its calm mode. False for new accounts and for every account that existed when it was added.</summary>
     public bool CalmMode { get; set; }
 
+    /// <summary>
+    /// The ids (from <see cref="TipIds"/>) of the one-time tips this account has answered or dismissed. Empty for new accounts; the
+    /// migration that added it set <see cref="StreaksTip"/> for every account that existed then.
+    /// </summary>
+    public List<string> TipsSeen { get; set; } = [];
+
+    /// <summary>The tip that asks whether to show streaks.</summary>
+    public const string StreaksTip = "streaks";
+
+    /// <summary>The tip ids <see cref="TipsSeen"/> may hold.</summary>
+    public static readonly IReadOnlySet<string> TipIds = new HashSet<string> { StreaksTip, "private-journal", "routines", "android", "discord" };
+
     /// <summary>The values <see cref="SecondReminderMinutes"/> may hold.</summary>
     public static readonly IReadOnlySet<int> SecondReminderChoices = new HashSet<int> { 0, 15, 30, 60, 120 };
 

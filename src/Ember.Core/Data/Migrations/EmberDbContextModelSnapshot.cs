@@ -744,6 +744,10 @@ namespace Ember.Core.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.PrimitiveCollection<List<string>>("TipsSeen")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 

@@ -217,6 +217,22 @@ This usually happens when DMs from server members are turned off (server menu â†
   <data name="habit.stats.show-streaks" xml:space="preserve">
     <value>Show streaks</value>
   </data>
+  <data name="habit.streaks-tip.question" xml:space="preserve">
+    <value>**Do you want to see streaks?**
+A streak counts the days in a row you kept a habit. Some people find that motivating, others find it stressful. You can change it any time with `/habit streak` or in Settings.</value>
+  </data>
+  <data name="habit.streaks-tip.show" xml:space="preserve">
+    <value>Show streaks</value>
+  </data>
+  <data name="habit.streaks-tip.not-for-me" xml:space="preserve">
+    <value>Not for me</value>
+  </data>
+  <data name="habit.streaks-tip.on" xml:space="preserve">
+    <value>Streaks are on. You can turn them off any time with `/habit streak` or in Settings.</value>
+  </data>
+  <data name="habit.streaks-tip.off" xml:space="preserve">
+    <value>Streaks stay off. You can turn them on any time with `/habit streak` or in Settings.</value>
+  </data>
   <data name="habit.stats.title" xml:space="preserve">
     <value>Your Habit Stats</value>
   </data>

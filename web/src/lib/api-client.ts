@@ -30,6 +30,7 @@ import type {
   RoutinePatch,
   StoredDayNote,
   StoredMood,
+  TipId,
   TwoFactorSetup,
   TwoFactorStatus,
   WeeklyStats,
@@ -203,6 +204,11 @@ export class ApiClient {
   /** `PATCH /api/me`. Call `AuthService.setMe()` with the result. */
   async updateMe(patch: MePatch): Promise<Me> {
     return withJournal(await this.http.request<Me>('PATCH', '/api/me', { body: patch }));
+  }
+
+  /** `PUT /api/me/tips/{id}` → 204: marks the tip seen (idempotent). */
+  markTipSeen(id: TipId): Promise<void> {
+    return this.http.request('PUT', `/api/me/tips/${encodeURIComponent(id)}`);
   }
 
   /** `POST /api/me/consent`: 400 unless `policyVersion` is the current one. */
