@@ -35,6 +35,9 @@ public static class TestHostProgram
         builder.Configuration["Ember:RateLimits:MailPerIpPerHour"] = "1000";
         builder.Configuration["Ember:RateLimits:MailPerDay"] = "10000";
         builder.Configuration["Ember:RateLimits:AuthPerIpPerMinute"] = "1000";
+        builder.Configuration["Ember:RateLimits:AuthOtherPerIpPerMinute"] = "10000";
+        builder.Configuration["Ember:RateLimits:FeedbackPerHour"] = "1000";
+        builder.Configuration["Ember:RateLimits:FeedbackPerDay"] = "10000";
         builder.Services.AddEmberTestFakes($"{url}{TestFakes.AuthorizePath}");
 
         await using var app = ApiApp.Build(builder, extra => extra.MapEmberTestEndpoints());

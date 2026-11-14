@@ -3,9 +3,9 @@ import { findOutboxLink } from './outbox';
 
 let counter = 0;
 
-function uniqueSuffix(): string {
+export function uniqueSuffix(): string {
   counter += 1;
-  return `${Date.now()}${counter}${Math.floor(Math.random() * 1000)}`;
+  return `${Date.now()}${process.env['TEST_PARALLEL_INDEX'] ?? 0}${counter}${Math.floor(Math.random() * 1000)}`;
 }
 
 /** Synthetic credential generated per run, so nothing secret-shaped lives in the repo. */

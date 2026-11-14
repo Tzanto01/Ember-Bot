@@ -20,25 +20,32 @@ public static class TestEndpoints
     public sealed record TargetsDto(bool Discord, IReadOnlyList<int> PushSubscriptionIds);
     public sealed record FeedbackDto(int Id, string Title, Guid? UserId, int PictureCount);
 
+    private const string DiscordKeyCookie = "ember-test-discord";
+
     public static WebApplication MapEmberTestEndpoints(this WebApplication app)
     {
         var test = app.MapGroup("/test");
 
-        test.MapGet("/discord/next", (string? id, string? error, FakeDiscord discord) =>
+        test.MapGet("/discord/next", (string? id, string? error, FakeDiscord discord, HttpContext http) =>
         {
+            var key = Guid.NewGuid().ToString("N");
             if (error == "access_denied" && id is null)
-                discord.DenyNext();
+                discord.DenyNext(key);
             else if (error is null && ulong.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var discordId))
-                discord.SetNext(discordId);
+                discord.SetNext(key, discordId);
             else
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["id"] = ["Pass a Discord ID or error=access_denied."] });
+            http.Response.Cookies.Append(DiscordKeyCookie, key, new CookieOptions { Path = "/test/discord", HttpOnly = true, SameSite = SameSiteMode.Lax });
             return Results.NoContent();
         });
 
-        test.MapGet("/discord/authorize", ([FromQuery(Name = "redirect_uri")] string redirectUri, string state, FakeDiscord discord) =>
-            Results.Redirect(QueryHelpers.AddQueryString(redirectUri, discord.TakeDeny()
+        test.MapGet("/discord/authorize", ([FromQuery(Name = "redirect_uri")] string redirectUri, string state, FakeDiscord discord, HttpContext http) =>
+        {
+            var key = http.Request.Cookies[DiscordKeyCookie] is { Length: > 0 } cookie ? cookie : FakeDiscord.DefaultKey;
+            return Results.Redirect(QueryHelpers.AddQueryString(redirectUri, discord.TakeDeny(key)
                 ? new Dictionary<string, string?> { ["error"] = "access_denied", ["state"] = state }
-                : new Dictionary<string, string?> { ["code"] = "fake", ["state"] = state })));
+                : new Dictionary<string, string?> { ["code"] = key, ["state"] = state }));
+        });
 
         test.MapGet("/outbox", (string email, OutboxEmailTransport outbox) =>
             outbox.Latest(email) is { } latest
@@ -50,8 +57,8 @@ public static class TestEndpoints
                 ? Results.Ok(new TotpDto(Totp.Code(key)))
                 : Results.NotFound());
 
-        test.MapGet("/feedback/latest", async (EmberDbContext db) =>
-            await db.Feedback.OrderByDescending(f => f.Id)
+        test.MapGet("/feedback/latest", async (string? title, EmberDbContext db) =>
+            await db.Feedback.Where(f => title == null || f.Title == title).OrderByDescending(f => f.Id)
                 .Select(f => new FeedbackDto(f.Id, f.Title, f.UserId, f.Images.Count))
                 .FirstOrDefaultAsync() is { } latest
                 ? Results.Ok(latest)

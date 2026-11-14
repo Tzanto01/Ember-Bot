@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createWebUser } from './support/accounts';
+import { createWebUser, uniqueSuffix } from './support/accounts';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGP4z8AARAwQCgAf7gP9i18U1AAAAABJRU5ErkJggg==',
@@ -16,7 +16,7 @@ async function storedFeedback(page: Page, title: string): Promise<Stored> {
   let stored: Stored | undefined;
   await expect
     .poll(async () => {
-      const response = await page.request.get('/test/feedback/latest');
+      const response = await page.request.get(`/test/feedback/latest?title=${encodeURIComponent(title)}`);
       stored = response.ok() ? await response.json() : undefined;
       return stored?.title;
     })
@@ -38,7 +38,8 @@ async function userId(page: Page): Promise<string> {
 
 test('a signed-in user sends feedback with one of two pictures kept', async ({ page }) => {
   await createWebUser(page);
-  await fillReport(page, 'Pictures kept');
+  const title = `Pictures kept ${uniqueSuffix()}`;
+  await fillReport(page, title);
   await page.locator('input[type=file]').setInputFiles([
     { name: 'one.png', mimeType: 'image/png', buffer: png },
     { name: 'two.png', mimeType: 'image/png', buffer: png },
@@ -56,14 +57,15 @@ test('a signed-in user sends feedback with one of two pictures kept', async ({ p
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByText('Thank you, that really helps.')).toBeVisible();
 
-  const stored = await storedFeedback(page, 'Pictures kept');
+  const stored = await storedFeedback(page, title);
   expect(stored.pictureCount).toBe(1);
   expect(stored.userId).toBe(await userId(page));
 });
 
 test('anonymous feedback from a signed-in user is stored without the account', async ({ page }) => {
   await createWebUser(page);
-  await fillReport(page, 'Sent anonymously');
+  const title = `Sent anonymously ${uniqueSuffix()}`;
+  await fillReport(page, title);
   await page.locator('input[type=file]').setInputFiles({ name: 'one.png', mimeType: 'image/png', buffer: png });
   await expect(page.getByText(/^1 of 5 pictures/)).toBeVisible();
   await page.getByRole('switch', { name: 'Send feedback anonymously' }).click();
@@ -71,7 +73,7 @@ test('anonymous feedback from a signed-in user is stored without the account', a
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByText('Thank you, that really helps.')).toBeVisible();
 
-  const stored = await storedFeedback(page, 'Sent anonymously');
+  const stored = await storedFeedback(page, title);
   expect(stored.userId).toBeNull();
   expect(stored.pictureCount).toBe(1);
 });
