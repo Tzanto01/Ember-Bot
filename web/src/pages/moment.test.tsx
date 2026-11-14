@@ -341,8 +341,11 @@ describe('MomentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }));
     await user.click(screen.getByRole('button', { name: 'Next' }));
     await heading(/^Slow breathing, step 3 of 5/);
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveClass('bg-secondary');
     await user.click(screen.getByRole('button', { name: 'Start' }));
     expect(announced()).toContain('Round 1 of 6. Breathe in, 4');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Just breathe along\.$/);
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveClass('bg-secondary');
     await user.click(screen.getByRole('button', { name: 'Urgent help' }));
     expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
     await act(() => new Promise((resolve) => setTimeout(resolve, 1200)));

@@ -115,8 +115,9 @@ const passwordRequired: Validator = (value) => (value ? null : t('settings.passw
 const noPassword: Validator = () => null;
 const deleteWord: Validator = (value) => {
   const word = value.trim();
-  if (!word) return t('settings.delete.typeDelete');
-  return word === 'DELETE' ? null : t('settings.delete.typeDeleteCaps');
+  const expected = t('delete.word');
+  if (!word) return t('settings.delete.typeDelete', { word: expected });
+  return word === expected ? null : t('settings.delete.typeDeleteCaps', { word: expected });
 };
 
 function isIos(): boolean {
@@ -557,7 +558,7 @@ export default function SettingsPage() {
           setDeleteErrors(
             me.hasPassword
               ? { password: t('settings.passwordMismatch') }
-              : { confirm: t('settings.delete.typeDeleteCaps') },
+              : { confirm: t('settings.delete.typeDeleteCaps', { word: t('delete.word') }) },
           ),
         );
         focusFirstInvalid(deleteForm.current);
@@ -1367,7 +1368,7 @@ export default function SettingsPage() {
                         </>
                       )}
                       <FormField
-                        label={t('settings.delete.confirmLabel')}
+                        label={t('settings.delete.confirmLabel', { word: t('delete.word') })}
                         error={confirm.error ?? deleteErrors.confirm ?? null}
                       >
                         {(field) => (

@@ -17,6 +17,8 @@ import { env } from '@/lib/env';
 import { guest, signedIn } from '@/lib/guards';
 import type { en } from '@/lib/i18n';
 import { setNavigator } from '@/lib/navigation';
+import { auth } from '@/lib/services';
+import { useStore } from '@/lib/store';
 import { useTranslation } from 'react-i18next';
 
 type TitleKey = Extract<keyof typeof en, `title.${string}`> | 'pitch.title';
@@ -57,6 +59,16 @@ async function requireGuest({ request }: LoaderFunctionArgs) {
   if (new URL(request.url).searchParams.get('reason') === 'offline') return null;
   const target = await guest();
   return target ? redirect(target) : null;
+}
+
+async function loadSession() {
+  await auth.loadMe().catch(() => null);
+  return null;
+}
+
+/** Shell for pages open to everyone: the app shell when signed in or in no-account mode, else the public centred one. */
+function OpenShell() {
+  return useStore(auth.me) ? <AppShell /> : <CenteredShell />;
 }
 
 function landingOrToday(args: LoaderFunctionArgs) {
@@ -175,10 +187,17 @@ export const routes: RouteObject[] = [
           legal('terms', 'title.terms'),
           legal('imprint', 'title.imprint'),
           { path: 'download', ...page('title.download', () => import('./pages/download')) },
-          { path: 'feedback', ...page('title.feedback', () => import('./pages/feedback')) },
           { path: 'moment', ...page('title.moment', () => import('./pages/moment')) },
-          { path: 'help', ...page('title.help', () => import('./pages/help')) },
           { path: 'about', ...page('title.about', () => import('./pages/about')) },
+        ],
+      },
+      {
+        element: <OpenShell />,
+        loader: loadSession,
+        children: [
+          { path: 'feedback', ...page('title.feedback', () => import('./pages/feedback')) },
+          { path: 'help', ...page('title.help', () => import('./pages/help')) },
+          { path: '*', ...page('title.notFound', () => import('./pages/not-found')) },
         ],
       },
       {
@@ -200,10 +219,6 @@ export const routes: RouteObject[] = [
           { path: 'moments', ...page('title.moments', () => import('./pages/moments')) },
           { path: 'link/merge', ...page('title.linkMerge', () => import('./pages/link-merge')) },
         ],
-      },
-      {
-        element: <CenteredShell />,
-        children: [{ path: '*', ...page('title.notFound', () => import('./pages/not-found')) }],
       },
     ],
   },

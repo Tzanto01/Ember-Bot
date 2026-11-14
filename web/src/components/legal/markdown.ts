@@ -15,6 +15,8 @@ function safeHref(href: string): boolean {
   }
 }
 
+const englishSummary = /^\W*English summary\b/;
+
 const legalMarked = new Marked({
   gfm: true,
   breaks: true,
@@ -23,7 +25,7 @@ const legalMarked = new Marked({
       return escapeHtml(text);
     },
     blockquote({ tokens, text }) {
-      if (!/^\W*English summary\b/.test(text)) return false;
+      if (!englishSummary.test(text)) return false;
       return `<blockquote lang="en">\n${this.parser.parse(tokens)}</blockquote>\n`;
     },
     link({ href, title, tokens }) {
@@ -56,15 +58,23 @@ export interface LegalDocument {
 /**
  * Renders a legal markdown text. Raw HTML in the source comes out as escaped text, and links other than relative,
  * `https:` and `mailto:` ones render as their plain text, so the output is safe to inject. A leading `#` heading is
- * taken out and returned as `heading`.
+ * taken out and returned as `heading`. With `hideEnglishSummary`, a leading "English summary" quote and the rule right
+ * after it are left out.
  */
-export function renderLegal(markdown: string): LegalDocument {
+export function renderLegal(markdown: string, hideEnglishSummary = false): LegalDocument {
   const tokens = legalMarked.lexer(markdown);
   const first = tokens[0];
   let heading: string | null = null;
   if (first?.type === 'heading' && (first as Tokens.Heading).depth === 1) {
     heading = (first as Tokens.Heading).text;
     tokens.shift();
+  }
+  if (hideEnglishSummary) {
+    const quote = tokens.findIndex((token) => token.type !== 'space');
+    if (tokens[quote]?.type === 'blockquote' && englishSummary.test((tokens[quote] as Tokens.Blockquote).text)) {
+      const rule = tokens.findIndex((token, i) => i > quote && token.type !== 'space');
+      tokens.splice(quote, tokens[rule]?.type === 'hr' ? rule - quote + 1 : 1);
+    }
   }
   return { heading, html: legalMarked.parser(tokens) };
 }

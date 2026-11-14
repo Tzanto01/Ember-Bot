@@ -28,7 +28,7 @@ function StraySpark() {
 export default function NotFoundPage() {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
+    <div className="mx-auto flex w-full max-w-[40rem] flex-col items-center gap-6 text-center">
       <div aria-hidden="true" data-calm-hide>
         <StraySpark />
       </div>

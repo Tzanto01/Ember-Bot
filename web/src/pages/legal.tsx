@@ -27,19 +27,27 @@ const prose = [
   'max-sm:[&_thead]:hidden max-sm:[&_tbody]:block max-sm:[&_tr]:mb-3 max-sm:[&_tr]:block max-sm:[&_tr]:border max-sm:[&_tr]:border-border max-sm:[&_tr]:rounded-sm max-sm:[&_td]:block max-sm:[&_td]:border-0 max-sm:[&_td]:hyphens-manual max-sm:[&_td]:before:block max-sm:[&_td]:before:font-semibold max-sm:[&_td]:before:content-[attr(data-label)]',
 ].join(' ');
 
-async function loadDocument(file: string) {
+async function loadDocument(file: string, hideEnglishSummary: boolean) {
   const response = await fetch(`/legal/${file}`);
   if (!response.ok) throw new Error(`Legal document answered ${response.status}`);
   const markdown = await response.text();
   if (/^\s*<!doctype/i.test(markdown)) throw new Error('Expected markdown, got the app shell');
-  return renderLegal(markdown);
+  return renderLegal(markdown, hideEnglishSummary);
 }
 
-/** `/legal/privacy`, `/legal/terms`, `/legal/imprint`: the German legal text from `/legal/*.md`, its `#` heading as the `h1`. */
+/**
+ * `/legal/privacy`, `/legal/terms`, `/legal/imprint`: the German legal text from `/legal/*.md`, its `#` heading as the
+ * `h1`, and the English summary quote only on an English UI.
+ */
 export default function LegalPage({ doc }: { doc: LegalDoc }) {
   const { t, i18n } = useTranslation();
   const { file, title } = documents[doc];
-  const query = useQuery({ queryKey: ['legal', doc], queryFn: () => loadDocument(file), staleTime: Infinity });
+  const german = i18n.language === 'de';
+  const query = useQuery({
+    queryKey: ['legal', doc, german],
+    queryFn: () => loadDocument(file, german),
+    staleTime: Infinity,
+  });
   const loaded = query.data;
 
   return (

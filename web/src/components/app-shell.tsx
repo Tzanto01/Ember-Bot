@@ -1,13 +1,14 @@
 import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import { BusyButton } from '@/components/auth/busy-button';
 import { BetaBadge } from '@/components/beta-badge';
 import { BetaUpdateBanner } from '@/components/beta-update';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { NativeConfirmation } from '@/components/native-confirmation';
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { formatDate } from '@/lib/local-date';
 import { auth, deviceSync, helps, journal, localMode, offlineQueue } from '@/lib/services';
@@ -23,8 +24,46 @@ const nav = [
 const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px]';
 
 /**
+ * No-account mode's way to an account: keeps the device data waiting for it (mode `upgrading`), then opens sign-in or
+ * sign-up (`to`), the same move as "Create an account and keep my data" in Settings. `onFailed` runs when that
+ * cannot start.
+ */
+export function AccountButton({
+  to,
+  onFailed,
+  ...props
+}: Omit<ButtonProps, 'asChild' | 'onClick'> & { to: '/login' | '/signup'; onFailed: () => void }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+
+  async function start(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await localMode.beginUpgrade();
+      await navigate(to);
+    } catch {
+      setBusy(false);
+      onFailed();
+    }
+  }
+
+  return (
+    <BusyButton
+      {...props}
+      type="button"
+      busy={busy}
+      busyLabel={t('local.upgrade.busy')}
+      onClick={() => void start()}
+    />
+  );
+}
+
+/**
  * Signed-in shell: sticky header with the brand, the main nav (top pills from `md`, a fixed bottom tab bar below)
- * and "Sign out" from `md` (Settings has it on phones); the offline-queue and dropped-edit notices above the page; legal footer.
+ * and "Sign out" from `md` (Settings has it on phones), or "Sign in" in no-account mode; the offline-queue and
+ * dropped-edit notices above the page; legal footer.
  * Loads "What helps me" into memory once the account's private journal is unlocked.
  */
 export function AppShell() {
@@ -38,6 +77,7 @@ export function AppShell() {
   const turningOff = useStore(journal.turningOff);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const [upgradeFailed, setUpgradeFailed] = useState(false);
   const busy = useRef(false);
 
   useEffect(() => {
@@ -91,7 +131,16 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          {!local && (
+          {local ? (
+            <AccountButton
+              to="/login"
+              variant="ghost"
+              className="ml-auto"
+              onFailed={() => setUpgradeFailed(true)}
+            >
+              {t('auth.signIn')}
+            </AccountButton>
+          ) : (
             <Button
               variant="ghost"
               className="ml-auto max-md:hidden"
@@ -111,6 +160,11 @@ export function AppShell() {
         {signOutFailed && (
           <Notice tone="notice">
             <p>{t('shell.signOutFailed')}</p>
+          </Notice>
+        )}
+        {upgradeFailed && (
+          <Notice tone="notice">
+            <p>{t('local.upgrade.failed')}</p>
           </Notice>
         )}
         {pending > 0 && (

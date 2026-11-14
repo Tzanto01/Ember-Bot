@@ -11,7 +11,7 @@ export const buttonVariants = cva(
         default:
           'bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary)_88%,var(--foreground))]',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary)_85%,var(--foreground))]',
+          'border-[length:max(1px,var(--border-width))] border-input bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary)_85%,var(--foreground))]',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline underline-offset-4 hover:decoration-2',
         destructive:
@@ -28,6 +28,14 @@ export const buttonVariants = cva(
         false: '',
       },
     },
+    compoundVariants: [
+      {
+        variant: 'secondary',
+        size: 'default',
+        className:
+          'px-[calc(1rem-max(1px,var(--border-width)))] py-[calc(0.5rem-max(1px,var(--border-width)))]',
+      },
+    ],
     defaultVariants: { variant: 'default', size: 'default', block: false },
   },
 );

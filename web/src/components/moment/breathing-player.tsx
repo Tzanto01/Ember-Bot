@@ -23,6 +23,9 @@ interface Player {
   announce: string;
 }
 
+/** Where the player is: before Start, breathing, paused mid-way, or all rounds done. */
+export type BreathStatus = 'ready' | 'running' | 'paused' | 'done';
+
 const small = 0.6;
 
 function phasesOf(inhale: number, hold: number, exhale: number): Phase[] {
@@ -36,7 +39,8 @@ function phasesOf(inhale: number, hold: number, exhale: number): Phase[] {
 /**
  * Paced-breathing player: explicit Start and Pause, phases as visible text, one polite announcement per phase change
  * (the inhale names the round, so repeats still announce). The circle is decorative and doesn't scale under reduced
- * motion.
+ * motion. Start is the primary action until the breathing runs or is done; `onStatusChange` reports each status so
+ * the page can move the emphasis to Next.
  */
 export function BreathingPlayer({
   inhale,
@@ -44,6 +48,7 @@ export function BreathingPlayer({
   exhale,
   rounds,
   halted = false,
+  onStatusChange,
 }: {
   inhale: number;
   hold: number;
@@ -51,6 +56,7 @@ export function BreathingPlayer({
   rounds: number;
   /** While true (urgent help open), a running player pauses silently; the user resumes. */
   halted?: boolean;
+  onStatusChange?: (status: BreathStatus) => void;
 }) {
   useTranslation();
   const phases = phasesOf(inhale, hold, exhale);
@@ -100,6 +106,18 @@ export function BreathingPlayer({
     return () => clearInterval(id);
   }, [player.running]);
 
+  const status: BreathStatus = player.running
+    ? 'running'
+    : player.finished
+      ? 'done'
+      : player.started
+        ? 'paused'
+        : 'ready';
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
+
   const active = player.started && !player.finished;
   const phase = phases[player.phase]!;
   const scale = active
@@ -141,7 +159,7 @@ export function BreathingPlayer({
       </div>
       <Button
         type="button"
-        variant="secondary"
+        variant={status === 'running' || status === 'done' ? 'secondary' : 'default'}
         className="min-w-[min(10rem,100%)]"
         onClick={() => dispatch('toggle')}
       >

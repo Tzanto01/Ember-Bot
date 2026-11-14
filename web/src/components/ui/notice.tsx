@@ -1,4 +1,4 @@
-import { Check, Info, type LucideIcon, Moon } from 'lucide-react';
+import { Check, CircleAlert, Info, type LucideIcon, Moon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -9,7 +9,7 @@ const tones: Record<NoticeTone, { icon: LucideIcon; box: string; iconClass?: str
   info: { icon: Info, box: 'border-border bg-muted text-foreground', iconClass: 'text-muted-foreground' },
   success: { icon: Check, box: 'border-transparent bg-success text-success-foreground' },
   lowday: { icon: Moon, box: 'border-transparent bg-lowday text-lowday-foreground' },
-  notice: { icon: Info, box: 'border-notice-border bg-notice text-notice-foreground' },
+  notice: { icon: CircleAlert, box: 'border-notice-border bg-notice text-notice-foreground' },
 };
 
 export type NoticeProps = Omit<ComponentProps<'div'>, 'role'> & {

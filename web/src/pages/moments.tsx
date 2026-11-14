@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AccountButton } from '@/components/app-shell';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { EmptyState } from '@/components/empty-state';
 import { journalKey } from '@/components/journal/day-journal';
@@ -155,6 +156,7 @@ export default function MomentsPage() {
   const [problem, setProblem] = useState<{ key: string; text: string } | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [added, setAdded] = useState<string | null>(null);
+  const [upgradeFailed, setUpgradeFailed] = useState(false);
   const today = me?.localToday;
   const ready = !local && !!today && state === 'unlocked' && !turningOff;
 
@@ -201,6 +203,17 @@ export default function MomentsPage() {
     body = (
       <Notice>
         <p>{t('moments.needsAccount')}</p>
+        {local && (
+          <div className="flex flex-wrap gap-2">
+            <AccountButton to="/signup" onFailed={() => setUpgradeFailed(true)}>
+              {t('login.createAccount')}
+            </AccountButton>
+            <AccountButton to="/login" variant="secondary" onFailed={() => setUpgradeFailed(true)}>
+              {t('auth.signIn')}
+            </AccountButton>
+          </div>
+        )}
+        {upgradeFailed && <p>{t('local.upgrade.failed')}</p>}
       </Notice>
     );
   } else if (state === 'off' || turningOff) {

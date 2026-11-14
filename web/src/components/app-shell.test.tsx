@@ -54,6 +54,30 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
+  it('offers "Sign in" in no-account mode, keeping the device data for the account it opens', async () => {
+    const beginUpgrade = vi.spyOn(localMode, 'beginUpgrade').mockResolvedValue();
+    localMode.mode.set('local');
+    await renderShell();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(beginUpgrade).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('heading', { name: 'Elsewhere' })).toBeInTheDocument();
+    beginUpgrade.mockRestore();
+  });
+
+  it('stays and says so when no-account mode cannot start the move to an account', async () => {
+    const beginUpgrade = vi.spyOn(localMode, 'beginUpgrade').mockRejectedValue(new Error('offline'));
+    localMode.mode.set('local');
+    await renderShell();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("That didn't work just now.");
+    expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
+    beginUpgrade.mockRestore();
+  });
+
   it('shows the offline notice while edits are queued, with singular and plural copy, and drops it after sync', async () => {
     await renderShell();
     expect(screen.queryByText(/saved on this device/)).toBeNull();

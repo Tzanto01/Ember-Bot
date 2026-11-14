@@ -1,5 +1,6 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18n from '@/lib/i18n';
 import { renderPage } from '@/test-utils';
 import LegalPage from './legal';
 
@@ -45,5 +46,20 @@ describe('LegalPage', () => {
     expect(screen.getByRole('link', { name: 'Mail' })).toHaveAttribute('href', 'mailto:hallo@example.test');
     expect(screen.getByText(/Klick/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Klick' })).toBeNull();
+  });
+
+  it.each([
+    ['en', true],
+    ['de', false],
+  ] as const)('on a %s UI shows the English summary: %s', async (language, shown) => {
+    await act(() => i18n.changeLanguage(language));
+    serve(
+      ['# Impressum', '', '> **English summary (not binding).** Legal notice.', '', '---', '', 'Angaben'].join('\n'),
+    );
+    renderPage('/legal/imprint', () => <LegalPage doc="imprint" />, '/legal/imprint');
+
+    expect(await screen.findByText('Angaben')).toBeInTheDocument();
+    expect(screen.queryByText(/Legal notice/) !== null).toBe(shown);
+    expect(document.querySelector('#main hr') !== null).toBe(shown);
   });
 });

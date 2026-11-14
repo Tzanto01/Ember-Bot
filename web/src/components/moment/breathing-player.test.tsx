@@ -119,4 +119,22 @@ describe('BreathingPlayer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
     expect(liveRegion()).toHaveTextContent('Breathe in, 3');
   });
+
+  it('reports ready, running, paused and done so the page can move the emphasis', () => {
+    const onStatusChange = vi.fn();
+    render(
+      <BreathingPlayer inhale={1} hold={0} exhale={1} rounds={1} onStatusChange={onStatusChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(onStatusChange.mock.calls.map(([status]) => status)).toEqual([
+      'ready',
+      'running',
+      'paused',
+      'running',
+      'done',
+    ]);
+  });
 });

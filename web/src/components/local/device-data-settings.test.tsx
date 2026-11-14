@@ -1,18 +1,24 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18n from '@/lib/i18n';
 import type { ParsedBackup } from '@/lib/local/types';
 import { saveExport } from '@/lib/native/save-file';
-import { backup } from '@/lib/services';
-import { DeviceDataSettings } from './device-data-settings';
+import { backup, localMode } from '@/lib/services';
+import { DeleteDeviceData, DeviceDataSettings } from './device-data-settings';
 
 vi.mock('@/lib/services', async () => {
   const { Store } = await import('@/lib/store');
   return {
     auth: { loadMe: vi.fn(async () => null) },
-    localMode: { mode: new Store('local'), evicted: new Store(false), beginUpgrade: vi.fn() },
+    localMode: {
+      mode: new Store('local'),
+      evicted: new Store(false),
+      beginUpgrade: vi.fn(),
+      wipe: vi.fn(async () => {}),
+    },
     backup: {
       exportBackup: vi.fn(async () => ({})),
       markBackedUp: vi.fn(async () => {}),
@@ -137,5 +143,32 @@ describe('DeviceDataSettings', () => {
 
     expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
     expect(backup.markBackedUp).toHaveBeenCalledOnce();
+  });
+
+  it('wipes the device only after the localized delete word, typed in capitals', async () => {
+    await act(() => i18n.changeLanguage('de'));
+    const router = createMemoryRouter(
+      [
+        { path: '/settings', element: <DeleteDeviceData /> },
+        { path: '/login', element: null },
+      ],
+      { initialEntries: ['/settings'] },
+    );
+    render(<RouterProvider router={router} />);
+    const user = userEvent.setup();
+    const confirm = screen.getByLabelText('Gib LÖSCHEN ein, um zu bestätigen');
+
+    await user.type(confirm, 'löschen');
+    await user.click(screen.getByRole('button', { name: 'Alles auf diesem Gerät löschen' }));
+    expect(await screen.findByText('Gib LÖSCHEN in Großbuchstaben ein, um zu bestätigen.')).toBeInTheDocument();
+    await user.clear(confirm);
+    await user.type(confirm, 'DELETE');
+    await user.click(screen.getByRole('button', { name: 'Alles auf diesem Gerät löschen' }));
+    expect(localMode.wipe).not.toHaveBeenCalled();
+
+    await user.clear(confirm);
+    await user.type(confirm, 'LÖSCHEN');
+    await user.click(screen.getByRole('button', { name: 'Alles auf diesem Gerät löschen' }));
+    expect(localMode.wipe).toHaveBeenCalledOnce();
   });
 });

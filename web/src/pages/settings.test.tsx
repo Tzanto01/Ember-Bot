@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPage } from '@/test-utils';
 import { env } from '@/lib/env';
+import i18n from '@/lib/i18n';
 import { reminderNames } from '@/lib/native/reminder-names';
 import type { ReminderDestination } from '@/lib/models';
 import { auth, deviceSync, localMode, push } from '@/lib/services';
@@ -627,6 +628,26 @@ describe('SettingsPage', { timeout: 15_000 }, () => {
     expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
     expect(document.documentElement.lang).toBe('en');
     expect(localStorage.getItem('ember.language')).toBeNull();
+  });
+
+  it('asks for LÖSCHEN on a German screen, refuses DELETE there and still sends DELETE to the API', async () => {
+    const user = userEvent.setup();
+    const { fetch } = await open('/settings/privacy');
+    await act(() => i18n.changeLanguage('de'));
+
+    await user.type(screen.getByLabelText('Dein Passwort', { exact: true }), 'synthetic-secret-1');
+    const confirm = screen.getByLabelText('Gib zur Bestätigung LÖSCHEN ein');
+    await user.type(confirm, 'DELETE');
+    await user.click(screen.getByRole('button', { name: 'Mein Konto löschen' }));
+    expect(await screen.findByText('Gib zur Bestätigung LÖSCHEN in Großbuchstaben ein.')).toBeInTheDocument();
+    expect(fetch.pending.some((call) => call.url.endsWith('/api/me/delete'))).toBe(false);
+
+    await user.clear(confirm);
+    await user.type(confirm, ' LÖSCHEN ');
+    await user.click(screen.getByRole('button', { name: 'Mein Konto löschen' }));
+
+    const remove = await fetch.next('POST', '/api/me/delete');
+    expect(remove.body).toEqual({ password: 'synthetic-secret-1', confirm: 'DELETE' });
   });
 
   it('deletes the account with the password and lands on /login?reason=deleted', async () => {

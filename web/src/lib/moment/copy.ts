@@ -109,6 +109,9 @@ export const momentCopy = {
   get breathHeading() {
     return t('moment.breath.heading');
   },
+  get breathRunningHeading() {
+    return t('moment.breath.headingRunning');
+  },
   get start() {
     return t('moment.start');
   },

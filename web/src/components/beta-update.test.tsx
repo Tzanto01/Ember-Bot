@@ -169,6 +169,7 @@ describe('BetaUpdateBanner', () => {
     expect(
       await screen.findByText("The update couldn't be downloaded. Try again in a moment."),
     ).toBeInTheDocument();
+    expect(screen.getByRole('alert', { name: 'App update' })).toHaveAttribute('data-tone', 'notice');
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 

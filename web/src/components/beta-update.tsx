@@ -127,8 +127,8 @@ export function BetaUpdateBanner() {
   }[phase];
 
   return (
-    <Notice tone="info" aria-label={t('betaUpdate.label')}>
-      <div className="flex w-full flex-wrap items-center gap-2">
+    <Notice tone={phase === 'failed' ? 'notice' : 'info'} aria-label={t('betaUpdate.label')}>
+      <div className="flex w-full flex-wrap items-start gap-2">
         <p>{text}</p>
         {phase === 'offer' && notes?.versionName === update.versionName && (
           <ul

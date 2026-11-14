@@ -19,8 +19,9 @@ type Busy = 'export' | 'import' | 'restore' | 'upgrade';
 
 const deleteWord: Validator = (value) => {
   const word = value.trim();
-  if (!word) return t('local.delete.required');
-  return word === 'DELETE' ? null : t('local.delete.capitals');
+  const expected = t('delete.word');
+  if (!word) return t('local.delete.required', { word: expected });
+  return word === expected ? null : t('local.delete.capitals', { word: expected });
 };
 
 function contents(summary: BackupSummary): string {
@@ -219,7 +220,10 @@ export function DeviceDataSettings() {
   );
 }
 
-/** Settings body "Delete everything on this device" for no-account mode: typed DELETE, then `localMode.wipe()`. */
+/**
+ * Settings body "Delete everything on this device" for no-account mode: the typed delete word (`delete.word`), then
+ * `localMode.wipe()`.
+ */
 export function DeleteDeviceData() {
   useTranslation();
   const navigate = useNavigate();
@@ -246,7 +250,7 @@ export function DeleteDeviceData() {
     <>
       <p>{t('local.delete.text')}</p>
       <form ref={form} noValidate onSubmit={(event) => void wipe(event)} className="flex flex-col gap-3">
-        <FormField label={t('local.delete.label')} error={confirm.error}>
+        <FormField label={t('local.delete.label', { word: t('delete.word') })} error={confirm.error}>
           {(field) => (
             <Input
               {...field}

@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { useFocusHeadingOnChange } from '@/components/auth/use-field';
-import { BreathingPlayer } from '@/components/moment/breathing-player';
+import { type BreathStatus, BreathingPlayer } from '@/components/moment/breathing-player';
 import { IntensityScale } from '@/components/moment/intensity-scale';
 import { MomentHeader } from '@/components/moment/moment-header';
 import { Reflect } from '@/components/moment/reflect';
@@ -67,6 +67,7 @@ export default function MomentPage() {
   const [tried, setTried] = useState<Practice[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState(false);
+  const [breath, setBreath] = useState<BreathStatus>('ready');
   const helped = useStore(helps.items)?.slice(0, 3) ?? [];
 
   useFocusHeadingOnChange(
@@ -268,10 +269,19 @@ export default function MomentPage() {
             eyebrow={momentCopy.stepOf(shown.title, step.index + 1, shown.steps.length)}
             large
           >
-            {current.kind === 'breath' ? momentCopy.breathHeading : current.text}
+            {current.kind === 'breath'
+              ? breath === 'ready'
+                ? momentCopy.breathHeading
+                : momentCopy.breathRunningHeading
+              : current.text}
           </Heading>
           {current.kind === 'breath' && (
-            <BreathingPlayer key={`${practice.id}:${step.index}`} {...current} halted={helpOpen} />
+            <BreathingPlayer
+              key={`${practice.id}:${step.index}`}
+              {...current}
+              halted={helpOpen}
+              onStatusChange={setBreath}
+            />
           )}
           {current.kind === 'timer' && (
             <TimerStep
@@ -294,6 +304,9 @@ export default function MomentPage() {
               )}
               <Button
                 type="button"
+                variant={
+                  current.kind === 'breath' && (breath === 'ready' || breath === 'paused') ? 'secondary' : 'default'
+                }
                 className="flex-1"
                 onClick={() =>
                   setStep(last ? { kind: 'after' } : { kind: 'practice', index: step.index + 1 })

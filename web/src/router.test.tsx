@@ -126,11 +126,26 @@ describe('router guards', () => {
     expect(month).toHaveAttribute('aria-current', 'page');
   });
 
-  it('shows the not-found page for an unknown address', async () => {
+  it('shows the not-found page for an unknown address in the public shell to a guest', async () => {
     await visit('/no/such/page');
+    (await mock.next('GET', '/api/me')).respond(401);
 
     expect(
       await screen.findByRole('heading', { name: 'This page wandered off' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
+
+  it.each(['/help', '/feedback', '/no/such/page'])(
+    'keeps the app nav on %s for a signed-in user',
+    async (path) => {
+      const router = await visit(path);
+      (await mock.next('GET', '/api/me')).respond(200, me);
+
+      const nav = await screen.findByRole('navigation', { name: 'Main' });
+      expect(within(nav).getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/today');
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+      expect(url(router)).toBe(path);
+    },
+  );
 });
