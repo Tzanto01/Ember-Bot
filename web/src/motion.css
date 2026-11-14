@@ -231,7 +231,8 @@
   .ember-scene--app :is(.ember-land, .ember-haze) {
     bottom: calc(64px + env(safe-area-inset-bottom));
   }
-  .ember-scene--moment {
+  .ember-scene.ember-scene--moment {
+    --scene-glow-alpha: 11%;
     --scene-land-height: 12rem;
     --camp-size: 4.5rem;
     --camp-lift: 7.25rem;
@@ -313,7 +314,7 @@
 }
 
 .dark .ember-sheen {
-  --ember-sheen-alpha: 14%;
+  --ember-sheen-alpha: 10%;
 }
 
 .ember-sheen::after {
