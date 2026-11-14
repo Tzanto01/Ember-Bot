@@ -2,6 +2,7 @@ import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { AmbientScene } from '@/components/ambient-scene';
 import { BusyButton } from '@/components/auth/busy-button';
 import { BetaBadge } from '@/components/beta-badge';
 import { BetaUpdateBanner } from '@/components/beta-update';
@@ -100,9 +101,7 @@ export function AppShell() {
 
   return (
     <div className="relative isolate flex min-h-dvh flex-col pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
-      <div aria-hidden="true" data-calm-hide className="ember-glow-layer">
-        <div className="ember-glow" />
-      </div>
+      <AmbientScene app />
       <header className="sticky top-0 z-10 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className={cn('mx-auto flex min-h-[56px] items-center gap-4', measure, inline)}>
           <div className="flex items-center gap-2">

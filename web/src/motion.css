@@ -1,35 +1,258 @@
-/* Quiet motion: page arrival (`main[data-arrive]`), the shells' ambient glow, and slow campfire loops on decorative
-   SVG parts. Transform and opacity only, every animation under `prefers-reduced-motion: no-preference`; calm mode
-   (calm.css) and `data-motion='off'` stop all of it, forced colours too. */
+/* Quiet motion: page arrival (`main[data-arrive]`), the shells' ambient scene (static landscape, breathing glows,
+   twinkling stars, drifting clouds, rising sparks), the Moment door's sheen and campfire loops on decorative SVG parts.
+   Transform and opacity only, every animation under `prefers-reduced-motion: no-preference`; calm mode (calm.css) and
+   `data-motion='off'` stop all of it, forced colours hide the scene. Calm mode keeps the landscape, softer.
+   Tunable: `--scene-glow-alpha` (light and `.dark`) and `--scene-haze-alpha` (light only) on `.ember-scene`,
+   `--ember-sheen-alpha` (light and `.dark`) on `.ember-sheen`. */
 
-.ember-glow-layer {
-  position: absolute;
-  inset: 0 0 auto;
+.ember-scene {
+  --scene-measure: 72rem;
+  --scene-band: max(0px, (100vw - var(--scene-measure)) / 2);
+  --scene-glow-alpha: 22%;
+  --scene-haze-alpha: 14%;
+  --scene-land-opacity: 1;
+  --scene-land-height: clamp(10rem, 24vh, 20rem);
+  position: fixed;
+  inset: 0;
   z-index: -1;
-  height: clamp(28rem, 70vh, 52rem);
   overflow: hidden;
   pointer-events: none;
 }
 
-.ember-glow {
+.dark .ember-scene {
+  --scene-glow-alpha: 18%;
+}
+
+.ember-scene--still {
+  --scene-land-opacity: 0.6;
+}
+
+:root[data-calm] .ember-scene {
+  --scene-land-opacity: 0.7;
+}
+
+:root[data-calm] .ember-scene--still {
+  --scene-land-opacity: 0.45;
+}
+
+@media (min-width: 96rem) {
+  .ember-scene--app {
+    --scene-measure: 88rem;
+  }
+}
+
+@media (min-width: 137.5rem) {
+  .ember-scene--app {
+    --scene-measure: 104rem;
+  }
+}
+
+@media (min-width: 200rem) {
+  .ember-scene--app {
+    --scene-measure: 120rem;
+  }
+}
+
+.ember-land {
   position: absolute;
-  inset: -10rem 0 auto;
-  margin-inline: auto;
-  width: min(72rem, 140vw);
-  height: clamp(30rem, 75vh, 48rem);
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklch, var(--flame) 12%, transparent),
+  inset: auto 0 0;
+  width: 100%;
+  height: var(--scene-land-height);
+  opacity: var(--scene-land-opacity);
+}
+
+.ember-land-far {
+  fill: color-mix(in oklch, var(--muted) 50%, var(--background));
+}
+
+.ember-land-trees {
+  fill: color-mix(in oklch, var(--secondary) 70%, var(--muted));
+}
+
+.ember-land-near {
+  fill: var(--muted);
+}
+
+.dark .ember-land-far {
+  fill: var(--muted);
+}
+
+.dark .ember-land-trees {
+  fill: color-mix(in oklch, var(--muted) 25%, var(--background));
+}
+
+.dark .ember-land-near {
+  fill: color-mix(in oklch, var(--muted) 45%, var(--background));
+}
+
+.ember-haze {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--scene-land-height) * 2);
+  opacity: var(--scene-land-opacity);
+  background: linear-gradient(
+    to top,
+    color-mix(in oklch, var(--flame) var(--scene-haze-alpha), transparent) 35%,
     transparent
   );
 }
 
-.dark .ember-glow {
+.ember-cloud {
+  position: absolute;
+  top: 9%;
+  left: 0;
+  width: 34rem;
+  height: 8rem;
   background: radial-gradient(
     closest-side,
-    color-mix(in oklch, var(--flame) 10%, transparent),
+    color-mix(in oklch, var(--card) 85%, transparent),
+    color-mix(in oklch, var(--card) 35%, transparent) 60%,
     transparent
   );
+  transform: translateX(12vw);
+}
+
+.ember-cloud--late {
+  top: 24%;
+  width: 24rem;
+  height: 6rem;
+  transform: translateX(64vw);
+}
+
+.ember-sky,
+.ember-rise {
+  display: none;
+}
+
+.ember-moon {
+  position: absolute;
+  width: 2.25rem;
+  height: 2.25rem;
+  fill: color-mix(in oklch, var(--flame-core) 45%, var(--muted));
+  opacity: 0.85;
+}
+
+.ember-star {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--flame-core) 60%, var(--foreground));
+  opacity: 0.5;
+}
+
+.ember-glow {
+  position: absolute;
+  top: -16rem;
+  left: 50%;
+  width: 64rem;
+  height: 40rem;
+  margin-left: -32rem;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame) var(--scene-glow-alpha), transparent),
+    transparent
+  );
+}
+
+.ember-glow--side {
+  --w: max(26rem, var(--scene-band) * 1.6);
+  top: 6%;
+  left: calc(var(--scene-band) / 2);
+  width: var(--w);
+  height: 80%;
+  margin-left: calc(var(--w) / -2);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame) calc(var(--scene-glow-alpha) * 1.6), transparent),
+    transparent
+  );
+}
+
+.ember-glow--right {
+  left: auto;
+  right: calc(var(--scene-band) / 2);
+  margin-left: 0;
+  margin-right: calc(var(--w) / -2);
+}
+
+.ember-rise {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--flame-core);
+  box-shadow: 0 0 6px 1px color-mix(in oklch, var(--flame) 70%, transparent);
+  opacity: 0;
+}
+
+@media (max-width: 79.99rem) {
+  .ember-glow--side {
+    display: none;
+  }
+}
+
+@media (min-width: 90rem) {
+  .ember-sky,
+  .ember-rise {
+    display: block;
+  }
+}
+
+@media (min-width: 96rem) and (max-width: 103.99rem) {
+  .ember-scene--app :is(.ember-sky, .ember-rise) {
+    display: none;
+  }
+}
+
+:root:not(.dark) .ember-sky,
+.dark :is(.ember-cloud, .ember-haze) {
+  display: none;
+}
+
+@media (max-width: 47.99rem) {
+  .ember-scene {
+    --scene-land-height: 6.5rem;
+  }
+  .ember-land {
+    opacity: calc(var(--scene-land-opacity) * 0.8);
+  }
+  .ember-scene--app :is(.ember-land, .ember-haze) {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+
+.ember-sheen {
+  --ember-sheen-alpha: 18%;
+}
+
+.dark .ember-sheen {
+  --ember-sheen-alpha: 14%;
+}
+
+.ember-sheen::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  z-index: -1;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in oklch, var(--flame) var(--ember-sheen-alpha), transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+}
+
+.ember-fire {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.ember-core {
+  transform-box: fill-box;
+  transform-origin: 50% 85%;
 }
 
 .ember-flicker {
@@ -57,7 +280,7 @@
 @media (prefers-reduced-motion: no-preference) {
   main[data-arrive='blocks'] > :last-child > *,
   main[data-arrive='card'] > * {
-    animation: ember-arrive var(--ember-dur-slow) var(--ember-ease) both;
+    animation: ember-arrive 500ms var(--ember-ease) both;
   }
   main[data-arrive='blocks'] > :last-child > :nth-child(2) {
     animation-delay: 50ms;
@@ -76,7 +299,53 @@
   }
 
   .ember-glow {
-    animation: ember-breathe 10s ease-in-out infinite alternate;
+    animation: ember-glow 10s ease-in-out -2s infinite alternate;
+    will-change: transform, opacity;
+  }
+  .ember-glow--side {
+    animation-duration: 11.5s;
+    animation-delay: -4s;
+  }
+  .ember-glow--right {
+    animation-duration: 8.5s;
+    animation-delay: -7s;
+  }
+
+  .ember-star--twinkle {
+    animation: ember-star 10s ease-in-out infinite alternate;
+  }
+
+  .ember-cloud {
+    animation: ember-drift 150s linear -70s infinite;
+  }
+  .ember-cloud--late {
+    animation-duration: 115s;
+    animation-delay: -18s;
+  }
+
+  .ember-rise {
+    animation: ember-rise 8s ease-out infinite;
+  }
+
+  .ember-sheen::after {
+    animation: ember-sheen 12s ease-in-out -3s infinite;
+  }
+
+  .ember-fire {
+    animation: ember-campfire 2.6s ease-in-out infinite;
+  }
+  .ember-fire--b {
+    animation-duration: 3.1s;
+    animation-delay: -0.8s;
+  }
+  .ember-fire--mark {
+    animation-duration: 3.2s;
+  }
+  .ember-core {
+    animation: ember-flicker 1.9s ease-in-out infinite;
+  }
+  .ember-core--mark {
+    animation-duration: 2.6s;
   }
 
   .ember-flicker {
@@ -94,11 +363,15 @@
   }
 
   .ember-spark {
-    animation: ember-spark 7.5s ease-in-out infinite;
+    animation: ember-spark 3.4s ease-out infinite;
   }
   .ember-spark--late {
-    animation-duration: 9.1s;
-    animation-delay: -4.6s;
+    animation-duration: 4.2s;
+    animation-delay: -1.5s;
+  }
+  .ember-spark--last {
+    animation-duration: 3.8s;
+    animation-delay: -2.6s;
   }
 
   .ember-halo::before {
@@ -106,17 +379,20 @@
   }
 }
 
-[data-motion='off'] :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark),
-[data-motion='off'] .ember-halo::before {
+[data-motion='off'] :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark, .ember-fire, .ember-core),
+[data-motion='off'] .ember-scene *,
+[data-motion='off'] .ember-halo::before,
+[data-motion='off'] .ember-sheen::after {
   animation: none !important;
 }
 
 @media (forced-colors: active) {
-  .ember-glow-layer,
-  .ember-halo {
+  .ember-scene,
+  .ember-halo,
+  .ember-sheen::after {
     display: none;
   }
-  :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark) {
+  :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark, .ember-fire, .ember-core) {
     animation: none !important;
   }
 }
@@ -124,7 +400,79 @@
 @keyframes ember-arrive {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(16px);
+  }
+}
+
+@keyframes ember-glow {
+  from {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes ember-star {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+@keyframes ember-drift {
+  from {
+    transform: translateX(-36rem);
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), -9rem);
+  }
+}
+
+@keyframes ember-sheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  62%,
+  100% {
+    transform: translateX(225%);
+  }
+}
+
+@keyframes ember-campfire {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  22% {
+    transform: scale(0.96, 1.06) skewX(2deg);
+  }
+  47% {
+    transform: scale(1.03, 0.95) skewX(-1.5deg);
+  }
+  71% {
+    transform: scale(0.97, 1.04) skewX(1deg);
   }
 }
 
@@ -179,20 +527,16 @@
 }
 
 @keyframes ember-spark {
-  0%,
-  100% {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
     opacity: 1;
-    transform: translateY(0);
   }
-  45% {
+  70%,
+  100% {
     opacity: 0;
-    transform: translateY(-12px);
-  }
-  46% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  70% {
-    opacity: 0;
+    transform: translate(-2px, -18px);
   }
 }

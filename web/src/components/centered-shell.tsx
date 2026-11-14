@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation } from 'react-router';
+import { AmbientScene } from '@/components/ambient-scene';
 import { BetaBadge } from '@/components/beta-badge';
 import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
@@ -30,11 +31,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
       data-motion={still ? 'off' : undefined}
       className="relative isolate flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
-      {!still && !moment && (
-        <div aria-hidden="true" data-calm-hide className="ember-glow-layer">
-          <div className="ember-glow" />
-        </div>
-      )}
+      <AmbientScene variant={still || moment ? 'still' : 'full'} />
       <header
         data-motion={moment ? 'off' : undefined}
         className={cn(
