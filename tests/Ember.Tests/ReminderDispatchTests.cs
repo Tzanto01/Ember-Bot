@@ -73,9 +73,10 @@ public class ReminderDispatchTests
             .OfType<ButtonComponent>().Select(b => b.CustomId)
             .Should().Equal($"checkin:done:1:{Now.ToUnixTimeSeconds()}",
                             $"checkin:skip:1:{Now.ToUnixTimeSeconds()}",
-                            $"checkin:snooze:1:{Now.ToUnixTimeSeconds()}");
+                            $"checkin:snooze:1:{Now.ToUnixTimeSeconds()}",
+                            "discordreminders:stop:10");
         dm.Components.Components.OfType<ActionRowComponent>().SelectMany(row => row.Components)
-            .OfType<ButtonComponent>().Select(b => b.Label).Should().Equal("Done ✅", "Skip for today", "Snooze 1h ⏰");
+            .OfType<ButtonComponent>().Select(b => b.Label).Should().Equal("Done ✅", "Skip for today", "Snooze 1h ⏰", "Stop Discord reminders");
         (await NextReminderAsync(host, 1)).Should().Be(TomorrowNineBerlin);
 
         await RunJobAsync(host);

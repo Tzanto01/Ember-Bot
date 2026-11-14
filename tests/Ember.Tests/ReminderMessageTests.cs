@@ -165,7 +165,7 @@ public class ReminderMessageTests
         var second = host.Discord.Messages.Should().HaveCount(2).And.Subject.Last();
         second.Text.Should().Be("🔔 One more nudge for **Habit 1**, in case the first one got buried. Did you get to it today?");
         var at = time.GetUtcNow().ToUnixTimeSeconds();
-        ButtonIds(second.Components).Should().Equal($"checkin:done:1:{at}", $"checkin:skip:1:{at}", $"checkin:snooze:1:{at}");
+        ButtonIds(second.Components).Should().Equal($"checkin:done:1:{at}", $"checkin:skip:1:{at}", $"checkin:snooze:1:{at}", "discordreminders:stop:10");
         host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, null));
         (await OpenMessagesAsync(host)).Should().ContainSingle().Which.MessageId.Should().Be(second.MessageId);
 
@@ -322,7 +322,7 @@ public class ReminderMessageTests
 
         var second = host.Discord.Messages.Should().HaveCount(2).And.Subject.Last();
         second.Text.Should().Be("🔔 One more nudge for your **Morning** routine. Still open today:\n• Habit 1");
-        ButtonIds(second.Components).Should().Equal($"checkin:done:1:{time.GetUtcNow().ToUnixTimeSeconds()}");
+        ButtonIds(second.Components).Should().Equal($"checkin:done:1:{time.GetUtcNow().ToUnixTimeSeconds()}", "discordreminders:stop:10");
         host.Discord.Changes.Should().Equal(new ChangedDiscordDm(Channel, first.MessageId, null));
         (await OpenMessagesAsync(host)).Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { HabitId = (int?)null, RoutineId = (int?)1, second.MessageId });

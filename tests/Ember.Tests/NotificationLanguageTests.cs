@@ -74,12 +74,12 @@ public class NotificationLanguageTests
         var english = host.Discord.Messages.Single(m => m.UserId == 10);
         english.Text.Should().Be("Hey 👋 Checking in on **Read**. It's been a little while, and that's okay. Today's a fresh start " +
             "whenever you're ready.\n\nDid you follow this habit today?");
-        ButtonLabels(english).Should().Equal("Done ✅", "Skip for today", "Snooze 1h ⏰");
+        ButtonLabels(english).Should().Equal("Done ✅", "Skip for today", "Snooze 1h ⏰", "Stop Discord reminders");
 
         var german = host.Discord.Messages.Single(m => m.UserId == 20);
         german.Text.Should().Be("Hey 👋 Wie steht's mit **Lesen**? Ist ein Weilchen her, und das ist okay. Heute ist ein neuer Anfang, " +
             "wann immer du so weit bist.\n\nHast du diesen Habit heute gemacht?");
-        ButtonLabels(german).Should().Equal("Erledigt ✅", "Heute auslassen", "1 Std. später ⏰");
+        ButtonLabels(german).Should().Equal("Erledigt ✅", "Heute auslassen", "1 Std. später ⏰", "Discord-Erinnerungen stoppen");
     }
 
     [Fact]
