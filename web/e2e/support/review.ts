@@ -10,6 +10,8 @@ import type { Page } from '@playwright/test';
  * sits on a picture it shares a parent with (the remove badge on a thumbnail), and a text field with an overlaid control.
  * Not reported as sideways overflow: content inside a scroll container (it scrolls), and a box whose only overflow is
  * a pseudo-element (no child box or line of text leaves it, e.g. the History day-run connector).
+ * Not reported as a clipped graphic: the shells' decorative background scene (`.ember-scene`), which bleeds past the
+ * viewport by design.
  *
  * By default a state is measured at 360 and 1280 px in light mode. `REVIEW_FULL=1` measures the whole matrix (eight
  * widths, light and dark, calm mode on and off, 200 percent root text at 360 and 1280, the other three themes at
@@ -308,6 +310,7 @@ function reviewMeasure(): string[] {
   ).filter(
     (element) =>
       !(element instanceof SVGElement && element.ownerSVGElement) &&
+      !element.closest('.ember-scene') &&
       !hiddenTree(element) &&
       visible(element),
   );
