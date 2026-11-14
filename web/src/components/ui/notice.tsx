@@ -32,7 +32,7 @@ export function Notice({ tone = 'info', heading, className, children, ...props }
       {...props}
     >
       <Icon aria-hidden className={cn('mt-[0.1875rem] size-[1.125rem] shrink-0', iconClass)} />
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
+      <div className="flex min-w-0 max-w-[38rem] flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere] hyphens-auto">
         {heading && <p className="font-semibold">{heading}</p>}
         {children}
       </div>
