@@ -81,3 +81,5 @@ Nico (2026-11-14): "We want at least 21:9 to also be properly supported. Obvious
 
 - Layout tests (`web/e2e/layout.spec.ts`) cover a phone width, 1280 and both 21:9 sizes; the full review matrix (`web/e2e/support/review.ts`) adds 2560×1080 and 3440×1440 in light and dark and one 32:9 pass (5120×1440, light).
 - Legal pages keep a readable text measure at every width.
+- Who runs what (Nico, 2026-11-14: "Yes, absolutely. I thought that was the norm."): feature teams screenshot only the screens and states they changed, in the sizes above that their change can affect, and run the layout tests. The full review matrix (`REVIEW_FULL=1`, every page, theme, scheme, language and size) runs once, in the release QA before a release, not per feature.
+- All browser tests run on the homeserver (Nico: "Leave it on the homeserver please."). Keep runs lean: delete screenshots once checked.
