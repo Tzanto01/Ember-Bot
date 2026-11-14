@@ -22,6 +22,10 @@ dotnet run --project tests/Ember.Api.TestHost -- --urls http://localhost:5081 --
 
 A relative `--webroot` path resolves against the repo root (the folder with `Ember.slnx`), so the command works from any directory; `Ember__WebRoot` instead takes a path relative to the current directory. Email links point to `http://localhost:5081/confirm-email`, `/reset-password` etc., which the SPA fallback serves.
 
+## Logging
+
+The host logs at Warning by default, so a long-running preview doesn't fill the journal and syslog with one line per request. For request logs while debugging, start it with `Logging__LogLevel__Default=Information` (and `Logging__LogLevel__Microsoft.AspNetCore=Information`).
+
 ## Test endpoints
 
 | Request | Response |

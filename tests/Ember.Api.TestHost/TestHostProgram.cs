@@ -32,6 +32,8 @@ public static class TestHostProgram
         builder.Configuration["ConnectionStrings:DefaultConnection"] = postgres.GetConnectionString();
         builder.Configuration["Ember:WebOrigin"] = startup["Ember:WebOrigin"] is { Length: > 0 } origin ? origin : url;
         builder.Configuration["Feedback:DigestEnabled"] = "false";
+        builder.Configuration["Logging:LogLevel:Default"] = startup["Logging:LogLevel:Default"] ?? "Warning";
+        builder.Configuration["Logging:LogLevel:Microsoft.AspNetCore"] = startup["Logging:LogLevel:Microsoft.AspNetCore"] ?? "Warning";
         builder.Configuration["Ember:RateLimits:MailPerIpPerHour"] = "1000";
         builder.Configuration["Ember:RateLimits:MailPerDay"] = "10000";
         builder.Configuration["Ember:RateLimits:AuthPerIpPerMinute"] = "1000";
