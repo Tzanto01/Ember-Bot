@@ -1,4 +1,4 @@
-import { Info } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
@@ -81,7 +81,7 @@ export function FormField({ label, hint, optional, error, id, className, childre
       })}
       {error && (
         <p id={errorId} role="alert" className="flex items-start gap-2 text-[0.875rem] text-destructive">
-          <Info aria-hidden className="mt-[2px] size-[18px] shrink-0" />
+          <CircleAlert aria-hidden className="mt-[0.125rem] size-[1.125rem] shrink-0" />
           <span>{error}</span>
         </p>
       )}

@@ -74,7 +74,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                 <span aria-hidden="true" className="w-6 shrink-0 text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 break-words max-[379px]:basis-[calc(100%-2.5rem)]">{habit.name}</span>
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere] max-[379px]:basis-[calc(100%-2.5rem)]">{habit.name}</span>
                 <Button
                   id={`${id}-up-${habit.id}`}
                   type="button"
@@ -131,7 +131,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
               return (
                 <li key={habit.id} className="flex min-h-[56px] items-center gap-3">
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="break-words">{habit.name}</span>
+                    <span className="[overflow-wrap:anywhere]">{habit.name}</span>
                     {from && (
                       <span className="text-[0.875rem] text-muted-foreground">
                         {t('routine.habits.from', { routine: routineTitle(from.name) })}

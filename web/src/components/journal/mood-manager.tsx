@@ -194,7 +194,7 @@ function MoodRow({
         </Button>
         <BusyButton
           id={`mood-${mood.id}-archive`}
-          variant="secondary"
+          variant="ghost"
           busy={busy}
           busyLabel={mood.archived ? t('moods.bringingBack') : t('moods.archiving')}
           onClick={() => void toggleArchive()}

@@ -37,7 +37,7 @@ export default function NotFoundPage() {
         title={t('notFound.title')}
         lede={t('notFound.lede')}
       />
-      <Button asChild block>
+      <Button asChild className="w-full sm:w-auto">
         <Link to="/today">{t('notFound.today')}</Link>
       </Button>
     </div>

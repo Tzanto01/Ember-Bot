@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AccountButton } from '@/components/app-shell';
 import { BusyButton, TapLink } from '@/components/auth/busy-button';
 import { FormField } from '@/components/form-field';
 import { JournalLocked } from '@/components/journal/day-journal';
@@ -120,6 +121,7 @@ export function HelpsSettings() {
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [upgradeFailed, setUpgradeFailed] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [focus, setFocus] = useState<string | null>(null);
@@ -199,7 +201,22 @@ export function HelpsSettings() {
     );
   }
 
-  if (local) return <p>{t('helps.needsAccount')}</p>;
+  if (local) {
+    return (
+      <>
+        <p>{t('helps.needsAccount')}</p>
+        <div className="flex flex-wrap gap-2">
+          <AccountButton to="/signup" onFailed={() => setUpgradeFailed(true)}>
+            {t('login.createAccount')}
+          </AccountButton>
+          <AccountButton to="/login" variant="secondary" onFailed={() => setUpgradeFailed(true)}>
+            {t('auth.signIn')}
+          </AccountButton>
+        </div>
+        {upgradeFailed && <p>{t('local.upgrade.failed')}</p>}
+      </>
+    );
+  }
   if (state === 'off' || turningOff) {
     return (
       <>

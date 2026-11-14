@@ -31,7 +31,7 @@ export function Notice({ tone = 'info', heading, className, children, ...props }
       className={cn('flex items-start gap-3 rounded-md border px-4 py-3', box, className)}
       {...props}
     >
-      <Icon aria-hidden className={cn('mt-[3px] size-[18px] shrink-0', iconClass)} />
+      <Icon aria-hidden className={cn('mt-[0.1875rem] size-[1.125rem] shrink-0', iconClass)} />
       <div className="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
         {heading && <p className="font-semibold">{heading}</p>}
         {children}

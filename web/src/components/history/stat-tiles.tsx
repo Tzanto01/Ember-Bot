@@ -65,7 +65,12 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7
   if (tiles.length === 0) return null;
 
   return (
-    <dl className={cn('grid gap-2', tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+    <dl
+      className={cn(
+        'grid gap-2',
+        tiles.length === 3 ? 'grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))]' : 'grid-cols-2',
+      )}
+    >
       {tiles.map((tile, i) => (
         <div
           key={tile.label}
