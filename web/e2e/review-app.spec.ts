@@ -27,7 +27,7 @@ async function saveMoment(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'I need a moment' }).click();
   await page.getByRole('button', { name: "Name what's happening" }).click();
   await page.getByRole('button', { name: /^Too much.{1,3}overloaded$/ }).click();
-  await page.getByRole('radio', { name: 'Strong' }).check();
+  await page.getByRole('radio', { name: 'Strong', exact: true }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Skip to the end' }).click();
   await page.getByRole('button', { name: 'Skip', exact: true }).click();

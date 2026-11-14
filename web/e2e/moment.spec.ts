@@ -72,7 +72,7 @@ async function reachReflect(page: Page): Promise<void> {
 async function reachReflectNamed(page: Page): Promise<void> {
   await page.getByRole('button', { name: "Name what's happening" }).click();
   await page.getByRole('button', { name: 'Too much, overloaded' }).click();
-  await page.getByRole('radio', { name: 'Strong' }).check();
+  await page.getByRole('radio', { name: 'Strong', exact: true }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Skip to the end' }).click();
   await page.getByRole('button', { name: 'Skip', exact: true }).click();
@@ -126,7 +126,7 @@ test('the moment flow works offline, signed out, without any API call or stored 
   ).toBeVisible();
   await page.getByRole('button', { name: "Name what's happening" }).click();
   await page.getByRole('button', { name: 'Too much, overloaded' }).click();
-  await page.getByRole('radio', { name: 'Strong' }).check();
+  await page.getByRole('radio', { name: 'Strong', exact: true }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: /Sit or stand/ })).toBeVisible();
   await page.getByRole('button', { name: 'Next' }).click();
@@ -264,7 +264,7 @@ test('a cold start on /moment loads the account once at Reflect and saves with t
   ).toBeVisible();
   await page.getByRole('button', { name: "Name what's happening" }).click();
   await page.getByRole('button', { name: 'Too much, overloaded' }).click();
-  await page.getByRole('radio', { name: 'Strong' }).check();
+  await page.getByRole('radio', { name: 'Strong', exact: true }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Skip to the end' }).click();
   await page.getByRole('button', { name: 'Skip', exact: true }).click();

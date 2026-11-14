@@ -28,8 +28,9 @@ const loginPasswordRule: Validator = (value) =>
 const noRule: Validator = () => null;
 const deleteRule: Validator = (value) => {
   const word = value.trim();
-  if (!word) return t('settings.delete.typeDelete');
-  return word === 'DELETE' ? null : t('settings.delete.typeDeleteCaps');
+  const expected = t('delete.word');
+  if (!word) return t('settings.delete.typeDelete', { word: expected });
+  return word === expected ? null : t('settings.delete.typeDeleteCaps', { word: expected });
 };
 
 /** A gentle message for a failed journal action, or null when the app already handled it. */
@@ -463,7 +464,7 @@ export function PassphraseForm({
 
 /**
  * Confirms a journal-wide action with the login password (when the account has one) and, with `typeDelete`, a
- * typed DELETE.
+ * typed delete word.
  */
 export function ConfirmJournalForm({
   me,
@@ -521,7 +522,7 @@ export function ConfirmJournalForm({
         error={password.error ?? (mismatch ? t('journalSettings.loginPassword.mismatch') : null)}
       />
       {typeDelete && (
-        <FormField label={t('settings.delete.confirmLabel')} error={confirm.error}>
+        <FormField label={t('settings.delete.confirmLabel', { word: t('delete.word') })} error={confirm.error}>
           {(control) => (
             <Input
               {...control}
