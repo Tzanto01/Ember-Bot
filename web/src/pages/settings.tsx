@@ -670,7 +670,7 @@ export default function SettingsPage() {
 
   if (!current) {
     return (
-      <div className="flex max-w-[40rem] flex-col gap-6">
+      <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
         <PageHeader title={t('title.settings')} />
         {notice}
         <nav aria-label={t('settings.groupsLabel')}>
@@ -723,7 +723,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className={cn('flex flex-col gap-6', wide && 'grid grid-cols-[14rem_minmax(0,40rem)] items-start gap-8')}>
+    <div className={cn('flex flex-col gap-6', wide && 'grid grid-cols-[14rem_minmax(0,40rem)] items-start gap-8 2xl:mx-auto')}>
       {wide && (
         <nav
           aria-labelledby="settings-rail-label"

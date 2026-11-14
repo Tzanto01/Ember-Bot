@@ -153,7 +153,7 @@ export default function YearPage() {
 
     content = (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 2xl:max-w-[40rem]">
           <Label htmlFor="year-habit">{t('year.show')}</Label>
           <NativeSelect id="year-habit" value={habit?.id ?? 'all'} onChange={choose}>
             <option value="all">{t('year.allHabits')}</option>

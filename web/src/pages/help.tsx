@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/page-header';
 export default function HelpPage() {
   const { t } = useTranslation();
   return (
-    <div className="flex w-full max-w-[40rem] flex-col gap-6">
+    <div className="flex w-full max-w-[40rem] flex-col gap-6 2xl:mx-auto">
       <PageHeader title={t('title.help')} lede={t('help.lede')} />
       <CrisisLines />
       <div className="flex flex-wrap gap-x-6">

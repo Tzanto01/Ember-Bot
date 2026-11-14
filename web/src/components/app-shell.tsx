@@ -23,6 +23,7 @@ const nav = [
 ] as const;
 
 const inline = 'px-[8px] min-[360px]:px-[12px] min-[380px]:px-[16px] md:px-[24px]';
+const measure = 'max-w-[72rem] 2xl:max-w-[88rem] min-[137.5rem]:max-w-[104rem] min-[200rem]:max-w-[120rem]';
 
 /**
  * No-account mode's way to an account: keeps the device data waiting for it (mode `upgrading`), then opens sign-in or
@@ -103,7 +104,7 @@ export function AppShell() {
         <div className="ember-glow" />
       </div>
       <header className="sticky top-0 z-10 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
-        <div className={cn('mx-auto flex min-h-[56px] max-w-[72rem] items-center gap-4', inline)}>
+        <div className={cn('mx-auto flex min-h-[56px] items-center gap-4', measure, inline)}>
           <div className="flex items-center gap-2">
             <Link
               to="/today"
@@ -161,7 +162,7 @@ export function AppShell() {
         id="main"
         tabIndex={-1}
         data-arrive={arriving ? 'blocks' : undefined}
-        className={cn('mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
+        className={cn('mx-auto flex w-full flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', measure, inline)}
       >
         {signOutFailed && (
           <Notice tone="notice">
