@@ -157,7 +157,7 @@ function TipCard({ id, heading, dismiss, children }: { id: TipId; heading: strin
       className="flex items-start gap-3 rounded-md border border-border bg-muted px-4 py-3 text-foreground"
     >
       <Lightbulb aria-hidden className="mt-[0.1875rem] size-[1.125rem] shrink-0 text-muted-foreground" />
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
+      <div className="flex min-w-0 max-w-[38rem] flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
         <h2 id={headingId} className="text-base font-semibold">
           {heading}
         </h2>

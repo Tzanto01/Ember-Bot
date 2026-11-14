@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createHabit, createWebUser, logIn } from './support/accounts';
-import { markTipSeen, me, nextDay } from './support/tips';
+import { markTipSeen, me, nextDay, turnOnCalmMode } from './support/tips';
 
 const streaksTip = (page: Page) => page.locator('section[data-tip="streaks"]');
 const routinesTip = (page: Page) => page.locator('section[data-tip="routines"]');
@@ -63,6 +63,21 @@ test('a dismissed tip stays gone and no other tip follows the same day', async (
   await expect(page.getByRole('heading', { name: 'Water', exact: true })).toBeVisible();
   await expect(page.locator('[data-tip]')).toHaveCount(0);
   expect((await me(page)).tipsSeen).toContain('routines');
+});
+
+test('calm mode shows no tip but the streaks question', async ({ page }) => {
+  await createWebUser(page);
+  for (const name of ['Water', 'Stretch', 'Read']) await createHabit(page, name);
+  await markTipSeen(page, 'streaks');
+  await nextDay(page);
+  await page.reload();
+  await expect(routinesTip(page)).toBeVisible();
+
+  await turnOnCalmMode(page);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Water', exact: true })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-calm', '');
+  await expect(page.locator('[data-tip]')).toHaveCount(0);
 });
 
 test('tips do not show on the moment page', async ({ page }) => {

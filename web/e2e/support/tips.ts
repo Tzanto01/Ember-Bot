@@ -13,12 +13,19 @@ export async function me(page: Page): Promise<TipsMe> {
   return response.json();
 }
 
-export async function markTipSeen(page: Page, id: string): Promise<void> {
+async function xsrf(page: Page): Promise<Record<string, string>> {
   await page.request.get('/api/auth/antiforgery');
   const token = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? '';
-  const response = await page.request.put(`/api/me/tips/${id}`, {
-    headers: { 'X-XSRF-TOKEN': decodeURIComponent(token) },
-  });
+  return { 'X-XSRF-TOKEN': decodeURIComponent(token) };
+}
+
+export async function markTipSeen(page: Page, id: string): Promise<void> {
+  const response = await page.request.put(`/api/me/tips/${id}`, { headers: await xsrf(page) });
+  expect(response.ok(), await response.text()).toBeTruthy();
+}
+
+export async function turnOnCalmMode(page: Page): Promise<void> {
+  const response = await page.request.patch('/api/me', { headers: await xsrf(page), data: { calmMode: true } });
   expect(response.ok(), await response.text()).toBeTruthy();
 }
 
