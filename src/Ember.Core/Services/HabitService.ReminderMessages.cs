@@ -108,6 +108,13 @@ public partial class HabitService
     /// <summary>Adds <paramref name="tipId"/> to the account's <see cref="User.TipsSeen"/> unless it is already there.</summary>
     public async Task MarkTipSeenAsync(Guid userId, string tipId)
     {
+        if (_db.Database.IsNpgsql())
+        {
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"""UPDATE "AspNetUsers" SET "TipsSeen" = array_append("TipsSeen", {tipId}) WHERE "Id" = {userId} AND NOT ({tipId} = ANY("TipsSeen"))""");
+            return;
+        }
+
         var seen = await _db.Users.AsNoTracking()
             .Where(u => u.Id == userId && !u.TipsSeen.Contains(tipId))
             .Select(u => u.TipsSeen)

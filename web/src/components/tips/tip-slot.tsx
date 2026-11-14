@@ -40,7 +40,7 @@ async function send(userId: string, id: TipId): Promise<void> {
     dropPending(userId, id);
   } catch (error) {
     const { status } = asApiError(error);
-    if (status === 400 || status === 404) dropPending(userId, id);
+    if (status === 400) dropPending(userId, id);
   } finally {
     sending.delete(key);
   }
@@ -73,11 +73,15 @@ function useTip(habits: Habit[] | undefined, routines: Routine[] | null | undefi
   const plainJournal = !me?.journal.encrypted;
   const whatsNewShowing = useWhatsNewShowing(!!seen && !calm);
   const whatsNew = calm ? false : whatsNewShowing;
+  const firstDay =
+    me && memory && habits ? [memory.first ?? me.localToday, ...habits.map((h) => h.startDate)].sort()[0]! : null;
+  const later =
+    !!me && !calm && firstDay !== null && me.localToday > firstDay && (memory!.wait === null || me.localToday > memory!.wait);
 
   const notes = useQuery({
     queryKey: anyNoteKey,
     queryFn: async () => (await api.listDayNotes()).length > 0,
-    enabled: !!seen && account && plainJournal && !seen.includes('private-journal'),
+    enabled: !!seen && later && account && plainJournal && !seen.includes('private-journal'),
     staleTime: fiveMinutes,
   });
   const days = useQuery({
@@ -85,6 +89,7 @@ function useTip(habits: Habit[] | undefined, routines: Routine[] | null | undefi
     queryFn: async () => (await api.dayStats()).filter((d) => d.showedUp).length,
     enabled:
       !!seen &&
+      later &&
       !!habits?.length &&
       ((!env.native && !seen.includes('android')) || (account && !me?.discord.linked && !seen.includes('discord'))),
     staleTime: fiveMinutes,
@@ -115,8 +120,7 @@ function useTip(habits: Habit[] | undefined, routines: Routine[] | null | undefi
     }
   }, [userId, hasSeen]);
 
-  if (!me || !memory || !seen || !habits || whatsNew === undefined) return null;
-  const firstDay = [memory.first ?? me.localToday, ...habits.map((h) => h.startDate)].sort()[0]!;
+  if (!me || !memory || !seen || !habits || firstDay === null || whatsNew === undefined) return null;
   return pickTip({
     today: me.localToday,
     firstDay,

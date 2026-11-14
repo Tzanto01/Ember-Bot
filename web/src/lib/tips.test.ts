@@ -45,10 +45,11 @@ describe('pickTip', () => {
     expect(pickTip({ ...all, seen: ['streaks', 'private-journal', 'routines', 'android', 'discord'] })).toBeNull();
   });
 
-  it('waits until the next local day after an answer', () => {
-    const due = { ...base, showStreaks: false };
+  it('waits until the next local day after an answer, except for the streaks question', () => {
+    const due = { ...base, ...everything, seen: ['streaks' as const] };
     expect(pickTip({ ...due, waitDay: '2026-11-14' })).toBeNull();
-    expect(pickTip({ ...due, waitDay: '2026-11-13' })).toBe('streaks');
+    expect(pickTip({ ...due, waitDay: '2026-11-13' })).toBe('private-journal');
+    expect(pickTip({ ...due, seen: [], waitDay: '2026-11-14' })).toBe('streaks');
   });
 
   it('allows only the streaks question on the account first day', () => {

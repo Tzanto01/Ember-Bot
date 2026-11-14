@@ -90,7 +90,6 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
 
         components.WithButton(t.Get("common.days-and-times"), $"freq:menu:{habit.Id}", ButtonStyle.Secondary, new Emoji("📅"), row: 1);
         await RespondAsync(embed: embed, components: components.Build(), ephemeral: true);
-        await AskStreaksOnceAsync(Context.Interaction, _habits, t);
 
         // DM confirmation / onboarding
         var allHabits = await _habits.GetHabitsAsync(Context.User.Id);
@@ -109,6 +108,8 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             }
             catch { /* DMs disabled */ }
         }
+
+        await AskStreaksOnceAsync(Context.Interaction, _habits, t);
     }
 
     // ── habitaction:checkin:done:{habitId} ────────────────────────────────────

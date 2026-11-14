@@ -308,6 +308,17 @@ public class ApiBehaviorTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [DockerFact]
+    public async Task Tips_marked_at_the_same_time_are_all_kept()
+    {
+        var user = await Host.SignedInAsync();
+        var userId = await user.IdAsync();
+
+        await Task.WhenAll(Ember.Core.Models.User.TipIds.Select(id => Host.Run(s => s.MarkTipSeenAsync(userId, id))));
+
+        (await TipsSeenAsync(user)).Should().BeEquivalentTo(Ember.Core.Models.User.TipIds);
+    }
+
+    [DockerFact]
     public async Task Choosing_streaks_either_way_marks_the_streaks_tip_seen()
     {
         var user = await Host.SignedInAsync();

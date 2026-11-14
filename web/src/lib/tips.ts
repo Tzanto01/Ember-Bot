@@ -45,8 +45,8 @@ const atLeast = (count: number | null, min: number) => (count === null ? null : 
  * condition is still unknown, so a lower one never flashes first.
  */
 export function pickTip(f: TipFacts): TipId | null {
-  if (f.whatsNew || (f.waitDay !== null && f.today <= f.waitDay)) return null;
-  const quiet = f.calm || f.today <= f.firstDay;
+  if (f.whatsNew) return null;
+  const quiet = f.calm || f.today <= f.firstDay || (f.waitDay !== null && f.today <= f.waitDay);
   const conditions: Record<TipId, () => boolean | null> = {
     streaks: () => f.habits > 0 && !f.showStreaks,
     'private-journal': () => f.account && f.plainJournal && f.hasNote,
