@@ -415,10 +415,4 @@ describe('MomentPage', () => {
       await heading("What's happening?");
     });
   });
-
-  it('marks the campfire on the first step to be hidden in calm mode', () => {
-    open('off');
-    const hidden = document.querySelector('[data-calm-hide]');
-    expect(hidden?.matches('svg') || hidden?.querySelector('svg')).toBeTruthy();
-  });
 });

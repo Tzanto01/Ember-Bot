@@ -7,7 +7,6 @@ import { IntensityScale } from '@/components/moment/intensity-scale';
 import { MomentHeader } from '@/components/moment/moment-header';
 import { Reflect } from '@/components/moment/reflect';
 import { TimerStep } from '@/components/moment/timer-step';
-import { HearthIllustration } from '@/components/today/hearth-illustration';
 import { Button } from '@/components/ui/button';
 import { momentCopy } from '@/lib/moment/copy';
 import { breathingPractice, practices, practicesFor } from '@/lib/moment/practices';
@@ -120,9 +119,6 @@ export default function MomentPage() {
     case 'catch':
       body = (
         <div className="flex flex-col items-center gap-8 text-center">
-          <div className="opacity-80" data-calm-hide>
-            <HearthIllustration />
-          </div>
           <Heading>{momentCopy.catchHeading}</Heading>
           <div className="flex w-full flex-col gap-3">
             <Button

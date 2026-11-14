@@ -126,7 +126,7 @@ export function BreathingPlayer({
     : small;
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div data-breath={status} className="flex flex-col items-center gap-6">
       <div
         aria-hidden="true"
         data-calm-hide

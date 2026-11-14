@@ -54,4 +54,9 @@ describe('CenteredShell arrival', () => {
     expect(document.querySelector('header')).toHaveAttribute('data-motion', 'off');
     expect(document.querySelector('.ember-glow')).toBeNull();
   });
+
+  it('puts the moment flow by a campfire that calm mode hides', () => {
+    renderShell('/moment');
+    expect(document.querySelector('.ember-scene [data-calm-hide] svg')).not.toBeNull();
+  });
 });

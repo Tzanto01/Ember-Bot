@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { HearthIllustration } from '@/components/today/hearth-illustration';
 import { cn } from '@/lib/utils';
 
 const far = 'M0 300V186Q0 186 60 181Q120 177 180 172Q240 167 300 171Q360 174 420 169Q480 165 540 177Q600 190 660 177Q720 164 780 151Q840 138 900 127Q960 115 1020 104Q1080 92 1140 110Q1200 127 1260 130Q1320 133 1380 142Q1440 151 1500 151Q1560 152 1620 146Q1680 140 1740 157Q1800 175 1860 178Q1920 181 1980 192Q2040 203 2100 196Q2160 188 2220 168Q2280 147 2340 143Q2400 138 2460 126Q2520 114 2580 125Q2640 136 2700 135Q2760 135 2820 127Q2880 119 2940 122Q3000 125 3060 120Q3120 114 3180 136Q3240 159 3300 171Q3360 183 3420 188Q3480 193 3540 194Q3600 195 3660 175Q3720 156 3780 159Q3840 162 3900 158Q3960 153 4020 153Q4080 154 4140 152Q4200 149 4260 128Q4320 106 4380 107Q4440 108 4500 106Q4560 103 4620 120Q4680 136 4740 153Q4800 171 4860 168Q4920 165 4980 171Q5040 178 5100 168Q5160 158 5220 167Q5280 175 5340 183Q5400 190 5460 182Q5520 174 5580 171Q5640 168 5700 142Q5760 116 5820 112Q5880 109 5940 111T6000 114V300Z';
@@ -34,15 +35,18 @@ function place(side: 'l' | 'r', x: number, y: number): CSSProperties {
 /**
  * The shells' decorative background: a low-contrast landscape of hills and a treeline along the bottom, in dark a thin
  * moon and faint stars in the side bands, in light a warm horizon haze and two drifting clouds, plus breathing flame
- * glows behind the top of the page and a few rising sparks. `still` (legal, the moment flow) keeps only a softer, static
- * landscape. `app`: the signed-in shell's wider content column and, on phones, the landscape above its bottom tab bar. Calm mode keeps the landscape and sky static
- * and softer and hides the glows and sparks.
+ * glows behind the top of the page and a few rising sparks. `still` (legal) keeps only a softer, static landscape.
+ * `moment` (the moment flow): a still sky and a dimmer, taller landscape with a small campfire at the bottom centre whose
+ * glow and halo swell and settle at the paced-breathing tempo (in 4 s, out 6 s) and fade out while a breathing player
+ * (`[data-breath='running']`) runs. `app`: the signed-in shell's wider content column and, on phones, the landscape above its bottom tab bar. Calm mode keeps the landscape and sky static
+ * and softer and hides the glows, sparks and campfire.
  */
-export function AmbientScene({ variant = 'full', app = false }: { variant?: 'full' | 'still'; app?: boolean }) {
+export function AmbientScene({ variant = 'full', app = false }: { variant?: 'full' | 'still' | 'moment'; app?: boolean }) {
   const full = variant === 'full';
+  const moment = variant === 'moment';
   return (
-    <div aria-hidden="true" className={cn('ember-scene', !full && 'ember-scene--still', app && 'ember-scene--app')}>
-      {full && (
+    <div aria-hidden="true" className={cn('ember-scene', variant === 'still' && 'ember-scene--still', moment && 'ember-scene--moment', app && 'ember-scene--app')}>
+      {(full || moment) && (
         <>
           <div className="ember-sky">
             <svg viewBox="-20 -20 40 40" focusable="false" className="ember-moon" style={place('r', 0.46, 13)}>
@@ -51,12 +55,12 @@ export function AmbientScene({ variant = 'full', app = false }: { variant?: 'ful
             {stars.map(([side, x, y, size, dur, delay], i) => (
               <i
                 key={i}
-                className={cn('ember-star', dur > 0 && 'ember-star--twinkle')}
+                className={cn('ember-star', full && dur > 0 && 'ember-star--twinkle')}
                 style={{
                   ...place(side, x, y),
                   width: size,
                   height: size,
-                  ...(dur > 0 && { animationDuration: `${dur}s`, animationDelay: `${delay}s` }),
+                  ...(full && dur > 0 && { animationDuration: `${dur}s`, animationDelay: `${delay}s` }),
                 }}
               />
             ))}
@@ -71,6 +75,16 @@ export function AmbientScene({ variant = 'full', app = false }: { variant?: 'ful
         <path d={trees} className="ember-land-trees" />
         <path d={near} className="ember-land-near" />
       </svg>
+      {moment && (
+        <div data-calm-hide className="ember-camp">
+          <div className="ember-camp-rest" />
+          <div className="ember-camp-swell">
+            <div className="ember-camp-glow" />
+            <div className="ember-camp-halo" />
+          </div>
+          <HearthIllustration />
+        </div>
+      )}
       {full && (
         <div data-calm-hide>
           <div className="ember-glow" />

@@ -31,7 +31,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
       data-motion={still ? 'off' : undefined}
       className="relative isolate flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
-      <AmbientScene variant={still || moment ? 'still' : 'full'} />
+      <AmbientScene variant={still ? 'still' : moment ? 'moment' : 'full'} />
       <header
         data-motion={moment ? 'off' : undefined}
         className={cn(

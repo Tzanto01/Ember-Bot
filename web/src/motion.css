@@ -1,5 +1,7 @@
 /* Quiet motion: page arrival (`main[data-arrive]`), the shells' ambient scene (static landscape, breathing glows,
-   twinkling stars, drifting clouds, rising sparks), the Moment door's sheen and campfire loops on decorative SVG parts.
+   twinkling stars, drifting clouds, rising sparks; on /moment a still sky and a campfire whose glow and halo swell at
+   the paced-breathing tempo, fading out while `[data-breath='running']` is on the page), the Moment door's sheen and
+   campfire loops on decorative SVG parts.
    Transform and opacity only, every animation under `prefers-reduced-motion: no-preference`; calm mode (calm.css) and
    `data-motion='off'` stop all of it, forced colours hide the scene. Calm mode keeps the landscape, softer.
    Tunable: `--scene-glow-alpha` (light and `.dark`) and `--scene-haze-alpha` (light only) on `.ember-scene`,
@@ -33,6 +35,17 @@
 
 :root[data-calm] .ember-scene--still {
   --scene-land-opacity: 0.45;
+}
+
+.ember-scene--moment {
+  --scene-land-opacity: 0.5;
+  --scene-land-height: clamp(13rem, 32vh, 26rem);
+  --camp-size: 5.5rem;
+  --camp-lift: calc(var(--scene-land-height) * 0.25);
+}
+
+:root[data-calm] .ember-scene--moment {
+  --scene-land-opacity: 0.4;
 }
 
 @media (min-width: 96rem) {
@@ -218,6 +231,81 @@
   .ember-scene--app :is(.ember-land, .ember-haze) {
     bottom: calc(64px + env(safe-area-inset-bottom));
   }
+  .ember-scene--moment {
+    --scene-land-height: 12rem;
+    --camp-size: 4.5rem;
+    --camp-lift: 7.25rem;
+  }
+}
+
+.ember-camp {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--camp-lift) + env(safe-area-inset-bottom));
+  width: var(--camp-size);
+  height: var(--camp-size);
+  margin-left: calc(var(--camp-size) / -2);
+}
+
+.ember-camp > svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+
+.ember-camp .ember-spark {
+  display: none;
+}
+
+.ember-camp-swell {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.ember-camp-rest,
+.ember-camp-glow,
+.ember-camp-halo {
+  --size: calc(var(--camp-size) * 3);
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+}
+
+.ember-camp-rest {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame-core) calc(var(--scene-glow-alpha) * 1.4), transparent),
+    color-mix(in oklch, var(--flame) var(--scene-glow-alpha), transparent) 45%,
+    transparent
+  );
+}
+
+.ember-camp-glow {
+  --size: calc(var(--camp-size) * 5);
+  opacity: 0.55;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame-core) var(--scene-glow-alpha), transparent),
+    color-mix(in oklch, var(--flame) calc(var(--scene-glow-alpha) * 0.7), transparent) 50%,
+    transparent
+  );
+}
+
+.ember-camp-halo {
+  --size: calc(var(--camp-size) * 3.6);
+  transform: scale(0.94);
+  background: radial-gradient(
+    closest-side,
+    transparent 50%,
+    color-mix(in oklch, var(--flame) calc(var(--scene-glow-alpha) * 0.6), transparent) 78%,
+    transparent
+  );
 }
 
 .ember-sheen {
@@ -327,6 +415,24 @@
     animation: ember-rise 8s ease-out infinite;
   }
 
+  .ember-scene--moment .ember-cloud {
+    animation: none;
+  }
+
+  .ember-camp-swell {
+    opacity: 1;
+    transition: opacity 2s ease-in-out;
+  }
+  :root:has([data-breath='running']) .ember-camp-swell {
+    opacity: 0;
+  }
+  .ember-camp-glow {
+    animation: ember-breath-glow 10s ease-in-out infinite;
+  }
+  .ember-camp-halo {
+    animation: ember-breath-halo 10s ease-in-out infinite;
+  }
+
   .ember-sheen::after {
     animation: ember-sheen 12s ease-in-out -3s infinite;
   }
@@ -384,6 +490,10 @@
 [data-motion='off'] .ember-halo::before,
 [data-motion='off'] .ember-sheen::after {
   animation: none !important;
+}
+
+[data-motion='off'] .ember-camp-swell {
+  opacity: 0;
 }
 
 @media (forced-colors: active) {
@@ -538,5 +648,25 @@
   100% {
     opacity: 0;
     transform: translate(-2px, -18px);
+  }
+}
+
+@keyframes ember-breath-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes ember-breath-halo {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  40% {
+    transform: scale(1.06);
   }
 }

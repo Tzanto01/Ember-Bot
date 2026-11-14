@@ -48,6 +48,19 @@ describe('BreathingPlayer', () => {
     expect(screen.getByText('Round 2 of 6')).toBeInTheDocument();
   });
 
+  it('exposes its status as data-breath, which the ambient rhythm fades out against', () => {
+    const { container } = render(<BreathingPlayer inhale={4} hold={0} exhale={6} rounds={1} />);
+    const root = container.firstElementChild!;
+    expect(root).toHaveAttribute('data-breath', 'ready');
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    expect(root).toHaveAttribute('data-breath', 'running');
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(root).toHaveAttribute('data-breath', 'paused');
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(root).toHaveAttribute('data-breath', 'done');
+  });
+
   it('keeps its position while paused and resumes from there', () => {
     render(<BreathingPlayer inhale={4} hold={2} exhale={6} rounds={3} />);
     fireEvent.click(screen.getByRole('button', { name: 'Start' }));
