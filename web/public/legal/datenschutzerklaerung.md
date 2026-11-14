@@ -1,7 +1,7 @@
 # Datenschutzerklärung für Ember
 
 > **English summary (not binding; the German text below is the binding version).**
-> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet (open point). The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. The "I need a moment" flow stores and sends nothing; only a reflection you choose to save goes into your private journal. Discord carries your messages as the platform. You can export your data and delete everything at once.
+> Ember is a free habit tracker. You can use it through a Discord bot, a web app and (once it is published) an Android app. The operator runs it on a server in Germany. You can use Ember with an account (synced across your devices) or without one (then your data stays on your device). An account needs an email address and a password, or a Discord login. Habit names, check-ins, low days, day notes and moods can reveal health information, so Ember stores them only with your explicit consent (GDPR Art. 9(2)(a)). Routine names, habit renames and push subscriptions do not need that consent yet. The private journal can be encrypted end to end, so the server then holds only ciphertext for day notes and moods. Ember shows no ads, uses no analytics or tracking and no AI, and sells no data. The "I need a moment" flow stores and sends nothing; only a reflection you choose to save goes into your private journal. Discord carries your messages as the platform. You can export your data and delete everything at once.
 
 ---
 
@@ -46,8 +46,8 @@ Ember legt Daten nur an, wenn du eine Funktion nutzt, die sie braucht. Du kannst
 | Discord-Nutzer-ID, wenn du Discord verbunden hast | Damit du dich mit Discord anmelden kannst und der Discord-Bot dich deinem Konto zuordnet. Ember fragt bei Discord die Berechtigung „identify“ an. Discord liefert dabei auch Name und Profilbild. Ember übernimmt davon nur die Nutzer-ID und verwirft den Rest. |
 | Zwei-Faktor-Anmeldung: geheimer Schlüssel für deine Authenticator-App und Wiederherstellungscodes. Ein Wiederherstellungscode gilt nur einmal und wird nach der Benutzung entwertet. | Damit der Anmeldecode geprüft und die Anmeldung zusätzlich geschützt werden kann. |
 | Anmeldesitzungen: eine Sitzungs-ID pro Anmeldung auf einem Gerät, Zeitpunkt der Anmeldung, Ablaufzeit und letzte Nutzung. Keine IP-Adresse. | Damit du dich auf einem Gerät oder auf allen Geräten abmelden kannst (Abschnitt 8). |
-| Zeitzone, Design, Gnadentage, Einstellung für die zweite Erinnerung, Anzeige der Streaks ein oder aus | Damit „heute“, Streaks und Erinnerungen nach deiner Uhrzeit laufen. Hast du keine Zeitzone gewählt, übernimmt die App die Zeitzone deines Geräts. Die Anzeige der Streaks schaltest du unter „Habits & days“ in den Einstellungen. Für neue Konten ist sie aus. |
-| Einwilligungsnachweis: Zeitpunkt, Version der Datenschutzerklärung und der Tag der letzten Abfrage. Hast du „No thanks“ gewählt, steht dort das Ende der 30-Tage-Pause. | Damit wir nachweisen können, dass du eingewilligt hast (Art. 7 Abs. 1 DSGVO), und dich bei einer neuen Version erneut fragen können. |
+| Zeitzone, Design, Gnadentage, Einstellung für die zweite Erinnerung, Anzeige der Streaks ein oder aus | Damit „heute“, Streaks und Erinnerungen nach deiner Uhrzeit laufen. Hast du keine Zeitzone gewählt, übernimmt die App die Zeitzone deines Geräts. Die Anzeige der Streaks schaltest du unter „Habits & Tage“ in den Einstellungen. Für neue Konten ist sie aus. |
+| Einwilligungsnachweis: Zeitpunkt, Version der Datenschutzerklärung und der Tag der letzten Abfrage. Hast du „Nein danke“ gewählt, steht dort das Ende der 30-Tage-Pause. | Damit wir nachweisen können, dass du eingewilligt hast (Art. 7 Abs. 1 DSGVO), und dich bei einer neuen Version erneut fragen können. |
 | Erstellungszeitpunkt des Kontos | Steckt in der Konto-ID (UUIDv7). Ember speichert ihn nicht als eigenes Feld. Damit werden nie bestätigte Konten nach 7 Tagen gelöscht (Abschnitt 7). |
 
 ### 3.2 Habits, Check-ins und Routinen
@@ -112,7 +112,7 @@ Ember setzt keine Cookies für Werbung oder Tracking. Diese Cookies sind technis
 
 | Name | Zweck | Dauer |
 |---|---|---|
-| `__Host-Ember` | Hält dich angemeldet. Nur über HTTPS, für JavaScript nicht lesbar. | Bis du den Browser schließt. Mit „Stay signed in“ und bei jeder Anmeldung mit Discord 14 Tage, bei jeder Nutzung verlängert. |
+| `__Host-Ember` | Hält dich angemeldet. Nur über HTTPS, für JavaScript nicht lesbar. | Bis du den Browser schließt. Mit „Angemeldet bleiben“ und bei jeder Anmeldung mit Discord 14 Tage, bei jeder Nutzung verlängert. |
 | `XSRF-TOKEN` | Schutz vor Anfragen, die andere Seiten in deinem Namen senden. | Sitzung |
 | ASP.NET-Schutz-Cookie für Formulare | Schutz vor gefälschten Anfragen. | Sitzung |
 | `Identity.External` und Cookies des Discord-Anmeldevorgangs | Nur während der Anmeldung mit Discord. | Minuten |
@@ -127,20 +127,20 @@ Außerdem speichern die Web-App und die Android-App einige Dinge auf dem Gerät.
 | Browser, Local Storage | `ember.theme`, `ember.accountTheme` | Dein gewähltes Design und das Design, das dein Konto zuletzt hatte | Beim Abmelden oder wenn du die Website-Daten löschst |
 | Browser, Local Storage | `ember.colorScheme` | Hell, dunkel oder System. Nur auf diesem Gerät, nicht im Konto | Wenn du „System“ wählst oder die Website-Daten löschst |
 | Browser, Local Storage | `ember.signupEmail` | E-Mail-Adresse aus der Anmeldung, bis die Bestätigung abgeschlossen ist | Nach der Bestätigung, beim Abmelden, spätestens nach einem Tag |
-| Browser, Local Storage | `ember.staySignedIn` | Kennung deines Kontos. Nur, wenn du bei der Anmeldung mit E-Mail und Passwort „Stay signed in“ gewählt hast | Beim Abmelden |
-| Browser, Local Storage | `ember.offlineMe` | Kopie deines Kontostands: E-Mail-Adresse, Zeitzone, Design, Stand der Einwilligung und des Tagebuchs. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft. Die Kopie wird nur am selben Tag genutzt |
-| Browser und Android-App, Local Storage | `ember.seenReleaseNotes` | Die letzte Version, deren Neuigkeiten du auf diesem Gerät gesehen hast, damit der Hinweis zu einer neuen Version auf „Today“ nur einmal erscheint | Wenn du die Website-Daten oder die Daten der App löschst. Beim Abmelden bleibt der Eintrag |
+| Browser, Local Storage | `ember.staySignedIn` | Kennung deines Kontos. Nur, wenn du bei der Anmeldung mit E-Mail und Passwort „Angemeldet bleiben“ gewählt hast | Beim Abmelden |
+| Browser, Local Storage | `ember.offlineMe` | Kopie deines Kontostands: E-Mail-Adresse, Zeitzone, Design, Stand der Einwilligung und des Tagebuchs. Nur mit „Angemeldet bleiben“ | Beim Abmelden oder wenn die Sitzung abläuft. Die Kopie wird nur am selben Tag genutzt |
+| Browser und Android-App, Local Storage | `ember.seenReleaseNotes` | Die letzte Version, deren Neuigkeiten du auf diesem Gerät gesehen hast, damit der Hinweis zu einer neuen Version auf „Heute“ nur einmal erscheint | Wenn du die Website-Daten oder die Daten der App löschst. Beim Abmelden bleibt der Eintrag |
 | Browser und Android-App, Local Storage | `ember.tzClaimed.<Kennung>` | Mit der Kennung deines Kontos im Namen: Merker, dass die Zeitzone dieses Geräts einmal in dein Konto übernommen wurde, weil dort noch keine eingestellt war | Wenn du die Website-Daten oder die Daten der App löschst. Beim Abmelden bleibt der Eintrag |
 | Browser, Session Storage | `ember.preloadReload` | Zeitpunkt des letzten Neuladens nach einem App-Update | Am Ende der Browser-Sitzung |
-| Browser, IndexedDB `ember-device` | Speicher `cache` | Kopie deiner Habit-Liste. Nur mit „Stay signed in“ | Beim Abmelden oder wenn die Sitzung abläuft |
+| Browser, IndexedDB `ember-device` | Speicher `cache` | Kopie deiner Habit-Liste. Nur mit „Angemeldet bleiben“ | Beim Abmelden oder wenn die Sitzung abläuft |
 | Browser, IndexedDB `ember-device` | Speicher `edits` | Änderungen, die du offline gemacht hast und noch nicht gesendet sind | Sobald sie gesendet sind. Beim Abmelden werden die offenen Änderungen verworfen |
-| Browser, IndexedDB `ember-journal` | Speicher `keys` | Tagebuchschlüssel, nur mit „Remember on this device“. Für JavaScript nicht auslesbar | Beim Abmelden, beim Ausschalten des Tagebuchs oder wenn du ihn auf diesem Gerät vergisst |
+| Browser, IndexedDB `ember-journal` | Speicher `keys` | Tagebuchschlüssel, nur mit „Auf diesem Gerät merken“. Für JavaScript nicht auslesbar | Beim Abmelden, beim Ausschalten des Tagebuchs oder wenn du ihn auf diesem Gerät vergisst |
 | Browser, IndexedDB `ember-journal` | Speicher `held` | Tagebuch-Änderungen, die warten, weil das Tagebuch gerade gesperrt ist. Sie liegen dort unverschlüsselt | Sobald sie übertragen sind, beim Abmelden |
 | Android-App, Local Storage | `ember.reminderPlanned` | Prüfsumme des 14-Tage-Erinnerungsplans | Beim Abmelden und wenn der Plan neu geschrieben wird |
 | Android-App, Local Storage | `ember.reminderIssued` | Erinnerungen, die schon ausgelöst wurden: Konto-Kennung, Habit-Nummer und Datum | Beim Abmelden |
 | Android-App, Local Storage | `ember.installId` | Zufällige Kennung dieser Installation, mit der sich das Telefon als Erinnerungsziel anmeldet | Wenn du die App deinstallierst oder ihre Daten löschst |
 | Android-App, Local Storage | `ember.reminderPhone` | Kennung dieses Telefons als Erinnerungsziel und ob es eingeschaltet ist, für Erinnerungen ohne Internet | Beim Abmelden |
-| Android-App, Local Storage | `ember.reminderNames` | Einstellung „Show habit names in reminders“ (aus, wenn nicht gewählt) | Beim Abmelden, dann wieder aus |
+| Android-App, Local Storage | `ember.reminderNames` | Einstellung „Namen der Habits in Erinnerungen zeigen“ (aus, wenn nicht gewählt) | Beim Abmelden, dann wieder aus |
 | Android-App, Local Storage | `ember.exactAlarmAsked` | Merker, dass die Beta-App die Einstellung „Alarme und Erinnerungen“ schon einmal geöffnet hat, damit Erinnerungen pünktlich kommen | Wenn du die App deinstallierst oder ihre Daten löschst |
 | Android-App, Widget | Heutige und morgige Habits für das Widget | Im Speicher, den nur die App liest | Beim Abmelden |
 | Android-App, sicherer Speicher (Keystore) | Anmeldetoken und, falls gemerkt, der Tagebuchschlüssel | Anmeldung und Tagebuch | Beim Abmelden |
@@ -149,20 +149,20 @@ Beim Abmelden meldet die Web-App das Gerät beim Server ab und entfernt das Push
 
 ### 3.9 Ohne Konto: Daten nur auf dem Gerät
 
-Wenn du Ember ohne Konto nutzt, bleiben alle Daten auf deinem Gerät: Habits, Check-ins, Tiefs, Routinen, Tagesnotizen, Stimmungen und Einstellungen. Sie gehen nicht an den Server, nicht an Discord und nicht an Push-Dienste. Nur Feedback, das du selbst abschickst, geht an den Server (Abschnitt 3.10). Der Browser oder das Betriebssystem kann sie löschen, zum Beispiel wenn du die Website-Daten entfernst, die App deinstallierst oder Safari eine Website nach sieben Tagen ohne Besuch aufräumt. Mit „Export backup“ speicherst du eine Datei mit deinen Daten.
+Wenn du Ember ohne Konto nutzt, bleiben alle Daten auf deinem Gerät: Habits, Check-ins, Tiefs, Routinen, Tagesnotizen, Stimmungen und Einstellungen. Sie gehen nicht an den Server, nicht an Discord und nicht an Push-Dienste. Nur Feedback, das du selbst abschickst, geht an den Server (Abschnitt 3.10). Der Browser oder das Betriebssystem kann sie löschen, zum Beispiel wenn du die Website-Daten entfernst, die App deinstallierst oder Safari eine Website nach sieben Tagen ohne Besuch aufräumt. Mit „Backup exportieren“ speicherst du eine Datei mit deinen Daten.
 
 Legst du später ein Konto an, lädt die App deine Daten hoch. Die lokale Kopie löscht sie erst, wenn alle Schritte erfolgreich waren.
 
 ### 3.10 Feedback
 
-Über „Send feedback“ in den Einstellungen der Web-App und der App, auf der Seite `/feedback` der Web-App oder mit `/feedback` im Discord-Bot kannst du uns eine Nachricht schicken. Ember speichert dazu:
+Über „Feedback senden“ in den Einstellungen der Web-App und der App, auf der Seite `/feedback` der Web-App oder mit `/feedback` im Discord-Bot kannst du uns eine Nachricht schicken. Ember speichert dazu:
 
 - den Titel (höchstens 100 Zeichen) und den Text, den du schreibst (höchstens 2000 Zeichen),
 - bis zu 5 Bilder, zusammen höchstens 10 MB, wenn du welche anhängst (in der Web-App und der App nur angemeldet),
 - über welchen Weg es kam (Web-App, Android-App oder Discord),
 - die Version der App, wenn sie bekannt ist,
 - den Zeitpunkt,
-- die Verknüpfung mit deinem Konto, wenn du angemeldet bist. So können wir dich bei Rückfragen direkt erreichen. Mit „Send feedback anonymously“ speichert Ember das Feedback ohne Bezug zu deinem Konto, ebenso ohne Konto, abgemeldet oder in Discord ohne Ember-Konto.
+- die Verknüpfung mit deinem Konto, wenn du angemeldet bist. So können wir dich bei Rückfragen direkt erreichen. Mit „Feedback anonym senden“ speichert Ember das Feedback ohne Bezug zu deinem Konto, ebenso ohne Konto, abgemeldet oder in Discord ohne Ember-Konto.
 
 Deine Habits, Check-ins, Tagesnotizen und anderen Daten schickt Ember dabei nicht mit. Auch ohne Konto geht nur das Feedback an den Server; deine Daten auf dem Gerät bleiben dort. Im Discord-Bot laufen Text und Bilder über Discord (Abschnitt 6.1); Ember lädt die Bilder dort herunter. Bitte schreib nichts ins Feedback, was du nicht teilen möchtest, zum Beispiel Angaben zu deiner Gesundheit.
 
@@ -201,9 +201,9 @@ Wir behandeln deshalb **alle** Habit-Namen, Check-ins, Tiefs, Tagesnotizen und S
 
 ### So fragt Ember nach deiner Einwilligung
 
-- **Neue Nutzer:** Bevor du dein erstes Habit anlegst (auch aus einer Vorlage), ein Tief, eine Tagesnotiz oder eine eigene Stimmung speicherst oder Daten importierst, fragt Ember dich, ob das für dich in Ordnung ist. Im Discord-Bot antwortest du mit den Schaltflächen „I agree“ oder „No thanks“. In der Web-App und der App ist es eine eigene Seite mit „I agree“ und „Not now“. Die Texte dieser Abfrage sind derzeit englisch. Erst nach deiner Zustimmung speichert Ember diese Daten.
+- **Neue Nutzer:** Bevor du dein erstes Habit anlegst (auch aus einer Vorlage), ein Tief, eine Tagesnotiz oder eine eigene Stimmung speicherst oder Daten importierst, fragt Ember dich, ob das für dich in Ordnung ist. Im Discord-Bot antwortest du mit den Schaltflächen „Ich stimme zu“ oder „Nein danke“. In der Web-App und der App ist es eine eigene Seite mit „Ich stimme zu“ und „Jetzt nicht“. Die Texte dieser Abfrage sind derzeit englisch. Erst nach deiner Zustimmung speichert Ember diese Daten.
 - **Bestehende Nutzer:** Wenn du Ember schon vor der Einwilligung genutzt hast, fragt die Web-App dich einmal pro Sitzung und der Discord-Bot höchstens einmal am Tag. Bis du antwortest, bleiben deine vorhandenen Habits und Check-ins nutzbar und die Erinnerungen laufen weiter. Neue Habits, Tiefs, Tagesnotizen und Stimmungen gehen erst nach deiner Zustimmung.
-- **Wenn du „No thanks“ wählst:** Ember speichert keine Einwilligung und legt nichts Neues an, wofür sie fehlt. Der Discord-Bot fragt dich 30 Tage lang nicht von sich aus. Die Web-App kennt diese Pause nicht und fragt bei der nächsten Sitzung wieder. Was schon da ist, bleibt, bis du entscheidest. Der Bot bietet dir dann an, deine Daten zu löschen.
+- **Wenn du „Nein danke“ wählst:** Ember speichert keine Einwilligung und legt nichts Neues an, wofür sie fehlt. Der Discord-Bot fragt dich 30 Tage lang nicht von sich aus. Die Web-App kennt diese Pause nicht und fragt bei der nächsten Sitzung wieder. Was schon da ist, bleibt, bis du entscheidest. Der Bot bietet dir dann an, deine Daten zu löschen.
 - **Wenn sich diese Erklärung ändert:** Mit Version 2026-11 fragt Ember alle Nutzer noch einmal, auch wenn sie vorher zugestimmt haben. Bei einer weiteren neuen Version geschieht das auf dieselbe Weise.
 
 Wenn du zustimmst, speichert Ember den Zeitpunkt und die Version dieser Erklärung (Abschnitt 3.1).
@@ -214,7 +214,7 @@ Tagesnotizen und Stimmungen erscheinen nie im Discord-Bot, in Benachrichtigungen
 
 ### Widerruf
 
-Du kannst deine Einwilligung jederzeit widerrufen (Art. 7 Abs. 3 DSGVO). Ohne Habit-Namen und Check-ins kann Ember seinen Dienst nicht erbringen. Deshalb ist das Löschen des Kontos derzeit der einzige Weg, die Einwilligung zu widerrufen: in der Web-App und der App unter „Delete your account“ in den Einstellungen oder im Discord-Bot mit `/privacy delete`. Das löscht alles sofort auf dem Server (zu den Kopien auf anderen Geräten siehe Abschnitt 9). Was bis zum Widerruf passiert ist, bleibt rechtmäßig.
+Du kannst deine Einwilligung jederzeit widerrufen (Art. 7 Abs. 3 DSGVO). Ohne Habit-Namen und Check-ins kann Ember seinen Dienst nicht erbringen. Deshalb ist das Löschen des Kontos derzeit der einzige Weg, die Einwilligung zu widerrufen: in der Web-App und der App unter „Dein Konto löschen“ in den Einstellungen oder im Discord-Bot mit `/privacy delete`. Das löscht alles sofort auf dem Server (zu den Kopien auf anderen Geräten siehe Abschnitt 9). Was bis zum Widerruf passiert ist, bleibt rechtmäßig.
 
 ## 5. Zwecke und Rechtsgrundlagen
 
@@ -292,7 +292,7 @@ Außer an die oben genannten Dienste und an den Speicher für die verschlüsselt
 - **Kein Mitlesen von Chats:** Der Bot liest keine Nachrichten mit.
 - **Verschlüsselte Verbindung:** Web-App und API sind nur über HTTPS erreichbar.
 - **Passwörter:** Ember speichert nur einen Hash. Nach fünf Fehlversuchen ist die Anmeldung 15 Minuten gesperrt. Zusätzlich begrenzt Ember die Anzahl der Anfragen.
-- **Sitzungen:** Abmelden beendet nur die Sitzung auf diesem Gerät. „Sign out everywhere“ in den Einstellungen beendet alle Sitzungen. Das Zurücksetzen des Passworts beendet alle Sitzungen. Das Ein- oder Ausschalten der Zwei-Faktor-Anmeldung, das Verknüpfen oder Trennen von Discord und das Zusammenführen von Konten beenden die anderen Sitzungen.
+- **Sitzungen:** Abmelden beendet nur die Sitzung auf diesem Gerät. „Überall abmelden“ in den Einstellungen beendet alle Sitzungen. Das Zurücksetzen des Passworts beendet alle Sitzungen. Das Ein- oder Ausschalten der Zwei-Faktor-Anmeldung, das Verknüpfen oder Trennen von Discord und das Zusammenführen von Konten beenden die anderen Sitzungen.
 - **Zwei-Faktor-Anmeldung:** optional mit einer Authenticator-App und Wiederherstellungscodes.
 - **Privates Tagebuch:** Ende-zu-Ende verschlüsselt (Abschnitt 3.4).
 - **Privat als Standard:** Antworten auf deine Befehle sieht in der Regel nur du. Öffentlich wird nur, was du selbst postest (`/habit share`).
@@ -315,12 +315,12 @@ Die meisten Rechte kannst du selbst ausüben:
 
 | Was du willst | So geht es |
 |---|---|
-| Alle deine Daten sehen oder mitnehmen | Web-App oder App: Einstellungen, Abschnitt „Your data“, Export als JSON oder CSV. Der Export enthält deine Einstellungen (mit dem Einwilligungsnachweis), die E-Mail-Adresse, die Discord-Nutzer-ID, alle Habits, Routinen, Check-ins, Tiefs, Tagesnotizen, Stimmungen, die Adressen deiner Push-Abos (ohne Schlüssel) mit Bezeichnung und Ein/Aus, deine Telefone (Bezeichnung, Ein/Aus, Zeitpunkt, ohne Installationskennung) und den verschlüsselten Tagebuchschlüssel. Ein verschlüsseltes Tagebuch bleibt in der Datei verschlüsselt. Die Web-App bietet außerdem einen entschlüsselten Export deines Tagebuchs an. Discord: `/export` enthält nur Einstellungen, Habits, Check-ins, Tiefs und Routinen. Den vollständigen Export gibt es in der Web-App. |
-| Alles löschen | Web-App oder App: Einstellungen, „Delete your account“. Mit Passwort und Eingabe von DELETE. Bei Konten ohne Passwort nur mit DELETE. Discord: `/privacy delete`, dann „Delete everything“. Das lässt sich nicht rückgängig machen. Exportiere vorher, wenn du deine Daten behalten möchtest. Auf anderen Geräten bleiben lokale Kopien (Abschnitt 3.8), bis das Gerät den Server das nächste Mal erreicht. Dann meldet die App dich ab und löscht die Kopien. Erinnerungen in Discord bleiben als Nachrichten stehen, ihre Schaltflächen führen aber ins Leere. |
-| Ein Habit löschen oder umbenennen, die Häufigkeit oder die Erinnerung ändern | Discord: `/habit delete`, `/habit edit`, `/habit frequency`. Web-App: Habit öffnen, dann „Edit habit“ oder „Delete habit“. |
-| Einen Check-in korrigieren, nachtragen oder ein Tief setzen oder entfernen | Discord: `/habit history`. Web-App: Tab „History“, dann das Habit. |
+| Alle deine Daten sehen oder mitnehmen | Web-App oder App: Einstellungen, Abschnitt „Deine Daten“, Export als JSON oder CSV. Der Export enthält deine Einstellungen (mit dem Einwilligungsnachweis), die E-Mail-Adresse, die Discord-Nutzer-ID, alle Habits, Routinen, Check-ins, Tiefs, Tagesnotizen, Stimmungen, die Adressen deiner Push-Abos (ohne Schlüssel) mit Bezeichnung und Ein/Aus, deine Telefone (Bezeichnung, Ein/Aus, Zeitpunkt, ohne Installationskennung) und den verschlüsselten Tagebuchschlüssel. Ein verschlüsseltes Tagebuch bleibt in der Datei verschlüsselt. Die Web-App bietet außerdem einen entschlüsselten Export deines Tagebuchs an. Discord: `/export` enthält nur Einstellungen, Habits, Check-ins, Tiefs und Routinen. Den vollständigen Export gibt es in der Web-App. |
+| Alles löschen | Web-App oder App: Einstellungen, „Dein Konto löschen“. Mit Passwort und Eingabe von LÖSCHEN. Bei Konten ohne Passwort nur mit LÖSCHEN. Discord: `/privacy delete`, dann „Alles löschen“. Das lässt sich nicht rückgängig machen. Exportiere vorher, wenn du deine Daten behalten möchtest. Auf anderen Geräten bleiben lokale Kopien (Abschnitt 3.8), bis das Gerät den Server das nächste Mal erreicht. Dann meldet die App dich ab und löscht die Kopien. Erinnerungen in Discord bleiben als Nachrichten stehen, ihre Schaltflächen führen aber ins Leere. |
+| Ein Habit löschen oder umbenennen, die Häufigkeit oder die Erinnerung ändern | Discord: `/habit delete`, `/habit edit`, `/habit frequency`. Web-App: Habit öffnen, dann „Habit bearbeiten“ oder „Habit löschen“. |
+| Einen Check-in korrigieren, nachtragen oder ein Tief setzen oder entfernen | Discord: `/habit history`. Web-App: Tab „Verlauf“, dann das Habit. |
 | Eine Tagesnotiz oder Stimmung ändern | Web-App oder App (Tagebuch). |
-| Discord trennen | Web-App oder App: Einstellungen, „Unlink Discord“. Das geht nur, wenn du ein Passwort und eine bestätigte E-Mail-Adresse hast, sonst könntest du dich nicht mehr anmelden. |
+| Discord trennen | Web-App oder App: Einstellungen, „Discord trennen“. Das geht nur, wenn du ein Passwort und eine bestätigte E-Mail-Adresse hast, sonst könntest du dich nicht mehr anmelden. |
 
 Für alles andere, oder wenn etwas nicht funktioniert, schreib an contact@nicowoellnitz.de. Wir antworten so schnell wie möglich, spätestens innerhalb eines Monats. Damit wir sicher sind, dass die Anfrage von dir kommt, fragen wir eventuell nach deiner Discord-Nutzer-ID oder bitten dich, dich über Discord zu bestätigen.
 
