@@ -70,15 +70,20 @@ function measure(): { pageScrolls: boolean; offenders: string[] } {
 }
 
 async function check(page: Page, where: string, lang: string, found: string[]): Promise<void> {
-  for (const { width, height } of sizes) {
-    await page.setViewportSize({ width, height });
-    await page.evaluate(
-      () => document.fonts.ready.then(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))),
-    );
-    const { pageScrolls, offenders } = await page.evaluate(measure);
-    const at = `[${where}] [${lang}] [${width}px]`;
-    if (pageScrolls) found.push(`${at} the page scrolls horizontally`);
-    for (const offender of offenders) found.push(`${at} ${offender}`);
+  const viewport = page.viewportSize();
+  try {
+    for (const { width, height } of sizes) {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(
+        () => document.fonts.ready.then(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))),
+      );
+      const { pageScrolls, offenders } = await page.evaluate(measure);
+      const at = `[${where}] [${lang}] [${width}px]`;
+      if (pageScrolls) found.push(`${at} the page scrolls horizontally`);
+      for (const offender of offenders) found.push(`${at} ${offender}`);
+    }
+  } finally {
+    if (viewport) await page.setViewportSize(viewport);
   }
 }
 

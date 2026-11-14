@@ -77,7 +77,6 @@
 
   .ember-glow {
     animation: ember-breathe 10s ease-in-out infinite alternate;
-    will-change: transform, opacity;
   }
 
   .ember-flicker {

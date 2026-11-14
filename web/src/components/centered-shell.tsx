@@ -24,7 +24,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
   const { pathname } = useLocation();
   const arriving = useArrival(pathname);
   const still = pathname.startsWith('/legal/');
-  const moment = pathname === '/moment';
+  const moment = /^\/moment\/?$/.test(pathname);
   return (
     <div
       data-motion={still ? 'off' : undefined}
