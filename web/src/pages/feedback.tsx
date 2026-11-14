@@ -10,7 +10,7 @@ export default function FeedbackPage() {
   const { t } = useTranslation();
   const me = useStore(auth.me);
   return (
-    <div className="flex w-full max-w-[40rem] flex-col gap-8">
+    <div className="flex w-full max-w-[40rem] flex-col gap-8 2xl:mx-auto">
       <PageHeader title={t('title.feedback')} lede={t('feedback.page.lede')} />
       <FeedbackForm />
       {!me && (

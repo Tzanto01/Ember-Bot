@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { BetaBadge } from '@/components/beta-badge';
 import { DayCell, joinsRun } from '@/components/day-cell';
 import { FlameMark } from '@/components/flame-mark';
 import { LegalLinks } from '@/components/legal-links';
 import { Card } from '@/components/ui/card';
 import { pitch } from '@/content/pitch';
+import { useArrival } from '@/lib/arrival';
 import type { DayState } from '@/lib/models';
 import { cn } from '@/lib/utils';
 
@@ -20,9 +21,22 @@ const sampleWeek: DayState[] = ['done', 'done', 'lowday', 'done', 'pending'];
 export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' }) {
   useTranslation();
   const auth = variant === 'auth';
+  const { pathname } = useLocation();
+  const arriving = useArrival(pathname);
+  const still = pathname.startsWith('/legal/');
+  const moment = /^\/moment\/?$/.test(pathname);
   return (
-    <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div
+      data-motion={still ? 'off' : undefined}
+      className="relative isolate flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+    >
+      {!still && !moment && (
+        <div aria-hidden="true" data-calm-hide className="ember-glow-layer">
+          <div className="ember-glow" />
+        </div>
+      )}
       <header
+        data-motion={moment ? 'off' : undefined}
         className={cn(
           'flex items-center justify-center gap-2 px-4 pt-4',
           auth && 'lg:mx-auto lg:w-full lg:max-w-[72rem] lg:justify-start lg:px-6',
@@ -65,6 +79,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
         <main
           id="main"
           tabIndex={-1}
+          data-arrive={arriving && !still && !moment ? 'card' : undefined}
           className={cn(
             'flex w-full flex-col items-center gap-4 focus:outline-none',
             auth ? 'max-w-[28rem] lg:col-span-7 lg:max-w-none lg:justify-center' : 'max-w-[40rem]',

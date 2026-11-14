@@ -13,9 +13,10 @@ import type { Page } from '@playwright/test';
  *
  * By default a state is measured at 360 and 1280 px in light mode. `REVIEW_FULL=1` measures the whole matrix (eight
  * widths, light and dark, calm mode on and off, 200 percent root text at 360 and 1280, the other three themes at
- * 320, 360 and 1280). `REVIEW_SHOTS=<dir>` also saves screenshots for review by eye (360 and 1280, light and dark,
- * plus the extras a state asks for), appends every finding to `<dir>/findings.jsonl` and stops failing the test, so
- * the whole matrix runs.
+ * 320, 360 and 1280, both 21:9 sizes light and dark, one 5120x1440 light pass). `REVIEW_SHOTS=<dir>` also saves
+ * screenshots for review by eye (360, 1280, 1920 and both 21:9 sizes light and dark, 5120 light, plus the extras a
+ * state asks for), appends every finding to `<dir>/findings.jsonl` and stops failing the test, so the whole matrix
+ * runs.
  */
 
 export const reviewFull = process.env['REVIEW_FULL'] === '1';
@@ -26,6 +27,7 @@ type Scheme = 'light' | 'dark';
 
 interface Variant {
   width: number;
+  height: number;
   scheme: Scheme;
   calm: boolean;
   big: boolean;
@@ -34,18 +36,26 @@ interface Variant {
 }
 
 export interface CaptureExtras {
-  /** Also screenshot every theme (light and dark) and calm mode at 360 px. */
+  /** Also screenshot every theme (light and dark) at 360 and 1280 px, and calm mode at 360 px. */
   themes?: boolean;
   /** Also screenshot 200 percent root text at 360 px. */
   big?: boolean;
 }
 
+const wide = [
+  { width: 2560, height: 1080 },
+  { width: 3440, height: 1440 },
+] as const;
+const superWide = { width: 5120, height: 1440 } as const;
+
 function variants(extras: CaptureExtras): Variant[] {
   const list: Variant[] = [];
-  const add = (variant: Omit<Variant, 'shot'>, shot = false) => {
+  const add = (sized: Omit<Variant, 'shot' | 'height'> & { height?: number }, shot = false) => {
+    const variant = { ...sized, height: sized.height ?? (sized.width < 768 ? 800 : 900) };
     const same = list.find(
       (v) =>
         v.width === variant.width &&
+        v.height === variant.height &&
         v.scheme === variant.scheme &&
         v.calm === variant.calm &&
         v.big === variant.big &&
@@ -64,13 +74,18 @@ function variants(extras: CaptureExtras): Variant[] {
     for (const width of [360, 1280]) add({ ...base, width, scheme: 'light', big: true });
     for (const theme of themes.slice(1))
       for (const width of [320, 360, 1280]) add({ ...base, width, scheme: 'light', theme });
+    for (const size of wide) for (const scheme of ['light', 'dark'] as const) add({ ...base, ...size, scheme });
+    add({ ...base, ...superWide, scheme: 'light' });
   }
   if (reviewShots) {
-    for (const width of [360, 1280])
+    for (const width of [360, 1280, 1920])
       for (const scheme of ['light', 'dark'] as const) add({ ...base, width, scheme }, true);
+    for (const size of wide) for (const scheme of ['light', 'dark'] as const) add({ ...base, ...size, scheme }, true);
+    add({ ...base, ...superWide, scheme: 'light' }, true);
     if (extras.themes) {
       for (const scheme of ['light', 'dark'] as const) {
-        for (const theme of themes) add({ ...base, width: 360, scheme, theme }, true);
+        for (const theme of themes)
+          for (const width of [360, 1280]) add({ ...base, width, scheme, theme }, true);
         add({ ...base, width: 360, scheme, calm: true }, true);
       }
     }
@@ -413,6 +428,9 @@ function slug(value: string): string {
 }
 
 async function settle(page: Page): Promise<void> {
+  await page
+    .waitForFunction(() => !document.querySelector('main[data-arrive]'), undefined, { timeout: 3000 })
+    .catch(() => undefined);
   await page.evaluate(async () => {
     await document.fonts.ready;
     const finite = document.getAnimations().filter((animation) => {
@@ -453,8 +471,7 @@ export async function capture(
   if (reviewShots) mkdirSync(reviewShots, { recursive: true });
   try {
     for (const variant of variants(extras)) {
-      const height = variant.width < 768 ? 800 : 900;
-      await page.setViewportSize({ width: variant.width, height });
+      await page.setViewportSize({ width: variant.width, height: variant.height });
       await page.emulateMedia({ colorScheme: variant.scheme });
       await page.evaluate(
         ({ dark, calm, theme, big }) => {

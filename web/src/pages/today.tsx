@@ -43,6 +43,10 @@ interface TodayData {
   routines: Routine[] | null;
 }
 
+/** Today's body: one column, from `lg` the door, notices and habits left and the day's cards right. */
+const columns =
+  'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start 2xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:gap-8 min-[137.5rem]:grid-cols-[minmax(0,1fr)_28rem] min-[200rem]:grid-cols-[minmax(0,1fr)_30rem]';
+
 interface HabitGroup {
   routine: Routine | null;
   habits: Habit[];
@@ -325,55 +329,83 @@ export default function TodayPage() {
     </ul>
   );
 
+  const top = (
+    <>
+      <MomentDoor variant="today" />
+      <LiveRegion message={announcement} />
+      {problem && (
+        <Notice tone="notice" heading={problem.heading}>
+          <p>{problem.message}</p>
+        </Notice>
+      )}
+      <DeviceNotices />
+      <WhatsNewCard />
+      <TipSlot place="top" habits={data?.habits} routines={data?.routines} />
+    </>
+  );
+
   let body: ReactNode;
   if (!data) {
     const loadProblem = query.isError && !query.isFetching ? asApiError(query.error) : null;
-    body = loadProblem ? (
-      !loadProblem.handled && (
-        <Notice tone="notice" heading={t('today.loadFailed')}>
-          <p>{problemToMessage(loadProblem).message}</p>
-          <Button variant="secondary" onClick={() => void refetch()}>
-            {t('today.tryAgain')}
-          </Button>
-        </Notice>
-      )
-    ) : (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <span role="status" className="sr-only">
-          {t('today.loading')}
-        </span>
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-[88px] rounded-xl" />
-        ))}
+    body = (
+      <div className={columns}>
+        <div className="flex min-w-0 flex-col gap-6">
+          {top}
+          {loadProblem ? (
+            !loadProblem.handled && (
+              <Notice tone="notice" heading={t('today.loadFailed')}>
+                <p>{problemToMessage(loadProblem).message}</p>
+                <Button variant="secondary" onClick={() => void refetch()}>
+                  {t('today.tryAgain')}
+                </Button>
+              </Notice>
+            )
+          ) : (
+            <div aria-busy="true" className="flex flex-col gap-3">
+              <span role="status" className="sr-only">
+                {t('today.loading')}
+              </span>
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-[88px] rounded-xl" />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   } else if (!hasHabits) {
     body = (
-      <>
-        <Card className="items-center">
-          <EmptyState
-            illustration={<HearthIllustration />}
-            title={t('today.empty.title')}
-            action={
-              <>
-                <Button asChild>
-                  <Link to="/habits/new">{t('today.empty.create')}</Link>
-                </Button>
-                <p className="text-[0.875rem] text-muted-foreground">{t('today.empty.never')}</p>
-              </>
-            }
-          >
-            <p>{t('today.empty.body')}</p>
-          </EmptyState>
-        </Card>
-        {today && <DayJournal date={today} />}
-        <TipSlot place="journal" habits={data.habits} routines={data.routines} />
-      </>
+      <div className={columns}>
+        <div className="flex min-w-0 flex-col gap-6">
+          {top}
+          <Card className="items-center">
+            <EmptyState
+              illustration={<HearthIllustration />}
+              title={t('today.empty.title')}
+              action={
+                <>
+                  <Button asChild>
+                    <Link to="/habits/new">{t('today.empty.create')}</Link>
+                  </Button>
+                  <p className="text-[0.875rem] text-muted-foreground">{t('today.empty.never')}</p>
+                </>
+              }
+            >
+              <p>{t('today.empty.body')}</p>
+            </EmptyState>
+          </Card>
+        </div>
+        <div className="flex flex-col gap-6">
+          {today && <DayJournal date={today} />}
+          <TipSlot place="journal" habits={data.habits} routines={data.routines} />
+        </div>
+      </div>
     );
   } else {
     body = (
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <div className={columns}>
         <div className="flex min-w-0 flex-col gap-6">
+          {top}
           {lowDay && (
             <Notice tone="lowday" heading={t('today.lowDay.heading')}>
               <p>{t('today.lowDay.body')}</p>
@@ -496,16 +528,6 @@ export default function TodayPage() {
           {t('today.lowDay.mark')}
         </Button>
       )}
-      <MomentDoor variant="today" />
-      <LiveRegion message={announcement} />
-      {problem && (
-        <Notice tone="notice" heading={problem.heading}>
-          <p>{problem.message}</p>
-        </Notice>
-      )}
-      <DeviceNotices />
-      <WhatsNewCard />
-      <TipSlot place="top" habits={data?.habits} routines={data?.routines} />
       {body}
     </div>
   );

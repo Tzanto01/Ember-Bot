@@ -127,7 +127,7 @@ export default function RoutinesPage() {
   }
 
   return (
-    <div className="flex max-w-[40rem] flex-col gap-6">
+    <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
       <PageHeader
         title={t('routines.title')}
         lede={t('routines.lede')}

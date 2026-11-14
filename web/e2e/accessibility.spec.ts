@@ -14,6 +14,7 @@ const settingsGroups = ['account', 'reminders', 'habits', 'appearance', 'privacy
 
 async function scan(page: Page, where: string, found: string[]): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() => !document.querySelector('main[data-arrive]'));
   const { violations } = await new AxeBuilder({ page }).withTags(tags).analyze();
   for (const v of violations) {
     found.push(`${where} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`);

@@ -23,7 +23,7 @@ export default function WhatsNewPage() {
   }, [latest]);
 
   return (
-    <div className="flex max-w-[40rem] flex-col gap-6">
+    <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
       <PageHeader title={t('whatsNew.title')} lede={t('whatsNew.lede')} />
       {query.data ? (
         query.data.map((entry) => (

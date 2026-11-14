@@ -53,7 +53,7 @@ export default function RoutineEditPage() {
     );
   } else if (loaded && routines.data && habits.data) {
     content = (
-      <div className="flex max-w-[40rem] flex-col gap-6">
+      <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
         <RoutineDetails key={routine?.id ?? 'new'} routine={routine} habits={habits.data} routines={routines.data} />
         {routine && (
           <RemindersSection
@@ -87,7 +87,7 @@ export default function RoutineEditPage() {
     );
   } else {
     content = (
-      <div className="flex max-w-[40rem] flex-col gap-6">
+      <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
         <p role="status" className="sr-only">
           {t('routine.loading')}
         </p>

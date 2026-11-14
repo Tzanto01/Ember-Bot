@@ -138,7 +138,7 @@ export default function HabitNewPage() {
     : t('habitNew.pick');
 
   return (
-    <div ref={root} className="flex flex-col gap-6">
+    <div ref={root} className="flex flex-col gap-6 2xl:mx-auto 2xl:w-full 2xl:max-w-[56rem]">
       <PageHeader title={t('habitNew.title')} lede={lede} />
 
       {!showForm && !templates.data && (

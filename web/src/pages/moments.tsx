@@ -284,7 +284,7 @@ export default function MomentsPage() {
   }
 
   return (
-    <div className="flex max-w-[40rem] flex-col gap-6">
+    <div className="flex max-w-[40rem] flex-col gap-6 2xl:mx-auto 2xl:w-full">
       <PageHeader title={t('title.moments')} lede={t('moments.lede')} />
       {newPassphrase && state === 'unlocked' && (
         <Notice>

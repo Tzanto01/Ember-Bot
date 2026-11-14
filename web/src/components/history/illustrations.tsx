@@ -9,7 +9,9 @@ export function NotebookIllustration() {
       {cells.map(({ x, y, i }) =>
         i === 10 ? (
           <g key={i}>
-            <circle cx={x + 3} cy={y + 3} r="7" className="fill-flame-core" opacity="0.35" />
+            <g className="ember-coal">
+              <circle cx={x + 3} cy={y + 3} r="7" className="fill-flame-core" opacity="0.35" />
+            </g>
             <rect x={x} y={y} width="6" height="6" rx="1.5" className="fill-done" />
           </g>
         ) : (

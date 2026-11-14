@@ -3,8 +3,12 @@ import { confirmEmail, createWebUser, localToday, setAccountLanguage, signUp, SE
 import { enableRememberedJournal, reflectionTrigger, saveMomentReflection, signUpAndConfirmLocalized } from './support/extras';
 import { languages, translator } from './support/locales';
 
-const widths = [320, 1280];
-const height = 900;
+const sizes = [
+  { width: 320, height: 800 },
+  { width: 1280, height: 900 },
+  { width: 2560, height: 1080 },
+  { width: 3440, height: 1440 },
+];
 const longHabit = 'Wasser trinken und Donaudampfschifffahrtsgesellschaft';
 const settingsGroups = ['account', 'reminders', 'habits', 'appearance', 'privacy', 'feedback', 'help'];
 
@@ -66,15 +70,20 @@ function measure(): { pageScrolls: boolean; offenders: string[] } {
 }
 
 async function check(page: Page, where: string, lang: string, found: string[]): Promise<void> {
-  for (const width of widths) {
-    await page.setViewportSize({ width, height });
-    await page.evaluate(
-      () => document.fonts.ready.then(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))),
-    );
-    const { pageScrolls, offenders } = await page.evaluate(measure);
-    const at = `[${where}] [${lang}] [${width}px]`;
-    if (pageScrolls) found.push(`${at} the page scrolls horizontally`);
-    for (const offender of offenders) found.push(`${at} ${offender}`);
+  const viewport = page.viewportSize();
+  try {
+    for (const { width, height } of sizes) {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(
+        () => document.fonts.ready.then(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))),
+      );
+      const { pageScrolls, offenders } = await page.evaluate(measure);
+      const at = `[${where}] [${lang}] [${width}px]`;
+      if (pageScrolls) found.push(`${at} the page scrolls horizontally`);
+      for (const offender of offenders) found.push(`${at} ${offender}`);
+    }
+  } finally {
+    if (viewport) await page.setViewportSize(viewport);
   }
 }
 
@@ -104,7 +113,7 @@ for (const { code, locale, strings } of languages) {
       await page.addInitScript((value) => localStorage.setItem('ember.language', value), code);
     });
 
-    test('public pages fit at 320 and 1280', async ({ page }) => {
+    test('public pages fit at 320, 1280 and 21:9', async ({ page }) => {
       test.setTimeout(180_000);
       const found: string[] = [];
       await visit(page, '/', /./, found);
@@ -144,7 +153,7 @@ for (const { code, locale, strings } of languages) {
       expect(found).toEqual([]);
     });
 
-    test('the moment flow fits at 320 and 1280', async ({ page }) => {
+    test('the moment flow fits at 320, 1280 and 21:9', async ({ page }) => {
       test.setTimeout(180_000);
       const found: string[] = [];
       const heading = (name: RegExp | string) => page.getByRole('heading', { name }).first();
@@ -198,7 +207,7 @@ for (const { code, locale, strings } of languages) {
       expect(found).toEqual([]);
     });
 
-    test('no-account mode Today fits at 320 and 1280', async ({ page }) => {
+    test('no-account mode Today fits at 320, 1280 and 21:9', async ({ page }) => {
       const found: string[] = [];
       await page.goto('/local');
       await page.getByRole('button', { name: tr('local.start.button') }).click();
@@ -210,7 +219,7 @@ for (const { code, locale, strings } of languages) {
   });
 
   test.describe(`layout ${code}, signed in`, () => {
-    test('app pages fit at 320 and 1280', async ({ page }) => {
+    test('app pages fit at 320, 1280 and 21:9', async ({ page }) => {
       test.setTimeout(300_000);
       const found: string[] = [];
 
@@ -298,7 +307,7 @@ for (const { code, locale, strings } of languages) {
       expect(found).toEqual([]);
     });
 
-    test('Your moments, What helps me and calm mode fit at 320 and 1280', async ({ page }) => {
+    test('Your moments, What helps me and calm mode fit at 320, 1280 and 21:9', async ({ page }) => {
       test.setTimeout(300_000);
       const found: string[] = [];
       const longHelp = 'Ein langer Spaziergang an der Donaudampfschifffahrtsgesellschaft vorbei';
@@ -352,6 +361,7 @@ for (const { code, locale, strings } of languages) {
 
       await visit(page, '/settings/privacy', /./, found);
       await page.getByRole('button', { name: tr('journalSettings.lock') }).click();
+      await expect(page.getByText(tr('journalSettings.lockedDone'))).toBeAttached();
       await visit(page, '/moments', tr('title.moments'), found);
       await expect(page.getByText(tr('moments.locked'))).toBeVisible();
       await check(page, '/moments (locked)', code, found);
@@ -363,7 +373,7 @@ for (const { code, locale, strings } of languages) {
     test.describe('layout de, consent', () => {
       test.use({ locale: 'de-DE' });
 
-      test('the consent page fits at 320 and 1280 for a German account before consent', async ({ page }) => {
+      test('the consent page fits at 320, 1280 and 21:9 for a German account before consent', async ({ page }) => {
         const found: string[] = [];
         await signUpAndConfirmLocalized(page, tr);
         await expect(page.locator('html')).toHaveAttribute('lang', 'de');
