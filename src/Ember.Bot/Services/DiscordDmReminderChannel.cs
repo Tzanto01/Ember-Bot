@@ -93,7 +93,7 @@ public class DiscordDmReminderChannel : IReminderChannel
     {
         var lines = new List<string>();
         var length = 0;
-        foreach (var line in pending.Select(h => $"• {h.Name}"))
+        foreach (var line in pending.Take(MaxButtons - 1).Select(h => $"• {h.Name}"))
         {
             if (length + line.Length + 1 > MaxListLength) break;
             lines.Add(line);

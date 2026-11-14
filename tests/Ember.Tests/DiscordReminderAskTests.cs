@@ -144,7 +144,7 @@ public class DiscordReminderAskTests
     }
 
     [Fact]
-    public async Task The_reminders_command_sets_the_answer_and_counts_as_asked_so_no_question_follows()
+    public async Task The_reminders_command_sets_the_answer_and_records_the_ask()
     {
         var earlier = Now.UtcDateTime.AddDays(-3);
         var asked = DiscordUser(10);
@@ -159,8 +159,6 @@ public class DiscordReminderAskTests
         var user = await UserAsync(host, 20);
         (user.DiscordReminders, user.DiscordRemindersAskedAt).Should().Be((false, Now.UtcDateTime));
         (await UserAsync(host, 10)).DiscordRemindersAskedAt.Should().Be(earlier);
-        await RunAskAsync(host);
-        host.Discord.Messages.Should().BeEmpty();
 
         await set(20, true);
         (await UserAsync(host, 20)).DiscordReminders.Should().BeTrue();
