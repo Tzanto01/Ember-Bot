@@ -532,7 +532,7 @@ Reminders are off while it's paused. Rest well. 💙</value>
     <value>Discord reminders are off for you, so I won't DM this one. You can turn them back on in Ember's Settings or with the button in my earlier message.</value>
   </data>
   <data name="discordreminders.yes" xml:space="preserve">
-    <value>Lovely, your reminders will come here too. 💙 You can change where Ember reminds you any time in Settings.</value>
+    <value>Lovely, your reminders will come here. 💙 You can change where Ember reminds you any time in Settings.</value>
   </data>
   <data name="discordreminders.no" xml:space="preserve">
     <value>No problem, I won't DM you your reminders. 💙 If you change your mind, tap below or turn on Discord DMs in Settings.</value>

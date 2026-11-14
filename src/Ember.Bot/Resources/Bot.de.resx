@@ -532,7 +532,7 @@ So lange ruhen die Erinnerungen. Erhol dich gut. 💙</value>
     <value>Discord-Erinnerungen sind bei dir aus, deshalb schicke ich diese nicht per DM. In Embers Einstellungen oder mit dem Button in meiner früheren Nachricht kannst du sie wieder einschalten.</value>
   </data>
   <data name="discordreminders.yes" xml:space="preserve">
-    <value>Schön, deine Erinnerungen kommen dann auch hierher. 💙 Wo Ember dich erinnert, kannst du jederzeit in den Einstellungen ändern.</value>
+    <value>Schön, deine Erinnerungen kommen dann hierher. 💙 Wo Ember dich erinnert, kannst du jederzeit in den Einstellungen ändern.</value>
   </data>
   <data name="discordreminders.no" xml:space="preserve">
     <value>Kein Problem, ich schicke dir deine Erinnerungen nicht per DM. 💙 Falls du es dir anders überlegst, tipp unten oder schalte Discord-DMs in den Einstellungen ein.</value>
