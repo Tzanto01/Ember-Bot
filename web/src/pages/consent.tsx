@@ -51,7 +51,7 @@ export default function ConsentPage() {
       <div className="flex flex-col gap-3">
         <p>{t('consent.what')}</p>
         <p>{t('consent.why')}</p>
-        <p>
+        <p className="hyphens-auto">
           <TapLink to="/legal/privacy">{t('consent.readPolicy')}</TapLink>
         </p>
       </div>

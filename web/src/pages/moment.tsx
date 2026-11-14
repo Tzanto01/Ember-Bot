@@ -40,7 +40,7 @@ function Heading({
   large?: boolean;
 }) {
   return (
-    <h1 id={headingId} tabIndex={-1} className="flex flex-col gap-2 focus:outline-none">
+    <h1 id={headingId} tabIndex={-1} className="flex flex-col gap-2 hyphens-auto focus:outline-none">
       {eyebrow && (
         <span className="font-sans text-base font-normal text-muted-foreground">{eyebrow}</span>
       )}
@@ -173,7 +173,7 @@ export default function MomentPage() {
           <Heading eyebrow={momentCopy.reminderEyebrow} large>
             {step.text}
           </Heading>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               type="button"
               variant="outline"
@@ -297,7 +297,7 @@ export default function MomentPage() {
             />
           )}
           <div className="flex flex-col gap-3">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {step.index > 0 && (
                 <Button
                   type="button"

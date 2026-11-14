@@ -72,10 +72,10 @@ export default function LandingPage() {
         tabIndex={-1}
         className="mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-12 px-4 py-8 focus:outline-none lg:gap-16 lg:px-6 lg:py-14"
       >
-        <section className="grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
+        <section className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="flex flex-col gap-6 lg:col-span-7">
             <div className="flex flex-col gap-3">
-              <h1 tabIndex={-1} className="text-[2.25rem] focus:outline-none md:text-[3rem]">
+              <h1 tabIndex={-1} className="text-[2.25rem] hyphens-auto focus:outline-none md:text-[3rem]">
                 {pitch.hero}
               </h1>
               <p className="max-w-[36rem] text-[1.125rem] text-muted-foreground">
