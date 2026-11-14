@@ -255,7 +255,7 @@ export default function KeepDataPage() {
               >
                 {t('keepData.exportFirst')}
               </BusyButton>
-              <p role="status" className="text-[14px]">
+              <p role="status" className="text-[0.875rem]">
                 {exported}
               </p>
             </Notice>
@@ -274,7 +274,7 @@ export default function KeepDataPage() {
                 <Label htmlFor={privateId} className="font-normal">
                   {t('keepData.private.label')}
                 </Label>
-                <p id={`${privateId}-hint`} className="text-[14px] text-muted-foreground">
+                <p id={`${privateId}-hint`} className="text-[0.875rem] text-muted-foreground">
                   {t('keepData.private.hint')}
                 </p>
               </div>

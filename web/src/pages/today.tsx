@@ -358,7 +358,7 @@ export default function TodayPage() {
                 <Button asChild>
                   <Link to="/habits/new">{t('today.empty.create')}</Link>
                 </Button>
-                <p className="text-[14px] text-muted-foreground">{t('today.empty.never')}</p>
+                <p className="text-[0.875rem] text-muted-foreground">{t('today.empty.never')}</p>
               </>
             }
           >
@@ -404,7 +404,7 @@ export default function TodayPage() {
                 <div className="flex items-center justify-between gap-2">
                   <h2
                     id={routine ? `routine-${routine.id}` : 'routine-other'}
-                    className="min-w-0 text-[20px] [overflow-wrap:anywhere]"
+                    className="min-w-0 text-[1.25rem] [overflow-wrap:anywhere]"
                   >
                     {routine?.name ?? t('today.otherHabits')}
                   </h2>
@@ -452,12 +452,12 @@ export default function TodayPage() {
           </Card>
           {showWeekly && data.weekly && (
             <section aria-labelledby="weekly-heading" className={cardVariants()}>
-              <h2 id="weekly-heading" className="text-[22px]">
+              <h2 id="weekly-heading" className="text-[1.375rem]">
                 {t('weekly.heading')}
               </h2>
               <p className="whitespace-pre-line">{weeklyHeadline(data.weekly)}</p>
               {data.weekly.footer && weeklyHeadline(data.weekly) === data.weekly.headline && (
-                <p className="whitespace-pre-line text-[14px] text-muted-foreground">{data.weekly.footer}</p>
+                <p className="whitespace-pre-line text-[0.875rem] text-muted-foreground">{data.weekly.footer}</p>
               )}
             </section>
           )}

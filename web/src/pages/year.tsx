@@ -176,7 +176,7 @@ export default function YearPage() {
         ) : (
           <>
             <Card>
-              <p className="text-[22px] font-semibold text-foreground">
+              <p className="text-[1.375rem] font-semibold text-foreground">
                 {recent.of === 0
                   ? t('year.startsHere')
                   : t('year.showedUp', { showed: recent.showed, count: recent.of })}
@@ -206,7 +206,7 @@ export default function YearPage() {
               />
               <YearLegend habit={!!habit} showMoods={showMoods} />
               {!showMoods && (
-                <p className="text-[14px] text-muted-foreground">
+                <p className="text-[0.875rem] text-muted-foreground">
                   {t('year.moodsHidden')}{' '}
                   <TapLink to="/settings#journal">{t('journal.unlockInSettings')}</TapLink>
                 </p>
@@ -222,7 +222,7 @@ export default function YearPage() {
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-[22px]">{formatDate(selected, longDate)}</h2>
+                  <h2 className="text-[1.375rem]">{formatDate(selected, longDate)}</h2>
                   <Button variant="ghost" size="icon" aria-label={t('year.closeDay')} onClick={closeDay}>
                     <X aria-hidden />
                   </Button>

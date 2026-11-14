@@ -17,7 +17,7 @@ export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' })
 
   if (variant === 'hero') {
     return (
-      <Link to="/moment" className={cn(buttonVariants(), 'min-h-[56px] gap-3 px-6 text-[18px]')}>
+      <Link to="/moment" className={cn(buttonVariants(), 'min-h-[56px] gap-3 px-6 text-[1.125rem]')}>
         <Flame aria-hidden />
         {label}
       </Link>
@@ -37,7 +37,7 @@ export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' })
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="font-semibold">{label}</span>
-        <span className="text-[14px] text-muted-foreground">{t('moment.door.lede')}</span>
+        <span className="text-[0.875rem] text-muted-foreground">{t('moment.door.lede')}</span>
       </span>
     </Link>
   );

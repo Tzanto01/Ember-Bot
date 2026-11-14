@@ -62,7 +62,7 @@ export function AppShell() {
           <div className="flex items-center gap-2">
             <Link
               to="/today"
-              className="inline-flex min-h-[44px] items-center gap-2 font-display text-[18px] font-bold text-foreground no-underline"
+              className="inline-flex min-h-[44px] items-center gap-2 font-display text-[1.125rem] font-bold text-foreground no-underline"
             >
               <FlameMark />
               Ember
@@ -79,7 +79,7 @@ export function AppShell() {
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    'flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 text-[13px] font-medium text-muted-foreground no-underline max-md:focus-visible:-outline-offset-3',
+                    'flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 text-[0.8125rem] font-medium text-muted-foreground no-underline max-md:focus-visible:-outline-offset-3',
                     'md:min-h-[44px] md:flex-none md:flex-row md:gap-2 md:rounded-full md:px-4 md:text-base md:hover:bg-accent md:hover:text-accent-foreground',
                     isActive &&
                       'font-semibold text-primary shadow-[inset_0_3px_0_var(--primary)] md:bg-secondary md:text-secondary-foreground md:shadow-none md:hover:bg-secondary md:hover:text-secondary-foreground',

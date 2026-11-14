@@ -65,7 +65,7 @@ export function MonthCalendar({
         >
           <ChevronLeft aria-hidden />
         </Button>
-        <h2 id="month-heading" aria-live="polite" className="text-[22px]">
+        <h2 id="month-heading" aria-live="polite" className="text-[1.375rem]">
           {title}
         </h2>
         <Button variant="ghost" size="icon" aria-label={t('calendar.nextMonth')} aria-disabled={!canNext || undefined} onClick={onNext}>

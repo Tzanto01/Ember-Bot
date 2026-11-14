@@ -7,11 +7,11 @@ export function HabitPreview({ name, cadence, className }: { name: string; caden
   const { t } = useTranslation();
   return (
     <div aria-hidden="true" className={cn('flex flex-col gap-3', className)}>
-      <p className="text-[14px] text-muted-foreground">{t('habitFields.preview')}</p>
+      <p className="text-[0.875rem] text-muted-foreground">{t('habitFields.preview')}</p>
       <Card className="flex-row items-center gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 className="text-[18px] break-words">{name.trim() || t('habitFields.previewName')}</h2>
-          <p className="text-[14px] text-muted-foreground">{cadence}</p>
+          <h2 className="text-[1.125rem] break-words">{name.trim() || t('habitFields.previewName')}</h2>
+          <p className="text-[0.875rem] text-muted-foreground">{cadence}</p>
         </div>
         <span className="size-[56px] shrink-0 rounded-cell border-2 border-pending" />
       </Card>

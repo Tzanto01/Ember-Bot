@@ -72,7 +72,7 @@
   {
     "id": "cool-and-here",
     "version": 1,
-    "title": "Cool and here",
+    "title": "Cool water, here and now",
     "states": ["racing", "overloaded"],
     "type": "orientation",
     "minutes": 2,
@@ -130,7 +130,7 @@
     "steps": [
       {
         "kind": "text",
-        "text": "Give the thought a short name, like \"the argument\" or \"that message\"."
+        "text": "Give the thought a short name, like “the argument” or “that message”."
       },
       {
         "kind": "text",

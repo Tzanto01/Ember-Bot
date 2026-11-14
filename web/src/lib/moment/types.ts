@@ -20,5 +20,5 @@ export interface Practice {
   basis: string;
 }
 
-/** The 1 to 5 worded intensity scale, "A little" to "A lot". */
+/** The 1 to 5 worded intensity scale, "Mild" to "Very strong". */
 export type Intensity = 1 | 2 | 3 | 4 | 5;

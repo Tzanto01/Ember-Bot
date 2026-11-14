@@ -169,9 +169,9 @@ export default function HabitNewPage() {
                     'w-full cursor-pointer gap-1 text-left transition-colors duration-[var(--ember-dur-fast)] ease-ember hover:border-ring focus-visible:border-ring',
                   )}
                 >
-                  <span className="font-display text-[18px]">{templateName(template)}</span>
+                  <span className="font-display text-[1.125rem]">{templateName(template)}</span>
                   <span className="text-muted-foreground">{templateDescription(template)}</span>
-                  <span className="text-[14px] text-muted-foreground">
+                  <span className="text-[0.875rem] text-muted-foreground">
                     {reminders
                       ? t('habitNew.cadenceReminder', {
                           cadence: cadenceText(template.frequency, template.weeklyTarget),

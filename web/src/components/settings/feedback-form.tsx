@@ -276,7 +276,7 @@ export function FeedbackForm() {
               }}
               className={cn(controlClass, 'min-h-[8rem] resize-y leading-relaxed')}
             />
-            <p id={`${field.id}-count`} className="self-end text-[14px] text-muted-foreground">
+            <p id={`${field.id}-count`} className="self-end text-[0.875rem] text-muted-foreground">
               {remainingText(remaining)}
             </p>
             <p role="status" className="sr-only">
@@ -310,10 +310,10 @@ export function FeedbackForm() {
               ))}
             </ul>
           )}
-          <p id={`${picturesId}-why`} className="text-[14px] text-muted-foreground">
+          <p id={`${picturesId}-why`} className="text-[0.875rem] text-muted-foreground">
             {t('feedback.pictures.why')}
           </p>
-          <p id={`${picturesId}-check`} className="text-[14px] text-muted-foreground">
+          <p id={`${picturesId}-check`} className="text-[0.875rem] text-muted-foreground">
             {t('feedback.pictures.check')}
           </p>
           <input
@@ -342,24 +342,24 @@ export function FeedbackForm() {
               {t('feedback.pictures.add')}
             </BusyButton>
           </div>
-          <p id={`${picturesId}-count`} aria-live="polite" className="text-[14px] text-muted-foreground">
+          <p id={`${picturesId}-count`} aria-live="polite" className="text-[0.875rem] text-muted-foreground">
             {picturesText(pictures)}
           </p>
           {pictureError && (
-            <p id={`${picturesId}-error`} role="alert" className="flex items-start gap-2 text-[14px] text-destructive">
+            <p id={`${picturesId}-error`} role="alert" className="flex items-start gap-2 text-[0.875rem] text-destructive">
               <Info aria-hidden className="mt-[2px] size-[18px] shrink-0" />
               <span>{pictureError}</span>
             </p>
           )}
         </div>
       ) : (
-        <p className="text-[14px] text-muted-foreground">{t('feedback.pictures.accountOnly')}</p>
+        <p className="text-[0.875rem] text-muted-foreground">{t('feedback.pictures.accountOnly')}</p>
       )}
       {canAttach && (
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <Label htmlFor={`${picturesId}-anonymous`}>{t('feedback.anonymous.label')}</Label>
-            <p id={`${picturesId}-anonymous-hint`} className="text-[14px] text-muted-foreground">
+            <p id={`${picturesId}-anonymous-hint`} className="text-[0.875rem] text-muted-foreground">
               {t('feedback.anonymous.hint')}
             </p>
           </div>
@@ -372,7 +372,7 @@ export function FeedbackForm() {
           />
         </div>
       )}
-      <div id={sentId} className="flex flex-col items-start text-[14px] text-muted-foreground">
+      <div id={sentId} className="flex flex-col items-start text-[0.875rem] text-muted-foreground">
         {canAttach ? (
           <p>{t('feedback.sends.account')}</p>
         ) : (

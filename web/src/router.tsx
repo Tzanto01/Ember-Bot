@@ -124,7 +124,7 @@ function RouteError() {
   return (
     <main id="main" className="grid min-h-dvh place-items-center p-6 text-center">
       <div className="flex max-w-[28rem] flex-col items-center gap-4">
-        <h1 className="text-[28px]">{t('app.error.title')}</h1>
+        <h1 className="text-[1.75rem]">{t('app.error.title')}</h1>
         <p className="text-muted-foreground">{t('app.error.body')}</p>
         <Button asChild>
           <a href="/today">{t('app.error.today')}</a>

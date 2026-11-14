@@ -52,7 +52,7 @@ export function TodaysEmber({ count, lowDay, allDone = false, stepping, classNam
         </motion.g>
       </svg>
       {count > 0 ? (
-        <p className="text-[14px] leading-snug">
+        <p className="text-[0.875rem] leading-snug">
           {t('today.ember.count', { n: count })}
           {allDone && (
             <>
@@ -62,12 +62,12 @@ export function TodaysEmber({ count, lowDay, allDone = false, stepping, classNam
           )}
         </p>
       ) : lowDay ? (
-        <p className="flex items-center gap-1.5 text-[14px] leading-snug">
+        <p className="flex items-center gap-1.5 text-[0.875rem] leading-snug">
           <Moon aria-hidden className="size-[16px] shrink-0" />
           {t('today.ember.resting')}
         </p>
       ) : (
-        <p className="text-[14px] leading-snug">{t('today.ember.none')}</p>
+        <p className="text-[0.875rem] leading-snug">{t('today.ember.none')}</p>
       )}
     </div>
   );

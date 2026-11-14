@@ -160,7 +160,7 @@ function SettingsCard({
       aria-labelledby={`${id}-heading`}
       className={cardVariants({ variant: farewell ? 'farewell' : 'default', className: scrollMargin })}
     >
-      <h2 id={`${id}-heading`} tabIndex={-1} className="text-[22px] focus:outline-none">
+      <h2 id={`${id}-heading`} tabIndex={-1} className="text-[1.375rem] focus:outline-none">
         {title}
       </h2>
       {children}
@@ -688,7 +688,7 @@ export default function SettingsPage() {
                     <span id={`group-${group.slug}-name`} className="font-semibold">
                       {t(group.nameKey)}
                     </span>
-                    <span id={`group-${group.slug}-summary`} className="text-[14px] text-muted-foreground">
+                    <span id={`group-${group.slug}-summary`} className="text-[0.875rem] text-muted-foreground">
                       {group.summaryKey ? t(group.summaryKey) : group.cards.map((card) => card.title).join(', ')}
                     </span>
                   </span>
@@ -708,7 +708,7 @@ export default function SettingsPage() {
                   <span id="whats-new-name" className="font-semibold">
                     {t('title.whatsNew')}
                   </span>
-                  <span id="whats-new-summary" className="text-[14px] text-muted-foreground">
+                  <span id="whats-new-summary" className="text-[0.875rem] text-muted-foreground">
                     {t('settings.whatsNewSummary')}
                   </span>
                 </span>
@@ -728,7 +728,7 @@ export default function SettingsPage() {
           aria-labelledby="settings-rail-label"
           className="sticky top-[calc(56px+env(safe-area-inset-top)+1.5rem)] flex flex-col gap-2"
         >
-          <p id="settings-rail-label" className="px-3 text-[14px] font-semibold text-muted-foreground">
+          <p id="settings-rail-label" className="px-3 text-[0.875rem] font-semibold text-muted-foreground">
             {t('title.settings')}
           </p>
           <ul className="flex flex-col gap-1">
@@ -877,7 +877,7 @@ export default function SettingsPage() {
                     onCheckedChange={changeCalm}
                   />
                 </div>
-                <p id="calm-mode-hint" className="text-[14px] text-muted-foreground">
+                <p id="calm-mode-hint" className="text-[0.875rem] text-muted-foreground">
                   {t('settings.calm.hint')}
                 </p>
                 {savedStatus('calm')}
@@ -1101,7 +1101,7 @@ export default function SettingsPage() {
                     onCheckedChange={changeStreaks}
                   />
                 </div>
-                <p id="show-streaks-hint" className="text-[14px] text-muted-foreground">
+                <p id="show-streaks-hint" className="text-[0.875rem] text-muted-foreground">
                   {t('settings.streaks.hint')}
                 </p>
                 {savedStatus('streaks')}
@@ -1129,7 +1129,7 @@ export default function SettingsPage() {
                     </NativeSelect>
                   )}
                 </FormField>
-                <p className="text-[14px] text-muted-foreground">{t('settings.grace.note')}</p>
+                <p className="text-[0.875rem] text-muted-foreground">{t('settings.grace.note')}</p>
                 {savedStatus('grace')}
                 {outcome('grace')}
               </SettingsCard>
@@ -1278,7 +1278,7 @@ export default function SettingsPage() {
                       </div>
                     )}
                     {env.native && (
-                      <p className="text-[14px] text-muted-foreground">{t('settings.discord.nativeHint')}</p>
+                      <p className="text-[0.875rem] text-muted-foreground">{t('settings.discord.nativeHint')}</p>
                     )}
                   </>
                 )}

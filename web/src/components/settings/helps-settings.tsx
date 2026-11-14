@@ -24,7 +24,7 @@ const textError = (text: string): 'helps.error.text' | null => {
 function CharactersLeft({ id, text }: { id: string; text: string }) {
   const { t } = useTranslation();
   return (
-    <p id={id} className="self-end text-[14px] text-muted-foreground">
+    <p id={id} className="self-end text-[0.875rem] text-muted-foreground">
       {t('moment.reflect.charactersLeft', { left: maxHelpText - text.length })}
     </p>
   );

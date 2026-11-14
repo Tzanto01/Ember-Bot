@@ -103,7 +103,7 @@ export default function LinkMergePage() {
               ))}
             </ul>
           )}
-          <p className="text-[14px] text-muted-foreground">
+          <p className="text-[0.875rem] text-muted-foreground">
             {t('linkMerge.sameName')}
           </p>
           <p>{kept(preview)}</p>

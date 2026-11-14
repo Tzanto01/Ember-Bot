@@ -15,7 +15,7 @@ export function PageHeader({ title, lede, aside, className }: PageHeaderProps) {
   return (
     <header className={cn('flex flex-col gap-3', className)}>
       <div className="flex min-w-0 flex-col gap-2">
-        <h1 tabIndex={-1} className="text-[28px] [overflow-wrap:anywhere] focus:outline-none md:text-[36px]">
+        <h1 tabIndex={-1} className="text-[1.75rem] [overflow-wrap:anywhere] focus:outline-none md:text-[2.25rem]">
           {title}
         </h1>
         {lede && <p className="max-w-[38rem] text-muted-foreground [overflow-wrap:anywhere]">{lede}</p>}

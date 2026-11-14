@@ -14,7 +14,7 @@ function AndroidSection() {
   const size = new Intl.NumberFormat(currentLanguage()).format(sizeMb);
   return (
     <section aria-labelledby="download-android" className="flex flex-col gap-3">
-      <h2 id="download-android" className="text-[22px]">
+      <h2 id="download-android" className="text-[1.375rem]">
         Android
       </h2>
       <Button asChild className="self-start">
@@ -39,7 +39,7 @@ function BrowserSection() {
   const { t } = useTranslation();
   return (
     <section aria-labelledby="download-browser" className="flex flex-col gap-3">
-      <h2 id="download-browser" className="text-[22px]">
+      <h2 id="download-browser" className="text-[1.375rem]">
         {t('download.browser.heading')}
       </h2>
       <p>{t('download.browser.lede')}</p>
@@ -56,7 +56,7 @@ function DiscordSection() {
   const { t } = useTranslation();
   return (
     <section aria-labelledby="download-discord" className="flex flex-col gap-3">
-      <h2 id="download-discord" className="text-[22px]">
+      <h2 id="download-discord" className="text-[1.375rem]">
         {t('download.discord.heading')}
       </h2>
       <Button asChild variant="secondary" className="self-start">

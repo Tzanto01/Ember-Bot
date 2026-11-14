@@ -201,7 +201,7 @@ export function DeviceDataSettings() {
           <p>{problem}</p>
         </Notice>
       )}
-      <p ref={status} role="status" tabIndex={-1} className="text-[14px] text-muted-foreground focus:outline-none">
+      <p ref={status} role="status" tabIndex={-1} className="text-[0.875rem] text-muted-foreground focus:outline-none">
         {done}
       </p>
       <p>{t('local.upgrade.text')}</p>

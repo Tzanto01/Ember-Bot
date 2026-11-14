@@ -71,7 +71,7 @@ export function StatTiles({ habit, monthName, doneInMonth, lowDaysInMonth, last7
           key={tile.label}
           className={cn(cardVariants({ variant: 'stat' }), 'min-w-0', tiles.length === 5 && i === 4 && 'col-span-2')}
         >
-          <dt className="text-[14px]">{tile.label}</dt>
+          <dt className="text-[0.875rem]">{tile.label}</dt>
           <dd className="m-0 mt-auto font-semibold break-words">{tile.value}</dd>
         </div>
       ))}

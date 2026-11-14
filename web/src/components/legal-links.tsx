@@ -13,7 +13,7 @@ const links = [
 export function LegalLinks() {
   const { t } = useTranslation();
   return (
-    <nav aria-label={t('legalLinks.label')} className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[14px]">
+    <nav aria-label={t('legalLinks.label')} className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[0.875rem]">
       {links.map((link) => (
         <Link
           key={link.to}

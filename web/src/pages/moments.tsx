@@ -68,7 +68,7 @@ function MomentItem({
 
   return (
     <li className={cardVariants()}>
-      <h3 id={`${id}-heading`} className="text-[18px]">
+      <h3 id={`${id}-heading`} className="text-[1.125rem]">
         {t('moments.at', { date: formatDate(moment.date, longDate), time: moment.time })}
       </h3>
       {moment.tile && <p className="font-medium">{moment.tile}</p>}
@@ -76,7 +76,7 @@ function MomentItem({
         <dl className="flex flex-col gap-3">
           {(moment.before || moment.after) && (
             <div>
-              <dt className="text-[14px] text-muted-foreground">{t('moments.intensity')}</dt>
+              <dt className="text-[0.875rem] text-muted-foreground">{t('moments.intensity')}</dt>
               <dd>
                 {moment.before}
                 {moment.after && (
@@ -91,13 +91,13 @@ function MomentItem({
           )}
           {moment.setItOff && (
             <div>
-              <dt className="text-[14px] text-muted-foreground">{t('moment.reflect.setItOff')}</dt>
+              <dt className="text-[0.875rem] text-muted-foreground">{t('moment.reflect.setItOff')}</dt>
               <dd className="whitespace-pre-line [overflow-wrap:anywhere]">{moment.setItOff}</dd>
             </div>
           )}
           {moment.helped && (
             <div>
-              <dt className="text-[14px] text-muted-foreground">{t('moment.reflect.helped')}</dt>
+              <dt className="text-[0.875rem] text-muted-foreground">{t('moment.reflect.helped')}</dt>
               <dd className="whitespace-pre-line [overflow-wrap:anywhere]">{moment.helped}</dd>
             </div>
           )}
@@ -249,7 +249,7 @@ export default function MomentsPage() {
       <div className="flex flex-col gap-8">
         {byMonth(query.data).map(([month, moments]) => (
           <section key={month} aria-labelledby={`moments-${month}`} className="flex flex-col gap-4">
-            <h2 id={`moments-${month}`} className="text-[22px]">
+            <h2 id={`moments-${month}`} className="text-[1.375rem]">
               {monthLabel(`${month}-01`)}
             </h2>
             <ul role="list" className="flex flex-col gap-4">

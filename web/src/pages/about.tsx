@@ -18,7 +18,7 @@ export default function AboutPage() {
       <PageHeader title={t('title.about')} lede={pitch.description} />
       {sections.map((id) => (
         <section key={id} aria-labelledby={`about-${id}`} className="flex flex-col gap-2">
-          <h2 id={`about-${id}`} className="text-[22px]">
+          <h2 id={`about-${id}`} className="text-[1.375rem]">
             {t(`about.${id}.heading`)}
           </h2>
           <p>{t(`about.${id}.text`)}</p>

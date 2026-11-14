@@ -274,7 +274,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
     body = (
       <ol className="flex flex-col gap-6">
         <li className="flex flex-col gap-3">
-          <h3 ref={firstStep} tabIndex={-1} className="text-[18px] focus:outline-none">
+          <h3 ref={firstStep} tabIndex={-1} className="text-[1.125rem] focus:outline-none">
             {t('twoFactor.setup.step1')}
           </h3>
           <p>{t('twoFactor.setup.scan')}</p>
@@ -284,7 +284,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
           <CopyButton text={cleanCode(setup.sharedKey).toUpperCase()}>{t('twoFactor.setup.copyKey')}</CopyButton>
         </li>
         <li className="flex flex-col gap-3">
-          <h3 className="text-[18px]">{t('twoFactor.setup.step2')}</h3>
+          <h3 className="text-[1.125rem]">{t('twoFactor.setup.step2')}</h3>
           <ConfirmForm
             kind="code"
             email={me.email}
@@ -364,7 +364,7 @@ export function TwoFactorSettings({ me }: { me: Me }) {
           <p>{problem}</p>
         </Notice>
       )}
-      <p role="status" className="text-[14px] text-muted-foreground">
+      <p role="status" className="text-[0.875rem] text-muted-foreground">
         {done === 'off' ? t('twoFactor.offDone') : done === 'saved' ? t('twoFactor.codesSavedDone') : ''}
       </p>
     </>

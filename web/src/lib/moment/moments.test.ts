@@ -8,7 +8,7 @@ describe('parseMoments', () => {
     const text = [
       'A quiet morning.',
       '',
-      'Moment 09:05 · Too much / overloaded · A lot → Some',
+      'Moment 09:05 · Too much / overloaded · Very strong → Noticeable',
       'What set it off: the inbox',
       'What helped: Slow breathing',
       '',
@@ -25,8 +25,8 @@ describe('parseMoments', () => {
         date: '2026-11-01',
         time: '09:05',
         tile: 'Too much / overloaded',
-        before: 'A lot',
-        after: 'Some',
+        before: 'Very strong',
+        after: 'Noticeable',
         setItOff: 'the inbox',
         helped: 'Slow breathing',
       },
@@ -43,10 +43,10 @@ describe('parseMoments', () => {
 
   it('reads an intensity without a tile and an "after" without a "before"', () => {
     expect(
-      parseMoments('2026-11-02', 'Moment 10:00 · A lot\nMoment 11:00 · → Ein bisschen'),
+      parseMoments('2026-11-02', 'Moment 10:00 · Very strong\nMoment 11:00 · → Leicht'),
     ).toEqual([
-      { date: '2026-11-02', time: '10:00', before: 'A lot' },
-      { date: '2026-11-02', time: '11:00', after: 'Ein bisschen' },
+      { date: '2026-11-02', time: '10:00', before: 'Very strong' },
+      { date: '2026-11-02', time: '11:00', after: 'Leicht' },
     ]);
   });
 
@@ -61,8 +61,8 @@ describe('reflection blocks round trip', () => {
   const reflection = {
     time: '09:05',
     tile: 'Too much / overloaded',
-    before: 'A lot',
-    after: 'Some',
+    before: 'Very strong',
+    after: 'Noticeable',
     trigger: 'the inbox',
     helped: 'Slow breathing',
   };
@@ -70,8 +70,8 @@ describe('reflection blocks round trip', () => {
     date: '2026-11-01',
     time: '09:05',
     tile: 'Too much / overloaded',
-    before: 'A lot',
-    after: 'Some',
+    before: 'Very strong',
+    after: 'Noticeable',
     setItOff: 'the inbox',
     helped: 'Slow breathing',
   };
@@ -79,7 +79,7 @@ describe('reflection blocks round trip', () => {
   it('reads back what reflectionBlock wrote in English', () => {
     const block = reflectionBlock(reflection);
     expect(block).toBe(
-      'Moment 09:05 · Too much / overloaded · A lot → Some\nWhat set it off: the inbox\nWhat helped: Slow breathing',
+      'Moment 09:05 · Too much / overloaded · Very strong → Noticeable\nWhat set it off: the inbox\nWhat helped: Slow breathing',
     );
     expect(parseMoments('2026-11-01', block)).toEqual([expected]);
   });
@@ -94,9 +94,9 @@ describe('reflection blocks round trip', () => {
 
   it('reads German intensity words as the intensity, not as a tile', async () => {
     await inGerman();
-    const block = reflectionBlock({ time: '07:30', before: 'Stark', after: 'Etwas' });
+    const block = reflectionBlock({ time: '07:30', before: 'Stark', after: 'Spürbar' });
     expect(parseMoments('2026-11-01', block)).toEqual([
-      { date: '2026-11-01', time: '07:30', before: 'Stark', after: 'Etwas' },
+      { date: '2026-11-01', time: '07:30', before: 'Stark', after: 'Spürbar' },
     ]);
   });
 

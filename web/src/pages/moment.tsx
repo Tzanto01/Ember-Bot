@@ -45,7 +45,7 @@ function Heading({
         <span className="font-sans text-base font-normal text-muted-foreground">{eyebrow}</span>
       )}
       <span
-        className={large ? 'text-[26px] leading-snug [overflow-wrap:anywhere] md:text-[32px]' : 'text-[28px] md:text-[36px]'}
+        className={large ? 'text-[1.625rem] leading-snug [overflow-wrap:anywhere] md:text-[2rem]' : 'text-[1.75rem] md:text-[2.25rem]'}
       >
         {children}
       </span>
@@ -127,7 +127,7 @@ export default function MomentPage() {
             <Button
               type="button"
               block
-              className="min-h-[56px] text-[18px]"
+              className="min-h-[56px] text-[1.125rem]"
               onClick={() => setStep({ kind: 'name' })}
             >
               {momentCopy.catchName}
@@ -136,7 +136,7 @@ export default function MomentPage() {
               type="button"
               variant="secondary"
               block
-              className="min-h-[56px] text-[18px]"
+              className="min-h-[56px] text-[1.125rem]"
               onClick={() => begin(breathingPractice())}
             >
               {momentCopy.catchBreathe}
@@ -202,7 +202,7 @@ export default function MomentPage() {
                   type="button"
                   variant="outline"
                   block
-                  className="min-h-[56px] justify-start text-left text-[18px]"
+                  className="min-h-[56px] justify-start text-left text-[1.125rem]"
                   aria-label={momentCopy.tiles[state].replace(' / ', ', ')}
                   onClick={() => pickTile(state)}
                 >

@@ -98,7 +98,7 @@ export default function SignupPage() {
         <BusyButton type="submit" block busy={register.isPending} busyLabel={t('signup.creating')}>
           {t('signup.submit')}
         </BusyButton>
-        <p className="text-center text-[14px] text-muted-foreground">{t('auth.age')}</p>
+        <p className="text-center text-[0.875rem] text-muted-foreground">{t('auth.age')}</p>
       </form>
       <DiscordButton>{t('auth.discordContinue')}</DiscordButton>
       <p className="text-center text-muted-foreground">

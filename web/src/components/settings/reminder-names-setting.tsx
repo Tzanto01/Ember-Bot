@@ -14,7 +14,7 @@ export function ReminderNamesSetting() {
     <div className="flex items-start justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
         <Label htmlFor={id}>{t('settings.reminderNames.label')}</Label>
-        <p id={`${id}-hint`} className="text-[14px] text-muted-foreground">
+        <p id={`${id}-hint`} className="text-[0.875rem] text-muted-foreground">
           {t('settings.reminderNames.hint')}
         </p>
       </div>

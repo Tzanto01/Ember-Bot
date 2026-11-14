@@ -71,7 +71,7 @@ export function DayPanel({
       }}
     >
       <div className="flex flex-col gap-1">
-        <h3 id="day-panel-heading" ref={heading} tabIndex={-1} className="text-[18px] focus:outline-none">
+        <h3 id="day-panel-heading" ref={heading} tabIndex={-1} className="text-[1.125rem] focus:outline-none">
           {formatDate(day.date, longDate)}
         </h3>
         <p className="text-muted-foreground">{text.charAt(0).toUpperCase() + text.slice(1)}</p>
@@ -91,7 +91,7 @@ export function DayPanel({
             >
               <Minus aria-hidden />
             </Button>
-            <span className="min-w-[4.5rem] text-center text-[18px] font-semibold tabular-nums">
+            <span className="min-w-[4.5rem] text-center text-[1.125rem] font-semibold tabular-nums">
               {t('day.count', { count, total: timesPerDay })}
             </span>
             <Button
@@ -128,7 +128,7 @@ export function DayPanel({
             {t('day.clear')}
           </Button>
         </div>
-        <p id="day-panel-choices" className="text-[14px] text-muted-foreground">
+        <p id="day-panel-choices" className="text-[0.875rem] text-muted-foreground">
           {t('day.choices')}
         </p>
       </div>
@@ -137,10 +137,10 @@ export function DayPanel({
           <Moon aria-hidden />
           {day.lowDay ? t('day.lowDayOff') : t('day.lowDayOn')}
         </Button>
-        <p className="text-[14px] text-muted-foreground">{t('day.lowDayAll')}</p>
+        <p className="text-[0.875rem] text-muted-foreground">{t('day.lowDayAll')}</p>
       </div>
       {busy && (
-        <p className="flex items-center gap-2 text-[14px] text-muted-foreground">
+        <p className="flex items-center gap-2 text-[0.875rem] text-muted-foreground">
           <Spinner />
           {t('day.saving')}
         </p>

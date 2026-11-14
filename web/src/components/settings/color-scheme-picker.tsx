@@ -44,7 +44,7 @@ export function ColorSchemePicker() {
           </label>
         ))}
       </RadioGroup>
-      <p id="color-scheme-hint" className="text-[14px] text-muted-foreground">
+      <p id="color-scheme-hint" className="text-[0.875rem] text-muted-foreground">
         {t('settings.colorScheme.hint')}
       </p>
     </div>

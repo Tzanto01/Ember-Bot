@@ -128,13 +128,13 @@ export function BreathingPlayer({
       <div className="flex min-h-[4.5rem] flex-col items-center gap-1 text-center">
         {active && (
           <>
-            <p className="font-display text-[28px] font-semibold">
+            <p className="font-display text-[1.75rem] font-semibold">
               {phase.label}, {player.left}
             </p>
             <p className="text-muted-foreground">{momentCopy.round(player.round, rounds)}</p>
           </>
         )}
-        {player.finished && <p className="font-display text-[22px]">{momentCopy.breathDone}</p>}
+        {player.finished && <p className="font-display text-[1.375rem]">{momentCopy.breathDone}</p>}
         {!player.running && active && (
           <p className="text-muted-foreground">{momentCopy.breathPaused}</p>
         )}

@@ -27,7 +27,7 @@ export function CopyButton({ text, children }: { text: string; children?: string
         <Copy aria-hidden />
         {children ?? t('twoFactor.copy')}
       </Button>
-      <p role="status" className="text-[14px] text-muted-foreground">
+      <p role="status" className="text-[0.875rem] text-muted-foreground">
         {status === 'copied' ? t('twoFactor.copied') : status === 'failed' ? t('twoFactor.copyFailed') : ''}
       </p>
     </div>
@@ -48,8 +48,8 @@ export function groupCode(value: string): string {
 export function GroupedCode({ value, label }: { value: string; label: string }) {
   return (
     <p className="flex flex-col gap-1">
-      <span className="text-[14px] text-muted-foreground">{label}</span>
-      <code className="select-all break-words rounded-md bg-muted px-3 py-2 font-mono text-[18px] tracking-wider text-foreground">
+      <span className="text-[0.875rem] text-muted-foreground">{label}</span>
+      <code className="select-all break-words rounded-md bg-muted px-3 py-2 font-mono text-[1.125rem] tracking-wider text-foreground">
         {groupCode(value)}
       </code>
     </p>
@@ -82,7 +82,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
       </Notice>
       <ol
         aria-label={t('twoFactor.codes.listLabel')}
-        className="grid select-all grid-cols-1 gap-x-6 gap-y-1 rounded-md bg-muted px-4 py-3 font-mono text-[18px] text-foreground sm:grid-cols-2"
+        className="grid select-all grid-cols-1 gap-x-6 gap-y-1 rounded-md bg-muted px-4 py-3 font-mono text-[1.125rem] text-foreground sm:grid-cols-2"
       >
         {codes.map((code) => (
           <li key={code}>{code}</li>

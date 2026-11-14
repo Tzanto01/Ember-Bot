@@ -144,7 +144,7 @@ export function YearHeatmap({
   return (
     <>
       {scrollable && (
-        <p className="flex items-center gap-1.5 text-[14px] text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-[0.875rem] text-muted-foreground">
           <ArrowLeft aria-hidden className="size-[16px] shrink-0" />
           {t('year.scrollHint')}
         </p>
@@ -232,7 +232,7 @@ export function YearLegend({ habit, showMoods }: { habit: boolean; showMoods: bo
   const { t } = useTranslation();
   const item = 'flex items-center gap-2';
   return (
-    <ul aria-label={t('calendar.legendLabel')} className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-muted-foreground">
+    <ul aria-label={t('calendar.legendLabel')} className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.875rem] text-muted-foreground">
       <li className={item}>
         <span>{t('year.legend.less')}</span>
         {([0, 1, 2, 3] as const).map((tone) => (

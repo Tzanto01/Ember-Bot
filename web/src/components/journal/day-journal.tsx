@@ -143,10 +143,10 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
   if (state === 'locked' || (newPassphrase && me)) {
     return (
       <Card className={className}>
-        <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className="text-[1.375rem] focus:outline-none">
           {heading}
         </h2>
-        <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+        <p role="status" className={unlockStatus ? 'text-[0.875rem] text-muted-foreground' : 'sr-only'}>
           {unlockStatus}
         </p>
         {newPassphrase && me ? (
@@ -297,7 +297,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               >
                 {choice.emoji && <span aria-hidden="true">{choice.emoji}</span>}
                 <span>{choice.label}</span>
-                {choice.archived && <span className="text-[14px] font-normal text-muted-foreground">{t('journal.archived')}</span>}
+                {choice.archived && <span className="text-[0.875rem] font-normal text-muted-foreground">{t('journal.archived')}</span>}
                 <RadioGroupPrimitive.Indicator asChild>
                   <Check aria-hidden className="size-[16px]" />
                 </RadioGroupPrimitive.Indicator>
@@ -322,7 +322,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
                 className={cn(controlClass, 'min-h-[8rem] resize-y leading-relaxed')}
               />
               {trimmedLength >= counterFrom && (
-                <p id={`${field.id}-count`} className="self-end text-[14px] text-muted-foreground">
+                <p id={`${field.id}-count`} className="self-end text-[0.875rem] text-muted-foreground">
                   {t('journal.counter', { count: trimmedLength, max: maxJournalText })}
                 </p>
               )}
@@ -375,10 +375,10 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
 
   return (
     <Card className={className}>
-      <h2 ref={headingRef} tabIndex={-1} className="text-[22px] focus:outline-none">
+      <h2 ref={headingRef} tabIndex={-1} className="text-[1.375rem] focus:outline-none">
         {heading}
       </h2>
-      <p role="status" className={unlockStatus ? 'text-[14px] text-muted-foreground' : 'sr-only'}>
+      <p role="status" className={unlockStatus ? 'text-[0.875rem] text-muted-foreground' : 'sr-only'}>
         {unlockStatus}
       </p>
       {body}

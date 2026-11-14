@@ -59,7 +59,7 @@ export function TimerStep({ seconds, halted = false }: { seconds: number; halted
         <span
           role="timer"
           aria-labelledby={labelId}
-          className="font-display text-[44px] font-semibold tabular-nums"
+          className="font-display text-[2.75rem] font-semibold tabular-nums"
         >
           {clock(left)}
         </span>

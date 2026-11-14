@@ -21,7 +21,7 @@ export function EmptyState({ illustration, title, children, action, className }:
           {illustration}
         </div>
       )}
-      <h2 className="text-[22px] text-foreground">{title}</h2>
+      <h2 className="text-[1.375rem] text-foreground">{title}</h2>
       {children && <div className="max-w-[38rem] text-muted-foreground">{children}</div>}
       {action && <div className="mt-2 flex w-full flex-col items-center gap-3">{action}</div>}
     </div>

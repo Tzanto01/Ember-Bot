@@ -166,7 +166,7 @@ export function Reflect({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[28px] focus:outline-none md:text-[36px]">
+      <h1 tabIndex={-1} className="text-[1.75rem] focus:outline-none md:text-[2.25rem]">
         {heading}
       </h1>
       {saved ? (
@@ -249,7 +249,7 @@ export function Reflect({
                   />
                   <p
                     id={`${field.id}-count`}
-                    className="self-end text-[14px] text-muted-foreground"
+                    className="self-end text-[0.875rem] text-muted-foreground"
                   >
                     {momentCopy.charactersLeft(left)}
                   </p>

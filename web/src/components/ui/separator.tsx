@@ -19,7 +19,7 @@ function Line({ className, orientation = 'horizontal', decorative = true, ...pro
 export function Separator({ children, className, ...props }: SeparatorProps) {
   if (children === undefined) return <Line className={className} {...props} />;
   return (
-    <div className={cn('flex items-center gap-3 text-[14px] text-muted-foreground', className)}>
+    <div className={cn('flex items-center gap-3 text-[0.875rem] text-muted-foreground', className)}>
       <Line className="flex-1" {...props} />
       <span>{children}</span>
       <Line className="flex-1" {...props} />

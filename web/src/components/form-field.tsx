@@ -69,7 +69,7 @@ export function FormField({ label, hint, optional, error, id, className, childre
         {optional && <span className="font-normal text-muted-foreground"> {t('form.optional')}</span>}
       </Label>
       {hint && (
-        <p id={hintId} className="-mt-1 text-[14px] text-muted-foreground">
+        <p id={hintId} className="-mt-1 text-[0.875rem] text-muted-foreground">
           {hint}
         </p>
       )}
@@ -80,7 +80,7 @@ export function FormField({ label, hint, optional, error, id, className, childre
         ...(optional ? {} : { 'aria-required': true as const }),
       })}
       {error && (
-        <p id={errorId} role="alert" className="flex items-start gap-2 text-[14px] text-destructive">
+        <p id={errorId} role="alert" className="flex items-start gap-2 text-[0.875rem] text-destructive">
           <Info aria-hidden className="mt-[2px] size-[18px] shrink-0" />
           <span>{error}</span>
         </p>

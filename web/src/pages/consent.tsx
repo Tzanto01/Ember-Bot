@@ -59,14 +59,14 @@ export default function ConsentPage() {
       {problem && <Notice tone="notice">{problem}</Notice>}
 
       <div className="flex flex-col gap-3">
-        <p className="text-center text-[14px] text-muted-foreground">{t('auth.age')}</p>
+        <p className="text-center text-[0.875rem] text-muted-foreground">{t('auth.age')}</p>
         <BusyButton type="button" block busy={agree.isPending} busyLabel={t('auth.saving')} onClick={give}>
           {t('consent.agree')}
         </BusyButton>
         <Button asChild variant="ghost" block>
           <Link to="/settings">{t('consent.notNow')}</Link>
         </Button>
-        <p className="text-center text-[14px] text-muted-foreground">
+        <p className="text-center text-[0.875rem] text-muted-foreground">
           {t('consent.without')}
         </p>
       </div>

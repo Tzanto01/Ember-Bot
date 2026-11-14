@@ -27,7 +27,7 @@ export default function RoutinesPage() {
   const atLimit = (list?.length ?? 0) >= routineLimit;
 
   const newButton = atLimit ? (
-    <p className="text-[14px] text-muted-foreground">
+    <p className="text-[0.875rem] text-muted-foreground">
       {t('routines.limit')}
     </p>
   ) : (
@@ -82,14 +82,14 @@ export default function RoutinesPage() {
             return (
               <li key={routine.id} className={cardVariants({ className: 'gap-2' })}>
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="min-w-0 text-[20px] break-words">{routine.name}</h2>
+                  <h2 className="min-w-0 text-[1.25rem] break-words">{routine.name}</h2>
                   <Button asChild variant="secondary" className="shrink-0">
                     <Link to={`/routines/${routine.id}/edit`} aria-label={t('today.edit', { name: routineTitle(routine.name) })}>
                       {t('routines.edit')}
                     </Link>
                   </Button>
                 </div>
-                <p className="inline-flex items-center gap-1.5 text-[14px] text-muted-foreground">
+                <p className="inline-flex items-center gap-1.5 text-[0.875rem] text-muted-foreground">
                   {routine.reminderTime ? (
                     <>
                       <Bell aria-hidden className="size-[14px] shrink-0" />
@@ -103,17 +103,17 @@ export default function RoutinesPage() {
                   )}
                 </p>
                 {routine.habitIds.length === 0 ? (
-                  <p className="text-[14px] text-muted-foreground">{t('routines.noHabits')}</p>
+                  <p className="text-[0.875rem] text-muted-foreground">{t('routines.noHabits')}</p>
                 ) : members.length > 0 ? (
                   <ol aria-label={t('routines.habitsIn', { name: routine.name })} className="flex flex-wrap gap-2">
                     {members.map((name, i) => (
-                      <li key={`${i}-${name}`} className="min-w-0 rounded-full bg-secondary px-3 py-1 text-[14px] text-secondary-foreground [overflow-wrap:anywhere]">
+                      <li key={`${i}-${name}`} className="min-w-0 rounded-full bg-secondary px-3 py-1 text-[0.875rem] text-secondary-foreground [overflow-wrap:anywhere]">
                         {name}
                       </li>
                     ))}
                   </ol>
                 ) : (
-                  <p className="text-[14px] text-muted-foreground">
+                  <p className="text-[0.875rem] text-muted-foreground">
                     {t('routines.habitCount', { count: routine.habitIds.length })}
                   </p>
                 )}

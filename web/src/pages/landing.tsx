@@ -61,7 +61,7 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(60rem_30rem_at_50%_-10rem,var(--notice),transparent_70%)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header className="mx-auto flex w-full max-w-[72rem] px-4 pt-4 lg:px-6">
-        <span className="inline-flex min-h-[44px] items-center gap-2 font-display text-[22px] font-bold text-foreground">
+        <span className="inline-flex min-h-[44px] items-center gap-2 font-display text-[1.375rem] font-bold text-foreground">
           <FlameMark />
           Ember
           <BetaBadge />
@@ -75,10 +75,10 @@ export default function LandingPage() {
         <section className="grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="flex flex-col gap-6 lg:col-span-7">
             <div className="flex flex-col gap-3">
-              <h1 tabIndex={-1} className="text-[36px] focus:outline-none md:text-[48px]">
+              <h1 tabIndex={-1} className="text-[2.25rem] focus:outline-none md:text-[3rem]">
                 {pitch.hero}
               </h1>
-              <p className="max-w-[36rem] text-[18px] text-muted-foreground">
+              <p className="max-w-[36rem] text-[1.125rem] text-muted-foreground">
                 {t('landing.lede', { description: pitch.description })}
               </p>
             </div>
@@ -118,7 +118,7 @@ export default function LandingPage() {
           </picture>
         </section>
         <section aria-labelledby="landing-features" className="flex flex-col gap-6">
-          <h2 id="landing-features" className="text-[24px] md:text-[28px]">
+          <h2 id="landing-features" className="text-[1.5rem] md:text-[1.75rem]">
             {pitch.habitsLine}
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -126,7 +126,7 @@ export default function LandingPage() {
               <li key={title}>
                 <Card className="h-full">
                   <Icon aria-hidden className="size-[24px] text-primary" />
-                  <h3 className="text-[18px]">{t(title)}</h3>
+                  <h3 className="text-[1.125rem]">{t(title)}</h3>
                   <p className="text-muted-foreground">{t(text)}</p>
                 </Card>
               </li>
@@ -134,7 +134,7 @@ export default function LandingPage() {
           </ul>
         </section>
         <section aria-labelledby="landing-extras" className="flex flex-col gap-6">
-          <h2 id="landing-extras" className="text-[24px] md:text-[28px]">
+          <h2 id="landing-extras" className="text-[1.5rem] md:text-[1.75rem]">
             {t('landing.extrasHeading')}
           </h2>
           <ul className="grid gap-4 md:grid-cols-3">
@@ -142,7 +142,7 @@ export default function LandingPage() {
               <li key={title}>
                 <Card className="h-full">
                   <Icon aria-hidden className="size-[24px] text-primary" />
-                  <h3 className="text-[18px]">{t(title)}</h3>
+                  <h3 className="text-[1.125rem]">{t(title)}</h3>
                   <p className="text-muted-foreground">{t(text)}</p>
                 </Card>
               </li>

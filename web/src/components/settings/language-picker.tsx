@@ -45,7 +45,7 @@ export function LanguagePicker({
           </label>
         ))}
       </RadioGroup>
-      <p id="language-hint" className="text-[14px] text-muted-foreground">
+      <p id="language-hint" className="text-[0.875rem] text-muted-foreground">
         {local ? t('language.hintDevice') : t('language.hintAccount')}
       </p>
     </div>

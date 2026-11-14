@@ -14,7 +14,7 @@ Ember wird von Nico Pauly Wöllnitz betrieben (Kontaktdaten im Impressum). „Wi
 
 ## 2. Was ist Ember?
 
-Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App. Du kannst Habits anlegen, einchecken, Statistiken ansehen, Streaks ansehen (wenn du sie eingeschaltet hast), Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck. Dazu kommt der Ablauf „Ich brauche einen Moment“ für schwierige Momente. Er ist ein Wellness-Angebot und kein Medizinprodukt (Abschnitt 6).
+Ember ist ein Habit Tracker. Du nutzt ihn über den Discord-Bot, die Web-App und die Android-App. Du kannst Habits anlegen, einchecken, Statistiken ansehen, Streaks ansehen (wenn du sie eingeschaltet hast), Tagesnotizen und Stimmungen festhalten und dich erinnern lassen. Ember ist bewusst sanft: Es gibt keine Strafen und keinen Druck. Dazu kommt der Ablauf „Ich brauche einen Moment“ für schwierige Momente. Dieser Ablauf ist ein Wellness-Angebot und kein Medizinprodukt (Abschnitt 6).
 
 Mit der ersten Nutzung von Ember oder mit der Anlage eines Kontos akzeptierst du diese Bedingungen. Für die Nutzung von Discord selbst gelten zusätzlich die Bedingungen von Discord.
 
@@ -33,7 +33,6 @@ Mit dem privaten Tagebuch verschlüsselt Ember deine Tagesnotizen und Stimmungen
 ## 5. Kostenlos und ohne Garantie
 
 - Ember befindet sich in einer Beta-Phase. Funktionen, Inhalte und Daten können sich ändern, Fehler sind möglich, und die Beta kann jederzeit beendet werden. Ember ist kostenlos und ohne Zusicherung der Verfügbarkeit.
-- Ember ist kostenlos.
 - Wir bemühen uns, dass Ember zuverlässig läuft, können das aber nicht versprechen. Ember kann zeitweise nicht erreichbar sein, zum Beispiel wegen Wartung, technischer Probleme oder Störungen bei Discord oder bei den Push-Diensten der Browser. Erinnerungen können sich verspäten oder ausfallen.
 - Wir dürfen Funktionen ändern, ergänzen oder entfernen. Grundfunktionen wie Export und Löschung deiner Daten bleiben immer kostenlos.
 

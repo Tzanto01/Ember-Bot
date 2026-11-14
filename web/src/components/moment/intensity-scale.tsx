@@ -29,7 +29,7 @@ export function IntensityScale({
         <label
           key={level}
           htmlFor={`${name}-${level}`}
-          className="flex min-h-[52px] cursor-pointer items-center gap-3 rounded-lg border-[length:max(1px,var(--border-width))] border-border px-4 text-[18px] has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:ring-1 has-[[data-state=checked]]:ring-primary"
+          className="flex min-h-[52px] cursor-pointer items-center gap-3 rounded-lg border-[length:max(1px,var(--border-width))] border-border px-4 text-[1.125rem] has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:ring-1 has-[[data-state=checked]]:ring-primary"
         >
           <RadioGroupItem id={`${name}-${level}`} value={String(level)} />
           {momentCopy.intensity[level]}

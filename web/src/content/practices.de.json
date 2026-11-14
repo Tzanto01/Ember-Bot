@@ -90,7 +90,7 @@
   {
     "id": "cool-and-here",
     "version": 1,
-    "title": "Kühl und hier",
+    "title": "Kühles Wasser, hier und jetzt",
     "states": ["racing", "overloaded"],
     "type": "orientation",
     "minutes": 2,

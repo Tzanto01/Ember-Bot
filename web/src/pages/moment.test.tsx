@@ -90,7 +90,7 @@ describe('MomentPage', () => {
     }
 
     await heading('How is it now?');
-    await user.click(screen.getByRole('radio', { name: 'Some' }));
+    await user.click(screen.getByRole('radio', { name: 'Noticeable' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await heading("That's it for now.");
     await user.click(screen.getByRole('button', { name: 'Reflect on it' }));
@@ -98,7 +98,7 @@ describe('MomentPage', () => {
 
     expect(screen.getByRole('radio', { name: 'Slow breathing' })).toBeChecked();
     expect(screen.getByRole('radiogroup', { name: 'How it is now' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Some', checked: true })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Noticeable', checked: true })).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: /What set it off/ }), 'A long day');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -107,7 +107,7 @@ describe('MomentPage', () => {
     const [date, block] = journal.appendPrivate.mock.calls[0]!;
     expect(date).toBe(deviceToday(me.timezone));
     expect(block).toMatch(
-      /^Moment \d\d:\d\d · Too much \/ overloaded · Strong → Some\nWhat set it off: A long day\nWhat helped: Slow breathing$/,
+      /^Moment \d\d:\d\d · Too much \/ overloaded · Strong → Noticeable\nWhat set it off: A long day\nWhat helped: Slow breathing$/,
     );
 
     await user.click(screen.getByRole('button', { name: 'Done for now' }));

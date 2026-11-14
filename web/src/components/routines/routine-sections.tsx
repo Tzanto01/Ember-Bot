@@ -133,7 +133,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
       aria-labelledby="routine-details-heading"
       className={cardVariants({ className: 'gap-5' })}
     >
-      <h2 id="routine-details-heading" className="text-[22px]">
+      <h2 id="routine-details-heading" className="text-[1.375rem]">
         {t('habitEdit.details')}
       </h2>
       <FormField label={t('habitFields.name')} error={nameError} id="routine-name">
@@ -175,7 +175,7 @@ export function RoutineDetails({ routine, habits, routines }: RoutineDetailsProp
             )}
           </FormField>
           {!routine && (
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-[0.875rem] text-muted-foreground">
               {t('routine.afterSave')}
             </p>
           )}
@@ -252,7 +252,7 @@ export function RoutineDelete({ routine }: { routine: Routine }) {
 
   return (
     <section aria-labelledby="routine-delete-heading" className={cardVariants({ variant: 'farewell' })}>
-      <h2 id="routine-delete-heading" className="text-[22px]">
+      <h2 id="routine-delete-heading" className="text-[1.375rem]">
         {t('routine.delete')}
       </h2>
       {confirming ? (
@@ -285,7 +285,7 @@ export function RoutineDelete({ routine }: { routine: Routine }) {
         </div>
       ) : (
         <>
-          <p className="text-[14px]">{t('routine.deleteHint')}</p>
+          <p className="text-[0.875rem]">{t('routine.deleteHint')}</p>
           <Button
             id="routine-delete-start"
             type="button"

@@ -63,7 +63,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
           {t('routine.habits.in')}
         </p>
         {members.length === 0 ? (
-          <p className="text-[14px] text-muted-foreground">{t('routine.habits.none')}</p>
+          <p className="text-[0.875rem] text-muted-foreground">{t('routine.habits.none')}</p>
         ) : (
           <ol aria-labelledby={`${id}-in`} className="flex flex-col gap-2">
             {members.map((habit, index) => (
@@ -117,7 +117,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
             ))}
           </ol>
         )}
-        {error && <p className="text-[14px] text-destructive">{error}</p>}
+        {error && <p className="text-[0.875rem] text-destructive">{error}</p>}
       </div>
 
       {others.length > 0 && (
@@ -133,7 +133,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="break-words">{habit.name}</span>
                     {from && (
-                      <span className="text-[14px] text-muted-foreground">
+                      <span className="text-[0.875rem] text-muted-foreground">
                         {t('routine.habits.from', { routine: routineTitle(from.name) })}
                       </span>
                     )}
@@ -161,7 +161,7 @@ export function RoutineHabits({ value, onChange, habits, routines, routineId, er
         </div>
       )}
       {habits.length === 0 && (
-        <p className="text-[14px] text-muted-foreground">{t('routine.habits.empty')}</p>
+        <p className="text-[0.875rem] text-muted-foreground">{t('routine.habits.empty')}</p>
       )}
     </div>
   );

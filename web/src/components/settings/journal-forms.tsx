@@ -64,7 +64,7 @@ function Remember({ checked, onChange }: { checked: boolean; onChange: (value: b
         <Label htmlFor={id} className="font-normal">
           {t('journalSettings.remember.label')}
         </Label>
-        <p id={`${id}-hint`} className="text-[14px] text-muted-foreground">
+        <p id={`${id}-hint`} className="text-[0.875rem] text-muted-foreground">
           {t('journalSettings.remember.hint')}
         </p>
       </div>
@@ -252,7 +252,7 @@ export function RecoveryStep({ code, onFinish }: { code: string; onFinish: () =>
           </Label>
         </div>
         {error && (
-          <p id={`${id}-error`} className="text-[14px] text-destructive">
+          <p id={`${id}-error`} className="text-[0.875rem] text-destructive">
             {error}
           </p>
         )}

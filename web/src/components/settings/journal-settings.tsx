@@ -270,7 +270,7 @@ export function JournalSettings({ me }: { me: Me }) {
               >
                 {t('journalSettings.export')}
               </BusyButton>
-              <p className="text-[14px] text-muted-foreground">{t('journalSettings.exportHint')}</p>
+              <p className="text-[0.875rem] text-muted-foreground">{t('journalSettings.exportHint')}</p>
             </div>
             <div>
               <Button type="button" variant="link" className="px-0" onClick={() => open('disable')}>
@@ -295,7 +295,7 @@ export function JournalSettings({ me }: { me: Me }) {
         ref={status}
         role="status"
         tabIndex={-1}
-        className="text-[14px] text-muted-foreground focus:outline-none"
+        className="text-[0.875rem] text-muted-foreground focus:outline-none"
       >
         {done}
       </p>

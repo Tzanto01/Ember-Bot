@@ -30,7 +30,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
       >
         <Link
           to="/"
-          className="inline-flex min-h-[44px] items-center gap-2 font-display text-[22px] font-bold text-foreground no-underline"
+          className="inline-flex min-h-[44px] items-center gap-2 font-display text-[1.375rem] font-bold text-foreground no-underline"
         >
           <FlameMark />
           Ember
@@ -49,7 +49,7 @@ export function CenteredShell({ variant = 'page' }: { variant?: 'auth' | 'page' 
             className="hidden flex-col items-start justify-center gap-6 rounded-xl bg-secondary p-10 text-secondary-foreground lg:col-span-5 lg:flex"
           >
             <FlameMark className="size-[96px]" />
-            <p className="font-display text-[28px] leading-tight">{pitch.hero}</p>
+            <p className="font-display text-[1.75rem] leading-tight">{pitch.hero}</p>
             <div className="flex [--day-gap:8px] gap-[8px]">
               {sampleWeek.map((state, i) => (
                 <DayCell

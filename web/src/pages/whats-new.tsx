@@ -33,10 +33,10 @@ export default function WhatsNewPage() {
             className={cardVariants()}
           >
             <div className="flex flex-col gap-1">
-              <h2 id={`version-${entry.version}`} className="text-[22px] [overflow-wrap:anywhere]">
+              <h2 id={`version-${entry.version}`} className="text-[1.375rem] [overflow-wrap:anywhere]">
                 {t('whatsNew.version', { version: entry.version })}
               </h2>
-              <p className="text-[14px] text-muted-foreground">
+              <p className="text-[0.875rem] text-muted-foreground">
                 <time dateTime={entry.date}>{formatDate(entry.date)}</time>
               </p>
             </div>

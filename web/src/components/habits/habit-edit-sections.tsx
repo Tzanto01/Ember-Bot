@@ -150,7 +150,7 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
       aria-labelledby="details-heading"
       className={cardVariants({ className: 'gap-5' })}
     >
-      <h2 id="details-heading" className="text-[22px]">
+      <h2 id="details-heading" className="text-[1.375rem]">
         {t('habitEdit.details')}
       </h2>
       <HabitFields
@@ -167,10 +167,10 @@ export function DetailsSection({ habit, onChange, routine = null }: SectionProps
           t('habitEdit.routineReminder', { routine: routineTitle(routine.name), time: routine.reminderTime })
         }
       />
-      <p className="text-[14px] text-muted-foreground">
+      <p className="text-[0.875rem] text-muted-foreground">
         <Trans t={t} i18nKey="habitEdit.graceDays" components={{ anchor: <Link to="/settings" /> }} />
       </p>
-      <p className="text-[14px] text-muted-foreground">
+      <p className="text-[0.875rem] text-muted-foreground">
         {routine ? (
           <Trans
             t={t}
@@ -316,19 +316,19 @@ function PhoneReminders({ subject, channels, hasReminderTime, save }: RemindersS
 
   return (
     <section aria-labelledby="channels-heading" className={cardVariants()}>
-      <h2 id="channels-heading" className="text-[22px]">
+      <h2 id="channels-heading" className="text-[1.375rem]">
         {t('habitEdit.whereReminders')}
       </h2>
       {env.native ? (
         <>
           <ChannelChoices options={phoneChoice} current={current} onToggle={(_, checked) => toggle(checked)} />
           {channels.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-[0.875rem] text-muted-foreground">
               {t(subject === 'habit' ? 'habitEdit.noReminders.habit' : 'habitEdit.noReminders.routine')}
             </p>
           ) : (
             !hasReminderTime && (
-              <p className="text-[14px] text-muted-foreground">
+              <p className="text-[0.875rem] text-muted-foreground">
                 {t('habitEdit.setTime')}
               </p>
             )
@@ -429,7 +429,7 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
                     <DestinationName destination={destination} />
                   </Label>
                   {!destination.enabled && (
-                    <p id={`${id}-off`} className="text-[14px] text-muted-foreground">
+                    <p id={`${id}-off`} className="text-[0.875rem] text-muted-foreground">
                       <Trans
                         t={t}
                         i18nKey="habitEdit.turnedOff"
@@ -476,29 +476,29 @@ function RemindOn({ subject, exclusions, hasReminderTime, save }: RemindersSecti
 
   return (
     <section aria-labelledby="channels-heading" className={cardVariants()}>
-      <h2 id="channels-heading" className="text-[22px]">
+      <h2 id="channels-heading" className="text-[1.375rem]">
         {t('habitEdit.remindOn')}
       </h2>
       {list.length > 0 && (
-        <p id="channels-hint" className="text-[14px] text-muted-foreground">
+        <p id="channels-hint" className="text-[0.875rem] text-muted-foreground">
           {t(subject === 'habit' ? 'habitEdit.untick.habit' : 'habitEdit.untick.routine')}
         </p>
       )}
       {content}
       {list.length > 0 &&
         (reaching === 0 ? (
-          <p className="text-[14px] text-muted-foreground">
+          <p className="text-[0.875rem] text-muted-foreground">
             {t(subject === 'habit' ? 'habitEdit.noReminders.habit' : 'habitEdit.noReminders.routine')}
           </p>
         ) : (
           !hasReminderTime && (
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-[0.875rem] text-muted-foreground">
               {t('habitEdit.setTime')}
             </p>
           )
         ))}
       {missingHere && (
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-[0.875rem] text-muted-foreground">
           <Trans
             t={t}
             i18nKey={thisDevice === 'phone' ? 'habitEdit.missingPhone' : 'habitEdit.missingBrowser'}
@@ -570,7 +570,7 @@ export function PauseSection({ habit, onChange }: SectionProps) {
   return (
     <section aria-labelledby="pause-heading" className={cardVariants()}>
       <div className="flex items-center gap-3">
-        <h2 id="pause-heading" tabIndex={-1} className="text-[22px] focus:outline-none">
+        <h2 id="pause-heading" tabIndex={-1} className="text-[1.375rem] focus:outline-none">
           {t('habitEdit.pause')}
         </h2>
         <DayCell state="paused" size="swatch" />
@@ -594,7 +594,7 @@ export function PauseSection({ habit, onChange }: SectionProps) {
         </>
       ) : (
         <>
-          <p className="text-[14px] text-muted-foreground">
+          <p className="text-[0.875rem] text-muted-foreground">
             {t('habitEdit.pauseHint')}
           </p>
           <form ref={root} noValidate onSubmit={pause} className="flex flex-col gap-3">
@@ -668,7 +668,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
 
   return (
     <section aria-labelledby="delete-heading" className={cardVariants({ variant: 'farewell' })}>
-      <h2 id="delete-heading" className="text-[22px]">
+      <h2 id="delete-heading" className="text-[1.375rem]">
         {t('habitEdit.delete')}
       </h2>
       {confirming ? (
@@ -704,7 +704,7 @@ export function DeleteSection({ habit }: { habit: Habit }) {
         </div>
       ) : (
         <>
-          <p className="text-[14px]">{t('habitEdit.deleteHint')}</p>
+          <p className="text-[0.875rem]">{t('habitEdit.deleteHint')}</p>
           <Button id="delete-start" type="button" variant="secondary" block className="bg-card" onClick={ask}>
             {t('habitEdit.delete')}
           </Button>

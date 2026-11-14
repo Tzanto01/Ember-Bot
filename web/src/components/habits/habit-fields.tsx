@@ -290,7 +290,7 @@ export function HabitFields({
             </Label>
           ))}
         </RadioGroup>
-        {errors['frequency'] && <p className="text-[14px] text-destructive">{errors['frequency']}</p>}
+        {errors['frequency'] && <p className="text-[0.875rem] text-destructive">{errors['frequency']}</p>}
       </div>
 
       {value.frequency === 'weekdays' && (
@@ -322,12 +322,12 @@ export function HabitFields({
             ))}
           </div>
           {daysError ? (
-            <p id={`${daysId}-error`} className="text-[14px] text-destructive">
+            <p id={`${daysId}-error`} className="text-[0.875rem] text-destructive">
               {daysError}
             </p>
           ) : (
             allDays && (
-              <p id={`${daysId}-hint`} className="text-[14px] text-muted-foreground">
+              <p id={`${daysId}-hint`} className="text-[0.875rem] text-muted-foreground">
                 {t('habitFields.allDays')}
               </p>
             )
@@ -356,7 +356,7 @@ export function HabitFields({
                 ))}
               </NativeSelect>
               {savedTimesPerDay !== undefined && value.timesPerDay < savedTimesPerDay && (
-                <p className="text-[14px] text-muted-foreground">{t('habitFields.pastDaysStay')}</p>
+                <p className="text-[0.875rem] text-muted-foreground">{t('habitFields.pastDaysStay')}</p>
               )}
             </>
           )}
@@ -411,7 +411,7 @@ export function HabitFields({
                 {t('habitFields.reminderTimes')}{' '}
                 <span className="font-normal text-muted-foreground">{t('habitFields.optional')}</span>
               </p>
-              <p id={`${timesId}-hint`} className="-mt-1 text-[14px] text-muted-foreground">
+              <p id={`${timesId}-hint`} className="-mt-1 text-[0.875rem] text-muted-foreground">
                 {t('habitFields.reminderTimesHint')}
               </p>
               <div
@@ -456,21 +456,21 @@ export function HabitFields({
                 </Button>
               )}
               {schedule && (
-                <p id={`${timesId}-schedule`} className="text-[14px] text-muted-foreground">
+                <p id={`${timesId}-schedule`} className="text-[0.875rem] text-muted-foreground">
                   {schedule}
                 </p>
               )}
               {timesError && (
-                <p id={`${timesId}-error`} role="alert" className="text-[14px] text-destructive">
+                <p id={`${timesId}-error`} role="alert" className="text-[0.875rem] text-destructive">
                   {timesError}
                 </p>
               )}
             </div>
           )}
-          {limit === 1 && silent && schedule && <p className="-mt-3 text-[14px] text-muted-foreground">{schedule}</p>}
-          {droppedNote && <p className="-mt-3 text-[14px] text-muted-foreground">{droppedNote}</p>}
+          {limit === 1 && silent && schedule && <p className="-mt-3 text-[0.875rem] text-muted-foreground">{schedule}</p>}
+          {droppedNote && <p className="-mt-3 text-[0.875rem] text-muted-foreground">{droppedNote}</p>}
           <LiveRegion message={droppedNote ?? ''} />
-          {reminderNote && <p className="-mt-3 text-[14px] text-muted-foreground">{reminderNote}</p>}
+          {reminderNote && <p className="-mt-3 text-[0.875rem] text-muted-foreground">{reminderNote}</p>}
         </>
       )}
     </div>

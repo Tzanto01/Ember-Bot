@@ -291,7 +291,7 @@ export function MoodManager() {
           {active.length > 0 ? rows(active) : <p className="text-muted-foreground">{t('moods.none')}</p>}
           {archived.length > 0 && (
             <div className="flex flex-col gap-2">
-              <h3 className="text-[18px]">{t('moods.archivedHeading')}</h3>
+              <h3 className="text-[1.125rem]">{t('moods.archivedHeading')}</h3>
               {rows(archived)}
             </div>
           )}

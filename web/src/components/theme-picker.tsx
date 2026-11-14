@@ -12,7 +12,7 @@ function ThemePreview({ id }: { id: ThemeId }) {
       className="flex shrink-0 flex-col gap-1.5 rounded-lg bg-background p-2 font-sans text-foreground"
     >
       <span className="flex items-center justify-between gap-2 rounded-lg border-[length:var(--border-width)] border-border bg-card px-2 py-1.5 shadow-card">
-        <span className="font-display text-[16px] leading-none font-[number:var(--ember-heading-weight)] tracking-[var(--ember-heading-tracking)]">
+        <span className="font-display text-[1rem] leading-none font-[number:var(--ember-heading-weight)] tracking-[var(--ember-heading-tracking)]">
           Aa
         </span>
         <span className="h-[12px] w-[24px] rounded-sm bg-primary" />

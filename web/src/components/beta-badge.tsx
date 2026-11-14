@@ -11,7 +11,7 @@ export function BetaBadge() {
   const host = env.apiBase ? new URL(env.apiBase).hostname : location.hostname;
   if (!host.startsWith('beta.')) return null;
   return (
-    <Badge variant="outline" className="font-sans text-[12px] font-semibold">
+    <Badge variant="outline" className="font-sans text-[0.75rem] font-semibold">
       {t('beta.badge')}
     </Badge>
   );
