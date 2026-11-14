@@ -509,7 +509,7 @@ export default function TodayPage() {
         title={t('today.title')}
         lede={
           today ? (
-            <span className="whitespace-nowrap">
+            <span className="sm:whitespace-nowrap">
               {formatDate(today, { weekday: 'long', day: 'numeric', month: 'long' })}
             </span>
           ) : undefined
