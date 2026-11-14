@@ -692,7 +692,7 @@ for (const { code, strings } of languages) {
       ).toBeVisible();
       await snap('export buttons');
       const remove = page.getByRole('region', { name: tr('settings.card.deleteAccount') });
-      await remove.getByLabel(tr('settings.delete.confirmLabel')).fill('DEL');
+      await remove.getByLabel(tr('settings.delete.confirmLabel', { word: tr('delete.word') })).fill('DEL');
       await snap('delete account confirmation, typed');
       expect(reviewVerdict(found)).toEqual([]);
     });

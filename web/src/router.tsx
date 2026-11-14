@@ -62,7 +62,7 @@ async function requireGuest({ request }: LoaderFunctionArgs) {
 }
 
 async function loadSession() {
-  await auth.loadMe().catch(() => null);
+  await Promise.race([auth.loadMe().catch(() => null), new Promise((resolve) => setTimeout(resolve, 1500))]);
   return null;
 }
 

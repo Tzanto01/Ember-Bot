@@ -114,7 +114,7 @@ function zoneError(value: string): string | null {
 const passwordRequired: Validator = (value) => (value ? null : t('settings.passwordRequired'));
 const noPassword: Validator = () => null;
 const deleteWord: Validator = (value) => {
-  const word = value.trim();
+  const word = value.trim().normalize('NFC');
   const expected = t('delete.word');
   if (!word) return t('settings.delete.typeDelete', { word: expected });
   return word === expected ? null : t('settings.delete.typeDeleteCaps', { word: expected });

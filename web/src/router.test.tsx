@@ -136,6 +136,17 @@ describe('router guards', () => {
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 
+  it('shows /help without waiting for an API that does not answer, then adds the app nav once it does', async () => {
+    await visit('/help');
+    const request = await mock.next('GET', '/api/me');
+
+    expect(await screen.findByRole('heading', { level: 1 }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+
+    request.respond(200, me);
+    expect(await screen.findByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+  });
+
   it.each(['/help', '/feedback', '/no/such/page'])(
     'keeps the app nav on %s for a signed-in user',
     async (path) => {

@@ -18,7 +18,7 @@ import { DeviceWarning } from './device-warning';
 type Busy = 'export' | 'import' | 'restore' | 'upgrade';
 
 const deleteWord: Validator = (value) => {
-  const word = value.trim();
+  const word = value.trim().normalize('NFC');
   const expected = t('delete.word');
   if (!word) return t('local.delete.required', { word: expected });
   return word === expected ? null : t('local.delete.capitals', { word: expected });

@@ -67,7 +67,7 @@ export default function MomentPage() {
   const [tried, setTried] = useState<Practice[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState(false);
-  const [breath, setBreath] = useState<BreathStatus>('ready');
+  const [breathRun, setBreathRun] = useState<{ step: string; status: BreathStatus }>();
   const helped = useStore(helps.items)?.slice(0, 3) ?? [];
 
   useFocusHeadingOnChange(
@@ -263,6 +263,8 @@ export default function MomentPage() {
       const shown = inLanguage(practice);
       const current = shown.steps[step.index]!;
       const last = step.index === shown.steps.length - 1;
+      const stepKey = `${practice.id}:${step.index}`;
+      const breath = breathRun?.step === stepKey ? breathRun.status : 'ready';
       body = (
         <div className="flex flex-col gap-8">
           <Heading
@@ -277,10 +279,14 @@ export default function MomentPage() {
           </Heading>
           {current.kind === 'breath' && (
             <BreathingPlayer
-              key={`${practice.id}:${step.index}`}
+              key={stepKey}
               {...current}
               halted={helpOpen}
-              onStatusChange={setBreath}
+              onStatusChange={(status) =>
+                setBreathRun((run) =>
+                  run?.step === stepKey && run.status === status ? run : { step: stepKey, status },
+                )
+              }
             />
           )}
           {current.kind === 'timer' && (

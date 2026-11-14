@@ -27,7 +27,7 @@ const loginPasswordRule: Validator = (value) =>
   value ? null : t('journalSettings.loginPassword.required');
 const noRule: Validator = () => null;
 const deleteRule: Validator = (value) => {
-  const word = value.trim();
+  const word = value.trim().normalize('NFC');
   const expected = t('delete.word');
   if (!word) return t('settings.delete.typeDelete', { word: expected });
   return word === expected ? null : t('settings.delete.typeDeleteCaps', { word: expected });
