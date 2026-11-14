@@ -40,7 +40,7 @@ public class RoutineDmButtonTests
     }
 
     [Fact]
-    public async Task A_routine_dm_with_25_long_names_stays_under_discords_limit_and_keeps_every_button()
+    public async Task A_routine_dm_with_25_long_names_stays_under_discords_limit_with_24_done_buttons_and_stop()
     {
         var sender = new TestDiscordDmSender();
         var pending = Enumerable.Range(1, 25).Select(i => new RoutineHabit(i, $"Habit {i:00} " + new string('x', 91))).ToList();
@@ -52,6 +52,84 @@ public class RoutineDmButtonTests
         var dm = sender.Messages.Should().ContainSingle().Subject;
         dm.Text!.Length.Should().BeLessThan(2000);
         dm.Text.Should().Contain("Habit 01").And.MatchRegex(@"\nand \d+ more\n").And.NotContain("Habit 25");
-        Ids(dm.Components).Should().HaveCount(25);
+        Ids(dm.Components).Should().HaveCount(25).And.Contain("discordreminders:stop:42");
+    }
+
+    [Fact]
+    public async Task A_routine_dm_lists_only_habits_it_has_a_done_button_for()
+    {
+        var dm = (await SendRoutineAsync(25)).Messages.Single();
+
+        dm.Text.Should().Contain("• Habit 24").And.NotContain("• Habit 25").And.MatchRegex(@"\nand 1 more\n");
+    }
+    private static IEnumerable<IReadOnlyCollection<string?>> Rows(MessageComponent c)
+        => c.Components.OfType<ActionRowComponent>().Select(r => r.Components.OfType<ButtonComponent>().Select(b => b.CustomId).ToList());
+
+    private static Task<TestDiscordDmSender> SendRoutineAsync(int pendingCount)
+    {
+        var sender = new TestDiscordDmSender();
+        var pending = Enumerable.Range(1, pendingCount).Select(i => new RoutineHabit(i, $"Habit {i}")).ToList();
+        return new DiscordDmReminderChannel(sender, TimeProvider.System, new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<DiscordDmReminderChannel>.Instance)
+            .SendAsync(new Reminder(Guid.NewGuid(), 42, 7, "Morning", 0, false, new DateOnly(2027, 1, 15), pending))
+            .ContinueWith(_ => sender);
+    }
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(5, 1)]
+    [InlineData(6, 2)]
+    [InlineData(24, 4)]
+    [InlineData(30, 4)]
+    public async Task A_routine_dm_ends_with_the_stop_button_in_its_own_valid_row_and_never_exceeds_24_done_buttons(int pending, int stopRow)
+    {
+        var rows = Rows((await SendRoutineAsync(pending)).Messages.Single().Components!).ToList();
+
+        rows.Should().OnlyContain(r => r.Count <= 5);
+        rows.SelectMany(r => r).Count(id => id!.StartsWith("checkin:done:")).Should().Be(Math.Min(pending, 24));
+        rows[stopRow].Should().Contain("discordreminders:stop:42");
+        rows.SelectMany(r => r).Count().Should().BeLessThanOrEqualTo(25);
+        rows.SelectMany(r => r).Should().ContainSingle(id => id!.StartsWith("discordreminders:stop:"));
+    }
+
+    [Fact]
+    public void After_the_stop_button_is_used_every_other_button_stays_and_turn_on_takes_its_place()
+    {
+        var t = Ember.Bot.BotTexts.English;
+        var dm = new ComponentBuilder()
+            .WithButton("Done ✅", "checkin:done:1:100", ButtonStyle.Success)
+            .WithButton("Skip", "checkin:skip:1:100", ButtonStyle.Secondary)
+            .WithButton("Snooze", "checkin:snooze:1:100", ButtonStyle.Secondary)
+            .WithButton(DiscordRemindersModule.StopButton(t, 42), row: 1)
+            .Build();
+
+        var after = DiscordRemindersModule.AfterStop(dm.Components, t, 42);
+
+        Rows(after).Select(r => string.Join(" ", r)).Should().Equal(
+            "checkin:done:1:100 checkin:skip:1:100 checkin:snooze:1:100", "discordreminders:yes:42");
+    }
+
+    [Fact]
+    public async Task After_the_stop_button_is_used_a_routine_dm_keeps_its_rows()
+    {
+        var dm = (await SendRoutineAsync(6)).Messages.Single().Components!;
+
+        var after = DiscordRemindersModule.AfterStop(dm.Components, Ember.Bot.BotTexts.English, 42);
+
+        Rows(after).Should().BeEquivalentTo(Rows(dm).Select(r => r.Select(id => id == "discordreminders:stop:42" ? "discordreminders:yes:42" : id).ToList()),
+            o => o.WithStrictOrdering());
+    }
+
+    [Fact]
+    public void A_done_habit_leaves_the_routine_dm_but_the_stop_button_stays()
+    {
+        var dm = new ComponentBuilder()
+            .WithButton("Done: Water", "checkin:done:1:100", ButtonStyle.Success)
+            .WithButton("Done: Read", "checkin:done:2:100", ButtonStyle.Success)
+            .WithButton(DiscordRemindersModule.StopButton(Ember.Bot.BotTexts.English, 42), row: 1)
+            .Build();
+
+        Ids(CheckInButtonModule.RoutineButtonsAfterDone(dm.Components, "checkin:done:1:100", done: true))
+            .Should().Equal("checkin:done:2:100", "discordreminders:stop:42");
     }
 }

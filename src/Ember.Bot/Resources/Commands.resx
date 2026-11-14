@@ -99,6 +99,18 @@
   <data name="privacy.delete.description" xml:space="preserve">
     <value>Permanently delete all your Ember data</value>
   </data>
+  <data name="reminders.description" xml:space="preserve">
+    <value>Turn reminder DMs from Ember off or on</value>
+  </data>
+  <data name="reminders.state.description" xml:space="preserve">
+    <value>Off or on</value>
+  </data>
+  <data name="reminders.state.off.name" xml:space="preserve">
+    <value>off</value>
+  </data>
+  <data name="reminders.state.on.name" xml:space="preserve">
+    <value>on</value>
+  </data>
   <data name="timezone.description" xml:space="preserve">
     <value>Manage your timezone settings</value>
   </data>

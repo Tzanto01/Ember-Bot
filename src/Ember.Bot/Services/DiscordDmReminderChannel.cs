@@ -1,5 +1,6 @@
 using Ember.Core.Localization;
 using Discord;
+using Ember.Bot.Modules;
 using Ember.Core.Models;
 using Ember.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,7 @@ namespace Ember.Bot.Services;
 
 /// <summary>
 /// Sends reminders as Discord DMs with Done / Skip / Snooze buttons; routine reminders list the pending habits with a Done button each.
+/// Every reminder DM also carries a Stop Discord reminders button.
 /// Every delivered reminder is remembered as a <see cref="ReminderMessage"/> until it is closed; a second reminder deletes the
 /// earlier messages of the same habit or routine and day (closing them when deleting fails).
 /// </summary>
@@ -43,15 +45,15 @@ public class DiscordDmReminderChannel : IReminderChannel
     {
         if (reminder.DiscordUserId is not { } discordUserId) return DeliveryOutcome.UserNotFound;
         var (message, components) = reminder.PendingHabits is { } pending
-            ? RoutineMessage(BotTexts.For(reminder.Language), reminder.HabitName, pending, reminder.Second)
-            : HabitMessage(reminder);
+            ? RoutineMessage(BotTexts.For(reminder.Language), reminder.HabitName, pending, reminder.Second, discordUserId)
+            : HabitMessage(reminder, discordUserId);
 
         var sent = await _discord.SendTrackedMessageAsync(discordUserId, message, components, cancellationToken);
         if (sent.Outcome == DeliveryOutcome.Delivered) await TrackAsync(reminder, sent);
         return sent.Outcome;
     }
 
-    private (string, MessageComponent) HabitMessage(Reminder reminder)
+    private (string, MessageComponent) HabitMessage(Reminder reminder, ulong discordUserId)
     {
         var t = BotTexts.For(reminder.Language);
         var name = reminder.HabitName;
@@ -72,6 +74,7 @@ public class DiscordDmReminderChannel : IReminderChannel
             .WithButton(t.Get("reminder.done"), $"checkin:done:{reminder.HabitId}:{now}", ButtonStyle.Success)
             .WithButton(SkipLabel(t), $"checkin:skip:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
             .WithButton(t.Get("reminder.snooze"), $"checkin:snooze:{reminder.HabitId}:{now}", ButtonStyle.Secondary)
+            .WithButton(DiscordRemindersModule.StopButton(t, discordUserId), row: 1)
             .Build();
 
         return (message, components);
@@ -85,11 +88,12 @@ public class DiscordDmReminderChannel : IReminderChannel
     /// <summary>Keeps the habit list well under Discord's 2000-character message limit.</summary>
     private const int MaxListLength = 1500;
 
-    private (string, MessageComponent) RoutineMessage(Texts t, string routineName, IReadOnlyList<RoutineHabit> pending, bool second)
+    private (string, MessageComponent) RoutineMessage(Texts t, string routineName, IReadOnlyList<RoutineHabit> pending, bool second,
+        ulong discordUserId)
     {
         var lines = new List<string>();
         var length = 0;
-        foreach (var line in pending.Select(h => $"• {h.Name}"))
+        foreach (var line in pending.Take(MaxButtons - 1).Select(h => $"• {h.Name}"))
         {
             if (length + line.Length + 1 > MaxListLength) break;
             lines.Add(line);
@@ -101,12 +105,16 @@ public class DiscordDmReminderChannel : IReminderChannel
 
         var now = _time.GetUtcNow().ToUnixTimeSeconds();
         var components = new ComponentBuilder();
-        foreach (var (habit, i) in pending.Take(MaxButtons).Select((h, i) => (h, i)))
+        var count = 0;
+        foreach (var (habit, i) in pending.Take(MaxButtons - 1).Select((h, i) => (h, i)))
         {
             var label = t.Format("reminder.routine.done-button", habit.Name);
             if (label.Length > MaxButtonLabel) label = label[..(MaxButtonLabel - 1)] + "…";
             components.WithButton(label, $"checkin:done:{habit.Id}:{now}", ButtonStyle.Success, row: i / ButtonsPerRow);
+            count++;
         }
+        components.WithButton(DiscordRemindersModule.StopButton(t, discordUserId),
+            Math.Min((count + ButtonsPerRow - 1) / ButtonsPerRow, MaxButtons / ButtonsPerRow - 1));
 
         return (message, components.Build());
     }

@@ -54,4 +54,15 @@ public class HelpModuleTests
         commands.Should().HaveCountGreaterThan(15);
         commands.Should().OnlyContain(c => text.Contains($"`{c}`"));
     }
+
+    [Fact]
+    public void Help_and_the_stop_texts_speak_german_for_german_users()
+    {
+        var de = Ember.Bot.BotTexts.For("de");
+        var text = string.Join("\n", HelpModule.HelpEmbed(de, Config()).Fields.Select(f => f.Value));
+
+        text.Should().Contain("`/reminders");
+        foreach (var key in new[] { "discordreminders.stop", "discordreminders.command.off" })
+            de.Get(key).Should().NotBe(Ember.Bot.BotTexts.English.Get(key));
+    }
 }

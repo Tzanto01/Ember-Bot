@@ -100,6 +100,25 @@ public class ReminderDestinationsApiTests(PostgresFixture postgres) : ApiTestBas
     }
 
     [DockerFact]
+    public async Task Settings_shows_the_discord_answer_the_bot_sets_without_touching_the_browser()
+    {
+        var user = await Host.SignedInAsync();
+        var discordId = ApiHost.NewDiscordId();
+        await Host.DiscordAsync(user, "/api/auth/discord/link", discordId);
+        var browser = await SubscribeAsync(user);
+        await Host.Run(h => h.SetDiscordRemindersAsync(discordId, true));
+
+        (await ListAsync(user)).Should().Contain([new Destination("discord", "discord", "Discord DMs", true, false)])
+            .And.Contain(d => d.Id == browser && d.Enabled);
+
+        await Host.Run(h => h.SetDiscordRemindersAsync(discordId, false));
+
+        var list = await ListAsync(user);
+        list.Single(d => d.Kind == "discord").Enabled.Should().BeFalse();
+        list.Single(d => d.Kind == "browser").Should().Be(new Destination(browser, "browser", "Firefox on Linux", true, true));
+    }
+
+    [DockerFact]
     public async Task Exclusions_take_only_the_callers_destination_ids_and_drive_server_reminders_and_the_legacy_channels()
     {
         var a = await Host.SignedInAsync();

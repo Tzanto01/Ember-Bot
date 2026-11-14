@@ -80,7 +80,7 @@ public class RoutineReminderTests
             .And.NotContain("Habit 3").And.NotContain("Habit 4");
         dm.Components!.Components.OfType<ActionRowComponent>().SelectMany(row => row.Components)
             .OfType<ButtonComponent>().Select(b => b.CustomId)
-            .Should().Equal($"checkin:done:2:{Now.ToUnixTimeSeconds()}", $"checkin:done:1:{Now.ToUnixTimeSeconds()}");
+            .Should().Equal($"checkin:done:2:{Now.ToUnixTimeSeconds()}", $"checkin:done:1:{Now.ToUnixTimeSeconds()}", "discordreminders:stop:10");
         (await RoutineNextReminderAsync(host)).Should().Be(TomorrowNineBerlin);
 
         await RunJobAsync(host);

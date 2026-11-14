@@ -143,6 +143,62 @@ public class DiscordReminderAskTests
             .Should().ContainSingle(b => b.CustomId == "discordreminders:yes:10");
     }
 
+    [Fact]
+    public async Task The_reminders_command_sets_the_answer_and_records_the_ask()
+    {
+        var earlier = Now.UtcDateTime.AddDays(-3);
+        var asked = DiscordUser(10);
+        asked.DiscordRemindersAskedAt = earlier;
+        await using var host = await CreateAsync(DiscordUser(20), asked);
+        var set = (ulong id, bool on) => host.WithScopeAsync(sp =>
+            DiscordRemindersModule.SetFromCommandAsync(sp.GetRequiredService<HabitService>(), id, on, null));
+
+        await set(20, false);
+        await set(10, false);
+
+        var user = await UserAsync(host, 20);
+        (user.DiscordReminders, user.DiscordRemindersAskedAt).Should().Be((false, Now.UtcDateTime));
+        (await UserAsync(host, 10)).DiscordRemindersAskedAt.Should().Be(earlier);
+
+        await set(20, true);
+        (await UserAsync(host, 20)).DiscordReminders.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task The_reminders_command_creates_the_account_of_a_new_discord_user_in_their_language()
+    {
+        await using var host = await CreateAsync();
+
+        await host.WithScopeAsync(sp => DiscordRemindersModule.SetFromCommandAsync(sp.GetRequiredService<HabitService>(), 77, false, "de"));
+
+        var user = await host.WithScopeAsync(async sp =>
+        {
+            var id = await TestUsers.UserIdAsync(sp, 77);
+            return await sp.GetRequiredService<EmberDbContext>().Users.AsNoTracking().SingleAsync(u => u.Id == id);
+        });
+        (user.Language, user.DiscordReminders, user.DiscordRemindersAskedAt).Should().Be(("de", false, Now.UtcDateTime));
+    }
+
+    [Fact]
+    public async Task Turning_discord_off_leaves_browsers_phones_and_exclusions_as_they_were()
+    {
+        var user = DiscordUser(10, answer: true);
+        user.PushSubscriptions.Add(new PushSubscription { Endpoint = "https://push.example/1", Enabled = true });
+        user.ReminderPhones.Add(new ReminderPhone { InstallId = "install-1", Label = "Pixel", Enabled = true });
+        user.Habits.Single().ReminderExclusions = ["browser-9"];
+        await using var host = await CreateAsync(user);
+
+        await host.WithScopeAsync(sp => DiscordRemindersModule.SetFromCommandAsync(sp.GetRequiredService<HabitService>(), 10, false, null));
+
+        await host.WithScopeAsync(async sp =>
+        {
+            var db = sp.GetRequiredService<EmberDbContext>();
+            (await db.PushSubscriptions.SingleAsync()).Enabled.Should().BeTrue();
+            (await db.ReminderPhones.SingleAsync()).Enabled.Should().BeTrue();
+            (await db.Habits.SingleAsync()).ReminderExclusions.Should().Equal("browser-9");
+        });
+    }
+
     [Theory]
     [InlineData(null, false, false, false)]
     [InlineData(false, false, false, false)]

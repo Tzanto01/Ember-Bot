@@ -165,12 +165,18 @@ public partial class HabitService
         return await _db.Users.Where(u => u.Id == userId).Select(u => u.DiscordReminders).FirstOrDefaultAsync() == true;
     }
 
-    /// <summary>Records the answer of the Discord user's account to "remind me in Discord DMs" (latest answer wins).</summary>
+    /// <summary>
+    /// Records the answer of the Discord user's account to "remind me in Discord DMs" (latest answer wins) and that it was asked,
+    /// so the one-time question is never sent afterwards.
+    /// </summary>
     public async Task SetDiscordRemindersAsync(ulong discordUserId, bool enabled)
     {
         var userId = await FindDiscordUserAsync(discordUserId);
+        var now = _time.GetUtcNow().UtcDateTime;
         await _db.Users.Where(u => u.Id == userId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.DiscordReminders, enabled));
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.DiscordReminders, enabled)
+                .SetProperty(u => u.DiscordRemindersAskedAt, u => u.DiscordRemindersAskedAt ?? now));
     }
 
     /// <summary>Bot only: remembers that the habit's or routine's reminder for <paramref name="date"/> was delivered by web push (at most once).</summary>
