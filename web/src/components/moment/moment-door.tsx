@@ -17,8 +17,11 @@ export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' })
 
   if (variant === 'hero') {
     return (
-      <Link to="/moment" className={cn(buttonVariants(), 'min-h-[56px] gap-3 px-6 text-[1.125rem]')}>
-        <Flame aria-hidden />
+      <Link to="/moment" className={cn(buttonVariants(), 'isolate min-h-[56px] gap-3 px-6 text-[1.125rem]')}>
+        <span aria-hidden className="relative inline-flex">
+          <span data-calm-hide className="ember-halo absolute -inset-2 -z-10 rounded-full opacity-50" />
+          <Flame />
+        </span>
         {label}
       </Link>
     );
@@ -27,13 +30,17 @@ export function MomentDoor({ variant }: { variant: 'today' | 'hero' | 'quiet' })
   return (
     <Link
       to="/moment"
-      className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border-[length:var(--border-width)] border-border bg-secondary p-4 text-secondary-foreground no-underline transition-colors duration-[var(--ember-dur-fast)] hover:bg-accent hover:text-accent-foreground"
+      className="group isolate flex min-h-[64px] w-full items-center gap-3 rounded-xl border-[length:var(--border-width)] border-border bg-secondary p-4 text-secondary-foreground no-underline transition-[color,background-color,scale] duration-[var(--ember-dur-fast)] ease-ember hover:bg-accent hover:text-accent-foreground active:scale-[0.99]"
     >
       <span
         aria-hidden
-        className="inline-flex size-[40px] shrink-0 items-center justify-center rounded-full bg-card text-primary"
+        className="relative inline-flex size-[40px] shrink-0 items-center justify-center rounded-full bg-card text-primary"
       >
-        <Flame className="size-[20px]" />
+        <span
+          data-calm-hide
+          className="ember-halo absolute -inset-2 -z-10 rounded-full opacity-75 transition-opacity duration-[var(--ember-dur)] group-hover:opacity-100"
+        />
+        <Flame className="size-[20px] transition-transform duration-[var(--ember-dur)] ease-ember group-hover:-translate-y-px" />
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="font-semibold">{label}</span>

@@ -1,0 +1,199 @@
+/* Quiet motion: page arrival (`main[data-arrive]`), the shells' ambient glow, and slow campfire loops on decorative
+   SVG parts. Transform and opacity only, every animation under `prefers-reduced-motion: no-preference`; calm mode
+   (calm.css) and `data-motion='off'` stop all of it, forced colours too. */
+
+.ember-glow-layer {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: clamp(28rem, 70vh, 52rem);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ember-glow {
+  position: absolute;
+  inset: -10rem 0 auto;
+  margin-inline: auto;
+  width: min(72rem, 140vw);
+  height: clamp(30rem, 75vh, 48rem);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame) 12%, transparent),
+    transparent
+  );
+}
+
+.dark .ember-glow {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame) 10%, transparent),
+    transparent
+  );
+}
+
+.ember-flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.ember-twinkle {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.ember-halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--flame) 45%, transparent),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  main[data-arrive='blocks'] > :last-child > *,
+  main[data-arrive='card'] > * {
+    animation: ember-arrive var(--ember-dur-slow) var(--ember-ease) both;
+  }
+  main[data-arrive='blocks'] > :last-child > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+  main[data-arrive='blocks'] > :last-child > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+  main[data-arrive='blocks'] > :last-child > :nth-child(4) {
+    animation-delay: 150ms;
+  }
+  main[data-arrive='blocks'] > :last-child > :nth-child(5) {
+    animation-delay: 200ms;
+  }
+  main[data-arrive='blocks'] > :last-child > :nth-child(n + 6) {
+    animation-delay: 250ms;
+  }
+
+  .ember-glow {
+    animation: ember-breathe 10s ease-in-out infinite alternate;
+    will-change: transform, opacity;
+  }
+
+  .ember-flicker {
+    animation: ember-flicker 7.3s ease-in-out infinite;
+  }
+  .ember-flicker--hearth {
+    animation-duration: 6.4s;
+  }
+  .ember-twinkle {
+    animation: ember-flicker 7.3s ease-in-out -2.1s infinite;
+  }
+
+  .ember-coal {
+    animation: ember-coal 4.1s ease-in-out infinite alternate;
+  }
+
+  .ember-spark {
+    animation: ember-spark 7.5s ease-in-out infinite;
+  }
+  .ember-spark--late {
+    animation-duration: 9.1s;
+    animation-delay: -4.6s;
+  }
+
+  .ember-halo::before {
+    animation: ember-breathe 7s ease-in-out infinite alternate;
+  }
+}
+
+[data-motion='off'] :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark),
+[data-motion='off'] .ember-halo::before {
+  animation: none !important;
+}
+
+@media (forced-colors: active) {
+  .ember-glow-layer,
+  .ember-halo {
+    display: none;
+  }
+  :is(.ember-flicker, .ember-twinkle, .ember-coal, .ember-spark) {
+    animation: none !important;
+  }
+}
+
+@keyframes ember-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes ember-breathe {
+  from {
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes ember-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1, 1);
+  }
+  14% {
+    opacity: 0.92;
+    transform: scale(0.97, 1.04);
+  }
+  27% {
+    transform: scale(1.02, 0.98);
+  }
+  43% {
+    opacity: 0.86;
+    transform: scale(0.96, 1.05);
+  }
+  58% {
+    opacity: 0.97;
+    transform: scale(1.01, 0.99);
+  }
+  76% {
+    opacity: 0.9;
+    transform: scale(0.98, 1.03);
+  }
+  88% {
+    transform: scale(1.01, 1);
+  }
+}
+
+@keyframes ember-coal {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+
+@keyframes ember-spark {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  45% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  46% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 0;
+  }
+}

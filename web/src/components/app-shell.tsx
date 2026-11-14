@@ -1,7 +1,7 @@
 import { CalendarDays, Flame, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '@/components/auth/busy-button';
 import { BetaBadge } from '@/components/beta-badge';
 import { BetaUpdateBanner } from '@/components/beta-update';
@@ -10,6 +10,7 @@ import { LegalLinks } from '@/components/legal-links';
 import { NativeConfirmation } from '@/components/native-confirmation';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { useArrival } from '@/lib/arrival';
 import { formatDate } from '@/lib/local-date';
 import { auth, deviceSync, helps, journal, localMode, offlineQueue } from '@/lib/services';
 import { useStore } from '@/lib/store';
@@ -79,6 +80,7 @@ export function AppShell() {
   const [signOutFailed, setSignOutFailed] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
   const busy = useRef(false);
+  const arriving = useArrival(useLocation().pathname);
 
   useEffect(() => {
     if (local || !userId || journalState !== 'unlocked' || turningOff) return;
@@ -96,7 +98,10 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="relative isolate flex min-h-dvh flex-col pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
+      <div aria-hidden="true" data-calm-hide className="ember-glow-layer">
+        <div className="ember-glow" />
+      </div>
       <header className="sticky top-0 z-10 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className={cn('mx-auto flex min-h-[56px] max-w-[72rem] items-center gap-4', inline)}>
           <div className="flex items-center gap-2">
@@ -155,6 +160,7 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
+        data-arrive={arriving ? 'blocks' : undefined}
         className={cn('mx-auto flex w-full max-w-[72rem] flex-1 flex-col gap-6 py-6 focus:outline-none md:py-10', inline)}
       >
         {signOutFailed && (

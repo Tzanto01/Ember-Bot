@@ -12,7 +12,7 @@ export function EnvelopeSpark({ className }: { className?: string }) {
     >
       <rect x="8" y="20" width="64" height="44" rx="6" className="fill-muted stroke-muted-foreground" strokeWidth="2" />
       <path d="M10 24 40 46 70 24" className="fill-none stroke-muted-foreground" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M80 2 83 11 92 14 83 17 80 26 77 17 68 14 77 11Z" className="fill-flame" />
+      <path d="M80 2 83 11 92 14 83 17 80 26 77 17 68 14 77 11Z" className="ember-twinkle fill-flame" />
       <circle cx="88" cy="30" r="3" className="fill-flame-core" />
     </svg>
   );

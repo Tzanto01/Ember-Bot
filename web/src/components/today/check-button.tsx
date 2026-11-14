@@ -59,7 +59,7 @@ export function CheckButton({
       onClick={onToggle}
       onAnimationEnd={ended}
       className={cn(
-        'relative grid size-[56px] shrink-0 cursor-pointer place-items-center rounded-cell border-2 transition-[background-color,border-color,color,transform] duration-[var(--ember-dur)] ease-ember active:scale-[0.98] aria-disabled:cursor-progress',
+        'relative grid size-[56px] shrink-0 cursor-pointer place-items-center rounded-cell border-2 transition-[background-color,border-color,color,transform,scale] duration-[var(--ember-dur)] ease-ember active:scale-[0.98] aria-disabled:cursor-progress',
         pressed
           ? 'border-done bg-done text-done-foreground'
           : started

@@ -293,7 +293,7 @@ export function DayJournal({ date, className }: { date: LocalDateString; classNa
               <RadioGroupPrimitive.Item
                 key={choice.key}
                 value={choice.key}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border-[length:max(1px,var(--border-width))] border-input bg-card px-3 text-base text-card-foreground transition-colors hover:bg-accent data-[state=checked]:border-primary data-[state=checked]:bg-accent data-[state=checked]:font-semibold data-[state=checked]:text-accent-foreground"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border-[length:max(1px,var(--border-width))] border-input bg-card px-3 text-base text-card-foreground transition-[color,background-color,border-color,scale] duration-[var(--ember-dur-fast)] ease-ember hover:bg-accent active:scale-[0.97] data-[state=checked]:border-primary data-[state=checked]:bg-accent data-[state=checked]:font-semibold data-[state=checked]:text-accent-foreground"
               >
                 {choice.emoji && <span aria-hidden="true">{choice.emoji}</span>}
                 <span>{choice.label}</span>
