@@ -540,6 +540,12 @@ So lange ruhen die Erinnerungen. Erhol dich gut. 💙</value>
   <data name="discordreminders.turn-on" xml:space="preserve">
     <value>Einschalten</value>
   </data>
+  <data name="discordreminders.stop" xml:space="preserve">
+    <value>Discord-Erinnerungen stoppen</value>
+  </data>
+  <data name="discordreminders.command.off" xml:space="preserve">
+    <value>Okay, ich schicke dir keine Erinnerungen mehr per DM. 💙 Deine Browser und Handys erinnern dich weiter wie bisher. Mit `/reminders an` oder in Embers Einstellungen unter „Erinnerungen“ kannst du Discord-Erinnerungen jederzeit wieder einschalten.</value>
+  </data>
   <data name="dmretry.check" xml:space="preserve">
     <value>Hi! Hier ist Ember, ich schaue nur, ob ich dich erreiche. Deine Erinnerungen sind wieder an. 🔥</value>
   </data>
@@ -599,7 +605,8 @@ Habits sind ein Teil davon: ohne schlechtes Gewissen, ohne Druck.</value>
     <value>`/habit add`: einen neuen Habit anlegen
 `/habit template`: aus fertigen Habits wählen
 `/timezone set`: deine Zeitzone einstellen (für Erinnerungen nötig)
-`/timezone show`: sehen, welche Zeitzone Ember für dich nutzt</value>
+`/timezone show`: sehen, welche Zeitzone Ember für dich nutzt
+`/reminders`: mit `aus` oder `an` Erinnerungen per DM hier stoppen oder wieder starten</value>
   </data>
   <data name="help.daily.title" xml:space="preserve">
     <value>Im Alltag</value>

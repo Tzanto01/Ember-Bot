@@ -540,6 +540,12 @@ Reminders are off while it's paused. Rest well. 💙</value>
   <data name="discordreminders.turn-on" xml:space="preserve">
     <value>Turn them on</value>
   </data>
+  <data name="discordreminders.stop" xml:space="preserve">
+    <value>Stop Discord reminders</value>
+  </data>
+  <data name="discordreminders.command.off" xml:space="preserve">
+    <value>Okay, I won't DM you reminders anymore. 💙 Your browsers and phones still remind you as before. You can turn Discord reminders back on any time with `/reminders on` or in Ember's Settings under “Reminders”.</value>
+  </data>
   <data name="dmretry.check" xml:space="preserve">
     <value>Hi! This is Ember checking that I can reach you. Your reminders are back on. 🔥</value>
   </data>
@@ -599,7 +605,8 @@ Habits are one part of it: no guilt, no pressure.</value>
     <value>`/habit add`: create a new habit
 `/habit template`: pick from pre-built habits
 `/timezone set`: set your local timezone (needed for reminders)
-`/timezone show`: see which timezone Ember uses for you</value>
+`/timezone show`: see which timezone Ember uses for you
+`/reminders`: `off` or `on` stops or restarts reminder DMs here</value>
   </data>
   <data name="help.daily.title" xml:space="preserve">
     <value>Daily use</value>
