@@ -4,7 +4,7 @@ import type { DeviceStore } from '../device-store';
 import { type JournalApi, JournalLockedError } from '../journal/types';
 import type { MoodKey, OwnMood } from '../models';
 import { ApiError, asApiError, problemToMessage } from '../problem';
-import { earliestStart, exportDocument } from './backend';
+import { deviceTipsSeen, earliestStart, exportDocument } from './backend';
 import type { LocalMode } from './mode';
 import type { LocalStore } from './store';
 import type { LocalData, LocalMood, LocalNote, UpgradeApi, UpgradeProgress, UpgradeResult, UpgradeSummary } from './types';
@@ -62,7 +62,7 @@ function customId(mood: MoodKey | null): number | null {
 export class UpgradeService implements UpgradeApi {
   constructor(
     private readonly store: LocalStore,
-    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'listRoutines' | 'updateMe'>,
+    private readonly api: Pick<ApiClient, 'importData' | 'listHabits' | 'listRoutines' | 'markTipSeen' | 'updateMe'>,
     private readonly auth: Pick<AuthService, 'me'>,
     private readonly journal: Pick<JournalApi, 'state' | 'enable' | 'moods' | 'addMood' | 'updateMood' | 'save'>,
     private readonly device: Pick<DeviceStore, 'clearUser'>,
@@ -162,6 +162,9 @@ export class UpgradeService implements UpgradeApi {
           });
           const current = this.auth.me.get();
           if (updated?.language && current && updated.id === current.id) this.auth.me.set({ ...current, language: updated.language, calmMode: updated.calmMode });
+          for (const tip of deviceTipsSeen(data)) {
+            if (tip !== 'streaks') await this.api.markTipSeen(tip).catch(() => undefined);
+          }
           await save({ importSent: true, journalOmitted: omit });
           try {
             await this.api.importData(importDocument(data, !omit));

@@ -23,7 +23,7 @@ public static class ExportBuilder
     /// (encrypted day_note or mood); <c>version</c>, <c>turning_off</c>, <c>passphrase_salt</c>, <c>passphrase_iterations</c>,
     /// <c>passphrase_iv</c>, <c>passphrase_wrapped</c>, <c>recovery_salt</c>, <c>recovery_iv</c>, <c>recovery_wrapped</c> (journal_key);
     /// <c>second_reminder_minutes</c> (settings); <c>enabled</c> (push_subscription, phone); <c>show_streaks</c>, <c>language</c>, <c>calm_mode</c> (settings);
-    /// <c>helps_encrypted</c> (helps). <c>reminder_exclusions</c> joins a habit's or
+    /// <c>helps_encrypted</c> (helps); <c>tips_seen</c> (settings, the seen tip ids joined with <c>;</c>). <c>reminder_exclusions</c> joins a habit's or
     /// routine's excluded reminder destination ids with <c>;</c>.
     /// </summary>
     public const string CsvHeader =
@@ -35,7 +35,7 @@ public static class ExportBuilder
         "two_factor_enabled,days,times_per_day,routine_id,count,routine_position,text,mood,mood_id,label,emoji,archived," +
         "cipher_version,cipher_iv,cipher_text,version,turning_off," +
         "passphrase_salt,passphrase_iterations,passphrase_iv,passphrase_wrapped,recovery_salt,recovery_iv,recovery_wrapped," +
-        "second_reminder_minutes,enabled,show_streaks,language,calm_mode,helps_encrypted";
+        "second_reminder_minutes,enabled,show_streaks,language,calm_mode,helps_encrypted,tips_seen";
 
     private static readonly string[] CsvColumns = CsvHeader.Split(',');
 
@@ -57,7 +57,7 @@ public static class ExportBuilder
         string Timezone, int GraceDaysPerWeek, string? Theme,
         int DmFailureCount, DateTime? DmRemindersPausedAt, DateTime? DmPauseNoticeSentAt,
         DateTime? HealthDataConsentAt, string? ConsentPolicyVersion, DateOnly? ConsentPromptedOn, bool TwoFactorEnabled,
-        int SecondReminderMinutes, bool ShowStreaks, string Language, bool CalmMode);
+        int SecondReminderMinutes, bool ShowStreaks, string Language, bool CalmMode, IReadOnlyList<string> TipsSeen);
 
     /// <summary>
     /// One habit. Dates are ISO 8601; <c>CreatedAt</c> and <c>NextReminderUtc</c> are UTC. <c>ReminderExclusions</c> lists the reminder destination ids (<c>discord</c>, <c>browser-…</c>, <c>phone-…</c>) the habit does not remind on.
@@ -143,7 +143,7 @@ public static class ExportBuilder
             new SettingsRecord(user.Timezone, user.GraceDaysPerWeek, user.Theme,
                 user.DmFailureCount, AsUtc(user.DmRemindersPausedAt), AsUtc(user.DmPauseNoticeSentAt),
                 AsUtc(user.HealthDataConsentAt), user.ConsentPolicyVersion, user.ConsentPromptedOn, user.TwoFactorEnabled,
-                user.SecondReminderMinutes, user.ShowStreaks, user.Language, user.CalmMode),
+                user.SecondReminderMinutes, user.ShowStreaks, user.Language, user.CalmMode, user.TipsSeen),
             habits.Select(h => new HabitRecord(
                 h.Id, h.Name, h.FrequencyType.ToString().ToLowerInvariant(), h.WeeklyTarget,
                 h.ReminderTime, h.PausedUntil, h.PausedFrom, DateTime.SpecifyKind(h.CreatedAt, DateTimeKind.Utc),
@@ -210,7 +210,8 @@ public static class ExportBuilder
             ("consent_policy_version", s.ConsentPolicyVersion ?? ""), ("consent_prompted_on", Date(s.ConsentPromptedOn)),
             ("email", doc.Account?.Email ?? ""), ("discord_id", doc.Account?.DiscordId ?? ""),
             ("two_factor_enabled", Bool(s.TwoFactorEnabled)), ("second_reminder_minutes", Num(s.SecondReminderMinutes)),
-            ("show_streaks", Bool(s.ShowStreaks)), ("language", s.Language), ("calm_mode", Bool(s.CalmMode)));
+            ("show_streaks", Bool(s.ShowStreaks)), ("language", s.Language), ("calm_mode", Bool(s.CalmMode)),
+            ("tips_seen", string.Join(';', s.TipsSeen)));
 
         foreach (var h in doc.Habits)
             AppendRow(csv, "habit", ("habit_id", Num(h.Id)), ("name", h.Name), ("frequency", h.Frequency),

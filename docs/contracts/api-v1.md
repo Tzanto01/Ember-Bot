@@ -639,5 +639,5 @@ Additive. Older clients ignore `tipsSeen`.
 
 ### Discord bot
 
-- The bot asks the streaks question once: when it creates a habit for an account whose `tipsSeen` lacks `streaks` and whose `showStreaks` is false, the confirmation carries "Do you want to see streaks?" with "Show streaks" and "Not for me" buttons (in the account's language). Either button sets `showStreaks` accordingly and marks `streaks` seen, then edits the message to drop the buttons. No other tips in the bot.
+- The bot asks the streaks question once: when it creates a habit for an account whose `tipsSeen` lacks `streaks` and whose `showStreaks` is false, an ephemeral follow-up to the confirmation asks "Do you want to see streaks?" with "Show streaks" and "Not for me" buttons (in the account's language; a separate message so the confirmation keeps its own buttons; asked again on each new habit until answered). Either button sets `showStreaks` accordingly and marks `streaks` seen, then edits the message to drop the buttons. No other tips in the bot.
 

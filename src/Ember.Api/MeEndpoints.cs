@@ -19,7 +19,8 @@ internal static class MeEndpoints
     public sealed record MeDto(
         Guid Id, string? Email, bool EmailConfirmed, bool HasPassword, DiscordDto Discord,
         string Timezone, bool TimezoneSet, DateOnly LocalToday, int GraceDaysPerWeek, string? Theme, int SecondReminderMinutes,
-        bool ShowStreaks, string Language, bool CalmMode, ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal);
+        bool ShowStreaks, string Language, bool CalmMode, ConsentDto Consent, DmRemindersDto DmReminders, JournalState Journal,
+        string[] TipsSeen);
 
     public sealed record MePatch(string? Timezone, int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes, bool? ShowStreaks,
         string? Language, bool? CalmMode);
@@ -77,6 +78,14 @@ internal static class MeEndpoints
                 return Problems.Validation("policyVersion", "Not the current policy version.");
 
             await habits.GiveHealthDataConsentAsync(principal.UserId());
+            return Results.NoContent();
+        });
+
+        api.MapPut("/me/tips/{id}", async (string id, ClaimsPrincipal principal, HabitService habits) =>
+        {
+            if (!User.TipIds.Contains(id)) return Problems.Validation("id", "Unknown tip.");
+
+            await habits.MarkTipSeenAsync(principal.UserId(), id);
             return Results.NoContent();
         });
 
@@ -159,6 +168,7 @@ internal static class MeEndpoints
             user.GraceDaysPerWeek, user.Theme, user.SecondReminderMinutes, user.ShowStreaks, user.Language, user.CalmMode,
             new ConsentDto(await habits.HasHealthDataConsentAsync(user.Id), user.ConsentPolicyVersion, HabitService.CurrentConsentPolicyVersion),
             new DmRemindersDto(user.DmRemindersPausedAt is not null),
-            await habits.GetJournalStateAsync(user.Id));
+            await habits.GetJournalStateAsync(user.Id),
+            [.. user.TipsSeen]);
     }
 }

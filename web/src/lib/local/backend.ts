@@ -13,6 +13,8 @@ import {
   secondReminderChoices,
   type SecondReminderMinutes,
   type TimeOfDay,
+  type TipId,
+  tipIds,
   type Weekday,
   weekdays,
 } from '../models';
@@ -344,6 +346,17 @@ function journalDayCheck(data: LocalData, date: string, today: string, todayWith
   if (start === null || date < start) throw new Problem(422, 'before_habit_start');
 }
 
+/** The device's seen tips; a missing list reads as `streaks` once the profile has habits (as `showStreaks` reads true). */
+export function deviceTipsSeen(data: LocalData): TipId[] {
+  return data.profile.tipsSeen ?? (data.habits.length > 0 ? ['streaks'] : []);
+}
+
+function withTipSeen(data: LocalData, tip: TipId): LocalData {
+  const seen = deviceTipsSeen(data);
+  data.profile.tipsSeen = seen.includes(tip) ? seen : [...seen, tip];
+  return data;
+}
+
 type Handler = (match: RegExpExecArray, query: URLSearchParams, body: unknown) => Promise<Response>;
 
 /**
@@ -373,6 +386,7 @@ export class LocalBackend {
       ['POST', /^\/api\/auth\/logout$/, async () => empty()],
       ['GET', /^\/api\/me$/, async () => json(200, this.me(await this.data()))],
       ['PATCH', /^\/api\/me$/, (_m, _q, b) => this.patchMe(bodyOf(b))],
+      ['PUT', /^\/api\/me\/tips\/([^/]+)$/, (m) => this.markTip(m[1])],
       ['POST', /^\/api\/me\/consent$/, (_m, _q, b) => this.consent(bodyOf(b))],
       ['POST', /^\/api\/me\/dm-reminders\/resume$/, async () => empty()],
       ['GET', /^\/api\/me\/export$/, (_m, q) => this.exportFile(q)],
@@ -456,7 +470,15 @@ export class LocalBackend {
       showStreaks: profile.showStreaks ?? true,
       calmMode: profile.calmMode ?? false,
       language: deviceLanguage(),
+      tipsSeen: deviceTipsSeen(data),
     };
+  }
+
+  private async markTip(raw: string): Promise<Response> {
+    const tip = tipIds.find((id) => id === raw);
+    if (!tip) throw invalidField('id', 'Unknown tip.');
+    await this.update((d) => withTipSeen(d, tip));
+    return empty();
   }
 
   private async patchMe(b: Body): Promise<Response> {
@@ -487,7 +509,7 @@ export class LocalBackend {
       if (typeof second === 'number') d.profile.secondReminderMinutes = second as SecondReminderMinutes;
       if (typeof showStreaks === 'boolean') d.profile.showStreaks = showStreaks;
       if (typeof calmMode === 'boolean') d.profile.calmMode = calmMode;
-      return d;
+      return typeof showStreaks === 'boolean' ? withTipSeen(d, 'streaks') : d;
     });
     return json(200, this.me(data));
   }
@@ -953,6 +975,7 @@ export function newLocalData(profile: Pick<LocalData['profile'], 'timezone' | 't
       graceDaysPerWeek: 1,
       theme: profile.theme,
       showStreaks: false,
+      tipsSeen: [],
       createdAt: now.toISOString(),
       lastBackupAt: null,
       backupReminderSnoozedUntil: null,

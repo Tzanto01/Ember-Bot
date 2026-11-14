@@ -230,6 +230,31 @@ describe('LocalBackend through ApiClient', () => {
     expect(error.problem?.errors).toEqual({ showStreaks: ['Must be true or false.'] });
   });
 
+  it('starts a new profile with no seen tips, reads a missing list by whether habits exist, and marks tips on the device', async () => {
+    await store.replace(seed([localHabit(1)]));
+    expect((await api.getMe()).tipsSeen).toEqual([]);
+
+    const older = seed([localHabit(1)]);
+    delete older.profile.tipsSeen;
+    await store.replace(older);
+    expect((await api.getMe()).tipsSeen).toEqual(['streaks']);
+    const empty = seed();
+    delete empty.profile.tipsSeen;
+    await store.replace(empty);
+    expect((await api.getMe()).tipsSeen).toEqual([]);
+
+    await api.markTipSeen('routines');
+    await api.markTipSeen('routines');
+    expect((await store.load())?.profile.tipsSeen).toEqual(['routines']);
+    expect((await rejection(api.markTipSeen('nope' as 'routines'))).problem?.errors).toEqual({ id: ['Unknown tip.'] });
+  });
+
+  it('marks the streaks question seen when showStreaks is saved either way', async () => {
+    await store.replace(seed([localHabit(1)]));
+
+    expect((await api.updateMe({ showStreaks: false })).tipsSeen).toEqual(['streaks']);
+  });
+
   it('reads a missing calm mode as off and saves the switch on the device', async () => {
     await store.replace(seed());
     expect((await api.getMe()).calmMode).toBe(false);

@@ -16,7 +16,7 @@ internal static class ImportEndpoints
         List<ImportDayMark?>? DayMarks, List<ImportRoutine?>? Routines, List<ImportMood?>? Moods, List<ImportDayNote?>? DayNotes,
         JournalEndpoints.JournalKeyRequest? JournalKey);
     public sealed record ImportSettings(int? GraceDaysPerWeek, string? Theme, int? SecondReminderMinutes, bool? ShowStreaks,
-        string? Language, bool? CalmMode);
+        string? Language, bool? CalmMode, List<string?>? TipsSeen);
     public sealed record ImportHabit(int? Id, string? Name, string? Frequency, int? WeeklyTarget, TimeOnly? ReminderTime,
         DateOnly? PausedUntil, DateOnly? PausedFrom, DateTimeOffset? CreatedAt, string?[]? Days,
         int? TimesPerDay, int? RoutineId, int? RoutinePosition, TimeOnly[]? ReminderTimes);
@@ -236,7 +236,8 @@ internal static class ImportEndpoints
         }
 
         return new ImportData(routines, habits, marks, moods, notes, material, doc.Settings?.GraceDaysPerWeek, doc.Settings?.Theme,
-            doc.Settings?.SecondReminderMinutes ?? 0, doc.Settings?.ShowStreaks, doc.Settings?.Language, doc.Settings?.CalmMode);
+            doc.Settings?.SecondReminderMinutes ?? 0, doc.Settings?.ShowStreaks, doc.Settings?.Language, doc.Settings?.CalmMode,
+            doc.Settings?.TipsSeen?.Where(t => t is not null && User.TipIds.Contains(t)).Select(t => t!).ToList());
     }
 
     private const string NotEmptyMessage = "Import only works into an account without habits, routines, moods or journal entries.";

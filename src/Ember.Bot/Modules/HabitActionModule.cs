@@ -20,6 +20,7 @@ namespace Ember.Bot.Modules;
 ///   habitaction:freq:{habitId}:daily
 ///   habit:grace:{days}
 ///   habit:streaks:{on|off}  (sets the account's ShowStreaks and re-renders the /habit streak reply)
+///   tip:streaks:{on|off}  (answers the one-time streaks question: sets ShowStreaks and drops the buttons)
 ///   habit:add:modal  (modal submit)
 ///   habit:rename:modal:{habitId}  (modal submit)
 /// </summary>
@@ -107,6 +108,8 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             }
             catch { /* DMs disabled */ }
         }
+
+        await AskStreaksOnceAsync(Context.Interaction, _habits, t);
     }
 
     // ── habitaction:checkin:done:{habitId} ────────────────────────────────────
@@ -338,6 +341,38 @@ public class HabitActionModule : InteractionModuleBase<SocketInteractionContext>
             });
         foreach (var page in pages.Skip(1))
             await FollowupAsync(embed: page, ephemeral: true);
+    }
+
+    // ── tip:streaks:{on|off} ──────────────────────────────────────────────────
+
+    [ComponentInteraction("tip:streaks:*")]
+    public async Task OnStreaksTipAsync(string state)
+    {
+        var t = await BotTexts.ForAsync(_habits, Context.Interaction);
+        if (state is not ("on" or "off")) { await BadIdAsync(t); return; }
+
+        await _habits.SetShowStreaksAsync(Context.User.Id, state == "on", Languages.FromLocale(Context.Interaction.UserLocale));
+        await ((SocketMessageComponent)Context.Interaction)
+            .UpdateAsync(m =>
+            {
+                m.Content    = t.Get(state == "on" ? "habit.streaks-tip.on" : "habit.streaks-tip.off");
+                m.Components = new ComponentBuilder().Build();
+            });
+    }
+
+    /// <summary>
+    /// Asks the one-time streaks question as an ephemeral follow-up when <see cref="HabitService.NeedsStreaksQuestionAsync(ulong)"/>
+    /// says the account needs it; the answer comes back as <c>tip:streaks:{on|off}</c>.
+    /// </summary>
+    internal static async Task AskStreaksOnceAsync(IDiscordInteraction interaction, HabitService habits, Texts t)
+    {
+        if (!await habits.NeedsStreaksQuestionAsync(interaction.User.Id)) return;
+
+        var buttons = new ComponentBuilder()
+            .WithButton(t.Get("habit.streaks-tip.show"), "tip:streaks:on", ButtonStyle.Primary)
+            .WithButton(t.Get("habit.streaks-tip.not-for-me"), "tip:streaks:off", ButtonStyle.Secondary)
+            .Build();
+        await interaction.FollowupAsync(t.Get("habit.streaks-tip.question"), components: buttons, ephemeral: true);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { MonthCalendar } from '@/components/history/month-calendar';
 import { StatTiles } from '@/components/history/stat-tiles';
 import { HistoryViewSwitch } from '@/components/history/view-switch';
 import { DayJournal } from '@/components/journal/day-journal';
+import { TipSlot } from '@/components/tips/tip-slot';
 import { LiveRegion } from '@/components/live-region';
 import { PageHeader } from '@/components/page-header';
 import { readReward, type RewardKeyword } from '@/components/today/reward';
@@ -353,6 +354,7 @@ export default function HistoryPage() {
             </Card>
           )}
           {openDay && <DayJournal date={openDay.date} />}
+          {openDay && <TipSlot place="journal" habits={habits} />}
           <StatTiles
             habit={selected}
             monthName={formatDate(month, { month: 'long' })}

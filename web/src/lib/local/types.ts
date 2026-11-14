@@ -6,6 +6,7 @@ import type {
   ReminderChannel,
   SecondReminderMinutes,
   TimeOfDay,
+  TipId,
   Weekday,
 } from '../models';
 import type { Store } from '../store';
@@ -76,6 +77,8 @@ export interface LocalProfile {
   showStreaks?: boolean;
   /** Calm mode; missing reads as false. */
   calmMode?: boolean;
+  /** Tips answered or dismissed on this device; missing reads as `["streaks"]` with habits, else empty. */
+  tipsSeen?: TipId[];
   /** ISO instant the local profile was made. */
   createdAt: string;
   /** ISO instant of the last successful backup export, or null. */

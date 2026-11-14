@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addDays,
@@ -13,8 +14,9 @@ import {
 } from './support/accounts';
 import { enableRememberedJournal, reflectionTrigger } from './support/extras';
 import { languages, translator } from './support/locales';
-import { capture, reviewFull, reviewVerdict } from './support/review';
+import { capture, reviewFull, reviewShots, reviewVerdict } from './support/review';
 import { freshTotp, newPassphrase } from './support/security';
+import { markTipSeen, nextDay } from './support/tips';
 
 const longHabit = 'Wasser trinken und Donaudampfschifffahrtsgesellschaft';
 const longRoutine = 'Morgenroutine mit Donaudampfschifffahrtsdehnen';
@@ -248,6 +250,46 @@ for (const { code, strings } of languages) {
         .soft(page.getByText(tr('today.ember.allDone')).locator('visible=true').first())
         .toBeVisible();
       await snap('calm mode on, all checked');
+      expect(reviewVerdict(found)).toEqual([]);
+    });
+
+    test(`Today tips ${code}`, async ({ page }) => {
+      test.setTimeout(timeout);
+      const found: string[] = [];
+      const extras = { themes: true, big: true };
+      const extraWidths = async (state: string) => {
+        if (!reviewShots) return;
+        const viewport = page.viewportSize() ?? { width: 1280, height: 900 };
+        for (const [width, height] of [[320, 800], [2560, 1080]] as const) {
+          await page.setViewportSize({ width, height });
+          for (const scheme of ['light', 'dark'] as const) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), scheme === 'dark');
+            await page.screenshot({
+              path: join(reviewShots, `today-${state}-${code}-${width}-${scheme}.png`),
+              fullPage: true,
+            });
+          }
+        }
+        await page.emulateMedia({ colorScheme: 'light' });
+        await page.evaluate(() => document.documentElement.classList.remove('dark'));
+        await page.setViewportSize(viewport);
+      };
+      await begin(page);
+      for (const name of ['Wasser', 'Stretch', 'Laufen']) await makeHabit(page, name);
+      await go(page, '/today', tr('today.title'));
+      await expect(page.locator('section[data-tip="streaks"]')).toBeVisible();
+      await capture(page, '/today', 'streaks question', code, found, extras);
+      await extraWidths('streaks-question');
+
+      await markTipSeen(page, 'streaks');
+      await nextDay(page);
+      await page.reload();
+      await ready(page, tr('today.title'));
+      await expect(page.locator('section[data-tip="routines"]')).toBeVisible();
+      await capture(page, '/today', 'routines tip', code, found, extras);
+      await extraWidths('routines-tip');
+
       expect(reviewVerdict(found)).toEqual([]);
     });
 

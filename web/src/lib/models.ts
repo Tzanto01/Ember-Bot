@@ -45,7 +45,13 @@ export interface Me {
   language?: Language;
   /** v1.17: calm mode (no motion, softer colours, fewer decorations); missing from servers before v1.17. */
   calmMode?: boolean;
+  /** v1.18: the tips this account has answered or dismissed; missing from servers before v1.18. */
+  tipsSeen?: TipId[];
 }
+
+/** v1.18 one-time tips, in priority order. */
+export const tipIds = ['streaks', 'private-journal', 'routines', 'android', 'discord'] as const;
+export type TipId = (typeof tipIds)[number];
 
 /** `PATCH /api/me` body. */
 export interface MePatch {

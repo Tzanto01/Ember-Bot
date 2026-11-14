@@ -35,6 +35,7 @@ class FakeServer {
   failImports = 0;
   importRejection: string | null = null;
   patches: unknown[] = [];
+  tips: string[] = [];
   private nextMood = 100;
   private timer = setInterval(() => {
     for (const call of this.mock.pending.splice(0)) this.handle(call);
@@ -53,6 +54,11 @@ class FakeServer {
     if (route === 'PATCH /api/me') {
       this.patches.push(body);
       return call.respond(200, this.me);
+    }
+    const tipPut = /^PUT \/api\/me\/tips\/(.+)$/.exec(route);
+    if (tipPut) {
+      this.tips.push(tipPut[1]!);
+      return call.respond(204);
     }
     if (route === 'POST /api/me/import') {
       if (this.failImports > 0) {
@@ -322,6 +328,15 @@ describe('UpgradeService', () => {
     expect(server.patches).toEqual([
       { timezone: 'Europe/Berlin', graceDaysPerWeek: 2, showStreaks: true, calmMode: true, language: 'en', theme: 'tidepool' },
     ]);
+  });
+
+  it('marks the tips seen on this device on the account, leaving streaks to the settings patch', async () => {
+    await store.update((d) => ({ ...d, profile: { ...d.profile, tipsSeen: ['streaks', 'routines', 'android'] } }));
+
+    await upgrade.run();
+
+    expect(server.tips).toEqual(['routines', 'android']);
+    expect(callIndex('PUT /api/me/tips/android')).toBeLessThan(callIndex('POST /api/me/import'));
   });
 
   it('keeps the device data when the account got other habits after a send that never landed', async () => {
