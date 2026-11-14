@@ -44,6 +44,7 @@ export async function enableJournal(page: Page, passphrase: string): Promise<str
 export async function openPage(page: Page, name: 'Today' | 'Settings'): Promise<void> {
   await page.getByRole('banner').getByRole('link', { name }).click();
   await expect(page).toHaveURL(new RegExp(`/${name.toLowerCase()}`));
+  if (name === 'Today') await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
 }
 
 export async function openSettingsGroup(page: Page, name: string): Promise<void> {
