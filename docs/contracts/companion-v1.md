@@ -89,3 +89,28 @@ type PracticeStep =
 ### Calm mode
 
 - One switch in Settings → Appearance ("Calm mode"), on the account (`Me.calmMode`) or on the device without an account. When on: no motion anywhere (as with reduced motion, including the breathing circle, which shows text only), softer contrast-safe colours from a calm token set (still WCAG AA), decorative illustrations and embers hidden, no What's new card on Today (the check-in summary and the weekly card stay, without the flame), the moment flow without the campfire. The system's reduced-motion setting still applies on its own.
+
+## Tips (0.10.0-beta.1, api v1.18)
+
+Nico (2026-11-14): "point users in the direction of something that app can do when the time is right. We don't want to overload them, but we do want them to have the chance to experience everything."
+
+### Rules
+
+- A tip is a small card that offers one feature once. It shows only when its condition holds and its id is not in `tipsSeen`. Answering it, following its link or dismissing it (×, labelled "Dismiss tip" / "Tipp ausblenden") marks it seen for the account (`PUT /api/me/tips/{id}`; no-account: on the device). Offline: hide it at once and send the mark with the next sync; a failed mark is retried, never shown again on this device meanwhile.
+- At most one tip on screen at a time, in the order below. After a tip is dismissed or answered, the next one waits until the next local day (remembered per device; losing it only means an earlier tip).
+- Never inside the moment flow (`/moment`), never on the first local day of the account except `streaks`, and never on top of the What's new card (that card goes first, the tip waits until the next day).
+- Calm mode shows only `streaks` (it is a question about the user's own setting).
+- Copy is wellness-safe, EN and DE, no exclamation marks, no pressure ("You can change this any time"). A tip is a `section` with a heading, its action as a link or button, and the dismiss button; it does not steal focus and announces nothing.
+
+### Catalogue (in priority order)
+
+| id | Condition | Where | Action |
+| --- | --- | --- | --- |
+| `streaks` | The account has at least one habit and `showStreaks` is false. In practice right after the first habit is saved, on any client. | Top of Today, above the habit list (below the "I need a moment" door). | A question, not a dismissible tip: "Do you want to see streaks?" with one line on what a streak is and that some find it motivating and some find it stressful, plus "You can change this any time in Settings." Buttons "Show streaks" (sets `showStreaks: true`) and "Not for me" (keeps it off). Both mark it seen. No ×. |
+| `private-journal` | Signed in with an account, the journal is plain (private journal off), and the user has saved at least one day note. | Under the day-note form on Today after a save, and on History's day panel. | "Want your notes locked so only you can read them?" Link to Settings → Privacy & data. |
+| `routines` | At least 3 active habits and no routine. | Below the habit list on Today. | "Habits you do together can share one routine." Link to the new routine page. |
+| `android` | Web only (never inside the Android app): check-ins on at least 3 different days. | Below the habit list on Today. | "Ember is also on Android, with a home screen widget and an "I need a moment" shortcut." Link to `/download`. |
+| `discord` | Signed in, no Discord linked, check-ins on at least 7 different days. | Below the habit list on Today. | "Ember can also remind you and take check-ins in Discord." Link to Settings → Account (link Discord). Phrased as an add-on. |
+
+- The release note's streak line changes to: "Streaks are optional now. When you add your first habit, Ember asks whether you want them. You can change it any time in Settings under “Habits & days”. Existing accounts keep their streaks on." (DE to match.) Add one line about tips: "Now and then Ember points out something it can do, once, when it fits."
+

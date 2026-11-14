@@ -1,4 +1,6 @@
-# Ember API contract v1.17
+# Ember API contract v1.18
+
+v1.18 (2026-11-14, Nico: "when the user first creates a habit, we prompt them if they want streaks active or not ... it makes sense to point users in the direction of something that app can do when the time is right. We don't want to overload them, but we do want them to have the chance to experience everything"): the app shows one-time tips at the right moment, starting with the streaks question after the first habit; which tips an account has seen is stored on the account. See "Tips v1.18" and the Tips section of docs/contracts/companion-v1.md.
 
 v1.17 (2026-11-13, Nico: "Localization. At least english and german", and he chose to hold the companion release for it): every account has a language (`en` or `de`) used for the app, emails, notifications and the Discord bot. See "Language v1.17" and docs/contracts/i18n-v1.md.
 
@@ -623,3 +625,19 @@ Nico (2026-11-13), on "Your moments", "What helps me" and a calm mode: "Add it t
 - `DELETE /api/me/helps` → 204.
 - The server never sees plaintext. Finishing a private-journal turn-off (`DELETE /api/me/journal-key`) and discarding the journal also delete it. Deleted with the account. The account export includes the ciphertext as `helps_encrypted`; the app's decrypted export includes the list.
 - Stored as one row per account (`UserHelps`: user id, ciphertext, version, updated at).
+
+## Tips v1.18
+
+Additive. Older clients ignore `tipsSeen`.
+
+- `Me` gains `"tipsSeen": string[]`: the ids of the tips this account has answered or dismissed. Known ids: `streaks`, `private-journal`, `routines`, `android`, `discord`.
+- `PUT /api/me/tips/{id}` → 204: marks the tip seen. Idempotent. Unknown id → 400 `validation` on `id`. Never needs consent (a setting).
+- `PATCH /api/me` with `showStreaks` also marks `streaks` seen, and so does the Discord bot's streak button: a user who chose either way is never asked.
+- Stored on the user (`User.TipsSeen`, a text array or JSON list, non-null, default empty). The migration sets `["streaks"]` for every existing row (they keep streaks on and are not asked); every account created afterwards starts empty. Reversible.
+- Export `settings.tips_seen` (list); import optional (absent leaves it; known ids only, unknown ignored). Account merge takes the union.
+- No-account profiles keep the list on the device; a missing field reads as `["streaks"]` for an existing device profile that already has habits (as `showStreaks` reads `true`), else empty.
+
+### Discord bot
+
+- The bot asks the streaks question once: when it creates a habit for an account whose `tipsSeen` lacks `streaks` and whose `showStreaks` is false, the confirmation carries "Do you want to see streaks?" with "Show streaks" and "Not for me" buttons (in the account's language). Either button sets `showStreaks` accordingly and marks `streaks` seen, then edits the message to drop the buttons. No other tips in the bot.
+
